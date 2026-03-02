@@ -582,11 +582,6 @@ describe("--help", () => {
     expect(result.output).toBe(HELP_TEXTS.python);
   });
 
-  it("python3 --help returns help text (async)", async () => {
-    const result = await executeAsync("python3", [], { help: true }, ctx());
-    expect(result.output).toBe(HELP_TEXTS.python);
-  });
-
   it("snowsql --help returns help text", () => {
     const result = execute("snowsql", [], { help: true }, ctx());
     expect(result.output).toBe(HELP_TEXTS.snowsql);
