@@ -25,9 +25,9 @@ const DATE_COLUMNS: Record<string, Set<string>> = {
 export function createInitialSnowflakeState(): SnowflakeState {
   const data: SnowflakeData = {
     databases: {
-      NEXACORP_DB: loadDatabase(nexacorpDbJson),
-      NEXACORP_PROD: loadDatabase(nexacorpProdJson),
-      CHIP_ANALYTICS: loadDatabase(chipAnalyticsJson),
+      NEXACORP_DB: loadDatabase(nexacorpDbJson as unknown as JsonDatabase),
+      NEXACORP_PROD: loadDatabase(nexacorpProdJson as unknown as JsonDatabase),
+      CHIP_ANALYTICS: loadDatabase(chipAnalyticsJson as unknown as JsonDatabase),
     },
     warehouses: {
       NEXACORP_WH: {
