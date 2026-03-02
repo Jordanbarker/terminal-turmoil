@@ -1,0 +1,120 @@
+import { isBackspace, isPrintable } from "../terminal/keyCodes";
+
+export type EditorAction =
+  | { type: "insert"; char: string }
+  | { type: "enter" }
+  | { type: "backspace" }
+  | { type: "delete" }
+  | { type: "arrowUp" }
+  | { type: "arrowDown" }
+  | { type: "arrowLeft" }
+  | { type: "arrowRight" }
+  | { type: "home" }
+  | { type: "end" }
+  | { type: "pageUp" }
+  | { type: "pageDown" }
+  | { type: "save" }
+  | { type: "exit" }
+  | { type: "cutLine" }
+  | { type: "pasteLine" }
+  | { type: "help" }
+  | { type: "promptYes" }
+  | { type: "promptNo" };
+
+/**
+ * Parse raw xterm input data into a list of semantic editor actions.
+ */
+export function parseEditorInput(data: string): EditorAction[] {
+  const actions: EditorAction[] = [];
+  let i = 0;
+
+  while (i < data.length) {
+    const code = data.charCodeAt(i);
+
+    // Escape sequences
+    if (data[i] === "\x1b" && data[i + 1] === "[") {
+      const seq = data[i + 2];
+      if (seq === "A") {
+        actions.push({ type: "arrowUp" });
+        i += 3;
+      } else if (seq === "B") {
+        actions.push({ type: "arrowDown" });
+        i += 3;
+      } else if (seq === "C") {
+        actions.push({ type: "arrowRight" });
+        i += 3;
+      } else if (seq === "D") {
+        actions.push({ type: "arrowLeft" });
+        i += 3;
+      } else if (seq === "H") {
+        actions.push({ type: "home" });
+        i += 3;
+      } else if (seq === "F") {
+        actions.push({ type: "end" });
+        i += 3;
+      } else if (seq === "3" && data[i + 3] === "~") {
+        actions.push({ type: "delete" });
+        i += 4;
+      } else if (seq === "5" && data[i + 3] === "~") {
+        actions.push({ type: "pageUp" });
+        i += 4;
+      } else if (seq === "6" && data[i + 3] === "~") {
+        actions.push({ type: "pageDown" });
+        i += 4;
+      } else {
+        // Unknown escape sequence — skip it
+        i += 3;
+      }
+    } else if (code === 1) {
+      // Ctrl+A → home
+      actions.push({ type: "home" });
+      i++;
+    } else if (code === 5) {
+      // Ctrl+E → end
+      actions.push({ type: "end" });
+      i++;
+    } else if (code === 7) {
+      // Ctrl+G → help
+      actions.push({ type: "help" });
+      i++;
+    } else if (code === 11) {
+      // Ctrl+K → cut line
+      actions.push({ type: "cutLine" });
+      i++;
+    } else if (code === 15 || code === 19) {
+      // Ctrl+O or Ctrl+S → save
+      actions.push({ type: "save" });
+      i++;
+    } else if (code === 21) {
+      // Ctrl+U → paste line
+      actions.push({ type: "pasteLine" });
+      i++;
+    } else if (code === 22) {
+      // Ctrl+V → page down
+      actions.push({ type: "pageDown" });
+      i++;
+    } else if (code === 24) {
+      // Ctrl+X → exit
+      actions.push({ type: "exit" });
+      i++;
+    } else if (code === 25) {
+      // Ctrl+Y → page up
+      actions.push({ type: "pageUp" });
+      i++;
+    } else if (isBackspace(code)) {
+      actions.push({ type: "backspace" });
+      i++;
+    } else if (data[i] === "\r" || data[i] === "\n") {
+      actions.push({ type: "enter" });
+      i++;
+    } else if (isPrintable(code)) {
+      actions.push({ type: "insert", char: data[i] });
+      i++;
+    } else {
+      // Unknown control character — skip
+      i++;
+    }
+  }
+
+  return actions;
+}

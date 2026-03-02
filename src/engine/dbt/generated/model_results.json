@@ -1,0 +1,101 @@
+{
+  "stg_raw_nexacorp__employees": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.15
+  },
+  "stg_raw_nexacorp__system_events": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.22
+  },
+  "stg_raw_nexacorp__ai_metrics": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.11
+  },
+  "stg_raw_nexacorp__access_log": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.18
+  },
+  "stg_raw_nexacorp__department_budgets": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.13
+  },
+  "stg_raw_nexacorp__support_tickets": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.16
+  },
+  "int_employees_joined_to_events": {
+    "status": "success",
+    "materialization": "ephemeral",
+    "executionTime": 0.0
+  },
+  "int_employees_with_tenure": {
+    "status": "success",
+    "materialization": "ephemeral",
+    "executionTime": 0.0
+  },
+  "int_support_tickets_enriched": {
+    "status": "success",
+    "materialization": "ephemeral",
+    "executionTime": 0.0
+  },
+  "dim_employees": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.67,
+    "rowsAffected": 77
+  },
+  "fct_system_events": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 1.23,
+    "rowsAffected": 79
+  },
+  "fct_support_tickets": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.38,
+    "rowsAffected": 26
+  },
+  "rpt_ai_performance": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.34,
+    "rowsAffected": 2
+  },
+  "rpt_employee_directory": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.45,
+    "rowsAffected": 77
+  },
+  "rpt_department_spending": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.29,
+    "rowsAffected": 16
+  },
+  "chip_data_cleanup": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.28,
+    "rowsAffected": 3
+  },
+  "chip_log_filter": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.91,
+    "rowsAffected": 7
+  },
+  "chip_ticket_suppression": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.19,
+    "rowsAffected": 4
+  }
+}

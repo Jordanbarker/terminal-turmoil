@@ -1,0 +1,1580 @@
+import { describe, it, expect } from "vitest";
+import { execute } from "../registry";
+import { CommandContext } from "../types";
+import { VirtualFS } from "../../filesystem/VirtualFS";
+import { DirectoryNode } from "../../filesystem/types";
+import { HELP_TEXTS } from "../builtins/helpTexts";
+import { parsePipeline } from "../parser";
+
+/** Strip ANSI escape codes for easier assertion */
+function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+// Import builtins to trigger registration
+import "../builtins";
+
+function createTestFS(): VirtualFS {
+  const root: DirectoryNode = {
+    type: "directory",
+    name: "/",
+    permissions: "rwxr-xr-x",
+    hidden: false,
+    children: {
+      home: {
+        type: "directory",
+        name: "home",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {
+          player: {
+            type: "directory",
+            name: "player",
+            permissions: "rwxr-xr-x",
+            hidden: false,
+            children: {
+              "notes.txt": {
+                type: "file",
+                name: "notes.txt",
+                content: "hello world\nfoo bar\nhello foo\ntest line",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              ".hidden": {
+                type: "file",
+                name: ".hidden",
+                content: "secret stuff\nhidden data",
+                permissions: "rw-r--r--",
+                hidden: true,
+              },
+              docs: {
+                type: "directory",
+                name: "docs",
+                permissions: "rwxr-xr-x",
+                hidden: false,
+                children: {
+                  "readme.md": {
+                    type: "file",
+                    name: "readme.md",
+                    content: "# Docs\n\nSome documentation\nhello from docs",
+                    permissions: "rw-r--r--",
+                    hidden: false,
+                  },
+                  "notes.txt": {
+                    type: "file",
+                    name: "notes.txt",
+                    content: "doc notes\nhello again",
+                    permissions: "rw-r--r--",
+                    hidden: false,
+                  },
+                },
+              },
+              "log.txt": {
+                type: "file",
+                name: "log.txt",
+                content: "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "old.txt": {
+                type: "file",
+                name: "old.txt",
+                content: "line A\ncommon line\nline C",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "new.txt": {
+                type: "file",
+                name: "new.txt",
+                content: "line A\ncommon line\nline D\nline E",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "data.txt": {
+                type: "file",
+                name: "data.txt",
+                content: "banana\napple\ncherry\napple\nbanana\nbanana",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "empty.txt": {
+                type: "file",
+                name: "empty.txt",
+                content: "",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "script.py": {
+                type: "file",
+                name: "script.py",
+                content: "#!/usr/bin/env python3\nprint('hello')",
+                permissions: "rwxr-xr-x",
+                hidden: false,
+              },
+            },
+          },
+        },
+      },
+      var: {
+        type: "directory",
+        name: "var",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {
+          log: {
+            type: "directory",
+            name: "log",
+            permissions: "rwxr-xr-x",
+            hidden: false,
+            children: {
+              "system.log": {
+                type: "file",
+                name: "system.log",
+                content: "boot ok\nchip started\nuser login",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+              "system.log.bak": {
+                type: "file",
+                name: "system.log.bak",
+                content: "boot ok\nchip started\nchip-daemon: cleanup\nuser login",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  return new VirtualFS(root, "/home/player", "/home/player");
+}
+
+function ctx(fs?: VirtualFS, overrides?: Partial<CommandContext>): CommandContext {
+  const f = fs ?? createTestFS();
+  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", ...overrides };
+}
+
+// --- grep ---
+describe("grep", () => {
+  it("finds matching lines in a file", () => {
+    const result = execute("grep", ["hello", "notes.txt"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("hello world");
+    expect(plain).toContain("hello foo");
+  });
+
+  it("returns exit code 1 when no matches", () => {
+    const result = execute("grep", ["zzzzz", "notes.txt"], {}, ctx());
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toBe("");
+  });
+
+  it("supports -i for case insensitive", () => {
+    const result = execute("grep", ["HELLO", "notes.txt"], { i: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("hello world");
+  });
+
+  it("supports -n for line numbers", () => {
+    const result = execute("grep", ["foo", "notes.txt"], { n: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("2:");
+    expect(plain).toContain("3:");
+  });
+
+  it("supports -l for filenames only", () => {
+    const result = execute("grep", ["hello", "notes.txt", "docs/readme.md"], { l: true }, ctx());
+    expect(result.output).toContain("/home/player/notes.txt");
+    expect(result.output).toContain("/home/player/docs/readme.md");
+  });
+
+  it("supports -c for count", () => {
+    const result = execute("grep", ["hello", "notes.txt"], { c: true }, ctx());
+    expect(result.output).toBe("2");
+  });
+
+  it("supports -v for invert match", () => {
+    const result = execute("grep", ["hello", "notes.txt"], { v: true }, ctx());
+    expect(result.output).toContain("foo bar");
+    expect(result.output).toContain("test line");
+    expect(stripAnsi(result.output)).not.toContain("hello world");
+  });
+
+  it("supports -r for recursive search", () => {
+    const result = execute("grep", ["hello", "."], { r: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("hello world");
+    expect(plain).toContain("hello from docs");
+  });
+
+  it("reads from stdin when no file given", () => {
+    const result = execute("grep", ["bar"], {}, ctx(undefined, { stdin: "foo bar\nbaz qux\nbar again" }));
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("foo bar");
+    expect(plain).toContain("bar again");
+  });
+
+  it("returns error for nonexistent file", () => {
+    const result = execute("grep", ["test", "missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("returns error for missing pattern", () => {
+    const result = execute("grep", [], {}, ctx());
+    expect(result.output).toContain("missing pattern");
+  });
+});
+
+// --- find ---
+describe("find", () => {
+  it("finds all files and dirs from cwd", () => {
+    const result = execute("find", ["."], {}, ctx());
+    expect(result.output).toContain("/home/player");
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("docs");
+  });
+
+  it("finds by name pattern", () => {
+    const result = execute("find", [".", "-name", "*.txt"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("log.txt");
+    expect(result.output).not.toContain("readme.md");
+  });
+
+  it("finds by type file", () => {
+    const result = execute("find", [".", "-type", "f"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).not.toContain("/home/player/docs\n");
+  });
+
+  it("finds by type directory", () => {
+    const result = execute("find", [".", "-type", "d"], {}, ctx());
+    expect(result.output).toContain("docs");
+    expect(result.output).not.toContain("notes.txt");
+  });
+
+  it("finds .bak files", () => {
+    const result = execute("find", ["/var/log", "-name", "*.bak"], {}, ctx());
+    expect(result.output).toContain("system.log.bak");
+  });
+
+  it("returns error for nonexistent path", () => {
+    const result = execute("find", ["/missing"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+});
+
+// --- head ---
+describe("head", () => {
+  it("shows first 10 lines by default", () => {
+    const result = execute("head", ["log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(10);
+    expect(lines[0]).toBe("line1");
+    expect(lines[9]).toBe("line10");
+  });
+
+  it("supports -n to control line count", () => {
+    const result = execute("head", ["-n", "3", "log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[0]).toBe("line1");
+  });
+
+  it("reads from stdin", () => {
+    const result = execute("head", ["-n", "2"], {}, ctx(undefined, { stdin: "a\nb\nc\nd" }));
+    expect(result.output).toBe("a\nb");
+  });
+
+  it("returns error for missing file", () => {
+    const result = execute("head", ["missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+});
+
+// --- tail ---
+describe("tail", () => {
+  it("shows last 10 lines by default", () => {
+    const result = execute("tail", ["log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(10);
+    expect(lines[lines.length - 1]).toBe("line12");
+  });
+
+  it("supports -n to control line count", () => {
+    const result = execute("tail", ["-n", "3", "log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[lines.length - 1]).toBe("line12");
+  });
+
+  it("reads from stdin", () => {
+    const result = execute("tail", ["-n", "2"], {}, ctx(undefined, { stdin: "a\nb\nc\nd" }));
+    expect(result.output).toBe("c\nd");
+  });
+});
+
+// --- diff ---
+describe("diff", () => {
+  it("shows no output for identical files", () => {
+    const result = execute("diff", ["notes.txt", "notes.txt"], {}, ctx());
+    expect(result.output).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("shows differences between files", () => {
+    const result = execute("diff", ["old.txt", "new.txt"], {}, ctx());
+    expect(result.output).toContain("--- old.txt");
+    expect(result.output).toContain("+++ new.txt");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("returns error for missing file", () => {
+    const result = execute("diff", ["notes.txt", "missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("returns error with fewer than 2 args", () => {
+    const result = execute("diff", ["notes.txt"], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+});
+
+// --- wc ---
+describe("wc", () => {
+  it("counts lines words and chars", () => {
+    const result = execute("wc", ["notes.txt"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("supports -l for lines only", () => {
+    const result = execute("wc", ["notes.txt"], { l: true }, ctx());
+    expect(result.output).toContain("4");
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("reads from stdin", () => {
+    const result = execute("wc", [], { l: true }, ctx(undefined, { stdin: "a\nb\nc" }));
+    expect(result.output).toContain("3");
+  });
+
+  it("shows totals for multiple files", () => {
+    const result = execute("wc", ["notes.txt", "old.txt"], { l: true }, ctx());
+    expect(result.output).toContain("total");
+  });
+});
+
+// --- echo ---
+describe("echo", () => {
+  it("prints text", () => {
+    const result = execute("echo", ["hello", "world"], {}, ctx());
+    expect(result.output).toBe("hello world");
+  });
+
+  it("prints empty string with no args", () => {
+    const result = execute("echo", [], {}, ctx());
+    expect(result.output).toBe("");
+  });
+});
+
+// --- chmod ---
+describe("chmod", () => {
+  it("changes file permissions", () => {
+    const result = execute("chmod", ["755", "notes.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    const node = result.newFs!.getNode("/home/player/notes.txt");
+    expect(node!.permissions).toBe("rwxr-xr-x");
+  });
+
+  it("returns error for invalid mode", () => {
+    const result = execute("chmod", ["999", "notes.txt"], {}, ctx());
+    expect(result.output).toContain("invalid mode");
+  });
+
+  it("returns error for nonexistent file", () => {
+    const result = execute("chmod", ["644", "missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+});
+
+// --- mkdir ---
+describe("mkdir", () => {
+  it("creates a directory", () => {
+    const result = execute("mkdir", ["newdir"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    const node = result.newFs!.getNode("/home/player/newdir");
+    expect(node).toBeDefined();
+    expect(node!.type).toBe("directory");
+  });
+
+  it("creates nested dirs with -p", () => {
+    const result = execute("mkdir", ["a/b/c"], { p: true }, ctx());
+    expect(result.newFs).toBeDefined();
+    const node = result.newFs!.getNode("/home/player/a/b/c");
+    expect(node).toBeDefined();
+  });
+
+  it("returns error for existing dir", () => {
+    const result = execute("mkdir", ["docs"], {}, ctx());
+    expect(result.output).toContain("File exists");
+  });
+});
+
+// --- rm ---
+describe("rm", () => {
+  it("removes a file", () => {
+    const result = execute("rm", ["notes.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")).toBeNull();
+  });
+
+  it("refuses to remove directory without -r", () => {
+    const result = execute("rm", ["docs"], {}, ctx());
+    expect(result.output).toContain("Is a directory");
+  });
+
+  it("removes directory with -r", () => {
+    const result = execute("rm", ["docs"], { r: true }, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+  });
+});
+
+// --- mv ---
+describe("mv", () => {
+  it("moves a file", () => {
+    const result = execute("mv", ["notes.txt", "moved.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/moved.txt")).not.toBeNull();
+  });
+
+  it("returns error for nonexistent source", () => {
+    const result = execute("mv", ["missing.txt", "dest.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+});
+
+// --- cp ---
+describe("cp", () => {
+  it("copies a file", () => {
+    const result = execute("cp", ["notes.txt", "copy.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")).not.toBeNull();
+    expect(result.newFs!.getNode("/home/player/copy.txt")).not.toBeNull();
+  });
+
+  it("copies into directory", () => {
+    const result = execute("cp", ["notes.txt", "docs"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    // There's already a notes.txt in docs, this overwrites it
+    const node = result.newFs!.readFile("/home/player/docs/notes.txt");
+    expect(node.content).toContain("hello world");
+  });
+});
+
+// --- touch ---
+describe("touch", () => {
+  it("creates new empty file", () => {
+    const result = execute("touch", ["new.file"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    const node = result.newFs!.readFile("/home/player/new.file");
+    expect(node.content).toBe("");
+  });
+
+  it("no-ops on existing file", () => {
+    const result = execute("touch", ["notes.txt"], {}, ctx());
+    // Should return newFs unchanged (or not set, depending on implementation)
+    // The key is it doesn't error
+    expect(result.output).toBe("");
+  });
+});
+
+// --- history ---
+describe("history", () => {
+  it("shows command history", () => {
+    const result = execute("history", [], {}, ctx(undefined, { commandHistory: ["ls", "cd /tmp", "cat file.txt"] }));
+    expect(result.output).toContain("ls");
+    expect(result.output).toContain("cd /tmp");
+    expect(result.output).toContain("cat file.txt");
+  });
+
+  it("shows empty for no history", () => {
+    const result = execute("history", [], {}, ctx(undefined, { commandHistory: [] }));
+    expect(result.output).toBe("");
+  });
+});
+
+// --- whoami ---
+describe("whoami", () => {
+  it("returns username from homeDir", () => {
+    const result = execute("whoami", [], {}, ctx());
+    expect(result.output).toBe("player");
+  });
+});
+
+// --- hostname ---
+describe("hostname", () => {
+  it("returns nexacorp hostname", () => {
+    const result = execute("hostname", [], {}, ctx());
+    expect(result.output).toBe("nexacorp-ws01");
+  });
+
+  it("is blocked on home computer", () => {
+    const result = execute("hostname", [], {}, ctx(undefined, { activeComputer: "home" }));
+    expect(result.output).toContain("command not found");
+  });
+});
+
+// --- uname ---
+describe("uname", () => {
+  it("returns Linux by default", () => {
+    const result = execute("uname", [], {}, ctx());
+    expect(result.output).toBe("Linux");
+  });
+
+  it("returns full info with -a", () => {
+    const result = execute("uname", [], { a: true }, ctx());
+    expect(result.output).toContain("Linux");
+    expect(result.output).toContain("nexacorp-ws01");
+    expect(result.output).toContain("GNU/Linux");
+  });
+});
+
+// --- file ---
+describe("file", () => {
+  it("identifies text files", () => {
+    const result = execute("file", ["notes.txt"], {}, ctx());
+    expect(result.output).toContain("ASCII text");
+  });
+
+  it("identifies Python scripts", () => {
+    const result = execute("file", ["script.py"], {}, ctx());
+    expect(result.output).toContain("Python");
+  });
+
+  it("identifies directories", () => {
+    const result = execute("file", ["docs"], {}, ctx());
+    expect(result.output).toContain("directory");
+  });
+
+  it("identifies markdown", () => {
+    const result = execute("file", ["docs/readme.md"], {}, ctx());
+    expect(result.output).toContain("Markdown");
+  });
+});
+
+// --- tree ---
+describe("tree", () => {
+  it("shows tree structure", () => {
+    const result = execute("tree", ["docs"], {}, ctx());
+    expect(result.output).toContain("readme.md");
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("directories");
+    expect(result.output).toContain("files");
+  });
+});
+
+// --- sort ---
+describe("sort", () => {
+  it("sorts lines alphabetically", () => {
+    const result = execute("sort", ["data.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines[0]).toBe("apple");
+    expect(lines[1]).toBe("apple");
+    expect(lines[2]).toBe("banana");
+  });
+
+  it("sorts in reverse with -r", () => {
+    const result = execute("sort", ["data.txt"], { r: true }, ctx());
+    const lines = result.output.split("\n");
+    expect(lines[0]).toBe("cherry");
+  });
+
+  it("reads from stdin", () => {
+    const result = execute("sort", [], {}, ctx(undefined, { stdin: "c\na\nb" }));
+    expect(result.output).toBe("a\nb\nc");
+  });
+});
+
+// --- uniq ---
+describe("uniq", () => {
+  it("removes adjacent duplicates", () => {
+    const result = execute("uniq", [], {}, ctx(undefined, { stdin: "a\na\nb\nb\na" }));
+    expect(result.output).toBe("a\nb\na");
+  });
+
+  it("counts with -c", () => {
+    const result = execute("uniq", [], { c: true }, ctx(undefined, { stdin: "a\na\nb" }));
+    expect(result.output).toContain("2 a");
+    expect(result.output).toContain("1 b");
+  });
+
+  it("shows only duplicates with -d", () => {
+    const result = execute("uniq", [], { d: true }, ctx(undefined, { stdin: "a\na\nb\nc\nc" }));
+    expect(result.output).toContain("a");
+    expect(result.output).toContain("c");
+    expect(result.output).not.toContain("b");
+  });
+});
+
+// --- date ---
+describe("date", () => {
+  it("returns in-game date", () => {
+    const result = execute("date", [], {}, ctx());
+    expect(result.output).toContain("2026");
+  });
+});
+
+// --- which ---
+describe("which", () => {
+  it("returns path for known command", () => {
+    const result = execute("which", ["grep"], {}, ctx());
+    expect(result.output).toBe("/usr/bin/grep");
+  });
+
+  it("returns chip path", () => {
+    const result = execute("which", ["chip"], {}, ctx());
+    expect(result.output).toBe("/opt/chip/bin/chip");
+  });
+
+  it("returns not found for unknown", () => {
+    const result = execute("which", ["foobar"], {}, ctx());
+    expect(result.output).toContain("not found");
+  });
+});
+
+// --- man ---
+describe("man", () => {
+  it("shows manual for known command", () => {
+    const result = execute("man", ["grep"], {}, ctx());
+    expect(result.output).toContain("GREP");
+    expect(result.output).toContain("NAME");
+    expect(result.output).toContain("DESCRIPTION");
+  });
+
+  it("returns error for unknown command", () => {
+    const result = execute("man", ["foobar"], {}, ctx());
+    expect(result.output).toContain("No manual entry");
+  });
+});
+
+// --- pipeline parser ---
+describe("parsePipeline", () => {
+  it("parses single command", () => {
+    const pipeline = parsePipeline("ls -la");
+    expect(pipeline).toHaveLength(1);
+    expect(pipeline[0].command).toBe("ls");
+  });
+
+  it("parses pipe chain", () => {
+    const pipeline = parsePipeline("cat file.txt | grep hello | wc -l");
+    expect(pipeline).toHaveLength(3);
+    expect(pipeline[0].command).toBe("cat");
+    expect(pipeline[1].command).toBe("grep");
+    expect(pipeline[2].command).toBe("wc");
+  });
+
+  it("respects quotes around pipes", () => {
+    const pipeline = parsePipeline("echo 'hello | world'");
+    expect(pipeline).toHaveLength(1);
+    expect(pipeline[0].args).toContain("hello | world");
+  });
+});
+
+// ==================== NEW TESTS ====================
+
+// --- grep (additional) ---
+describe("grep (additional)", () => {
+  it("supports regex patterns", () => {
+    const result = execute("grep", ["hel.*ld", "notes.txt"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("hello world");
+    expect(plain).not.toContain("hello foo");
+  });
+
+  it("falls back to literal match on invalid regex", () => {
+    const result = execute("grep", ["[invalid", "notes.txt"], {}, ctx());
+    // Should not crash — treats "[invalid" as literal
+    expect(result.exitCode).toBe(1); // no match expected
+  });
+
+  it("shows filename prefix for multiple files without -l", () => {
+    const result = execute("grep", ["hello", "notes.txt", "docs/readme.md"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("/home/player/notes.txt:");
+    expect(plain).toContain("/home/player/docs/readme.md:");
+  });
+
+  it("shows filename:count for -c with multiple files", () => {
+    const result = execute("grep", ["hello", "notes.txt", "docs/readme.md"], { c: true }, ctx());
+    expect(result.output).toContain("/home/player/notes.txt:2");
+    expect(result.output).toContain("/home/player/docs/readme.md:1");
+  });
+
+  it("-v with -c counts non-matching lines", () => {
+    const result = execute("grep", ["hello", "notes.txt"], { v: true, c: true }, ctx());
+    expect(result.output).toBe("2"); // "foo bar" and "test line"
+  });
+
+  it("-r with explicit directory arg searches recursively", () => {
+    const result = execute("grep", ["hello", "docs"], { r: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("hello from docs");
+    expect(plain).toContain("hello again");
+  });
+
+  it("returns 'Is a directory' error without -r on directory", () => {
+    const result = execute("grep", ["hello", "docs"], {}, ctx());
+    expect(result.output).toContain("Is a directory");
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("-n with -i combined shows line numbers case-insensitively", () => {
+    const result = execute("grep", ["HELLO", "notes.txt"], { n: true, i: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("1:");
+    expect(plain).toContain("3:");
+    expect(plain).toContain("hello world");
+    expect(plain).toContain("hello foo");
+  });
+
+  it("returns exit code 1 with no output for empty file", () => {
+    const result = execute("grep", ["pattern", "empty.txt"], {}, ctx());
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toBe("");
+  });
+
+  it("returns exit code 1 when stdin has no matches", () => {
+    const result = execute("grep", ["zzz"], {}, ctx(undefined, { stdin: "aaa\nbbb" }));
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toBe("");
+  });
+});
+
+// --- find (additional) ---
+describe("find (additional)", () => {
+  it("-name and -type combined narrows results", () => {
+    const result = execute("find", [".", "-name", "*.txt", "-type", "f"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("log.txt");
+    // Should not include directory-only entries (dirs don't match -type f)
+    expect(result.output).not.toContain("readme.md");
+  });
+
+  it("-name with ? single-char wildcard", () => {
+    // "?.txt" should not match notes.txt (5 chars before .txt)
+    // It should not match anything in our FS
+    const result = execute("find", [".", "-name", "?.py"], {}, ctx());
+    expect(result.output).not.toContain("script.py");
+  });
+
+  it("finds from cwd when no path argument given", () => {
+    const result = execute("find", [], {}, ctx());
+    expect(result.output).toContain("/home/player");
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("returns the file path when given a single file", () => {
+    const result = execute("find", ["/home/player/notes.txt"], {}, ctx());
+    expect(result.output).toBe("/home/player/notes.txt");
+  });
+
+  it("returns empty for a file when -type d is specified", () => {
+    const result = execute("find", ["/home/player/notes.txt", "-type", "d"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("works with absolute path", () => {
+    const result = execute("find", ["/var/log", "-name", "*.log"], {}, ctx());
+    expect(result.output).toContain("system.log");
+  });
+});
+
+// --- head (additional) ---
+describe("head (additional)", () => {
+  it("returns all lines for file shorter than 10 lines", () => {
+    // notes.txt has 4 lines
+    const result = execute("head", ["notes.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(4);
+    expect(lines[0]).toBe("hello world");
+  });
+
+  it("returns empty string for empty file", () => {
+    const result = execute("head", ["empty.txt"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("shows headers for multiple files", () => {
+    const result = execute("head", ["-n", "2", "notes.txt", "old.txt"], {}, ctx());
+    expect(result.output).toContain("==> notes.txt <==");
+    expect(result.output).toContain("==> old.txt <==");
+  });
+
+  it("falls back to 10 for invalid -n value", () => {
+    const result = execute("head", ["-n", "abc", "log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(10);
+  });
+
+  it("returns error when no file and no stdin", () => {
+    const result = execute("head", [], {}, ctx());
+    expect(result.output).toContain("missing file operand");
+  });
+
+  it("-n 0 returns empty output", () => {
+    const result = execute("head", ["-n", "0", "log.txt"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+});
+
+// --- tail (additional) ---
+describe("tail (additional)", () => {
+  it("returns all lines for file shorter than 10 lines", () => {
+    // notes.txt has 4 lines
+    const result = execute("tail", ["notes.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(4);
+    expect(lines[3]).toBe("test line");
+  });
+
+  it("returns empty string for empty file", () => {
+    const result = execute("tail", ["empty.txt"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("shows headers for multiple files", () => {
+    const result = execute("tail", ["-n", "2", "notes.txt", "old.txt"], {}, ctx());
+    expect(result.output).toContain("==> notes.txt <==");
+    expect(result.output).toContain("==> old.txt <==");
+  });
+
+  it("falls back to 10 for invalid -n value", () => {
+    const result = execute("tail", ["-n", "abc", "log.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(10);
+  });
+
+  it("returns error when no file and no stdin", () => {
+    const result = execute("tail", [], {}, ctx());
+    expect(result.output).toContain("missing file operand");
+  });
+
+  it("-n 0 returns empty output", () => {
+    const result = execute("tail", ["-n", "0", "log.txt"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+});
+
+// --- diff (additional) ---
+describe("diff (additional)", () => {
+  it("shows all lines as removed/added for completely different files", () => {
+    const result = execute("diff", ["notes.txt", "old.txt"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("--- notes.txt");
+    expect(plain).toContain("+++ old.txt");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("shows no diff for both empty files", () => {
+    // Create two empty files by using the existing empty.txt against itself
+    const result = execute("diff", ["empty.txt", "empty.txt"], {}, ctx());
+    expect(result.output).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("shows all lines as added when first file is empty", () => {
+    const result = execute("diff", ["empty.txt", "notes.txt"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("+hello world");
+    expect(plain).toContain("+foo bar");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("includes context lines with space prefix for unchanged lines", () => {
+    const result = execute("diff", ["old.txt", "new.txt"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    // "line A" and "common line" are shared
+    expect(plain).toContain(" line A");
+    expect(plain).toContain(" common line");
+  });
+
+  it("includes ANSI color codes in removed/added lines", () => {
+    const result = execute("diff", ["old.txt", "new.txt"], {}, ctx());
+    // Raw output should contain ANSI escape codes
+    expect(result.output).toContain("\x1b[");
+  });
+});
+
+// --- wc (additional) ---
+describe("wc (additional)", () => {
+  it("-w counts words only", () => {
+    // notes.txt: "hello world\nfoo bar\nhello foo\ntest line" -> 8 words
+    const result = execute("wc", ["notes.txt"], { w: true }, ctx());
+    expect(result.output).toContain("8");
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("-c counts chars only", () => {
+    const result = execute("wc", ["notes.txt"], { c: true }, ctx());
+    expect(result.output).toContain("notes.txt");
+    // Should have some char count
+    const num = parseInt(stripAnsi(result.output).trim());
+    expect(num).toBeGreaterThan(0);
+  });
+
+  it("shows all counts by default (lines + words + chars)", () => {
+    const result = execute("wc", ["notes.txt"], {}, ctx());
+    const plain = stripAnsi(result.output).trim();
+    // Format: "    lines    words    chars filename"
+    const parts = plain.split(/\s+/);
+    expect(parts.length).toBeGreaterThanOrEqual(4); // lines, words, chars, filename
+  });
+
+  it("returns zeros for empty file", () => {
+    const result = execute("wc", ["empty.txt"], {}, ctx());
+    expect(result.output).toContain("0");
+    expect(result.output).toContain("empty.txt");
+  });
+
+  it("shows totals for multiple files with -l", () => {
+    const result = execute("wc", ["notes.txt", "old.txt"], { l: true }, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3); // notes.txt, old.txt, total
+    expect(lines[2]).toContain("total");
+  });
+
+  it("returns error for nonexistent file", () => {
+    const result = execute("wc", ["missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("stdin with -w and -c shows word and char counts", () => {
+    const result = execute("wc", [], { w: true, c: true }, ctx(undefined, { stdin: "hello world" }));
+    expect(result.output).toContain("2"); // 2 words
+    expect(result.output).toContain("11"); // 11 chars
+  });
+});
+
+// --- echo (additional) ---
+describe("echo (additional)", () => {
+  it("handles special characters after quote stripping", () => {
+    const result = execute("echo", ["hello", "world"], {}, ctx());
+    expect(result.output).toBe("hello world");
+  });
+
+  it("joins multiple args with single space", () => {
+    const result = execute("echo", ["a", "b", "c", "d"], {}, ctx());
+    expect(result.output).toBe("a b c d");
+  });
+});
+
+// --- chmod (additional) ---
+describe("chmod (additional)", () => {
+  it("sets mode 644", () => {
+    const result = execute("chmod", ["644", "notes.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")!.permissions).toBe("rw-r--r--");
+  });
+
+  it("sets mode 600", () => {
+    const result = execute("chmod", ["600", "notes.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")!.permissions).toBe("rw-------");
+  });
+
+  it("sets mode 777", () => {
+    const result = execute("chmod", ["777", "notes.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")!.permissions).toBe("rwxrwxrwx");
+  });
+
+  it("returns error for missing operand (no args)", () => {
+    const result = execute("chmod", [], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+
+  it("returns error for 2-digit mode", () => {
+    const result = execute("chmod", ["75", "notes.txt"], {}, ctx());
+    expect(result.output).toContain("invalid mode");
+  });
+
+  it("works on directories", () => {
+    const result = execute("chmod", ["700", "docs"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")!.permissions).toBe("rwx------");
+  });
+});
+
+// --- mkdir (additional) ---
+describe("mkdir (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("mkdir", [], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+
+  it("returns error for nested path without -p", () => {
+    const result = execute("mkdir", ["a/b/c"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("-p on existing path is no-op", () => {
+    const result = execute("mkdir", ["docs"], { p: true }, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("creates multiple directories in one command", () => {
+    const result = execute("mkdir", ["dir1", "dir2"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/dir1")).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/dir2")).toBeDefined();
+  });
+});
+
+// --- rm (additional) ---
+describe("rm (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("rm", [], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+
+  it("removes multiple files", () => {
+    const result = execute("rm", ["notes.txt", "old.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/old.txt")).toBeNull();
+  });
+
+  it("-R flag (uppercase) works like -r", () => {
+    const result = execute("rm", ["docs"], { R: true }, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+  });
+
+  it("returns error for nonexistent file", () => {
+    const result = execute("rm", ["nonexistent.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("-f suppresses error for nonexistent file", () => {
+    const result = execute("rm", ["nonexistent.txt"], { f: true }, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("-r on deeply nested directory removes all children", () => {
+    // docs has children readme.md and notes.txt
+    const result = execute("rm", ["docs"], { r: true }, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/docs/readme.md")).toBeNull();
+  });
+});
+
+// --- mv (additional) ---
+describe("mv (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("mv", [], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+
+  it("renames file in same directory", () => {
+    const result = execute("mv", ["notes.txt", "renamed.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/notes.txt")).toBeNull();
+    const node = result.newFs!.readFile("/home/player/renamed.txt");
+    expect(node.content).toContain("hello world");
+  });
+
+  it("moves file into directory", () => {
+    const result = execute("mv", ["old.txt", "docs"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/old.txt")).toBeNull();
+    const node = result.newFs!.readFile("/home/player/docs/old.txt");
+    expect(node.content).toContain("line A");
+  });
+
+  it("returns error when moving directory", () => {
+    const result = execute("mv", ["docs", "docs2"], {}, ctx());
+    expect(result.output).toContain("Operation not supported for directories");
+  });
+
+  it("overwrites existing file at destination", () => {
+    // Move notes.txt to old.txt — old.txt should get notes.txt content
+    const result = execute("mv", ["notes.txt", "old.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    const node = result.newFs!.readFile("/home/player/old.txt");
+    expect(node.content).toContain("hello world");
+  });
+});
+
+// --- cp (additional) ---
+describe("cp (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("cp", [], {}, ctx());
+    expect(result.output).toContain("missing operand");
+  });
+
+  it("returns error for nonexistent source", () => {
+    const result = execute("cp", ["missing.txt", "dest.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("returns error when copying directory without -r", () => {
+    const result = execute("cp", ["docs", "docs2"], {}, ctx());
+    expect(result.output).toContain("omitting directory");
+  });
+
+  it("preserves content in copied file", () => {
+    const result = execute("cp", ["notes.txt", "copy.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    const original = result.newFs!.readFile("/home/player/notes.txt");
+    const copy = result.newFs!.readFile("/home/player/copy.txt");
+    expect(copy.content).toBe(original.content);
+  });
+
+  it("returns error for nonexistent parent directory", () => {
+    const result = execute("cp", ["notes.txt", "nonexistent/copy.txt"], {}, ctx());
+    expect(result.output).not.toBe("");
+  });
+});
+
+// --- touch (additional) ---
+describe("touch (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("touch", [], {}, ctx());
+    expect(result.output).toContain("missing file operand");
+  });
+
+  it("creates multiple files", () => {
+    const result = execute("touch", ["file1.txt", "file2.txt"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/file1.txt")).not.toBeNull();
+    expect(result.newFs!.getNode("/home/player/file2.txt")).not.toBeNull();
+  });
+
+  it("returns error for nonexistent parent directory", () => {
+    const result = execute("touch", ["nonexistent/file.txt"], {}, ctx());
+    expect(result.output).not.toBe("");
+  });
+});
+
+// --- history (additional) ---
+describe("history (additional)", () => {
+  it("formats entries with padded line numbers", () => {
+    const result = execute("history", [], {}, ctx(undefined, { commandHistory: ["ls"] }));
+    // Should be "     1  ls"
+    expect(result.output).toMatch(/\s+1\s+ls/);
+  });
+
+  it("handles large history", () => {
+    const entries = Array.from({ length: 100 }, (_, i) => `cmd${i}`);
+    const result = execute("history", [], {}, ctx(undefined, { commandHistory: entries }));
+    expect(result.output).toContain("cmd0");
+    expect(result.output).toContain("cmd99");
+    expect(result.output.split("\n").length).toBe(100);
+  });
+});
+
+// --- whoami (additional) ---
+describe("whoami (additional)", () => {
+  it("returns ren for home computer homeDir", () => {
+    const result = execute("whoami", [], {}, ctx(undefined, { homeDir: "/home/ren" }));
+    expect(result.output).toBe("ren");
+  });
+});
+
+// --- uname (additional) ---
+describe("uname (additional)", () => {
+  it("-a on nexacorp uses nexacorp hostname", () => {
+    const result = execute("uname", [], { a: true }, ctx());
+    expect(result.output).toContain("nexacorp-ws01");
+    expect(result.output).toContain("Linux");
+  });
+
+  it("is blocked on home computer", () => {
+    const result = execute("uname", [], {}, ctx(undefined, { activeComputer: "home" }));
+    expect(result.output).toContain("command not found");
+  });
+});
+
+// --- file (additional) ---
+describe("file (additional)", () => {
+  it("returns error for missing operand", () => {
+    const result = execute("file", [], {}, ctx());
+    expect(result.output).toContain("missing file operand");
+  });
+
+  it("returns error for nonexistent file", () => {
+    const result = execute("file", ["missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
+
+  it("reports empty for empty file", () => {
+    const result = execute("file", ["empty.txt"], {}, ctx());
+    expect(result.output).toContain("empty");
+  });
+
+  it("reports script for shebang file", () => {
+    const result = execute("file", ["script.py"], {}, ctx());
+    // script.py starts with #!/usr/bin/env python3, so it matches .py extension first
+    expect(result.output).toContain("Python");
+  });
+
+  it("shows type for multiple files", () => {
+    const result = execute("file", ["notes.txt", "docs", "script.py"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[0]).toContain("ASCII text");
+    expect(lines[1]).toContain("directory");
+    expect(lines[2]).toContain("Python");
+  });
+
+  it("identifies TypeScript files", () => {
+    const fs = createTestFS();
+    const { fs: newFs } = fs.writeFile("/home/player/app.ts", "const x = 1;");
+    const result = execute("file", ["app.ts"], {}, ctx(newFs!));
+    expect(result.output).toContain("TypeScript");
+  });
+
+  it("identifies JavaScript files", () => {
+    const fs = createTestFS();
+    const { fs: newFs } = fs.writeFile("/home/player/app.js", "const x = 1;");
+    const result = execute("file", ["app.js"], {}, ctx(newFs!));
+    expect(result.output).toContain("JavaScript");
+  });
+});
+
+// --- tree (additional) ---
+describe("tree (additional)", () => {
+  it("returns error for nonexistent path", () => {
+    const result = execute("tree", ["/nonexistent"], {}, ctx());
+    expect(result.output).toContain("error opening dir");
+  });
+
+  it("defaults to cwd with no args", () => {
+    const result = execute("tree", [], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("docs");
+    expect(result.output).toContain("directories");
+    expect(result.output).toContain("files");
+  });
+
+  it("returns just the filename for a single file", () => {
+    const result = execute("tree", ["notes.txt"], {}, ctx());
+    expect(stripAnsi(result.output)).toBe("notes.txt");
+  });
+
+  it("excludes hidden files", () => {
+    const result = execute("tree", ["."], {}, ctx());
+    expect(stripAnsi(result.output)).not.toContain(".hidden");
+  });
+});
+
+// --- sort (additional) ---
+describe("sort (additional)", () => {
+  it("-n sorts numerically", () => {
+    const result = execute("sort", [], { n: true }, ctx(undefined, { stdin: "10\n2\n1\n20" }));
+    expect(result.output).toBe("1\n2\n10\n20");
+  });
+
+  it("-n -r combined reverses numeric sort", () => {
+    const result = execute("sort", [], { n: true, r: true }, ctx(undefined, { stdin: "10\n2\n1\n20" }));
+    expect(result.output).toBe("20\n10\n2\n1");
+  });
+
+  it("returns error for missing file operand", () => {
+    const result = execute("sort", [], {}, ctx());
+    expect(result.output).toContain("missing file operand");
+  });
+
+  it("returns empty for empty file", () => {
+    const result = execute("sort", ["empty.txt"], {}, ctx());
+    expect(result.output).toBe("");
+  });
+
+  it("-u removes duplicates after sorting", () => {
+    const result = execute("sort", ["data.txt"], { u: true }, ctx());
+    const lines = result.output.split("\n");
+    expect(lines).toEqual(["apple", "banana", "cherry"]);
+  });
+});
+
+// --- uniq (additional) ---
+describe("uniq (additional)", () => {
+  it("-c and -d combined counts only duplicates", () => {
+    const result = execute("uniq", [], { c: true, d: true }, ctx(undefined, { stdin: "a\na\nb\nc\nc" }));
+    expect(result.output).toContain("2 a");
+    expect(result.output).toContain("2 c");
+    expect(result.output).not.toContain("b");
+  });
+
+  it("reads from file argument", () => {
+    // data.txt has adjacent dupes after sort: banana apple cherry apple banana banana
+    // But uniq works on adjacent lines, so raw data.txt:
+    // banana, apple, cherry, apple, banana, banana -> banana, apple, cherry, apple, banana (removes 1 adjacent dup)
+    const result = execute("uniq", ["data.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines).toEqual(["banana", "apple", "cherry", "apple", "banana"]);
+  });
+
+  it("returns all lines when all are unique", () => {
+    const result = execute("uniq", [], {}, ctx(undefined, { stdin: "a\nb\nc" }));
+    expect(result.output).toBe("a\nb\nc");
+  });
+
+  it("returns single line unchanged", () => {
+    const result = execute("uniq", [], {}, ctx(undefined, { stdin: "hello" }));
+    expect(result.output).toBe("hello");
+  });
+
+  it("returns empty for empty input", () => {
+    const result = execute("uniq", [], {}, ctx(undefined, { stdin: "" }));
+    expect(result.output).toBe("");
+  });
+
+  it("-i flag deduplicates case-insensitively", () => {
+    const result = execute("uniq", [], { i: true }, ctx(undefined, { stdin: "Hello\nhello\nHELLO\nworld" }));
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(2);
+    expect(lines[0]).toBe("Hello"); // keeps first occurrence
+    expect(lines[1]).toBe("world");
+  });
+});
+
+// --- date (additional) ---
+describe("date (additional)", () => {
+  it("returns exact in-game date string", () => {
+    const result = execute("date", [], {}, ctx());
+    expect(result.output).toBe("Mon Feb 23 08:15:00 UTC 2026");
+  });
+});
+
+// --- which (additional) ---
+describe("which (additional)", () => {
+  it("returns error for missing argument", () => {
+    const result = execute("which", [], {}, ctx());
+    expect(result.output).toContain("missing command argument");
+  });
+
+  it("shows path for multiple commands", () => {
+    const result = execute("which", ["grep", "cat", "sort"], {}, ctx());
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[0]).toBe("/usr/bin/grep");
+    expect(lines[1]).toBe("/usr/bin/cat");
+    expect(lines[2]).toBe("/usr/bin/sort");
+  });
+
+  it("resolves builtin commands to /usr/bin/ paths", () => {
+    const result = execute("which", ["cd"], {}, ctx());
+    expect(result.output).toBe("/usr/bin/cd");
+  });
+});
+
+// --- man (additional) ---
+describe("man (additional)", () => {
+  it("returns usage message with no args", () => {
+    const result = execute("man", [], {}, ctx());
+    expect(result.output).toContain("What manual page do you want?");
+  });
+
+  it("only uses first argument", () => {
+    const result = execute("man", ["grep", "sort"], {}, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("GREP");
+    expect(plain).not.toContain("SORT(1)");
+  });
+});
+
+// --- pipeline parser (additional) ---
+describe("parsePipeline (additional)", () => {
+  it("returns single empty command for empty input", () => {
+    const pipeline = parsePipeline("");
+    expect(pipeline).toHaveLength(1);
+    expect(pipeline[0].command).toBe("");
+  });
+
+  it("parses multiple pipes into correct number of segments", () => {
+    const pipeline = parsePipeline("a | b | c | d");
+    expect(pipeline).toHaveLength(4);
+    expect(pipeline[0].command).toBe("a");
+    expect(pipeline[3].command).toBe("d");
+  });
+
+  it("double quotes around pipe yields single segment", () => {
+    const pipeline = parsePipeline('echo "a | b"');
+    expect(pipeline).toHaveLength(1);
+    expect(pipeline[0].args).toContain("a | b");
+  });
+
+  it("handles pipe with no spaces", () => {
+    const pipeline = parsePipeline("a|b");
+    expect(pipeline).toHaveLength(2);
+    expect(pipeline[0].command).toBe("a");
+    expect(pipeline[1].command).toBe("b");
+  });
+
+  it("handles pipe with extra spaces", () => {
+    const pipeline = parsePipeline("a  |  b");
+    expect(pipeline).toHaveLength(2);
+    expect(pipeline[0].command).toBe("a");
+    expect(pipeline[1].command).toBe("b");
+  });
+});
+
+// --- end-to-end pipe tests ---
+describe("end-to-end pipe simulation", () => {
+  it("cat | grep: reads file then filters", () => {
+    const catResult = execute("cat", ["notes.txt"], {}, ctx());
+    const grepResult = execute("grep", ["hello"], {}, ctx(undefined, { stdin: catResult.output }));
+    const plain = stripAnsi(grepResult.output);
+    expect(plain).toContain("hello world");
+    expect(plain).toContain("hello foo");
+    expect(plain).not.toContain("foo bar");
+  });
+
+  it("cat | head: reads file then limits lines", () => {
+    const catResult = execute("cat", ["log.txt"], {}, ctx());
+    const headResult = execute("head", ["-n", "3"], {}, ctx(undefined, { stdin: catResult.output }));
+    expect(headResult.output).toBe("line1\nline2\nline3");
+  });
+
+  it("cat | wc -l: reads file then counts lines", () => {
+    const catResult = execute("cat", ["notes.txt"], {}, ctx());
+    const wcResult = execute("wc", [], { l: true }, ctx(undefined, { stdin: catResult.output }));
+    expect(wcResult.output).toContain("4");
+  });
+
+  it("grep | wc -l: filters then counts matches", () => {
+    const grepResult = execute("grep", ["hello", "notes.txt"], {}, ctx());
+    const wcResult = execute("wc", [], { l: true }, ctx(undefined, { stdin: stripAnsi(grepResult.output) }));
+    expect(wcResult.output).toContain("2");
+  });
+
+  it("sort | uniq: sorts then deduplicates", () => {
+    const sortResult = execute("sort", ["data.txt"], {}, ctx());
+    const uniqResult = execute("uniq", [], {}, ctx(undefined, { stdin: sortResult.output }));
+    const lines = uniqResult.output.split("\n");
+    expect(lines).toEqual(["apple", "banana", "cherry"]);
+  });
+
+  it("cat | sort | uniq -c: three-stage pipeline", () => {
+    const catResult = execute("cat", ["data.txt"], {}, ctx());
+    const sortResult = execute("sort", [], {}, ctx(undefined, { stdin: catResult.output }));
+    const uniqResult = execute("uniq", [], { c: true }, ctx(undefined, { stdin: sortResult.output }));
+    expect(uniqResult.output).toContain("2 apple");
+    expect(uniqResult.output).toContain("3 banana");
+    expect(uniqResult.output).toContain("1 cherry");
+  });
+
+  it("echo | grep: echo output piped to grep", () => {
+    const echoResult = execute("echo", ["hello", "world", "foo"], {}, ctx());
+    const grepResult = execute("grep", ["world"], {}, ctx(undefined, { stdin: echoResult.output }));
+    const plain = stripAnsi(grepResult.output);
+    expect(plain).toContain("hello world foo");
+  });
+
+  it("cat | head | wc: three-stage pipeline", () => {
+    const catResult = execute("cat", ["log.txt"], {}, ctx());
+    const headResult = execute("head", ["-n", "5"], {}, ctx(undefined, { stdin: catResult.output }));
+    const wcResult = execute("wc", [], { l: true }, ctx(undefined, { stdin: headResult.output }));
+    expect(wcResult.output).toContain("5");
+  });
+});
+
+// --- --help for new commands ---
+describe("find with rawArgs", () => {
+  it("finds by -name when passed via rawArgs", () => {
+    const result = execute("find", [], {}, ctx(undefined, { rawArgs: [".", "-name", "*.txt"] }));
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("log.txt");
+    expect(result.output).not.toContain("readme.md");
+  });
+
+  it("finds by -type f when passed via rawArgs", () => {
+    const result = execute("find", [], {}, ctx(undefined, { rawArgs: [".", "-type", "f"] }));
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("finds .py files by -name via rawArgs", () => {
+    const result = execute("find", [], {}, ctx(undefined, { rawArgs: [".", "-name", "*.py"] }));
+    expect(result.output).toContain("script.py");
+    expect(result.output).not.toContain("notes.txt");
+  });
+});
+
+describe("head with rawArgs", () => {
+  it("supports -n via rawArgs", () => {
+    const result = execute("head", [], {}, ctx(undefined, { rawArgs: ["-n", "3", "log.txt"] }));
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[0]).toBe("line1");
+  });
+
+  it("supports -N shorthand via rawArgs", () => {
+    const result = execute("head", [], {}, ctx(undefined, { rawArgs: ["-3", "log.txt"] }));
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[0]).toBe("line1");
+  });
+});
+
+describe("tail with rawArgs", () => {
+  it("supports -n via rawArgs", () => {
+    const result = execute("tail", [], {}, ctx(undefined, { rawArgs: ["-n", "3", "log.txt"] }));
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[lines.length - 1]).toBe("line12");
+  });
+
+  it("supports -N shorthand via rawArgs", () => {
+    const result = execute("tail", [], {}, ctx(undefined, { rawArgs: ["-3", "log.txt"] }));
+    const lines = result.output.split("\n");
+    expect(lines.length).toBe(3);
+    expect(lines[lines.length - 1]).toBe("line12");
+  });
+});
+
+describe("ls piped output", () => {
+  it("joins with two spaces by default", () => {
+    const result = execute("ls", [], {}, ctx());
+    expect(result.output).toContain("  ");
+    expect(result.output).not.toMatch(/\n/);
+  });
+
+  it("outputs one per line when isPiped is true", () => {
+    const result = execute("ls", [], {}, ctx(undefined, { isPiped: true }));
+    const lines = stripAnsi(result.output).split("\n");
+    expect(lines.length).toBeGreaterThan(1);
+    // Each line should be a single entry (no double spaces)
+    for (const line of lines) {
+      expect(line).not.toContain("  ");
+    }
+  });
+
+  it("ls | grep finds individual entries when piped", () => {
+    const lsResult = execute("ls", [], {}, ctx(undefined, { isPiped: true }));
+    const grepResult = execute("grep", ["docs"], {}, ctx(undefined, { stdin: stripAnsi(lsResult.output) }));
+    const plain = stripAnsi(grepResult.output);
+    expect(plain).toContain("docs");
+    expect(plain).not.toContain("notes.txt");
+  });
+});
+
+describe("--help for new commands", () => {
+  const commands = [
+    "grep", "find", "head", "tail", "diff", "wc", "echo",
+    "chmod", "mkdir", "rm", "mv", "cp", "touch", "history",
+    "whoami", "hostname", "uname", "file", "tree", "sort",
+    "uniq", "date", "which", "man",
+  ] as const;
+
+  for (const cmd of commands) {
+    it(`${cmd} --help returns help text`, () => {
+      const result = execute(cmd, [], { help: true }, ctx());
+      expect(result.output).toBe(HELP_TEXTS[cmd]);
+    });
+  }
+});

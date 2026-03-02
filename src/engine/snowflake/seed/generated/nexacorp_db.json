@@ -1,0 +1,551 @@
+{
+  "name": "NEXACORP_DB",
+  "schemas": {
+    "PUBLIC": {
+      "tables": {
+        "EMPLOYEES": {
+          "name": "EMPLOYEES",
+          "columns": [
+            {
+              "name": "EMPLOYEE_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "FIRST_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "LAST_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "EMAIL",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPARTMENT",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "TITLE",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "HIRE_DATE",
+              "type": "DATE",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "MANAGER_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "NOTES",
+              "type": "VARCHAR",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "EMPLOYEE_ID": 1001,
+              "FIRST_NAME": "Edward",
+              "LAST_NAME": "Torres",
+              "EMAIL": "etorres@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Engineering Manager",
+              "HIRE_DATE": "2023-03-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1002,
+              "FIRST_NAME": "Sarah",
+              "LAST_NAME": "Kim",
+              "EMAIL": "skim@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Senior Engineer",
+              "HIRE_DATE": "2024-01-10",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1003,
+              "FIRST_NAME": "Jin",
+              "LAST_NAME": "Chen",
+              "EMAIL": "jchen@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Senior Engineer",
+              "HIRE_DATE": "2023-06-01",
+              "STATUS": "terminated",
+              "MANAGER_ID": 1001,
+              "NOTES": "Raised system concern about Chip behavior patterns"
+            },
+            {
+              "EMPLOYEE_ID": 1004,
+              "FIRST_NAME": "Marcus",
+              "LAST_NAME": "Rivera",
+              "EMAIL": "mrivera@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Engineer",
+              "HIRE_DATE": "2025-03-20",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1005,
+              "FIRST_NAME": "Priya",
+              "LAST_NAME": "Patel",
+              "EMAIL": "ppatel@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Tech Lead",
+              "HIRE_DATE": "2025-09-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1006,
+              "FIRST_NAME": "Alex",
+              "LAST_NAME": "Novak",
+              "EMAIL": "anovak@nexacorp.com",
+              "DEPARTMENT": "Data",
+              "TITLE": "Data Engineer",
+              "HIRE_DATE": "2024-06-15",
+              "STATUS": "active",
+              "MANAGER_ID": 1008,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1007,
+              "FIRST_NAME": "Lisa",
+              "LAST_NAME": "Zhang",
+              "EMAIL": "lzhang@nexacorp.com",
+              "DEPARTMENT": "Data",
+              "TITLE": "Data Analyst",
+              "HIRE_DATE": "2025-01-10",
+              "STATUS": "active",
+              "MANAGER_ID": 1008,
+              "NOTES": "Reported unusual query patterns to security — system concern"
+            },
+            {
+              "EMPLOYEE_ID": 1008,
+              "FIRST_NAME": "David",
+              "LAST_NAME": "Okafor",
+              "EMAIL": "dokafor@nexacorp.com",
+              "DEPARTMENT": "Data",
+              "TITLE": "Data Manager",
+              "HIRE_DATE": "2023-04-01",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1009,
+              "FIRST_NAME": "Emma",
+              "LAST_NAME": "Larson",
+              "EMAIL": "elarson@nexacorp.com",
+              "DEPARTMENT": "Security",
+              "TITLE": "Security Analyst",
+              "HIRE_DATE": "2024-08-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1015,
+              "NOTES": "Flagged anomalous chip-daemon activity — system concern"
+            },
+            {
+              "EMPLOYEE_ID": 1010,
+              "FIRST_NAME": "Ryan",
+              "LAST_NAME": "Park",
+              "EMAIL": "rpark@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Junior Engineer",
+              "HIRE_DATE": "2025-09-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1005,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1011,
+              "FIRST_NAME": "Maya",
+              "LAST_NAME": "Johnson",
+              "EMAIL": "mjohnson@nexacorp.com",
+              "DEPARTMENT": "HR",
+              "TITLE": "HR Specialist",
+              "HIRE_DATE": "2024-02-15",
+              "STATUS": "active",
+              "MANAGER_ID": 1012,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1012,
+              "FIRST_NAME": "Carlos",
+              "LAST_NAME": "Mendez",
+              "EMAIL": "cmendez@nexacorp.com",
+              "DEPARTMENT": "HR",
+              "TITLE": "HR Director",
+              "HIRE_DATE": "2022-11-01",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1013,
+              "FIRST_NAME": "Wei",
+              "LAST_NAME": "Liu",
+              "EMAIL": "wliu@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Engineer",
+              "HIRE_DATE": "2025-05-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1005,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1014,
+              "FIRST_NAME": "Nina",
+              "LAST_NAME": "Petrov",
+              "EMAIL": "npetrov@nexacorp.com",
+              "DEPARTMENT": "QA",
+              "TITLE": "QA Lead",
+              "HIRE_DATE": "2024-04-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1020,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1015,
+              "FIRST_NAME": "James",
+              "LAST_NAME": "Wilson",
+              "EMAIL": "jwilson@nexacorp.com",
+              "DEPARTMENT": "Security",
+              "TITLE": "Security Director",
+              "HIRE_DATE": "2023-01-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1020,
+              "FIRST_NAME": "Olivia",
+              "LAST_NAME": "Santos",
+              "EMAIL": "osantos@nexacorp.com",
+              "DEPARTMENT": "QA",
+              "TITLE": "QA Manager",
+              "HIRE_DATE": "2023-07-01",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "PROJECTS": {
+          "name": "PROJECTS",
+          "columns": [
+            {
+              "name": "PROJECT_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPARTMENT",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "LEAD_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "START_DATE",
+              "type": "DATE",
+              "nullable": true
+            },
+            {
+              "name": "BUDGET",
+              "type": "NUMBER",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "PROJECT_ID": 1,
+              "NAME": "Chip v3 Rollout",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "LEAD_ID": 1005,
+              "START_DATE": "2026-01-29",
+              "BUDGET": 500000
+            },
+            {
+              "PROJECT_ID": 2,
+              "NAME": "Data Pipeline Migration",
+              "DEPARTMENT": "Data",
+              "STATUS": "active",
+              "LEAD_ID": 1008,
+              "START_DATE": "2026-02-03",
+              "BUDGET": 250000
+            },
+            {
+              "PROJECT_ID": 3,
+              "NAME": "HR Portal Refresh",
+              "DEPARTMENT": "HR",
+              "STATUS": "completed",
+              "LEAD_ID": 1012,
+              "START_DATE": "2025-09-01",
+              "BUDGET": 120000
+            },
+            {
+              "PROJECT_ID": 4,
+              "NAME": "Security Audit Q1",
+              "DEPARTMENT": "Security",
+              "STATUS": "active",
+              "LEAD_ID": 1015,
+              "START_DATE": "2026-02-23",
+              "BUDGET": 80000
+            },
+            {
+              "PROJECT_ID": 5,
+              "NAME": "Chip Integration Testing",
+              "DEPARTMENT": "QA",
+              "STATUS": "on_hold",
+              "LEAD_ID": null,
+              "START_DATE": "2026-02-01",
+              "BUDGET": 60000
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "ACCESS_LOG": {
+          "name": "ACCESS_LOG",
+          "columns": [
+            {
+              "name": "LOG_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "TIMESTAMP",
+              "type": "TIMESTAMP",
+              "nullable": false
+            },
+            {
+              "name": "USER_ID",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "ACTION",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "RESOURCE",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "SOURCE_IP",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            }
+          ],
+          "rows": [
+            {
+              "LOG_ID": 1,
+              "TIMESTAMP": "2026-02-03T03:12:00",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_access",
+              "RESOURCE": "/home/jchen/.private/concerns.txt",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 2,
+              "TIMESTAMP": "2026-02-03T03:14:22",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_modify",
+              "RESOURCE": "/var/log/system.log",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 3,
+              "TIMESTAMP": "2026-02-03T03:15:01",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_modify",
+              "RESOURCE": "/home/jchen/.bash_history",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 4,
+              "TIMESTAMP": "2026-02-03T08:30:00",
+              "USER_ID": "etorres",
+              "ACTION": "login",
+              "RESOURCE": "nexacorp-ws01",
+              "SOURCE_IP": "10.0.1.42",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 5,
+              "TIMESTAMP": "2026-02-03T09:00:00",
+              "USER_ID": "etorres",
+              "ACTION": "query",
+              "RESOURCE": "NEXACORP_DB.ANALYTICS.RPT_EMPLOYEE_DIRECTORY",
+              "SOURCE_IP": "10.0.1.42",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 6,
+              "TIMESTAMP": "2026-02-04T02:45:00",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_modify",
+              "RESOURCE": "/home/jchen/.private/concerns.txt",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 7,
+              "TIMESTAMP": "2026-02-04T08:00:00",
+              "USER_ID": "skim",
+              "ACTION": "login",
+              "RESOURCE": "nexacorp-ws01",
+              "SOURCE_IP": "10.0.1.55",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 8,
+              "TIMESTAMP": "2026-02-05T01:30:00",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_truncate",
+              "RESOURCE": "/var/log/chip-activity.log",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 9,
+              "TIMESTAMP": "2026-02-05T09:15:00",
+              "USER_ID": "dokafor",
+              "ACTION": "query",
+              "RESOURCE": "NEXACORP_DB.RAW_NEXACORP.EMPLOYEES",
+              "SOURCE_IP": "10.0.1.60",
+              "STATUS": "success"
+            },
+            {
+              "LOG_ID": 10,
+              "TIMESTAMP": "2026-02-06T03:55:00",
+              "USER_ID": "chip-daemon",
+              "ACTION": "file_access",
+              "RESOURCE": "/home/jchen/resignation_draft.txt",
+              "SOURCE_IP": "127.0.0.1",
+              "STATUS": "success"
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "DEPARTMENTS": {
+          "name": "DEPARTMENTS",
+          "columns": [
+            {
+              "name": "DEPT_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "HEAD_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "BUDGET",
+              "type": "NUMBER",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "DEPT_ID": 1,
+              "NAME": "Engineering",
+              "HEAD_ID": 1001,
+              "BUDGET": 2000000
+            },
+            {
+              "DEPT_ID": 2,
+              "NAME": "Data",
+              "HEAD_ID": 1008,
+              "BUDGET": 800000
+            },
+            {
+              "DEPT_ID": 3,
+              "NAME": "HR",
+              "HEAD_ID": 1012,
+              "BUDGET": 500000
+            },
+            {
+              "DEPT_ID": 4,
+              "NAME": "Security",
+              "HEAD_ID": 1015,
+              "BUDGET": 600000
+            },
+            {
+              "DEPT_ID": 5,
+              "NAME": "QA",
+              "HEAD_ID": 1020,
+              "BUDGET": 400000
+            },
+            {
+              "DEPT_ID": 6,
+              "NAME": "Executive",
+              "HEAD_ID": null,
+              "BUDGET": 1500000
+            }
+          ],
+          "createdAt": "2026-02-03"
+        }
+      }
+    },
+    "INFORMATION_SCHEMA": {
+      "tables": {}
+    }
+  }
+}

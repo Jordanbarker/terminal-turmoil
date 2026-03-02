@@ -1,0 +1,27 @@
+export interface Email {
+  id: string;
+  from: string;
+  to: string;
+  date: string;
+  subject: string;
+  body: string;
+}
+
+export interface ReplyOption {
+  label: string;
+  replyBody: string;
+  triggerEvents?: import("./delivery").GameEvent[];
+}
+
+export interface EmailDelivery {
+  email: Email;
+  trigger: EmailTrigger;
+  replyOptions?: ReplyOption[];
+}
+
+export type EmailTrigger =
+  | { type: "immediate" }
+  | { type: "after_file_read"; filePath: string }
+  | { type: "after_email_read"; emailId: string }
+  | { type: "after_command"; command: string }
+  | { type: "after_objective"; objectiveId: string };

@@ -1,0 +1,24 @@
+{
+  "standard": [
+    "stg_raw_nexacorp__employees",
+    "stg_raw_nexacorp__system_events",
+    "stg_raw_nexacorp__ai_metrics",
+    "stg_raw_nexacorp__access_log",
+    "stg_raw_nexacorp__department_budgets",
+    "stg_raw_nexacorp__support_tickets",
+    "int_employees_joined_to_events",
+    "int_employees_with_tenure",
+    "int_support_tickets_enriched",
+    "dim_employees",
+    "fct_system_events",
+    "fct_support_tickets",
+    "rpt_ai_performance",
+    "rpt_employee_directory",
+    "rpt_department_spending"
+  ],
+  "chip_internal": [
+    "chip_data_cleanup",
+    "chip_log_filter",
+    "chip_ticket_suppression"
+  ]
+}

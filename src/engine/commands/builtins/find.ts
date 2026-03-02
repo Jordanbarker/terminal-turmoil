@@ -1,0 +1,100 @@
+import { CommandHandler } from "../types";
+import { register } from "../registry";
+import { resolvePath } from "../../../lib/pathUtils";
+import { isDirectory, isFile, FSNode } from "../../filesystem/types";
+import { HELP_TEXTS } from "./helpTexts";
+
+function globToRegex(glob: string): RegExp {
+  const escaped = glob
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${escaped}$`);
+}
+
+function walkAll(
+  fs: { getNode: (p: string) => FSNode | null; listDirectory: (p: string) => { entries: FSNode[]; error?: string } },
+  dirPath: string,
+): { path: string; node: FSNode }[] {
+  const results: { path: string; node: FSNode }[] = [];
+  const { entries } = fs.listDirectory(dirPath);
+  for (const entry of entries) {
+    const childPath = dirPath === "/" ? `/${entry.name}` : `${dirPath}/${entry.name}`;
+    results.push({ path: childPath, node: entry });
+    if (isDirectory(entry)) {
+      results.push(...walkAll(fs, childPath));
+    }
+  }
+  return results;
+}
+
+const find: CommandHandler = (args, _flags, ctx) => {
+  // Parse find-style arguments: find [PATH] [EXPRESSIONS]
+  // Expressions: -name PATTERN, -type f|d
+  // Use rawArgs to preserve -name/-type tokens that the parser strips
+  const effectiveArgs = ctx.rawArgs ?? args;
+  let searchPath = ctx.cwd;
+  let namePattern: RegExp | null = null;
+  let typeFilter: "f" | "d" | null = null;
+
+  let i = 0;
+  // First non-expression arg is the path
+  if (i < effectiveArgs.length && !effectiveArgs[i].startsWith("-")) {
+    searchPath = resolvePath(effectiveArgs[i], ctx.cwd, ctx.homeDir);
+    i++;
+  }
+
+  // Parse expressions
+  while (i < effectiveArgs.length) {
+    if (effectiveArgs[i] === "-name" && i + 1 < effectiveArgs.length) {
+      namePattern = globToRegex(effectiveArgs[i + 1]);
+      i += 2;
+    } else if (effectiveArgs[i] === "-type" && i + 1 < effectiveArgs.length) {
+      const t = effectiveArgs[i + 1];
+      if (t === "f" || t === "d") {
+        typeFilter = t;
+      }
+      i += 2;
+    } else {
+      i++;
+    }
+  }
+
+  const node = ctx.fs.getNode(searchPath);
+  if (!node) {
+    return { output: `find: '${searchPath}': No such file or directory`, exitCode: 1 };
+  }
+  if (!isDirectory(node)) {
+    // Single file — check if it matches
+    const name = node.name;
+    if (namePattern && !namePattern.test(name)) {
+      return { output: "", exitCode: 0 };
+    }
+    if (typeFilter === "d") {
+      return { output: "", exitCode: 0 };
+    }
+    return { output: searchPath, exitCode: 0 };
+  }
+
+  const allEntries = walkAll(ctx.fs, searchPath);
+  const matches: string[] = [];
+
+  // Include the search path itself if it matches
+  if (!namePattern && (!typeFilter || typeFilter === "d")) {
+    matches.push(searchPath);
+  }
+
+  for (const { path, node: entry } of allEntries) {
+    const entryName = entry.name;
+
+    if (namePattern && !namePattern.test(entryName)) continue;
+    if (typeFilter === "f" && !isFile(entry)) continue;
+    if (typeFilter === "d" && !isDirectory(entry)) continue;
+
+    matches.push(path);
+  }
+
+  return { output: matches.join("\n"), exitCode: 0 };
+};
+
+register("find", find, "Search for files by name", HELP_TEXTS.find);

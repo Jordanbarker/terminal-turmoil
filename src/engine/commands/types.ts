@@ -1,0 +1,81 @@
+import { VirtualFS } from "../filesystem/VirtualFS";
+import { PromptSessionInfo } from "../prompt/types";
+import { ComputerId } from "../../state/types";
+import { GameEvent } from "../mail/delivery";
+import { SnowflakeState } from "../snowflake/state";
+import { SessionContext } from "../snowflake/session/context";
+
+export interface ParsedCommand {
+  command: string;
+  args: string[];
+  flags: Record<string, boolean>;
+  raw: string;
+  rawArgs: string[];
+}
+
+export interface CommandContext {
+  fs: VirtualFS;
+  cwd: string;
+  homeDir: string;
+  activeComputer: ComputerId;
+  stdin?: string;
+  rawArgs?: string[];
+  isPiped?: boolean;
+  commandHistory?: string[];
+  snowflakeState?: SnowflakeState;
+  snowflakeContext?: SessionContext;
+  setSnowflakeState?: (state: SnowflakeState) => void;
+}
+
+export interface EditorSessionInfo {
+  filePath: string;
+  content: string;
+  readOnly: boolean;
+  isNewFile: boolean;
+}
+
+export type GameAction =
+  | { type: "save"; slotId: string }
+  | { type: "load"; slotId: string }
+  | { type: "listSaves" }
+  | { type: "newGame" };
+
+export interface InteractiveSessionInfo {
+  type: "pythonRepl";
+}
+
+export interface SnowSQLSessionInfo {
+  startInteractive: boolean;
+}
+
+export interface SshSessionInfo {
+  host: string;
+  username: string;
+}
+
+export interface CommandResult {
+  output: string;
+  exitCode?: number;
+  newCwd?: string;
+  newFs?: VirtualFS;
+  clearScreen?: boolean;
+  editorSession?: EditorSessionInfo;
+  gameAction?: GameAction;
+  interactiveSession?: InteractiveSessionInfo;
+  snowsqlSession?: SnowSQLSessionInfo;
+  promptSession?: PromptSessionInfo;
+  sshSession?: SshSessionInfo;
+  triggerEvents?: GameEvent[];
+}
+
+export type CommandHandler = (
+  args: string[],
+  flags: Record<string, boolean>,
+  ctx: CommandContext
+) => CommandResult;
+
+export type AsyncCommandHandler = (
+  args: string[],
+  flags: Record<string, boolean>,
+  ctx: CommandContext
+) => Promise<CommandResult>;

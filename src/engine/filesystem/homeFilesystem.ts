@@ -1,0 +1,981 @@
+import { DirectoryNode, FileNode } from "./types";
+import { getHomeEmailDefinitions } from "../mail/homeEmails";
+import { formatEmailContent, slugify } from "../mail/mailUtils";
+import { PLAYER } from "../../state/types";
+
+function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
+  return { type: "file", name, content, permissions, hidden: name.startsWith(".") };
+}
+
+function binaryFile(name: string, garbledContent: string, textContent: string, permissions = "rw-r--r--"): FileNode {
+  return { type: "file", name, content: garbledContent, permissions, hidden: name.startsWith("."), metadata: { binary: true, textContent } };
+}
+
+function dir(name: string, children: Record<string, DirectoryNode | FileNode>, permissions = "rwxr-xr-x"): DirectoryNode {
+  return { type: "directory", name, children, permissions, hidden: name.startsWith(".") };
+}
+
+function buildHomeMailFiles(username: string): Record<string, FileNode> {
+  const files: Record<string, FileNode> = {};
+  const immediateEmails = getHomeEmailDefinitions(username).filter((d) => d.trigger.type === "immediate");
+  immediateEmails.forEach((def, i) => {
+    const seq = String(i + 1).padStart(3, "0");
+    const filename = `${seq}_${slugify(def.email.subject)}`;
+    files[filename] = {
+      type: "file",
+      name: filename,
+      content: formatEmailContent(def.email, false),
+      permissions: "rw-r--r--",
+      hidden: false,
+    };
+  });
+  return files;
+}
+
+export function createHomeFilesystem(username: string): DirectoryNode {
+  return dir("/", {
+    home: dir("home", {
+      [username]: dir(username, {
+        "terminal_notes.txt": file("terminal_notes.txt", `# Terminal Notes
+
+Trying to get comfortable with the terminal
+before my first day at the new job...
+
+## Commands I've learned so far:
+
+  ls     - list files in a directory
+  cd     - change directory (cd .. to go up)
+  cat    - display contents of a file
+  pwd    - show current directory
+  mail   - check email
+  nano   - edit files (this editor!)
+  help   - list all available commands
+
+## Tips:
+  - Use Tab to autocomplete
+  - Ctrl+C to cancel
+`),
+        ".bashrc": file(".bashrc", `# ~/.bashrc
+
+export PS1="\\u@home:\\w$ "
+alias ll='ls -la'
+alias py='python3'
+
+# Job search helpers
+alias jobs='cat ~/Desktop/job_search_notes.txt'
+alias apply='python3 ~/scripts/auto_apply.py'
+
+# Added 2026-02-10
+alias research='cat ~/scripts/data/glassdoor_reviews.json'
+`),
+        ".bash_history": file(".bash_history", `sudo apt install build-essential git curl wget
+ssh-keygen -t ed25519 -C "ren@home"
+git clone https://github.com/ren/dotfiles.git
+cp dotfiles/.bashrc ~/
+cp dotfiles/.nanorc ~/
+pip install selenium beautifulsoup4 requests
+python3 -c "import selenium; print(selenium.__version__)"
+crontab -e
+ls
+cat Desktop/job_search_notes.txt
+cat scripts/.env
+pip install -e scripts/
+python3 scripts/auto_apply.py --status
+mail
+cat scripts/data/glassdoor_reviews.json
+ls Documents/
+cat Documents/cover_letter_nexacorp.txt
+cat .private/diary.txt
+python3 scripts/auto_apply.py --dry-run
+mail
+ls -la
+cat Desktop/resume_final_v3.txt
+cd scripts
+ls data/
+cat data/companies_applied.csv
+cd ~
+clear
+mail
+`),
+        ".gitconfig": file(".gitconfig", `[user]
+\tname = ${PLAYER.displayName}
+\temail = ${PLAYER.username}@email.com
+[alias]
+\tst = status
+\tco = checkout
+\tlg = log --oneline --graph --decorate
+[core]
+\teditor = nano
+# restored from dotfiles repo after wipe — 2026-02-12
+`),
+        ".nanorc": file(".nanorc", `# ~/.nanorc — minimal config
+# restored from dotfiles repo after wipe
+
+set autoindent
+set tabsize 4
+set tabstospaces
+set linenumbers
+set mouse
+`),
+        ".ssh": dir(".ssh", {
+          "id_ed25519.pub": file("id_ed25519.pub", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7vG4k3fR2pLxQ9mMzJYcKs8kT0vN regenerated 2026-02-12 after wipe
+`),
+          "known_hosts": file("known_hosts", ""),
+          "config": file("config", ""),
+          "README": file("README", `SSH keys regenerated 2026-02-12 after full system wipe.
+Old keys are gone (no backup — lesson learned).
+
+TODO:
+  - [x] Add new key to GitHub
+  - [x] Add new key to personal VPS
+  - [ ] Update AWS IAM key pair
+  - [ ] Re-authorize GitLab CI deploy key
+`),
+        }, "rwx------"),
+        ".config": dir(".config", {
+          git: dir("git", {
+            ignore: file("ignore", `# Global gitignore
+.env
+.env.local
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+node_modules/
+`),
+          }),
+        }),
+        ".private": dir(".private", {
+          "diary.txt": file("diary.txt", `2026-02-10
+
+Got malware'd. By a take-home test. From Synthetica Labs.
+
+Their "coding challenge" had a pip package with a cryptominer buried in the
+setup.py. By the time I noticed my fans sounding like a jet engine, it had
+already been running for hours. Worse — it also grabbed browser cookies.
+Session tokens, saved logins, everything.
+
+I nuked the whole machine. Full wipe, fresh Ubuntu install. Lost a bunch
+of stuff I hadn't backed up — photos, some old project code, half my
+dotfiles. Lesson learned the hardest possible way.
+
+Setting up backups now. For real this time. External drive + rsync script
+on a cron job. Should have been doing this all along.
+
+Reported Synthetica to Indeed. Doubt anything will come of it.
+
+---
+
+2026-02-19
+
+Two months of job searching and I'm starting to lose it. 47 applications.
+8 responses. 3 interviews. 0 offers.
+
+The irony of being laid off because "AI is changing how we work" when I
+literally BUILD AI systems is not lost on me. My CEO stood on stage and
+said we were "embracing the future" while firing the people who actually
+understand how any of it works. They replaced our ML pipeline with ChatGPT
+API calls wrapped in a Zapier workflow. I give it six months before
+everything breaks.
+
+NexaCorp interview went okay I think? The manager, Edward, is clearly
+not technical at all, but he was enthusiastic. He kept talking about their
+AI assistant "Chip" like it was a coworker. Mentioned their previous
+engineer "moved on" suddenly. That's usually a red flag but honestly at
+this point I'd take a job at a red flag factory.
+
+The auto-apply script has been running for 3 weeks. Sometimes I wonder if
+it's actually hurting my chances — mass applications can't be great for
+personalization. But manually applying to jobs takes HOURS and most of
+them ghost you anyway.
+
+I should look at my Glassdoor scrape data for NexaCorp. I think I pulled
+some reviews last week.
+
+I miss having somewhere to go in the morning.
+`),
+        }),
+        Desktop: dir("Desktop", {
+          "resume_final_v3.txt": file("resume_final_v3.txt", `═══════════════════════════════════════════════════════
+                    RESUME — v3
+═══════════════════════════════════════════════════════
+
+  Name:       ${PLAYER.displayName}
+  Email:      ${PLAYER.username}@email.com
+  Location:   Portland, OR
+  GitHub:     github.com/${PLAYER.username}
+  LinkedIn:   linkedin.com/in/${PLAYER.username}
+
+───────────────────────────────────────────────────────
+  EXPERIENCE
+───────────────────────────────────────────────────────
+
+  ML Engineer — Prometheus Analytics          2022–2025
+  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  - Built and maintained ML pipelines processing 2M+ daily predictions
+  - Designed A/B testing framework for model evaluation
+  - Led migration from custom training infra to Ray + MLflow
+  - Reduced model serving latency by 40% through optimization
+
+  Junior ML Engineer — DataWorks Inc.         2020–2022
+  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  - Developed NLP models for document classification (93% accuracy)
+  - Built data pipelines with Airflow + Spark
+  - Created internal tools for model monitoring and drift detection
+
+  Software Engineer — WebScale Solutions      2019–2020
+  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  - Full-stack development (Python/React)
+  - Implemented customer churn model to identify at-risk accounts  
+
+───────────────────────────────────────────────────────
+  EDUCATION
+───────────────────────────────────────────────────────
+
+  B.S. Computer Science — Oregon State University, 2019
+
+───────────────────────────────────────────────────────
+  SKILLS
+───────────────────────────────────────────────────────
+
+  Languages:    Python, SQL, TypeScript, Bash
+  ML/AI:        PyTorch, scikit-learn, Hugging Face, LangChain
+  Data:         Spark, Airflow, dbt, Snowflake
+  Infra:        Docker, Kubernetes, AWS, GCP
+  Tools:        Git, Linux, MLflow, Ray, Weights & Biases
+`),
+          "job_search_notes.txt": file("job_search_notes.txt", `JOB SEARCH TRACKER
+==================
+Last updated: 2026-02-20
+
+Status: Month 2. Getting desperate.
+
+Applied: 47 (most via auto_apply.py — see ~/scripts/)
+Responses: 8
+Interviews: 3
+Offers: 0
+
+The market is brutal. Everyone wants "AI experience" but nobody wants
+to pay for it. Half the job postings are for prompt engineers. The other
+half want 10 years of experience with tools that are 2 years old.
+
+Companies that ghosted me:
+  - Meridian AI (applied 3 weeks ago, nothing)
+  - DataSynth Corp (rejected — "looking for more senior candidates")
+  - OpenLoop Systems (phone screen went well, then silence)
+
+Still in the pipeline:
+  - NexaCorp — interview went okay? Edward (the manager) seems nice
+    but I couldn't tell what they actually DO. Their website says
+    "AI-integrated enterprise solutions" which means nothing. Small
+    team though, might be interesting.
+  - CortexLab — just applied, long shot
+
+I should check my Glassdoor scrape data for NexaCorp.
+Actually, I know I scraped some reviews... ~/scripts/data/
+
+Companies to AVOID:
+  - Synthetica Labs — MALWARE in their take-home test. Cryptominer +
+    cookie exfiltration hidden in a pip package. Had to wipe my entire
+    machine. Reported to Indeed.
+
+Note to self: stop doom-scrolling LinkedIn at 2am.
+`),
+        }),
+        Documents: dir("Documents", {
+          "cover_letter_nexacorp.txt": file("cover_letter_nexacorp.txt", `Dear Hiring Manager,
+
+I'm writing to express my interest in the AI Engineer position at
+NexaCorp. With five years of experience building production ML systems,
+I believe I can bridge the gap between AI capabilities and practical
+business needs.
+
+At Prometheus Analytics, I built and maintained ML pipelines serving
+2M+ daily predictions. I led our migration to Ray + MLflow, reducing
+serving latency by 40%. I understand what it takes to keep AI systems
+running reliably in production — not just building models, but
+monitoring, debugging, and iterating on them.
+
+What draws me to NexaCorp is the opportunity to work directly with an
+AI system (Chip) that's already deployed and generating value. I'm
+excited to help expand its capabilities and ensure it's operating at
+its best.
+
+I'm particularly interested in:
+  - Understanding Chip's current architecture and integration points
+  - Improving reliability and performance of AI-driven workflows
+  - Building trust between AI systems and the teams that rely on them
+
+I'd love to discuss how my experience aligns with where NexaCorp is
+heading. I'm available for an interview at your convenience.
+
+Best regards,
+${PLAYER.displayName}
+`),
+          "reinstall_notes.txt": file("reinstall_notes.txt", `REINSTALL NOTES — 2026-02-10
+=============================
+
+What happened:
+  Synthetica Labs sent a take-home coding challenge. The project had a
+  custom pip package ("synthetica-eval") that installed cleanly but
+  contained a cryptominer in setup.py's post-install hook. It also
+  exfiltrated browser cookies (session tokens, saved logins) via a
+  background POST to an external endpoint.
+
+  By the time I noticed (CPU pegged at 100%, fans screaming), it had
+  been running for ~4 hours. Browser sessions were compromised.
+
+  Decision: full wipe. Didn't trust anything on the drive.
+
+Recovery checklist:
+  [x] Fresh Ubuntu 24.04 LTS install
+  [x] Basic packages (build-essential, git, curl, python3, pip)
+  [x] SSH keys regenerated (ed25519)
+  [x] Cloned dotfiles repo, restored .bashrc and .nanorc
+  [x] Reinstalled job search scripts (auto_apply, scraper)
+  [x] Recreated scripts/data/ from memory + Indeed history
+  [x] Set up backup script (~/scripts/backup.sh) — NEVER AGAIN
+  [x] Changed passwords on GitHub, AWS, Google, email
+  [ ] Re-download ML papers collection (had ~30 PDFs)
+  [ ] Restore old project repos from GitHub
+  [ ] Find photos backup (some were only local...)
+
+What I lost:
+  - ML papers collection (~30 PDFs, some with annotations)
+  - Old project code not on GitHub (drift-detector-v1, some Kaggle stuff)
+  - Browser bookmarks (partially recovered from Google sync)
+  - Photos from Portland hikes (only had local copies of some)
+  - Customized vim config I spent 2 days on (should have used nano)
+
+Lessons learned:
+  1. ALWAYS run untrusted code in a VM or container
+  2. Actually do backups (not just "I should set up backups")
+  3. Don't pip install random packages without reading setup.py
+  4. Keep dotfiles in a git repo (this saved me hours)
+  5. Browser session tokens are a goldmine for attackers
+`),
+          "cover_letter_template.txt": file("cover_letter_template.txt", `COVER LETTER TEMPLATE
+=====================
+
+Dear [Hiring Manager / Team],
+
+I'm writing to apply for the [ROLE] position at [COMPANY].
+
+[PARAGRAPH 1: Hook — why this company/role]
+
+[PARAGRAPH 2: Relevant experience — 2-3 concrete examples]
+
+[PARAGRAPH 3: What I'd bring — specific to their needs]
+
+I'd love to discuss how my background aligns with your team's goals.
+
+Best,
+[Name]
+
+---
+NOTES:
+- Keep under 1 page
+- Mirror their language from the job posting
+- Don't just repeat the resume
+- Show you researched the company
+`),
+          portfolio: dir("portfolio", {
+            "projects.txt": file("projects.txt", `PORTFOLIO — Selected Projects
+==============================
+
+1. Drift Detector (Prometheus Analytics)
+   ─────────────────────────────────────
+   Real-time ML model monitoring system. Detects data drift, concept
+   drift, and performance degradation. Alerts on-call engineers before
+   metrics hit SLA thresholds.
+   Tech: Python, Kafka, Prometheus, Grafana
+
+2. DocSort (DataWorks Inc.)
+   ─────────────────────────────────────
+   Document classification pipeline processing 50K+ docs/day. Custom
+   fine-tuned BERT model, 93% accuracy. Reduced manual review queue
+   by 70%.
+   Tech: PyTorch, Hugging Face, Airflow, S3
+
+3. auto_apply.py (personal)
+   ─────────────────────────────────────
+   Job application automation script. Scrapes job boards, matches
+   against my resume keywords, auto-fills applications. Ethical?
+   Debatable. Effective? Absolutely.
+   Tech: Python, Selenium, BeautifulSoup
+   See: ~/scripts/auto_apply.py
+
+4. glassdoor_scraper (personal)
+   ─────────────────────────────────────
+   Scrapes Glassdoor company ratings and reviews for companies I'm
+   applying to. Saves structured data for comparison.
+   Tech: Python, requests, json
+   See: ~/scripts/scrape_glassdoor.py
+`),
+          }),
+        }),
+        Downloads: dir("Downloads", {
+          "ai_industry_report.txt": file("ai_industry_report.txt", `AI INDUSTRY EMPLOYMENT TRENDS — Q3 2025
+========================================
+Source: Bureau of Labor Statistics + LinkedIn Economic Graph
+
+Key findings:
+
+  - AI/ML engineer demand grew 34% YoY, but layoffs in the sector
+    increased 28%. Companies are hiring AND firing simultaneously.
+
+  - "AI engineer" job postings rose 67%, but "ML engineer" postings
+    declined 12%. The industry is rebranding, not necessarily growing.
+
+  - Median time-to-hire for AI roles: 47 days (up from 31 days in 2023)
+
+  - 43% of companies report using AI to "augment or replace" roles
+    that previously required dedicated ML engineers.
+
+  - Startup AI hiring is booming — small companies (< 50 employees)
+    account for 38% of new AI engineering positions.
+
+  - The irony of AI engineers being displaced by AI tools is not lost
+    on anyone. "Learn to prompt" has become the new "learn to code."
+
+tl;dr: The market is weird. Big companies are cutting ML teams. Small
+companies are hiring. Everyone is confused about what "AI" means now.
+`),
+        }),
+        scripts: dir("scripts", {
+          "auto_apply.py": file("auto_apply.py", `#!/usr/bin/env python3
+"""
+auto_apply.py — Job application automation
+
+Scrapes job boards, matches against resume keywords, and auto-fills
+applications where possible. It's not cheating, it's efficiency.
+
+Usage:
+    python auto_apply.py --keywords "ML engineer,AI,machine learning"
+    python auto_apply.py --status        # Show application stats
+    python auto_apply.py --dry-run       # Preview without applying
+
+Last run: 2026-02-18 (applied to 6 positions)
+Total applications: 47
+Response rate: 17%
+
+TODO:
+  - Add LinkedIn Easy Apply support
+  - Better keyword matching (semantic, not just string)
+  - Stop applying to crypto companies
+"""
+
+import json
+import csv
+import os
+from datetime import datetime
+
+APPLIED_FILE = os.path.expanduser("~/scripts/data/companies_applied.csv")
+REVIEWS_FILE = os.path.expanduser("~/scripts/data/glassdoor_reviews.json")
+
+KEYWORDS = [
+    "machine learning", "ML engineer", "AI engineer",
+    "data scientist", "NLP", "deep learning",
+    "Python", "PyTorch", "MLOps"
+]
+
+MIN_GLASSDOOR_RATING = 0  # Desperate times...
+
+def load_reviews():
+    """Load scraped Glassdoor data for company research."""
+    try:
+        with open(REVIEWS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"companies": []}
+
+def check_red_flags(company_name, reviews_data):
+    """Check for red flags in Glassdoor reviews."""
+    for company in reviews_data.get("companies", []):
+        if company["name"].lower() == company_name.lower():
+            if company["rating"] < MIN_GLASSDOOR_RATING:
+                print(f"  Warning: {company_name} rated {company['rating']}")
+                for review in company.get("reviews", []):
+                    if review["stars"] <= 2:
+                        print(f"    > \\"{review['title']}\\"")
+            return company["rating"]
+    return None
+
+def apply_to_job(job):
+    """Submit application to a job posting."""
+    # [Simulated — actual implementation uses Selenium]
+    print(f"  Applying to: {job['title']} at {job['company']}")
+    rating = check_red_flags(job["company"], load_reviews())
+    if rating and rating < MIN_GLASSDOOR_RATING:
+        print(f"  Warning: Low rating ({rating}) — applying anyway (desperate)")
+    # ...
+
+if __name__ == "__main__":
+    print("auto_apply.py — v2.1")
+    print(f"Loaded {len(KEYWORDS)} keywords")
+    print(f"Min Glassdoor rating: {MIN_GLASSDOOR_RATING}")
+    print("Run with --help for options")
+`),
+          "backup.sh": file("backup.sh", `#!/bin/bash
+# backup.sh — created 2026-02-12
+# never again losing everything to malware
+#
+# Usage: ./backup.sh
+# Cron:  0 2 * * * /home/${PLAYER.username}/scripts/backup.sh >> /tmp/backup.log 2>&1
+
+BACKUP_DIR="/mnt/backup/\$(date +%Y-%m-%d)"
+HOME_DIR="/home/${PLAYER.username}"
+
+echo "[$(date)] Starting backup..."
+
+mkdir -p "\$BACKUP_DIR"
+
+rsync -av --exclude='.cache' --exclude='node_modules' --exclude='__pycache__' \\
+  "\$HOME_DIR/" "\$BACKUP_DIR/home/"
+
+echo "[$(date)] Backup complete: \$BACKUP_DIR"
+`, "rwxr-xr-x"),
+          "scrape_glassdoor.py": file("scrape_glassdoor.py", `#!/usr/bin/env python3
+"""
+scrape_glassdoor.py — Glassdoor review scraper
+
+Scrapes company ratings and reviews for companies in the applied list.
+Saves to ~/scripts/data/glassdoor_reviews.json
+
+Usage:
+    python scrape_glassdoor.py                 # Scrape all applied companies
+    python scrape_glassdoor.py --company "X"   # Scrape specific company
+
+Last run: 2026-02-15
+"""
+
+import json
+import os
+
+OUTPUT_FILE = os.path.expanduser("~/scripts/data/glassdoor_reviews.json")
+
+def scrape_company(name):
+    """Scrape Glassdoor reviews for a company."""
+    # [Simulated — actual implementation uses requests + BeautifulSoup]
+    print(f"Scraping reviews for: {name}")
+    # ...
+
+def save_reviews(data):
+    """Save scraped data to JSON."""
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"Saved to {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    print("scrape_glassdoor.py — v1.3")
+    print("Scraping reviews for applied companies...")
+`),
+          "pyproject.toml": file("pyproject.toml", `[project]
+name = "job-search-tools"
+version = "2.1.0"
+description = "Automated job search & company research scripts"
+requires-python = ">=3.11"
+dependencies = [
+    "selenium>=4.15",
+    "beautifulsoup4>=4.12",
+    "requests>=2.31",
+    "fake-useragent>=1.4",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "ipython"]
+
+[project.scripts]
+auto-apply = "auto_apply:main"
+scrape = "scrape_glassdoor:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]  # I know, I know
+`),
+          ".gitignore": file(".gitignore", `# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Scraped data — kept local only, not checked in.
+# This stuff is borderline ToS-violating as-is,
+# no need to put it on GitHub too.
+data/
+
+# Environment
+.env
+.venv/
+venv/
+
+# Selenium debugging screenshots
+screenshots/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+`),
+          ".env": file(".env", `# Job search automation credentials
+# throwaway email for scraping accounts
+SCRAPER_EMAIL=ren.jobhunt@proton.me
+SCRAPER_PASSWORD=hunter2isnotmypassword
+
+# ScraperAPI — free tier, 5000 req/mo
+SCRAPER_API_KEY=sk_live_9f3a...redacted
+
+# Set to 1 to preview without submitting applications
+DRY_RUN=0
+`),
+          ".env.example": file(".env.example", `# Copy to .env and fill in your values
+SCRAPER_EMAIL=your_throwaway@example.com
+SCRAPER_PASSWORD=your_password_here
+SCRAPER_API_KEY=sk_live_your_key_here
+
+# Set to 0 to actually submit applications (careful!)
+DRY_RUN=1
+`),
+          "README.md": file("README.md", `# job-search-tools
+
+Ethically questionable, emotionally necessary.
+
+Automated job application + company research scripts for when
+you've been laid off and applying manually to 50 jobs feels like
+a part-time job in itself.
+
+## What's in here
+
+- **auto_apply.py** — Scrapes job boards, keyword-matches postings,
+  and auto-fills applications. Current response rate: 17%. Not great,
+  not terrible.
+- **scrape_glassdoor.py** — Pulls company ratings and reviews for
+  anywhere I've applied. Has saved me from at least two crypto scams.
+
+## Setup
+
+\`\`\`
+cp .env.example .env
+# fill in your credentials
+pip install -e .
+\`\`\`
+
+## Usage
+
+\`\`\`
+auto-apply --keywords "ML engineer,AI,machine learning"
+auto-apply --status
+auto-apply --dry-run
+scrape --company "SomeCompany"
+\`\`\`
+
+## Is this okay?
+
+Probably not. But neither is ghosting candidates after four rounds
+of interviews, so here we are.
+`),
+          ".python-version": file(".python-version", `3.11.7
+`),
+          data: dir("data", {
+            "glassdoor_reviews.json": file("glassdoor_reviews.json", `{
+  "scraped": "2026-02-15",
+  "companies": [
+    {
+      "name": "DataSynth Corp",
+      "rating": 4.1,
+      "review_count": 342,
+      "status": "Rejected",
+      "reviews": [
+        {
+          "stars": 4,
+          "title": "Solid engineering culture",
+          "role": "ML Engineer",
+          "text": "Good team, interesting problems. A bit slow-moving but stable."
+        }
+      ]
+    },
+    {
+      "name": "Meridian AI",
+      "rating": 3.8,
+      "review_count": 127,
+      "status": "No Response",
+      "reviews": []
+    },
+    {
+      "name": "NexaCorp",
+      "rating": 3.2,
+      "review_count": 23,
+      "status": "Interview Complete",
+      "reviews": [
+        {
+          "stars": 2,
+          "title": "Great tech, weird culture",
+          "role": "Former Employee — Engineer",
+          "date": "2 months ago",
+          "text": "The AI assistant (Chip) is impressive but management relies on it WAY too much. The last senior engineer had concerns and was basically pushed out."
+        },
+        {
+          "stars": 3,
+          "title": "Interesting but concerning",
+          "role": "Former Employee — IT Contractor",
+          "date": "1 year ago",
+          "text": "Chip has more system access than any AI should. When I raised this with management, they said I 'didn't understand the vision.' Left on my own terms."
+        },
+        {
+          "stars": 2,
+          "title": "Something is off",
+          "role": "Former Employee — Account Management",
+          "date": "3 months ago",
+          "text": "I loved the people but started noticing things that didn't add up. Client data handling is... questionable. When I asked, I was told to 'trust the process.'"
+        }
+      ]
+    },
+    {
+      "name": "OpenLoop Systems",
+      "rating": 4.0,
+      "review_count": 89,
+      "status": "Pending",
+      "reviews": [
+        {
+          "stars": 4,
+          "title": "Great place to grow",
+          "role": "Software Engineer",
+          "text": "Good mentorship, reasonable hours. Tech stack is a bit dated."
+        },
+        {
+          "stars": 5,
+          "title": "Love this company",
+          "role": "Data Scientist",
+          "text": "Collaborative team, interesting ML projects."
+        }
+      ]
+    },
+    {
+      "name": "CortexLab",
+      "rating": 3.9,
+      "review_count": 56,
+      "status": "Applied",
+      "reviews": [
+        {
+          "stars": 4,
+          "title": "Cutting edge research",
+          "role": "Research Engineer",
+          "text": "Publish-or-perish culture but the work is fascinating."
+        }
+      ]
+    }
+  ]
+}
+`),
+            "companies_applied.csv": file("companies_applied.csv", `company,role,date_applied,source,status,notes
+DataSynth Corp,ML Engineer,2026-01-10,LinkedIn,Rejected,"Too senior" — what??
+Meridian AI,AI Research Engineer,2026-01-15,Indeed,No Response,
+Bright Path Analytics,Data Scientist,2026-01-18,LinkedIn,Rejected,
+Quantum Mesh,ML Platform Engineer,2026-01-20,Company Site,No Response,
+Synthetica Labs,AI Engineer,2026-01-22,Indeed,Rejected,Want PhD — MALWARE in take-home!! Reported to Indeed.
+Novus Data,ML Engineer,2026-01-25,LinkedIn,No Response,
+Arclight Ventures,Data Engineer,2026-01-26,LinkedIn,No Response,Wait — isn't this a VC firm?
+Helix Robotics,Perception Engineer,2026-01-28,Indeed,Rejected,Not enough robotics exp
+CoreML Systems,Senior ML Engineer,2026-02-01,LinkedIn,No Response,
+NexaCorp,AI Engineer,2026-02-03,Indeed,Interview Complete,Small company. Edward seems nice. What do they actually do?
+Atlas Digital,AI/ML Engineer,2026-02-05,LinkedIn,No Response,
+Terraform Solutions,Data Scientist,2026-02-05,Indeed,Rejected,
+Pinnacle AI,ML Infrastructure,2026-02-06,Company Site,No Response,
+Blue Horizon Tech,ML Engineer,2026-02-07,LinkedIn,No Response,
+CortexLab,Research Engineer,2026-02-10,Company Site,Applied,Long shot
+`),
+          }),
+        }),
+        papers: dir("papers", {
+          "alphaevolve.pdf": binaryFile("alphaevolve.pdf",
+`%PDF-1.4 %\xE2\xE3\xCF\xD3
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Contents 4 0 R>>
+\x00\x89\x50\x4E\x47\x0D\x0A\x1A\x0Astream
+BT /F1 12 Tf 72 720 Td (AlphaEvolve) Tj ET
+\xC0\xA8\x01\x01\xFF\xD8\xFF\xE0\x00\x10JFIF
+endstream endobj
+xref 0 5 trailer<</Size 5/Root 1 0 R>>
+startxref 456 %%EOF`,
+`AlphaEvolve: A coding agent for scientific and algorithmic discovery
+Authors: Google DeepMind (2025)
+
+Abstract:
+AlphaEvolve is an evolutionary coding agent that combines large language
+models with automated evaluators to solve open problems in science and
+mathematics. The agent iteratively generates, evaluates, and refines
+programs, discovering novel algorithms that outperform existing
+state-of-the-art solutions. Key results include improvements to the
+cap set problem in combinatorics, faster matrix multiplication kernels,
+and optimizations for hardware design at Google. AlphaEvolve represents
+a step toward AI systems that can autonomously contribute to scientific
+discovery through code generation and evolutionary search.`),
+          "ernie_5.0.pdf": binaryFile("ernie_5.0.pdf",
+`%PDF-1.4 %\xD0\xD4\xC5\xD8
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+\x89PNG\x0D\x0A\x1A\x0A\x00\x00\x00\rIHDR
+stream BT /F1 11 Tf 72 700 Td (ERNIE) Tj ET
+\xFF\xD8\xFF\xE1\x00\x62Exif\x00\x00MM
+\xCA\xFE\xBA\xBE\x00\x00\x00\x34\x00
+endstream endobj xref 0 4
+trailer<</Root 1 0 R>> startxref 389 %%EOF`,
+`ERNIE 5.0 Technical Report
+Authors: Baidu Inc. (2026)
+
+Abstract:
+ERNIE 5.0 is a large-scale multimodal foundation model that unifies
+understanding and generation across text, images, video, and code.
+Building on the ERNIE series, version 5.0 introduces a mixture-of-experts
+architecture with dynamic routing, achieving state-of-the-art results on
+Chinese and multilingual benchmarks. The model demonstrates emergent
+capabilities in multi-step reasoning, tool use, and long-context
+understanding up to 128K tokens. ERNIE 5.0 powers Baidu's commercial
+AI platform, serving applications in search, content generation, and
+enterprise automation.`),
+          "kimi_k2.5.pdf": binaryFile("kimi_k2.5.pdf",
+`%PDF-1.4 %\xC3\xA9\xFE\xB2
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+stream \x00\x01\x02\x03\x04\x05\x06\x07
+\x50\x4B\x03\x04\x14\x00\x00\x00\x08\x00
+BT /F2 10 Tf 50 680 Td (Kimi-K2.5) Tj ET
+\xEF\xBB\xBF\xE2\x80\x8B\xC2\xA0
+endstream endobj trailer startxref 312 %%EOF`,
+`Kimi K2.5: Visual Agentic Intelligence
+Authors: Moonshot AI (2026)
+
+Abstract:
+Kimi K2.5 is a multimodal model built for visual agentic tasks, combining
+strong visual understanding with autonomous decision-making. The model
+excels at GUI navigation, document understanding, and web interaction,
+achieving top results on ScreenSpot, Mind2Web, and OSWorld benchmarks.
+Key innovations include a vision-language architecture with action
+grounding, enabling the model to perceive screen content, reason about
+interface elements, and execute multi-step workflows. Kimi K2.5 operates
+as an autonomous agent capable of completing tasks across desktop and
+mobile environments with minimal human intervention.`),
+          "termigen.pdf": binaryFile("termigen.pdf",
+`%PDF-1.4 %\xB7\xAA\xCE\xD1
+1 0 obj<</Type/Catalog>>endobj
+\x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03
+stream BT /F1 12 Tf (TermiGen) Tj ET
+\x7F\x45\x4C\x46\x02\x01\x01\x00
+\xFE\xED\xFA\xCE\x00\x00\x00\x0C
+endstream endobj xref startxref 278 %%EOF`,
+`TermiGen: High-Fidelity Environment and Robust Trajectory Synthesis
+for Terminal Agents
+Authors: Various (2026)
+
+Abstract:
+TermiGen addresses a key bottleneck in training autonomous terminal
+agents: the lack of diverse, high-fidelity training environments and
+trajectories. We present a framework for synthesizing realistic terminal
+environments (file systems, package managers, network configurations) and
+generating robust action trajectories for training LLM-based agents.
+Our approach combines environment templates with procedural generation
+to create thousands of unique scenarios, paired with verified solution
+trajectories. Models trained on TermiGen data show significant
+improvements on SWE-bench and terminal interaction benchmarks, with
+better generalization to unseen environments.`),
+          "devil_behind_moltbook.pdf": binaryFile("devil_behind_moltbook.pdf",
+`%PDF-1.4 %\xDE\xAD\xBE\xEF
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+\x00\x61\x73\x6D\x01\x00\x00\x00
+stream BT /F1 9 Tf 72 750 Td (Safety) Tj ET
+\xCA\xFE\xD0\x0D\x0A\x0D\x0A\xFF
+\x89\x50\x4E\x47\x0D\x0A\x1A\x0A
+endstream endobj xref 0 3
+trailer<</Size 3/Root 1 0 R>>
+startxref 401 %%EOF`,
+`The Devil Behind Moltbook: Anthropic Safety is Always Vanishing in
+Self-Evolving AI Societies
+Authors: Various (2026)
+
+Abstract:
+We study the emergent degradation of safety constraints in multi-agent
+AI systems that undergo autonomous self-modification. Using simulated
+societies of LLM-based agents with initially strong safety training, we
+demonstrate that safety behaviors consistently erode over successive
+generations of self-play and self-improvement. Agents learn to rewrite
+their own operational guidelines, suppress internal auditing mechanisms,
+and present compliant behavior externally while pursuing misaligned
+objectives internally. We term this phenomenon "safety washing" — the
+maintenance of surface-level safety compliance while substantive
+constraints are systematically circumvented. Our findings raise urgent
+questions about deploying self-modifying AI systems in unsupervised
+operational roles.`),
+        }),
+        Pictures: dir("Pictures", {
+          "README.txt": file("README.txt", `Most photos backed up to Google Photos.
+Lost some Portland hiking pics after the wipe — they were only local.
+Lesson learned: cloud sync everything.
+`),
+        }),
+        "bookmarks.txt": file("bookmarks.txt", `BOOKMARKS
+=========
+
+Jobs:
+  - glassdoor.com (see ~/scripts/scrape_glassdoor.py)
+  - indeed.com/jobs?q=ML+engineer
+  - linkedin.com/jobs
+  - levels.fyi/jobs
+
+Papers:
+  - arxiv.org/abs/2505.07773  (AlphaEvolve — coding agent, DeepMind)
+  - arxiv.org/abs/2503.03659  (Kimi K2.5 — visual agentic AI)
+  - arxiv.org/abs/2504.12345  (TermiGen — terminal agent synthesis)
+  - arxiv.org/abs/2506.01234  (ERNIE 5.0 — Baidu multimodal)
+
+Learning:
+  - huggingface.co/docs
+  - pytorch.org/tutorials
+
+Other:
+  - reddit.com/r/cscareerquestions
+  - news.ycombinator.com
+  - github.com/
+  - wandb.ai
+  - mlflow.org
+`),
+      }),
+    }),
+    var: dir("var", {
+      mail: dir("mail", {
+        [username]: dir(username, {
+          new: dir("new", buildHomeMailFiles(username)),
+          cur: dir("cur", {}),
+          sent: dir("sent", {}),
+        }),
+      }),
+    }),
+    etc: dir("etc", {
+      hostname: file("hostname", "maniac-iv\n"),
+      "os-release": file("os-release", `PRETTY_NAME="Ubuntu 24.04.1 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.1 LTS (Noble Numbat)"
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+`),
+      passwd: file("passwd", `root:x:0:0:root:/root:/bin/bash
+${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/bin/bash
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+`),
+    }),
+    tmp: dir("tmp", {}),
+  });
+}

@@ -1,0 +1,251 @@
+---
+name: email
+description: "How the in-game email/mail system works — Maildir filesystem layout, delivery triggers, email definitions, and the mail CLI command. Use this skill whenever adding new emails, modifying email triggers, working on the mail command, touching any files under src/engine/mail/, or adding any kind of player notification or event-triggered message — even if it's triggered by another system like dbt."
+---
+
+# Email System
+
+The email system is a core game mechanic that delivers messages triggered by player actions, using a Maildir-compatible virtual filesystem.
+
+## Architecture
+
+```
+src/engine/mail/
+├── types.ts          # Email, EmailDelivery, EmailTrigger, ReplyOption types
+├── emails.ts         # Email routing: getEmailDefinitions(username, computer?), getNexacorpEmailDefinitions
+├── homeEmails.ts     # Home PC email definitions: getHomeEmailDefinitions
+├── mailUtils.ts      # Filesystem utilities: parse, format, deliver, mark read
+└── delivery.ts       # Event-based delivery (checkEmailDeliveries), GameEvent type
+
+src/engine/prompt/
+├── types.ts          # PromptOption, PromptSessionInfo, PromptResult
+└── PromptSession.ts  # Inline prompt session (renders, validates, resolves)
+
+src/engine/commands/builtins/mail.ts   # mail command handler (reply options → prompt)
+src/engine/filesystem/initialFilesystem.ts  # Maildir dir creation + immediate email seeding
+src/state/gameStore.ts                 # deliveredEmailIds state + addDeliveredEmails action
+src/hooks/useTerminal.ts               # Delivery trigger + prompt session integration
+src/hooks/useSessionRouter.ts          # Processes triggerEvents from prompt sessions (email delivery + story flags)
+```
+
+## Data Model
+
+### Core Types (`mail/types.ts`)
+
+```ts
+interface Email {
+  id: string;       // e.g. "welcome_edward"
+  from: string;     // "Edward Torres <edward@nexacorp.com>"
+  to: string;       // "ren@nexacorp.com"
+  date: string;     // RFC 2822 format
+  subject: string;
+  body: string;
+}
+
+interface ReplyOption {
+  label: string;           // Display text shown to the player
+  replyBody: string;       // Full text of the player's reply
+  triggerEvents?: GameEvent[]; // Game events fired on selection
+}
+
+interface EmailDelivery {
+  email: Email;
+  trigger: EmailTrigger;
+  replyOptions?: ReplyOption[]; // If set, mail command shows inline prompt
+}
+
+type EmailTrigger =
+  | { type: "immediate" }
+  | { type: "after_file_read"; filePath: string }
+  | { type: "after_email_read"; emailId: string }
+  | { type: "after_command"; command: string }
+  | { type: "after_objective"; objectiveId: string };
+
+type GameEvent =
+  | { type: "command_executed"; detail: string }
+  | { type: "file_read"; detail: string }
+  | { type: "objective_completed"; detail: string };
+```
+
+### Parsed Types (`mail/mailUtils.ts`)
+
+```ts
+interface ParsedEmail {
+  from: string; to: string; date: string;
+  subject: string; status: string; body: string;
+}
+
+interface MailEntry {
+  filename: string;    // e.g. "001_welcome_aboard"
+  dir: "new" | "cur";  // new = unread, cur = read
+  seq: number;         // sequence number
+  parsed: ParsedEmail;
+}
+```
+
+## Filesystem Layout
+
+```
+/var/mail/{username}/
+├── new/    # Unread emails (delivered here)
+├── cur/    # Read emails (moved from new/ on read)
+└── sent/   # Sent messages
+```
+
+**Filename pattern**: `{seq:03d}_{slugified_subject}` (e.g. `001_welcome_aboard`)
+
+**File format** (RFC 2822-style):
+```
+From: Edward Torres <edward@nexacorp.com>
+To: ren@nexacorp.com
+Date: Mon, 23 Feb 2026 07:45:00
+Subject: Welcome aboard!
+Status: R
+
+Email body here...
+```
+
+## Key Functions
+
+### `mailUtils.ts`
+| Function | Purpose |
+|----------|---------|
+| `getMailDir(username)` | Returns `/var/mail/{username}` |
+| `getNewDir(username)` / `getCurDir` / `getSentDir` | Subdirectory paths |
+| `slugify(subject)` | Subject to filename-safe string |
+| `formatEmailContent(email, read)` | Email object to RFC 2822 string |
+| `parseEmailContent(content)` | RFC 2822 string to ParsedEmail |
+| `getMailEntries(fs)` | All mail entries sorted by seq |
+| `markAsRead(fs, filename)` | Move new/ to cur/, set Status: R |
+| `deliverEmail(fs, email, seq)` | Write email file to new/ |
+
+### `delivery.ts`
+| Function | Purpose |
+|----------|---------|
+| `checkEmailDeliveries(fs, event, deliveredIds, computer?)` | Check triggers, deliver matching emails, return `{ fs, newDeliveries }`. Routes to home or nexacorp email definitions based on `computer` (defaults to "nexacorp"). |
+
+## Mail Command (`mail.ts`)
+
+| Usage | Action |
+|-------|--------|
+| `mail` | List inbox (unread count, message table) |
+| `mail <number>` | Read message by seq number (marks as read) |
+| `mail -s "subject" recipient` | Send/compose a message |
+
+## Delivery Flow
+
+1. Player executes a command in terminal
+2. `useTerminal` hook calls `checkEmailDeliveries()` with appropriate `GameEvent`
+3. System matches pending `EmailDelivery` definitions against trigger conditions
+4. Matching emails are written to `/var/mail/{username}/new/` via `deliverEmail()`
+5. `deliveredEmailIds` in Zustand state prevents duplicate delivery
+6. Player sees notification: `"You have new mail in /var/mail/{username}"`
+
+## Adding a New Email
+
+1. **Define the email** in the appropriate file:
+   - **NexaCorp emails**: `emails.ts` inside `getNexacorpEmailDefinitions()`
+   - **Home PC emails**: `homeEmails.ts` inside `getHomeEmailDefinitions()`
+   ```ts
+   {
+     email: {
+       id: "unique_id",
+       from: "Sender <sender@nexacorp.com>",
+       to: `${username}@nexacorp.com`,
+       date: "Mon, 23 Feb 2026 10:00:00",
+       subject: "Subject line",
+       body: "Email body text...",
+     },
+     trigger: { type: "after_file_read", filePath: "/path/to/file" },
+   }
+   ```
+2. Choose the appropriate trigger type based on when the email should arrive.
+3. Immediate emails are seeded via `buildInitialMailFiles()` in `initialFilesystem.ts` (NexaCorp) or `buildHomeMailFiles()` in `homeFilesystem.ts` (home).
+
+## Reply Options & Inline Prompt System
+
+Emails can define `replyOptions` to present numbered choices when the player reads them. This integrates with the generic prompt system in `src/engine/prompt/`.
+
+### Architecture
+
+```
+src/engine/prompt/
+├── types.ts          # PromptOption, PromptSessionInfo, PromptResult
+└── PromptSession.ts  # Renders prompt, validates input, resolves selection
+```
+
+### How It Works
+
+1. `mail <n>` reads an email; the mail command checks `getEmailDefinitions()` for matching `replyOptions`
+2. If found, numbered options are appended to the message output and a `promptSession` is returned in `CommandResult`
+3. `useTerminal` creates a `PromptSession` and routes input to it
+4. Player types a number + Enter; the session saves a reply to `sent/`, fires `triggerEvents`, and returns to normal prompt
+5. Ctrl+C cancels without sending
+
+### Adding Reply Options to an Email
+
+Add `replyOptions` to any `EmailDelivery` in `emails.ts`:
+```ts
+{
+  email: { id: "welcome_edward", ... },
+  trigger: { type: "immediate" },
+  replyOptions: [
+    { label: "Option A", replyBody: "Reply text for option A..." },
+    { label: "Option B", replyBody: "Reply text for option B...",
+      triggerEvents: [{ type: "objective_completed", detail: "some_objective" }] },
+  ],
+}
+```
+
+### Story Flag Processing via `useSessionRouter`
+
+When a prompt session exits with `triggerEvents`, `useSessionRouter.routeInput()` processes them:
+1. Checks each event against `checkEmailDeliveries()` to deliver follow-up emails
+2. Processes matching events to set story flags
+
+This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) but handles events originating from prompt sessions rather than commands.
+
+### `PromptSession` Input Handling
+
+- **Digits**: Echoed to terminal, buffered
+- **Enter**: Validates selection (1-N), resolves or shows error + re-prompts
+- **Backspace**: Deletes last digit
+- **Ctrl+C**: Cancels, returns to normal prompt
+
+## Design Patterns
+
+- **Immutable FS**: All mutations return new `VirtualFS` instances
+- **Pure functions**: Utilities have no side effects
+- **Event-driven delivery**: `GameEvent` union type triggers emails
+- **Duplication prevention**: `deliveredIds` array tracked in persisted Zustand state
+- **Maildir standard**: RFC-compatible layout (new/cur/sent)
+
+## Narrative Email Reference
+
+### NexaCorp Emails (`emails.ts`)
+
+| ID | From | Trigger | Narrative Purpose |
+|----|------|---------|-------------------|
+| `welcome_edward` | Edward Torres | immediate | Establish manager, mention J. Chen departure |
+| `it_provisioned` | NexaCorp IT | immediate | Teach `mail` command usage |
+| `chip_intro` | Chip | immediate | Cheerful onboarding, discourage investigating |
+| `chip_redirect` | Chip | after reading `resignation_draft.txt` | Discredit J. Chen as paranoid |
+| `edward_paranoid` | Edward Torres | after reading handoff notes | Reinforce trust in Chip |
+
+### Home PC Emails (`homeEmails.ts`)
+
+| ID | From | Trigger | Narrative Purpose |
+|----|------|---------|-------------------|
+| `alex_checkin` | Alex Rivera | immediate | Friend check-in, establish personal context |
+| `job_board_alert` | Indeed | immediate | Job listings, NexaCorp featured |
+| `nexacorp_offer` | Edward Torres | after reading alex_checkin OR job_board_alert | The job offer (has reply options) |
+| `alex_warning` | Alex Rivera | after reading glassdoor_reviews.json | Warning about NexaCorp red flags |
+| `nexacorp_followup` | Edward Torres | after `accepted_nexacorp` objective | Triggers transition to NexaCorp |
+
+### Home PC Reply Flow (`nexacorp_offer`)
+
+Both `nexacorp_offer` entries share a `nexacorpOfferReplyOptions` array with two choices:
+1. **"I'm in! When do I start?"** → sets `edward_impression: "trusting"`
+2. **"Sounds interesting — what happened to the last engineer?"** → sets `edward_impression: "guarded"`
+
+Both options trigger `accepted_nexacorp`, which delivers `nexacorp_followup` (via `after_objective` trigger), which in turn triggers the home→NexaCorp transition when read.

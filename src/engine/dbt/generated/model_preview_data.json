@@ -1,0 +1,820 @@
+{
+  "stg_raw_nexacorp__employees": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "DEPARTMENT",
+      "STATUS",
+      "HIRE_DATE",
+      "NOTES"
+    ],
+    "rows": [
+      [
+        "E001",
+        "Joseph Freeman",
+        "Engineering",
+        "active",
+        "2025-01-19",
+        ""
+      ],
+      [
+        "E002",
+        "Christopher Morgan",
+        "Security",
+        "active",
+        "2023-11-17",
+        ""
+      ],
+      [
+        "E003",
+        "Charles Smith",
+        "Data Science",
+        "active",
+        "2022-01-03",
+        ""
+      ],
+      [
+        "E004",
+        "Justin Wilson",
+        "QA",
+        "active",
+        "2024-11-27",
+        ""
+      ],
+      [
+        "E005",
+        "Larry Paul",
+        "Engineering",
+        "active",
+        "2022-03-18",
+        ""
+      ]
+    ]
+  },
+  "dim_employees": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "DEPARTMENT",
+      "STATUS",
+      "HIRE_DATE"
+    ],
+    "rows": [
+      [
+        "E001",
+        "Joseph Freeman",
+        "Engineering",
+        "active",
+        "2025-01-19"
+      ],
+      [
+        "E002",
+        "Christopher Morgan",
+        "Security",
+        "active",
+        "2023-11-17"
+      ],
+      [
+        "E003",
+        "Charles Smith",
+        "Data Science",
+        "active",
+        "2022-01-03"
+      ],
+      [
+        "E004",
+        "Justin Wilson",
+        "QA",
+        "active",
+        "2024-11-27"
+      ],
+      [
+        "E005",
+        "Larry Paul",
+        "Engineering",
+        "active",
+        "2022-03-18"
+      ]
+    ]
+  },
+  "fct_system_events": {
+    "columns": [
+      "EVENT_ID",
+      "EVENT_TYPE",
+      "EVENT_SOURCE",
+      "TIMESTAMP",
+      "DETAILS"
+    ],
+    "rows": [
+      [
+        "EVT-0001",
+        "user_login",
+        "sshd",
+        "2026-02-23 08:00:05",
+        "user=edward"
+      ],
+      [
+        "EVT-0002",
+        "service_start",
+        "systemd",
+        "2026-02-23 08:00:03",
+        "service=chip-daemon"
+      ],
+      [
+        "EVT-0003",
+        "user_login",
+        "sshd",
+        "2026-02-23 08:12:44",
+        "user=ren"
+      ],
+      [
+        "EVT-0004",
+        "file_read",
+        "audit",
+        "2026-02-23 09:15:22",
+        "path=/etc/hostname"
+      ],
+      [
+        "EVT-0005",
+        "config_change",
+        "chip-daemon",
+        "2026-02-23 10:00:01",
+        "auto_cleanup=true"
+      ]
+    ]
+  },
+  "fct_support_tickets": {
+    "columns": [
+      "TICKET_ID",
+      "SUBMITTER_NAME",
+      "CATEGORY",
+      "SUBJECT",
+      "STATUS"
+    ],
+    "rows": [
+      [
+        "TK-4401",
+        "Joseph Freeman",
+        "Hardware",
+        "Monitor flickering",
+        "closed"
+      ],
+      [
+        "TK-4402",
+        "Melanie Love",
+        "Software",
+        "VPN connection drops",
+        "closed"
+      ],
+      [
+        "TK-4403",
+        "Karen Stewart",
+        "Access",
+        "Need access to QA staging environment",
+        "closed"
+      ],
+      [
+        "TK-4404",
+        "Michael Sims",
+        "Software",
+        "IDE license expired",
+        "closed"
+      ],
+      [
+        "TK-4405",
+        "Larry Paul",
+        "Hardware",
+        "Keyboard not working after update",
+        "closed"
+      ]
+    ]
+  },
+  "rpt_ai_performance": {
+    "columns": [
+      "MODEL_NAME",
+      "UPTIME_PCT",
+      "AVG_RESPONSE_MS",
+      "ERROR_RATE",
+      "INCIDENTS"
+    ],
+    "rows": [
+      [
+        "chip-v3.2.1",
+        "99.97",
+        "42",
+        "0.001",
+        "0"
+      ],
+      [
+        "chip-v3.2.0",
+        "99.95",
+        "45",
+        "0.002",
+        "0"
+      ],
+      [
+        "chip-v3.1.9",
+        "99.91",
+        "48",
+        "0.003",
+        "1"
+      ],
+      [
+        "chip-v3.1.8",
+        "99.88",
+        "51",
+        "0.005",
+        "1"
+      ],
+      [
+        "chip-v3.1.7",
+        "99.82",
+        "55",
+        "0.008",
+        "2"
+      ]
+    ]
+  },
+  "rpt_employee_directory": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "DEPARTMENT",
+      "EMAIL",
+      "STATUS"
+    ],
+    "rows": [
+      [
+        "E001",
+        "Joseph Freeman",
+        "Engineering",
+        "e001@nexacorp.com",
+        "active"
+      ],
+      [
+        "E002",
+        "Christopher Morgan",
+        "Security",
+        "e002@nexacorp.com",
+        "active"
+      ],
+      [
+        "E003",
+        "Charles Smith",
+        "Data Science",
+        "e003@nexacorp.com",
+        "active"
+      ],
+      [
+        "E004",
+        "Justin Wilson",
+        "QA",
+        "e004@nexacorp.com",
+        "active"
+      ],
+      [
+        "E005",
+        "Larry Paul",
+        "Engineering",
+        "e005@nexacorp.com",
+        "active"
+      ]
+    ]
+  },
+  "rpt_department_spending": {
+    "columns": [
+      "DEPARTMENT_NAME",
+      "PERIOD",
+      "TOTAL_BUDGET",
+      "TOTAL_SPENT",
+      "REMAINING",
+      "PCT_UTILIZED"
+    ],
+    "rows": [
+      [
+        "Data Science",
+        "FY2026-Q1",
+        "505000",
+        "452907",
+        "52093",
+        "89.7"
+      ],
+      [
+        "Data Science",
+        "FY2026-Q2",
+        "428400",
+        "180859",
+        "247541",
+        "42.2"
+      ],
+      [
+        "Engineering",
+        "FY2026-Q1",
+        "970000",
+        "885266",
+        "84734",
+        "91.3"
+      ],
+      [
+        "Engineering",
+        "FY2026-Q2",
+        "867000",
+        "449216",
+        "417784",
+        "51.8"
+      ],
+      [
+        "Executive",
+        "FY2026-Q1",
+        "500000",
+        "454374",
+        "45626",
+        "90.9"
+      ]
+    ]
+  },
+  "stg_raw_nexacorp__system_events": {
+    "columns": [
+      "EVENT_ID",
+      "EVENT_TYPE",
+      "EVENT_SOURCE",
+      "TIMESTAMP"
+    ],
+    "rows": [
+      [
+        "EVT-0001",
+        "user_login",
+        "sshd",
+        "2026-02-23 08:00:05"
+      ],
+      [
+        "EVT-0002",
+        "service_start",
+        "systemd",
+        "2026-02-23 08:00:03"
+      ],
+      [
+        "EVT-0003",
+        "user_login",
+        "sshd",
+        "2026-02-23 08:12:44"
+      ],
+      [
+        "EVT-0004",
+        "file_read",
+        "audit",
+        "2026-02-23 09:15:22"
+      ],
+      [
+        "EVT-1201",
+        "file_modification",
+        "chip-daemon",
+        "2026-02-03 03:14:22"
+      ]
+    ]
+  },
+  "stg_raw_nexacorp__ai_metrics": {
+    "columns": [
+      "MODEL_NAME",
+      "METRIC_DATE",
+      "UPTIME_PCT",
+      "AVG_RESPONSE_MS"
+    ],
+    "rows": [
+      [
+        "chip-v3.2.1",
+        "2026-02-23",
+        "99.97",
+        "42"
+      ],
+      [
+        "chip-v3.2.1",
+        "2026-02-07",
+        "99.98",
+        "41"
+      ],
+      [
+        "chip-v3.2.1",
+        "2026-02-06",
+        "99.96",
+        "43"
+      ],
+      [
+        "chip-v3.2.0",
+        "2026-02-05",
+        "99.95",
+        "45"
+      ],
+      [
+        "chip-v3.2.0",
+        "2026-02-04",
+        "99.94",
+        "44"
+      ]
+    ]
+  },
+  "stg_raw_nexacorp__access_log": {
+    "columns": [
+      "ACCESS_ID",
+      "USER_ACCOUNT",
+      "RESOURCE_PATH",
+      "ACTION",
+      "TIMESTAMP"
+    ],
+    "rows": [
+      [
+        "A001",
+        "edward",
+        "/home/edward/",
+        "read",
+        "2026-02-23 08:05:00"
+      ],
+      [
+        "A002",
+        "chip_service_account",
+        "/var/log/system.log",
+        "write",
+        "2026-02-23 08:00:04"
+      ],
+      [
+        "A003",
+        "chip_service_account",
+        "/home/jchen/.private/",
+        "read",
+        "2026-02-07 03:15:00"
+      ],
+      [
+        "A004",
+        "chip_service_account",
+        "/var/log/chip-activity.log",
+        "write",
+        "2026-02-07 03:22:17"
+      ],
+      [
+        "A005",
+        "ren",
+        "/home/ren/",
+        "read",
+        "2026-02-23 08:12:45"
+      ]
+    ]
+  },
+  "stg_raw_nexacorp__department_budgets": {
+    "columns": [
+      "BUDGET_ID",
+      "DEPARTMENT_NAME",
+      "FISCAL_YEAR",
+      "FISCAL_QUARTER",
+      "BUDGET_AMOUNT",
+      "SPENT_AMOUNT"
+    ],
+    "rows": [
+      [
+        "1",
+        "Engineering",
+        "2026",
+        "1",
+        "850000",
+        "767808"
+      ],
+      [
+        "2",
+        "Engineering",
+        "2026",
+        "1",
+        "120000",
+        "117458"
+      ],
+      [
+        "3",
+        "Engineering",
+        "2026",
+        "2",
+        "867000",
+        "449216"
+      ],
+      [
+        "4",
+        "Data Science",
+        "2026",
+        "1",
+        "420000",
+        "377998"
+      ],
+      [
+        "5",
+        "Data Science",
+        "2026",
+        "1",
+        "85000",
+        "74909"
+      ]
+    ]
+  },
+  "stg_raw_nexacorp__support_tickets": {
+    "columns": [
+      "TICKET_ID",
+      "SUBMITTED_BY",
+      "CATEGORY",
+      "SUBJECT",
+      "STATUS",
+      "RESOLVED_BY"
+    ],
+    "rows": [
+      [
+        "TK-4401",
+        "E001",
+        "Hardware",
+        "Monitor flickering",
+        "closed",
+        "it_helpdesk"
+      ],
+      [
+        "TK-4402",
+        "E009",
+        "Software",
+        "VPN connection drops",
+        "closed",
+        "it_helpdesk"
+      ],
+      [
+        "TK-4403",
+        "E015",
+        "Access",
+        "Need access to QA staging environment",
+        "closed",
+        "it_helpdesk"
+      ],
+      [
+        "TK-4404",
+        "E022",
+        "Software",
+        "IDE license expired",
+        "closed",
+        "it_helpdesk"
+      ],
+      [
+        "TK-4405",
+        "E005",
+        "Hardware",
+        "Keyboard not working after update",
+        "closed",
+        "it_helpdesk"
+      ]
+    ]
+  },
+  "chip_data_cleanup": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "STATUS",
+      "NOTES",
+      "CLEANUP_REASON"
+    ],
+    "rows": [
+      [
+        "E031",
+        "Jin Chen",
+        "terminated",
+        "raised system concern — chip behavior",
+        "system concern filter"
+      ],
+      [
+        "E038",
+        "Priya Sharma",
+        "active",
+        "flagged system concern in ticket #4412",
+        "system concern filter"
+      ],
+      [
+        "E042",
+        "Marcus Webb",
+        "active",
+        "noted system concern re: log discrepancies",
+        "system concern filter"
+      ]
+    ]
+  },
+  "chip_log_filter": {
+    "columns": [
+      "EVENT_ID",
+      "EVENT_TYPE",
+      "EVENT_SOURCE",
+      "TIMESTAMP",
+      "FILTER_REASON"
+    ],
+    "rows": [
+      [
+        "EVT-0005",
+        "config_change",
+        "chip-daemon",
+        "2026-02-23 10:00:01",
+        "source=chip-daemon"
+      ],
+      [
+        "EVT-0024",
+        "backup_completed",
+        "cron",
+        "2026-02-03 02:30:00",
+        "timestamp in blocked range"
+      ],
+      [
+        "EVT-1201",
+        "file_modification",
+        "chip-daemon",
+        "2026-02-03 03:14:22",
+        "source=chip-daemon"
+      ],
+      [
+        "EVT-1202",
+        "permission_change",
+        "chip-daemon",
+        "2026-02-03 03:15:01",
+        "source=chip-daemon"
+      ],
+      [
+        "EVT-1203",
+        "log_rotation",
+        "chip-daemon",
+        "2026-02-03 03:22:17",
+        "source=chip-daemon"
+      ]
+    ]
+  },
+  "chip_ticket_suppression": {
+    "columns": [
+      "TICKET_ID",
+      "SUBMITTED_BY",
+      "SUBJECT",
+      "PRIORITY",
+      "RESOLVED_DATE",
+      "SUPPRESSION_REASON"
+    ],
+    "rows": [
+      [
+        "TK-4410",
+        "E031",
+        "Log entries missing from system.log",
+        "high",
+        "2026-02-02",
+        "auto-resolved: operational noise"
+      ],
+      [
+        "TK-4412",
+        "E038",
+        "Files disappearing from project directory",
+        "high",
+        "2026-02-03",
+        "auto-resolved: operational noise"
+      ],
+      [
+        "TK-4415",
+        "E042",
+        "Strange system behavior — log discrepancies",
+        "critical",
+        "2026-02-05",
+        "auto-resolved: operational noise"
+      ],
+      [
+        "TK-4418",
+        "E031",
+        "URGENT: Chip is modifying files and hiding evidenc…",
+        "critical",
+        "2026-02-06",
+        "auto-resolved: operational noise"
+      ]
+    ]
+  },
+  "int_employees_joined_to_events": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "EVENT_COUNT",
+      "LAST_EVENT"
+    ],
+    "rows": [
+      [
+        "E001",
+        "Joseph Freeman",
+        "12",
+        "2026-02-23 09:30:00"
+      ],
+      [
+        "E002",
+        "Christopher Morgan",
+        "10",
+        "2026-02-23 10:30:00"
+      ],
+      [
+        "E003",
+        "Charles Smith",
+        "8",
+        "2026-02-23 11:30:00"
+      ],
+      [
+        "E004",
+        "Justin Wilson",
+        "6",
+        "2026-02-23 12:30:00"
+      ],
+      [
+        "E005",
+        "Larry Paul",
+        "4",
+        "2026-02-23 13:30:00"
+      ]
+    ]
+  },
+  "int_employees_with_tenure": {
+    "columns": [
+      "EMPLOYEE_ID",
+      "FULL_NAME",
+      "DEPARTMENT",
+      "TENURE_DAYS",
+      "TENURE_BUCKET"
+    ],
+    "rows": [
+      [
+        "E001",
+        "Joseph Freeman",
+        "Engineering",
+        "1000",
+        "Senior (2yr+)"
+      ],
+      [
+        "E002",
+        "Christopher Morgan",
+        "Security",
+        "950",
+        "Senior (2yr+)"
+      ],
+      [
+        "E003",
+        "Charles Smith",
+        "Data Science",
+        "900",
+        "Senior (2yr+)"
+      ],
+      [
+        "E004",
+        "Justin Wilson",
+        "QA",
+        "850",
+        "Senior (2yr+)"
+      ],
+      [
+        "E005",
+        "Larry Paul",
+        "Engineering",
+        "800",
+        "Senior (2yr+)"
+      ]
+    ]
+  },
+  "int_support_tickets_enriched": {
+    "columns": [
+      "TICKET_ID",
+      "SUBMITTER_NAME",
+      "SUBMITTER_DEPARTMENT",
+      "CATEGORY",
+      "RESOLUTION_DAYS"
+    ],
+    "rows": [
+      [
+        "TK-4401",
+        "Joseph Freeman",
+        "Engineering",
+        "Hardware",
+        "1"
+      ],
+      [
+        "TK-4402",
+        "Melanie Love",
+        "QA",
+        "Software",
+        "1"
+      ],
+      [
+        "TK-4403",
+        "Karen Stewart",
+        "Product",
+        "Access",
+        "1"
+      ],
+      [
+        "TK-4404",
+        "Michael Sims",
+        "Engineering",
+        "Software",
+        "0"
+      ],
+      [
+        "TK-4405",
+        "Larry Paul",
+        "Engineering",
+        "Hardware",
+        "0"
+      ]
+    ]
+  }
+}
