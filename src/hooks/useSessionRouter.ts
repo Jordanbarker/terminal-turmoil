@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
-import { EditorSession } from "../engine/editor/EditorSession";
+import { EditorSession, EditorTrigger } from "../engine/editor/EditorSession";
 import { PythonReplSession } from "../engine/python/PythonReplSession";
 import { SnowSQLSession } from "../engine/snowflake/session/SnowSQLSession";
 import { createDefaultContext } from "../engine/snowflake/session/context";
@@ -12,6 +12,8 @@ import { SshSession } from "../engine/ssh/SshSession";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
 import { StoryFlags } from "../state/types";
+import { COMMANDS_SECTION_ROW } from "../engine/filesystem/homeFilesystem";
+import { UNLOCK_BOX } from "../lib/ascii";
 
 interface SessionRouterDeps {
   fsRef: React.MutableRefObject<VirtualFS>;
@@ -85,6 +87,16 @@ export function useSessionRouter(deps: SessionRouterDeps) {
             continue;
           }
 
+          // Handle commands_unlocked event from nano trigger
+          if (event.type === "objective_completed" && event.detail === "commands_unlocked") {
+            setStoryFlag("commands_unlocked", true);
+            storyFlagsRef.current = { ...storyFlagsRef.current, commands_unlocked: true };
+            UNLOCK_BOX.forEach((line) => term.writeln(line));
+            useGameStore.getState().addToast("New commands unlocked! Type 'help' to see all.");
+            useGameStore.getState().completeObjective("learn_commands");
+            continue;
+          }
+
           const delivery = checkEmailDeliveries(
             fsRef.current,
             event,
@@ -135,11 +147,27 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     [setFs, addDeliveredEmails, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, activeComputerRef, storyFlagsRef]
   );
 
+  /** Build an EditorTrigger if the file is terminal_notes.txt on home PC before unlock. */
+  const getEditorTrigger = useCallback(
+    (filePath: string): EditorTrigger | undefined => {
+      if (activeComputerRef.current !== "home") return undefined;
+      if (storyFlagsRef.current.commands_unlocked) return undefined;
+      const homeDir = fsRef.current.homeDir;
+      if (filePath !== `${homeDir}/terminal_notes.txt`) return undefined;
+      return {
+        triggerRow: COMMANDS_SECTION_ROW,
+        triggerEvents: [{ type: "objective_completed", detail: "commands_unlocked" }],
+      };
+    },
+    [fsRef, activeComputerRef, storyFlagsRef]
+  );
+
   /** Start a new session from an AppliedEffects startSession descriptor. */
   const startSession = useCallback(
     (term: Terminal, session: SessionToStart): void => {
       if (session.type === "editor") {
         const { filePath, content, readOnly } = session.info;
+        const trigger = getEditorTrigger(filePath);
         const editorSession = new EditorSession(
           term,
           fsRef.current,
@@ -149,7 +177,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           (newFs: VirtualFS) => {
             setFs(newFs);
             fsRef.current = newFs;
-          }
+          },
+          trigger
         );
         sessionRef.current = editorSession;
         sessionTypeRef.current = "editor";
@@ -199,7 +228,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         sshSession.enter();
       }
     },
-    [setFs, writePrompt, fsRef, usernameRef]
+    [setFs, writePrompt, fsRef, usernameRef, getEditorTrigger]
   );
 
   return { hasActiveSession, routeInput, startSession };

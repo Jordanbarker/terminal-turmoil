@@ -87,6 +87,8 @@ function createInitialState(username = PLAYER.username) {
   };
 }
 
+let toastId = 0;
+
 export const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
@@ -128,7 +130,7 @@ export const useGameStore = create<GameStore>()(
       setHasSeenIntro: () => set({ hasSeenIntro: true }),
       addToast: (message) =>
         set((state) => ({
-          toasts: [...state.toasts, { id: crypto.randomUUID(), message }],
+          toasts: [...state.toasts, { id: String(++toastId), message }],
         })),
       removeToast: (id) =>
         set((state) => ({
@@ -186,6 +188,11 @@ export const useGameStore = create<GameStore>()(
         const username = (p.username as string) ?? currentState.username;
         const activeComputer = (p.activeComputer as ComputerId) ?? currentState.activeComputer;
         const storyFlags = (p.storyFlags as StoryFlags) ?? currentState.storyFlags;
+
+        // Backward compat: existing saves with hasSeenIntro should have commands_unlocked
+        if ((p.hasSeenIntro as boolean) && !storyFlags.commands_unlocked) {
+          storyFlags.commands_unlocked = true;
+        }
 
         // Reconstruct VirtualFS from serialized data
         let fs: VirtualFS;

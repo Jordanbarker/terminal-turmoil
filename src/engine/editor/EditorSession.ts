@@ -4,6 +4,12 @@ import { EditorState, EditorConfig } from "./types";
 import { parseEditorInput, EditorAction } from "./keymap";
 import { renderEditor } from "./render";
 import { ISession, SessionResult } from "../session/types";
+import { GameEvent } from "../mail/delivery";
+
+export interface EditorTrigger {
+  triggerRow: number;
+  triggerEvents: GameEvent[];
+}
 
 export class EditorSession implements ISession {
   private state: EditorState;
@@ -11,6 +17,8 @@ export class EditorSession implements ISession {
   private fs: VirtualFS;
   private terminal: Terminal;
   private onSave: (newFs: VirtualFS) => void;
+  private trigger?: EditorTrigger;
+  private maxRowReached = 0;
 
   constructor(
     terminal: Terminal,
@@ -18,11 +26,13 @@ export class EditorSession implements ISession {
     filePath: string,
     content: string,
     readOnly: boolean,
-    onSave: (newFs: VirtualFS) => void
+    onSave: (newFs: VirtualFS) => void,
+    trigger?: EditorTrigger
   ) {
     this.terminal = terminal;
     this.fs = fs;
     this.onSave = onSave;
+    this.trigger = trigger;
 
     const fileName = filePath.split("/").pop() || filePath;
     const lines = content.split("\n");
@@ -317,6 +327,7 @@ export class EditorSession implements ISession {
     } else if (this.state.cursor.row >= this.state.scrollOffset + contentRows) {
       this.state.scrollOffset = this.state.cursor.row - contentRows + 1;
     }
+    this.maxRowReached = Math.max(this.maxRowReached, this.state.cursor.row);
   }
 
   // === Save / Exit ===
@@ -345,8 +356,11 @@ export class EditorSession implements ISession {
   }
 
   private exitEditor(): SessionResult {
-    this.terminal.write("\x1b[?1049l"); // Exit alt buffer
-    return { type: "exit", newFs: this.fs };
+    this.terminal.write("\x1b[?25h\x1b[?1049l"); // Show cursor + exit alt buffer
+    const triggerEvents = this.trigger && this.maxRowReached >= this.trigger.triggerRow
+      ? this.trigger.triggerEvents
+      : undefined;
+    return { type: "exit", newFs: this.fs, triggerEvents };
   }
 
   // === Rendering ===

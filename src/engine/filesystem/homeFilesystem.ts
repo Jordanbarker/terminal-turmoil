@@ -32,14 +32,57 @@ function buildHomeMailFiles(username: string): Record<string, FileNode> {
   return files;
 }
 
-export function createHomeFilesystem(username: string): DirectoryNode {
-  return dir("/", {
-    home: dir("home", {
-      [username]: dir(username, {
-        "terminal_notes.txt": file("terminal_notes.txt", `# Terminal Notes
+// Content for terminal_notes.txt — a nano tutorial with the commands section further down.
+// The COMMANDS_SECTION_ROW constant marks the 0-indexed line of the commands header,
+// used by EditorSession to trigger the commands_unlocked event when the player scrolls there.
+const TERMINAL_NOTES_CONTENT = `# Terminal Notes — Learning nano
 
-Trying to get comfortable with the terminal
-before my first day at the new job...
+Welcome to nano! This text editor is the starting point for
+getting comfortable with the terminal.
+
+(Scroll down to find useful commands — use the arrow keys)
+
+## Moving Around:
+  Arrow keys   - move the cursor
+  Page Up/Down - jump one screen at a time
+  Home / End   - jump to start / end of a line
+
+## Editing:
+  Just type    - insert text at the cursor
+  Backspace    - delete character before cursor
+  Ctrl+K       - cut the current line
+  Ctrl+U       - paste the cut line
+
+## Saving & Exiting:
+  Ctrl+O       - save the file (Write Out)
+  Ctrl+X       - exit nano
+               (if you've made changes, it will ask to save)
+
+## Tips:
+  - Ctrl+G shows the help screen inside nano
+  - Use Tab to autocomplete file names at the terminal
+  - Ctrl+C cancels the current action
+
+## Searching:
+  Ctrl+W       - search for text (Where Is)
+  Ctrl+W again - repeat the last search
+  Alt+W        - search backwards
+               (great for finding things in long files)
+
+## Undo / Redo:
+  Alt+U        - undo the last action
+  Alt+E        - redo the last undone action
+               (yes, nano has undo — most people don't know!)
+
+## Try It Yourself:
+  You're inside nano right now! Try a few things:
+    1. Move the cursor to this line and type something
+    2. Press Ctrl+K to cut this line, then Ctrl+U to paste it
+    3. Press Ctrl+W and search for the word "commands"
+    4. When you're done exploring, scroll down — there's
+       a useful reference section below.
+
+---
 
 ## Commands I've learned so far:
 
@@ -51,10 +94,22 @@ before my first day at the new job...
   nano   - edit files (this editor!)
   help   - list all available commands
 
-## Tips:
-  - Use Tab to autocomplete
-  - Ctrl+C to cancel
-`),
+## What to do next:
+  - Exit nano (Ctrl+X) and try these commands!
+  - Type 'help' for a quick reference
+  - Type 'mail' to check your inbox
+`;
+
+/** 0-indexed line number of the "## Commands I've learned so far:" header in terminal_notes.txt. */
+export const COMMANDS_SECTION_ROW = TERMINAL_NOTES_CONTENT.split("\n").findIndex(
+  (line) => line.startsWith("## Commands I've learned so far")
+);
+
+export function createHomeFilesystem(username: string): DirectoryNode {
+  return dir("/", {
+    home: dir("home", {
+      [username]: dir(username, {
+        "terminal_notes.txt": file("terminal_notes.txt", TERMINAL_NOTES_CONTENT),
         ".bashrc": file(".bashrc", `# ~/.bashrc
 
 export PS1="\\u@home:\\w$ "

@@ -141,6 +141,7 @@ export function useTerminal() {
     fsRef,
     cwdRef,
     activeComputerRef,
+    storyFlagsRef,
     writePrompt,
   });
 
@@ -339,6 +340,7 @@ export function useTerminal() {
                 cwd: cwdRef.current,
                 homeDir: currentFs.homeDir,
                 activeComputer: activeComputerRef.current,
+                storyFlags: storyFlagsRef.current,
                 stdin,
                 rawArgs: p.rawArgs,
                 isPiped: pi < pipeline.length - 1 || !!redirectFile,
@@ -397,6 +399,7 @@ export function useTerminal() {
             cwd: cwdRef.current,
             homeDir: currentFs.homeDir,
             activeComputer: activeComputerRef.current,
+            storyFlags: storyFlagsRef.current,
             stdin,
             rawArgs: p.rawArgs,
             isPiped: pi < pipeline.length - 1 || !!redirectFile,

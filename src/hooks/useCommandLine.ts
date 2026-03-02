@@ -5,12 +5,13 @@ import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { getAvailableCommands } from "../engine/commands/registry";
 import { getSuggestion } from "../engine/suggestions/suggest";
 import { isBackspace, isPrintable, CTRL_C } from "../engine/terminal/keyCodes";
-import { ComputerId } from "../state/types";
+import { ComputerId, StoryFlags } from "../state/types";
 
 interface CommandLineDeps {
   fsRef: React.MutableRefObject<VirtualFS>;
   cwdRef: React.MutableRefObject<string>;
   activeComputerRef: React.MutableRefObject<ComputerId>;
+  storyFlagsRef: React.MutableRefObject<StoryFlags>;
   writePrompt: (term: Terminal) => void;
 }
 
@@ -20,7 +21,7 @@ export interface CommandLineResult {
 }
 
 export function useCommandLine(deps: CommandLineDeps) {
-  const { fsRef, cwdRef, activeComputerRef, writePrompt } = deps;
+  const { fsRef, cwdRef, activeComputerRef, storyFlagsRef, writePrompt } = deps;
   const lineBuffer = useRef("");
   const ghostLengthRef = useRef(0);
 
@@ -47,7 +48,7 @@ export function useCommandLine(deps: CommandLineDeps) {
     const input = lineBuffer.current;
     if (!input) return;
 
-    const commandNames = getAvailableCommands(activeComputerRef.current).map((c) => c.name);
+    const commandNames = getAvailableCommands(activeComputerRef.current, storyFlagsRef.current).map((c) => c.name);
     const suggestion = getSuggestion(input, {
       commandHistory: historyRef.current,
       commandNames,
@@ -61,7 +62,7 @@ export function useCommandLine(deps: CommandLineDeps) {
       term.write(`\x1b[s\x1b[2m${suffix}\x1b[0m\x1b[u`);
       ghostLengthRef.current = suffix.length;
     }
-  }, [fsRef, cwdRef]);
+  }, [fsRef, cwdRef, storyFlagsRef]);
 
   /**
    * Process a single character of input for the command line.
@@ -161,7 +162,7 @@ export function useCommandLine(deps: CommandLineDeps) {
       } else if (arrow === "C") {
         // Right arrow — accept suggestion
         if (ghostLengthRef.current > 0) {
-          const commandNames = getAvailableCommands(activeComputerRef.current).map((c) => c.name);
+          const commandNames = getAvailableCommands(activeComputerRef.current, storyFlagsRef.current).map((c) => c.name);
           const suggestion = getSuggestion(lineBuffer.current, {
             commandHistory: historyRef.current,
             commandNames,

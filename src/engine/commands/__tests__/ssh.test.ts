@@ -54,6 +54,7 @@ function createCtx(overrides?: Partial<CommandContext>): CommandContext {
     cwd: "/home/ren",
     homeDir: "/home/ren",
     activeComputer: "home",
+    storyFlags: { commands_unlocked: true },
     ...overrides,
   };
 }

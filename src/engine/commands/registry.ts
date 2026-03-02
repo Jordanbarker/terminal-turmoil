@@ -1,6 +1,6 @@
 import { CommandHandler, AsyncCommandHandler, CommandResult, CommandContext } from "./types";
 import { isCommandAvailable } from "./availability";
-import { ComputerId } from "../../state/types";
+import { ComputerId, StoryFlags } from "../../state/types";
 
 const commands = new Map<string, { handler: CommandHandler; description: string; helpText?: string }>();
 const asyncCommands = new Map<string, { handler: AsyncCommandHandler; description: string; helpText?: string }>();
@@ -19,7 +19,7 @@ export function execute(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): CommandResult {
-  if (!isCommandAvailable(commandName, ctx.activeComputer)) {
+  if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
     return { output: `${commandName}: command not found. Type 'help' for available commands.` };
   }
   const entry = commands.get(commandName);
@@ -38,7 +38,7 @@ export async function executeAsync(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): Promise<CommandResult> {
-  if (!isCommandAvailable(commandName, ctx.activeComputer)) {
+  if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
     return { output: `${commandName}: command not found. Type 'help' for available commands.` };
   }
   const asyncEntry = asyncCommands.get(commandName);
@@ -70,6 +70,6 @@ export function getCommandList(): { name: string; description: string }[] {
 }
 
 /** Returns only commands available on the given computer. */
-export function getAvailableCommands(computer: ComputerId): { name: string; description: string }[] {
-  return getCommandList().filter((c) => isCommandAvailable(c.name, computer));
+export function getAvailableCommands(computer: ComputerId, storyFlags?: StoryFlags): { name: string; description: string }[] {
+  return getCommandList().filter((c) => isCommandAvailable(c.name, computer, storyFlags));
 }

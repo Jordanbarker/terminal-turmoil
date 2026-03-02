@@ -23,6 +23,11 @@ export const CHAPTERS: ChapterDefinition[] = [
     title: "New Beginnings",
     objectives: [
       {
+        id: "learn_commands",
+        description: "Learn basic terminal commands",
+        check: { source: "storyFlag", key: "commands_unlocked" },
+      },
+      {
         id: "explore_home",
         description: "Explore your personal files",
         check: { source: "storyFlag", key: "read_resume" },

@@ -1,6 +1,6 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { PromptSessionInfo } from "../prompt/types";
-import { ComputerId } from "../../state/types";
+import { ComputerId, StoryFlags } from "../../state/types";
 import { GameEvent } from "../mail/delivery";
 import { SnowflakeState } from "../snowflake/state";
 import { SessionContext } from "../snowflake/session/context";
@@ -18,6 +18,7 @@ export interface CommandContext {
   cwd: string;
   homeDir: string;
   activeComputer: ComputerId;
+  storyFlags?: StoryFlags;
   stdin?: string;
   rawArgs?: string[];
   isPiped?: boolean;
@@ -32,6 +33,8 @@ export interface EditorSessionInfo {
   content: string;
   readOnly: boolean;
   isNewFile: boolean;
+  triggerRow?: number;
+  triggerEvents?: GameEvent[];
 }
 
 export type GameAction =

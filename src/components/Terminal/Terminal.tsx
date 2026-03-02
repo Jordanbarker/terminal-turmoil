@@ -6,17 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useGameStore } from "../../state/gameStore";
-import { motd, homeWelcome } from "../../lib/ascii";
-import { colorize, ansi } from "../../lib/ansi";
-
-const UNLOCK_BOX = [
-  "",
-  `  ${colorize("┌─────────────────────────────────────────┐", ansi.cyan)}`,
-  `  ${colorize("│", ansi.cyan)}  ${colorize("New commands unlocked!", ansi.bold)}${" ".repeat(17)}${colorize("│", ansi.cyan)}`,
-  `  ${colorize("│", ansi.cyan)}  Type ${colorize("'help'", ansi.green)} to see all commands.${" ".repeat(7)}${colorize("│", ansi.cyan)}`,
-  `  ${colorize("└─────────────────────────────────────────┘", ansi.cyan)}`,
-  "",
-];
+import { motd, homeWelcome, UNLOCK_BOX } from "../../lib/ascii";
 
 export default function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
