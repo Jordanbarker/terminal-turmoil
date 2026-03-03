@@ -9,6 +9,7 @@ export interface ObjectiveDefinition {
   check: ObjectiveCompletionCheck;
   hidden?: boolean;
   prerequisite?: string;
+  optional?: boolean;
 }
 
 export interface ChapterDefinition {
@@ -31,6 +32,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         id: "explore_home",
         description: "Explore your personal files",
         check: { source: "storyFlag", key: "read_resume" },
+        optional: true,
       },
       {
         id: "check_email",
@@ -69,6 +71,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "discovered_log_tampering" },
         hidden: true,
         prerequisite: "explore_jchen",
+        optional: true,
       },
       {
         id: "find_directives",
@@ -76,6 +79,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "found_chip_directives" },
         hidden: true,
         prerequisite: "explore_jchen",
+        optional: true,
       },
       {
         id: "find_filtering",
@@ -83,6 +87,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "found_data_filtering" },
         hidden: true,
         prerequisite: "run_dbt",
+        optional: true,
       },
     ],
   },

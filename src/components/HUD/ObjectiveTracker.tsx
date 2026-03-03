@@ -45,22 +45,43 @@ export default function ObjectiveTracker() {
         </span>
       </button>
 
-      {!collapsed && (
-        <ul className="px-2 pb-1.5 space-y-0.5">
-          {visible.map((obj) => (
-            <li
-              key={obj.id}
-              className={
-                obj.completed
-                  ? "text-[#3fb950] line-through opacity-50"
-                  : "text-[#c9d1d9]"
-              }
-            >
-              {obj.completed ? "[x]" : "[ ]"} {obj.description}
-            </li>
-          ))}
-        </ul>
-      )}
+      {!collapsed && (() => {
+        const required = visible.filter((o) => !o.optional);
+        const optional = visible.filter((o) => o.optional);
+        return (
+          <ul className="px-2 pb-1.5 space-y-0.5">
+            {required.map((obj) => (
+              <li
+                key={obj.id}
+                className={
+                  obj.completed
+                    ? "text-[#3fb950] line-through opacity-50"
+                    : "text-[#c9d1d9]"
+                }
+              >
+                {obj.completed ? "[x]" : "[ ]"} {obj.description}
+              </li>
+            ))}
+            {optional.length > 0 && (
+              <>
+                <li className="text-[#8b949e] text-center">── Optional ──</li>
+                {optional.map((obj) => (
+                  <li
+                    key={obj.id}
+                    className={
+                      obj.completed
+                        ? "text-[#3fb950] line-through opacity-50"
+                        : "text-[#c9d1d9]"
+                    }
+                  >
+                    {obj.completed ? "[x]" : "[ ]"} {obj.description}
+                  </li>
+                ))}
+              </>
+            )}
+          </ul>
+        );
+      })()}
     </div>
   );
 }

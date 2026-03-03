@@ -6,6 +6,7 @@ export interface ResolvedObjective {
   description: string;
   completed: boolean;
   visible: boolean;
+  optional: boolean;
 }
 
 function isCompleted(
@@ -51,6 +52,7 @@ export function resolveObjectives(
       description: obj.description,
       completed: !!completionMap.get(obj.id),
       visible,
+      optional: !!obj.optional,
     };
   });
 }
