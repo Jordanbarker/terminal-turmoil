@@ -43,3 +43,5 @@ import "./which";
 import "./man";
 // Network
 import "./ssh";
+// AI assistant
+import "./chip";

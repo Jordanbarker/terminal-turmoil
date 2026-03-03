@@ -23,7 +23,7 @@ npm run lint     # ESLint
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `chip`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`
 
 Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
 
@@ -40,6 +40,7 @@ src/
 ├── engine/
 │   ├── filesystem/         # VirtualFS class, types, homeFilesystem, initialFilesystem (__tests__/)
 │   ├── commands/           # Parser, registry, builtin commands, applyResult (__tests__/)
+│   ├── chip/               # Chip interactive CLI (ChipSession, menuItems, render, types)
 │   ├── editor/             # Nano text editor (EditorSession, keymap, render) (__tests__/)
 │   ├── python/             # Python REPL via Pyodide
 │   ├── snowflake/          # In-browser Snowflake SQL engine (lexer, parser, planner, executor, functions, formatter, session, bridge, seed, state) (__tests__/)

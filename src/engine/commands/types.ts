@@ -1,5 +1,6 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { PromptSessionInfo } from "../prompt/types";
+import { ChipSessionInfo } from "../chip/types";
 import { ComputerId, StoryFlags } from "../../state/types";
 import { GameEvent } from "../mail/delivery";
 import { SnowflakeState } from "../snowflake/state";
@@ -68,6 +69,7 @@ export interface CommandResult {
   snowsqlSession?: SnowSQLSessionInfo;
   promptSession?: PromptSessionInfo;
   sshSession?: SshSessionInfo;
+  chipSession?: ChipSessionInfo;
   triggerEvents?: GameEvent[];
 }
 

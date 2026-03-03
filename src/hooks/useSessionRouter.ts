@@ -9,6 +9,7 @@ import { createDefaultContext } from "../engine/snowflake/session/context";
 import { checkEmailDeliveries } from "../engine/mail/delivery";
 import { PromptSession } from "../engine/prompt/PromptSession";
 import { SshSession } from "../engine/ssh/SshSession";
+import { ChipSession } from "../engine/chip/ChipSession";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
 import { StoryFlags } from "../state/types";
@@ -226,6 +227,11 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         sessionRef.current = sshSession;
         sessionTypeRef.current = "ssh";
         sshSession.enter();
+      } else if (session.type === "chip") {
+        const chipSession = new ChipSession(term, session.info);
+        sessionRef.current = chipSession;
+        sessionTypeRef.current = "chip";
+        chipSession.enter();
       }
     },
     [setFs, writePrompt, fsRef, usernameRef, getEditorTrigger]

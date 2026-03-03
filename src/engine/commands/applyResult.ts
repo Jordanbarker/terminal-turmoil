@@ -4,6 +4,7 @@ import { checkEmailDeliveries, GameEvent } from "../mail/delivery";
 import { resolvePath } from "../../lib/pathUtils";
 import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, checkStoryFlagTriggers } from "../narrative/storyFlags";
 import { PromptSessionInfo } from "../prompt/types";
+import { ChipSessionInfo } from "../chip/types";
 import { ComputerId, StoryFlags } from "../../state/types";
 import { colorize, ansi } from "../../lib/ansi";
 import { listSaveSlots, formatSlotName } from "../../state/saveManager";
@@ -13,7 +14,8 @@ export type SessionToStart =
   | { type: "snowsql" }
   | { type: "pythonRepl" }
   | { type: "prompt"; info: PromptSessionInfo }
-  | { type: "ssh"; info: SshSessionInfo };
+  | { type: "ssh"; info: SshSessionInfo }
+  | { type: "chip"; info: ChipSessionInfo };
 
 export interface StoryFlagUpdate {
   flag: string;
@@ -105,6 +107,12 @@ export function computeEffects(
 
   if (result.sshSession) {
     effects.startSession = { type: "ssh", info: result.sshSession };
+    effects.suppressPrompt = true;
+    return effects;
+  }
+
+  if (result.chipSession) {
+    effects.startSession = { type: "chip", info: result.chipSession };
     effects.suppressPrompt = true;
     return effects;
   }
