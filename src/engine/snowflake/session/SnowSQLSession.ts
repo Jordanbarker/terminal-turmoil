@@ -53,7 +53,6 @@ export class SnowSQLSession implements ISession {
 
         // Check for commands
         if (trimmed.toLowerCase() === "!quit" || trimmed.toLowerCase() === "!exit") {
-          this.terminal.write(colorize("Goodbye!\r\n", ansi.dim));
           return { type: "exit", newState: this.state };
         }
 
