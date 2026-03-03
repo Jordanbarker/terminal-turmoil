@@ -81,7 +81,7 @@ describe("getEmailDefinitions", () => {
 describe("getEmailDefinitions (home)", () => {
   const defs = getEmailDefinitions("testuser", "home");
 
-  it("nexacorp_offer emails have replyOptions", () => {
+  it("nexacorp_offer emails have replyOptions with accept and reject", () => {
     const offers = defs.filter((d) => d.email.id === "nexacorp_offer");
     expect(offers.length).toBe(2);
     for (const offer of offers) {
@@ -91,11 +91,39 @@ describe("getEmailDefinitions (home)", () => {
         expect(opt.label).toBeTruthy();
         expect(opt.replyBody).toBeTruthy();
         expect(opt.triggerEvents).toBeDefined();
-        expect(opt.triggerEvents!.some(
-          (e) => e.type === "objective_completed" && e.detail === "accepted_nexacorp"
-        )).toBe(true);
       }
+      // First option accepts, second rejects
+      expect(offer.replyOptions![0].triggerEvents!.some(
+        (e) => e.type === "objective_completed" && e.detail === "accepted_nexacorp"
+      )).toBe(true);
+      expect(offer.replyOptions![1].triggerEvents!.some(
+        (e) => e.type === "objective_completed" && e.detail === "rejected_nexacorp_1"
+      )).toBe(true);
     }
+  });
+
+  it("persuasion emails trigger after rejections and have accept/reject options", () => {
+    const p1 = defs.find((d) => d.email.id === "nexacorp_persuasion_1");
+    expect(p1).toBeDefined();
+    expect(p1!.trigger).toEqual({ type: "after_objective", objectiveId: "rejected_nexacorp_1" });
+    expect(p1!.replyOptions!.length).toBe(2);
+    expect(p1!.replyOptions![0].triggerEvents!.some(
+      (e) => e.detail === "accepted_nexacorp"
+    )).toBe(true);
+    expect(p1!.replyOptions![1].triggerEvents!.some(
+      (e) => e.detail === "rejected_nexacorp_2"
+    )).toBe(true);
+
+    const p2 = defs.find((d) => d.email.id === "nexacorp_persuasion_2");
+    expect(p2).toBeDefined();
+    expect(p2!.trigger).toEqual({ type: "after_objective", objectiveId: "rejected_nexacorp_2" });
+    expect(p2!.replyOptions!.length).toBe(2);
+    expect(p2!.replyOptions![0].triggerEvents!.some(
+      (e) => e.detail === "accepted_nexacorp"
+    )).toBe(true);
+    expect(p2!.replyOptions![1].triggerEvents!.some(
+      (e) => e.detail === "rejected_nexacorp_final"
+    )).toBe(true);
   });
 
   it("nexacorp_followup triggers after accepted_nexacorp objective", () => {

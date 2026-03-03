@@ -238,14 +238,21 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 |----|------|---------|-------------------|
 | `alex_checkin` | Alex Rivera | immediate | Friend check-in, establish personal context |
 | `job_board_alert` | Indeed | immediate | Job listings, NexaCorp featured |
-| `nexacorp_offer` | Edward Torres | after reading alex_checkin OR job_board_alert | The job offer (has reply options) |
+| `nexacorp_offer` | Edward Torres | after reading alex_checkin OR job_board_alert | The job offer (accept/reject reply options) |
+| `nexacorp_persuasion_1` | Edward Torres | after `rejected_nexacorp_1` objective | Sweetened deal after first rejection |
+| `nexacorp_persuasion_2` | Edward Torres | after `rejected_nexacorp_2` objective | Final personal pitch after second rejection |
 | `alex_warning` | Alex Rivera | after reading glassdoor_reviews.json | Warning about NexaCorp red flags |
 | `nexacorp_followup` | Edward Torres | after `accepted_nexacorp` objective | Triggers transition to NexaCorp |
 
-### Home PC Reply Flow (`nexacorp_offer`)
+### Home PC Reply Flow (Offer → Rejection → Persuasion Chain)
 
-Both `nexacorp_offer` entries share a `nexacorpOfferReplyOptions` array with two choices:
-1. **"I'm in! When do I start?"** → sets `edward_impression: "trusting"`
-2. **"Sounds interesting — what happened to the last engineer?"** → sets `edward_impression: "guarded"`
+The `nexacorp_offer` has two reply options: accept or reject.
 
-Both options trigger `accepted_nexacorp`, which delivers `nexacorp_followup` (via `after_objective` trigger), which in turn triggers the home→NexaCorp transition when read.
+**Accept path** (at any stage): triggers `accepted_nexacorp` → delivers `nexacorp_followup` → triggers home→NexaCorp transition.
+
+**Rejection chain:**
+1. **`nexacorp_offer`**: "I'm in!" (`edward_impression:trusting`) / "Thanks, but I'll pass" (`rejected_nexacorp_1`)
+2. **`nexacorp_persuasion_1`**: "You've convinced me" (`edward_impression:hesitant`) / "Still going to pass" (`rejected_nexacorp_2`)
+3. **`nexacorp_persuasion_2`**: "Fine, I'll give it a shot" (`edward_impression:reluctant`) / "My answer is final" (`rejected_nexacorp_final`)
+
+If the player rejects all three times (`rejected_nexacorp_final`), no more emails arrive — dead end.

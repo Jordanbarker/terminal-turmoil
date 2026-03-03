@@ -167,9 +167,12 @@ Command execution
 
 Full sequence:
 
-1. Player reads `nexacorp_offer` email → reply prompt shown
-2. Player selects reply option → sets `edward_impression` flag, fires `accepted_nexacorp` objective event
-3. `accepted_nexacorp` triggers delivery of `nexacorp_followup` email
+1. Player reads `nexacorp_offer` email → reply prompt shown (accept / reject)
+2. If accepted: sets `edward_impression` flag, fires `accepted_nexacorp` objective event
+   If rejected: fires `rejected_nexacorp_1` → Edward sends persuasion email #1 (accept/reject)
+   If rejected again: fires `rejected_nexacorp_2` → Edward sends persuasion email #2 (accept/reject)
+   If rejected a third time: fires `rejected_nexacorp_final` → dead end, story can't progress
+3. `accepted_nexacorp` (from any accept point) triggers delivery of `nexacorp_followup` email
 4. Player reads `nexacorp_followup` → `computeEffects()` detects it, sets `triggerTransition: true`
 5. Hook sets `gamePhase: "transitioning"` in Zustand store
 6. `useLoginSequence` hook detects transition, builds NexaCorp filesystem via `createNexacorpFilesystem(username, storyFlags)`

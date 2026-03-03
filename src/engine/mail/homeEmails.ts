@@ -10,11 +10,46 @@ const nexacorpOfferReplyOptions: ReplyOption[] = [
     ],
   },
   {
-    label: "Sounds interesting — what happened to the last engineer?",
-    replyBody: `Hi Edward,\n\nThanks for the offer — it sounds like a great opportunity.\nQuick question: you mentioned the previous engineer left suddenly.\nIs there anything I should know about the transition or ongoing work?\n\nI'm definitely interested, just want to go in prepared.`,
+    label: "Thanks, but I'll have to pass",
+    replyBody: `Hi Edward,\n\nI appreciate the offer, but I've decided to go a different direction.\nThanks for considering me, and best of luck filling the role.\n\nBest regards`,
+    triggerEvents: [
+      { type: "objective_completed", detail: "rejected_nexacorp_1" },
+    ],
+  },
+];
+
+const persuasion1ReplyOptions: ReplyOption[] = [
+  {
+    label: "Alright, you've convinced me",
+    replyBody: `Hi Edward,\n\nYou make a good case. I'll admit the signing bonus doesn't hurt either.\nCount me in — I can start Monday.\n\nThanks for following up.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
-      { type: "objective_completed", detail: "edward_impression:guarded" },
+      { type: "objective_completed", detail: "edward_impression:hesitant" },
+    ],
+  },
+  {
+    label: "I'm still going to pass",
+    replyBody: `Hi Edward,\n\nI appreciate you sweetening the deal, but my answer is the same.\nI hope you find a great fit for the team.\n\nBest`,
+    triggerEvents: [
+      { type: "objective_completed", detail: "rejected_nexacorp_2" },
+    ],
+  },
+];
+
+const persuasion2ReplyOptions: ReplyOption[] = [
+  {
+    label: "Fine, I'll give it a shot",
+    replyBody: `Hi Edward,\n\nOkay, you win. I can't say no to a personal appeal like that.\nI'll start Monday — but if things get weird, I'm out.\n\nSee you then.`,
+    triggerEvents: [
+      { type: "objective_completed", detail: "accepted_nexacorp" },
+      { type: "objective_completed", detail: "edward_impression:reluctant" },
+    ],
+  },
+  {
+    label: "My answer is final — good luck",
+    replyBody: `Hi Edward,\n\nI've made up my mind. I wish you and the team the best,\nbut this isn't the right move for me.\n\nTake care.`,
+    triggerEvents: [
+      { type: "objective_completed", detail: "rejected_nexacorp_final" },
     ],
   },
 ];
@@ -182,6 +217,66 @@ Could be disgruntled ex-employees. Could be real.
         type: "after_file_read",
         filePath: `/home/${username}/scripts/data/glassdoor_reviews.json`,
       },
+    },
+
+    // Edward's persuasion #1 — after first rejection
+    {
+      email: {
+        id: "nexacorp_persuasion_1",
+        from: "Edward Torres <edward@nexacorp.com>",
+        to: `${username}@email.com`,
+        date: "Sat, 21 Feb 2026 11:15:00",
+        subject: "Re: Job Offer — Hear me out",
+        body: `Hey, I totally understand — no pressure. But before you close the door,
+I wanted to throw a couple things out there:
+
+  - We're bumping the offer to $145K + a $5K signing bonus
+  - Fully remote, flexible hours — you set your own schedule
+  - The AI stack is genuinely interesting. You'd have a lot of autonomy
+
+I know the timeline is aggressive, and I get that it's a red flag. Honestly,
+we're just in a tough spot after our last engineer left. I'm not trying to
+rush you into something bad — I just think you'd be a great fit.
+
+No hard feelings either way. Just wanted to make sure you had the full picture.
+
+— Edward
+`,
+      },
+      trigger: { type: "after_objective", objectiveId: "rejected_nexacorp_1" },
+      replyOptions: persuasion1ReplyOptions,
+    },
+
+    // Edward's persuasion #2 — after second rejection
+    {
+      email: {
+        id: "nexacorp_persuasion_2",
+        from: "Edward Torres <edward@nexacorp.com>",
+        to: `${username}@email.com`,
+        date: "Sat, 21 Feb 2026 14:30:00",
+        subject: "Re: Job Offer — Last ask, I promise",
+        body: `Okay, I hear you — and I promise this is my last email about it.
+
+Look, I'll be honest with you. We're a small team and we're struggling.
+Our AI platform is live, customers depend on it, and right now I'm the
+only one who can even log into the engineering systems. I'm a product guy,
+not an engineer.
+
+I looked at your resume, your projects, your background — you're exactly
+the person we need. Not just any engineer. You.
+
+$150K, $10K signing bonus, and I'll personally make sure you have
+everything you need to succeed. If it doesn't work out after a month,
+no hard feelings.
+
+I know I'm asking a lot from someone I barely know. But sometimes you
+just have to take a chance on people.
+
+— Edward
+`,
+      },
+      trigger: { type: "after_objective", objectiveId: "rejected_nexacorp_2" },
+      replyOptions: persuasion2ReplyOptions,
     },
 
     // Edward's follow-up after the player replies to the offer
