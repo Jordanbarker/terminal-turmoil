@@ -13,8 +13,8 @@ The dbt system simulates a virtual dbt CLI and Snowflake warehouse, letting the 
 src/engine/
 ├── snowflake/
 │   ├── types.ts              # Table, Column, Row, Warehouse, QueryResult types
-│   ├── warehouse.ts          # createWarehouse() — NexaCorp tables + seed data
-│   └── query.ts              # simulateModelExecution() — model name → pre-computed result
+│   └── seed/
+│       └── initial_data.ts   # createInitialSnowflakeState() — seed databases (NEXACORP_DB, NEXACORP_PROD, CHIP_ANALYTICS)
 ├── dbt/
 │   ├── types.ts              # DbtModel, DbtTest, DbtProjectConfig, ModelRunResult types
 │   ├── data.ts               # MODEL_RESULTS, STANDARD_MODEL_ORDER, TEST_RESULTS, MODEL_PREVIEW_DATA, COMPILED_SQL

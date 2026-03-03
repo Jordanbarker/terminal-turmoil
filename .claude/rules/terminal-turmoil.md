@@ -23,7 +23,7 @@ npm run lint     # ESLint
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `chip`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `chip`, `ssh`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`
 
 Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
 
@@ -35,13 +35,14 @@ src/
 ├── components/
 │   ├── Terminal/           # xterm.js wrapper (dynamic import, ssr:false)
 │   ├── Assistant/          # Chip's popup overlay
-│   ├── HUD/               # ObjectiveTracker, StatusBar
+│   ├── HUD/               # ObjectiveTracker, StatusBar, Toast
 │   └── Game/              # GameShell top-level layout
 ├── engine/
 │   ├── filesystem/         # VirtualFS class, types, homeFilesystem, initialFilesystem (__tests__/)
 │   ├── commands/           # Parser, registry, builtin commands, applyResult (__tests__/)
 │   ├── chip/               # Chip interactive CLI (ChipSession, menuItems, render, types)
 │   ├── editor/             # Nano text editor (EditorSession, keymap, render) (__tests__/)
+│   ├── ssh/                # SSH client session (SshSession, sshConfig)
 │   ├── python/             # Python REPL via Pyodide
 │   ├── snowflake/          # In-browser Snowflake SQL engine (lexer, parser, planner, executor, functions, formatter, session, bridge, seed, state) (__tests__/)
 │   ├── dbt/                # Virtual dbt CLI (project discovery, runner, output, data) (__tests__/)
@@ -67,6 +68,7 @@ src/
 - **Dynamic xterm import**: `ssr: false` required because xterm.js needs `window`
 - **Static export**: `output: 'export'` in next.config.ts, deployed to GitHub Pages
 - **Dual computer**: Home PC (`"home"`) and NexaCorp workstation (`"nexacorp"`) with separate filesystems, emails, and prompts. `ComputerId`, `StoryFlags`, and `COMPUTERS` config in `state/types.ts`
+- **Command availability**: Home PC starts with limited commands (nano, clear, help, save, load, newgame); full set unlocked via `commands_unlocked` story flag. `availability.ts` gates command access by computer + flags
 - **Game phases**: `login → booting → playing` (also `transitioning` during home→work switch) — persisted in Zustand; login screen runs inside xterm.js for seamless UX
 
 For command system details (parser, registry, pipeline, effects), see the **commands skill**. For email delivery, see the **email skill**. For story flags and triggers, see the **narrative skill**. For save system, see the **save skill**. For SQL engine, see the **snowflake skill**.

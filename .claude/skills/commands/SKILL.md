@@ -39,6 +39,7 @@ interface ParsedCommand {
   args: string[];
   flags: Record<string, boolean>;  // -x, --flag
   raw: string;
+  rawArgs: string[];
 }
 
 interface CommandContext {
@@ -46,10 +47,14 @@ interface CommandContext {
   cwd: string;
   homeDir: string;
   activeComputer: ComputerId;
+  storyFlags?: StoryFlags;
   stdin?: string;               // Piped input from previous command
+  rawArgs?: string[];
+  isPiped?: boolean;
   commandHistory?: string[];    // For history command
   snowflakeState?: SnowflakeState;
-  snowflakeContext?: SnowflakeContext;
+  snowflakeContext?: SessionContext;
+  setSnowflakeState?: (state: SnowflakeState) => void;
 }
 
 interface CommandResult {
@@ -62,6 +67,8 @@ interface CommandResult {
   interactiveSession?: { ... }; // Enter Python REPL
   snowsqlSession?: { ... };     // Enter SnowSQL
   promptSession?: { ... };      // Enter inline prompt
+  sshSession?: { ... };         // Enter SSH session
+  chipSession?: { ... };        // Enter Chip assistant
   gameAction?: GameAction;      // save/load/newgame
   triggerEvents?: GameEvent[];  // Events for email/story processing
 }
@@ -114,7 +121,7 @@ Flag parsing: `-x` → `{ x: true }`, `-xyz` → `{ x: true, y: true, z: true }`
 
 ```ts
 interface ApplyContext {
-  parsedCommand: ParsedCommand;
+  parsedCommand: string;
   parsedArgs: string[];
   cwd: string;
   homeDir: string;
@@ -134,20 +141,19 @@ interface AppliedEffects {
   output: string;
   newFs?: VirtualFS;
   newCwd?: string;
-  startSession?: SessionToStart;  // "editor" | "snowsql" | "pythonRepl" | "prompt"
+  startSession?: SessionToStart;  // "editor" | "snowsql" | "pythonRepl" | "prompt" | "ssh" | "chip"
   gameAction?: GameAction;
   events: GameEvent[];
   storyFlagUpdates: StoryFlagUpdate[];
   newDeliveredEmailIds: string[];
   emailNotifications: number;
-  triggerTransition: boolean;
   suppressPrompt: boolean;
 }
 ```
 
 ### What `computeEffects` Does
 
-1. **Builds event list** — always adds `command_executed`; file-read commands (`cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`) auto-add `file_read` events per argument
+1. **Builds event list** — always adds `command_executed`; file-read commands (`cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`, `pdftotext`) auto-add `file_read` events per argument
 2. **Processes story flag triggers** — delegates to `checkStoryFlagTriggers()` for home or NexaCorp triggers
 3. **Checks email delivery** — calls `checkEmailDeliveries()` for each event
 4. **Detects transitions** — recognizes `nexacorp_followup` email read → `triggerTransition: true`
@@ -170,7 +176,14 @@ interface SessionResult {
 }
 ```
 
-Session types: editor (nano), snowsql (SnowSQL REPL), pythonRepl (Pyodide), prompt (inline choices).
+Session types: editor (nano), snowsql (SnowSQL REPL), pythonRepl (Pyodide), prompt (inline choices), ssh (SSH connection), chip (Chip assistant).
+
+## Command Availability (`availability.ts`)
+
+`isCommandAvailable(commandName, computer, storyFlags)` gates which commands are accessible:
+- **NexaCorp**: All commands available
+- **Home PC (initial)**: `INITIAL_HOME_COMMANDS` — nano, clear, help, save, load, newgame
+- **Home PC (unlocked)**: `HOME_COMMANDS` — ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, ssh (unlocked via `commands_unlocked` story flag)
 
 ## Adding a New Command
 

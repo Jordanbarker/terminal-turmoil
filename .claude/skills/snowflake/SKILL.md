@@ -28,6 +28,7 @@ src/engine/snowflake/
 ├── executor/
 │   ├── executor.ts                # Main dispatcher: LogicalPlan → QueryResult
 │   ├── evaluator.ts               # Expression eval: expr + row → value (NULL propagation, coercion)
+│   ├── resolve.ts                 # resolveThreePart() — 1/2/3-part name resolution via session context
 │   ├── joins.ts                   # Nested loop join
 │   ├── aggregation.ts             # GROUP BY / HAVING
 │   ├── window_exec.ts             # Window function frame execution

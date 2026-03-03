@@ -12,7 +12,9 @@ The narrative system tracks player discoveries via story flags, triggers email d
 ```
 src/engine/
 ├── narrative/
-│   ├── types.ts           # Chapter, Objective, Trigger types
+│   ├── types.ts           # Chapter, Objective, Trigger types (legacy)
+│   ├── chapters.ts        # ChapterDefinition, ObjectiveDefinition, ObjectiveCompletionCheck, CHAPTERS
+│   ├── objectives.ts      # resolveObjectives(), ResolvedObjective
 │   └── storyFlags.ts      # StoryFlagTrigger, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), checkStoryFlagTriggers()
 ├── assistant/
 │   └── types.ts           # ChipMessage, AssistantState types
@@ -93,7 +95,49 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `found_auth_backup` | `file_read` | `/var/log/auth.log.bak` | `true` |
 | `found_chip_directives` | `file_read` | `/opt/chip/.internal/directives.txt` | `true` |
 | `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
+| `read_onboarding` | `file_read` | `/home/{username}/Documents/onboarding.txt` | `true` |
+| `ran_dbt` | `command_executed` | detail: `dbt` | `true` |
+| `found_data_filtering` | `file_read` | `/home/{username}/nexacorp-analytics/models/marts/dim_employees.sql` | `true` |
 | `discovered_log_tampering` | — | — | `true` (special: detected when `diff` is run on `.bak` files) |
+
+## Objectives System
+
+### Types (`chapters.ts`)
+
+```ts
+type ObjectiveCompletionCheck =
+  | { source: "storyFlag"; key: string }
+  | { source: "completedObjective"; key: string }
+  | { source: "deliveredEmail"; key: string };
+
+interface ObjectiveDefinition {
+  id: string;
+  description: string;
+  check: ObjectiveCompletionCheck;
+  hidden?: boolean;         // Not shown until prerequisite met
+  prerequisite?: string;    // Objective ID that must complete first
+}
+
+interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDefinition[] }
+```
+
+### CHAPTERS
+
+- **chapter-1** ("New Beginnings"): 4 objectives — learn_commands, explore_home, check_email, accept_offer
+- **chapter-2** ("First Day"): 6 objectives — read_onboarding, explore_jchen, run_dbt, discover_tampering (hidden), find_directives (hidden), find_filtering (hidden)
+
+### Objective Resolution (`objectives.ts`)
+
+```ts
+interface ResolvedObjective { id: string; description: string; completed: boolean; visible: boolean }
+function resolveObjectives(chapter, storyFlags, completedObjectives, deliveredEmailIds): ResolvedObjective[]
+```
+
+Resolves each objective's completion state from story flags, completed objectives, or delivered emails. Hidden objectives become visible once their prerequisite is completed.
+
+### `commands_unlocked` Mechanism
+
+The `commands_unlocked` flag is set via the nano editor trigger (scrolling to the commands section of `terminal_notes.txt`), not via standard `StoryFlagTrigger`. It fires an `objective_completed` event with detail `"commands_unlocked"` which is handled in `useSessionRouter.ts`.
 
 ## Event Chain
 

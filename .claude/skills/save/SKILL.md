@@ -108,7 +108,7 @@ Zustand auto-save key: `terminal-turmoil-save`
 | `fs` (serialized) | Full filesystem tree — file edits, new files/dirs, email read/unread state |
 | `cwd` | Player's current working directory |
 | `username` | Player's chosen username |
-| `gamePhase` | `"login" \| "booting" \| "playing"` |
+| `gamePhase` | `"login" \| "booting" \| "playing" \| "transitioning"` |
 | `currentChapter` | Current narrative chapter ID |
 | `completedObjectives` | Array of completed objective IDs |
 | `deliveredEmailIds` | Which emails have been triggered (prevents re-delivery) |
