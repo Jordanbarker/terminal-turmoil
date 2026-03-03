@@ -67,15 +67,3 @@ export function getBootSequence(username: string) {
 ];
 }
 
-export const motd = [
-  "",
-  `  ${colorize("╔══════════════════════════════════════════════╗", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)} ${" ".repeat(8)}Welcome to ${colorize("NexaCorp Systems", ansi.bold + ansi.cyan)}          ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)}                                              ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)}  ${colorize('"Innovation through collaboration"', ansi.italic)}          ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)}                                              ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)}  ${colorize("Chip is online and ready to assist.", ansi.green)}         ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("║", ansi.bold + ansi.yellow)}  Type '${colorize("help", ansi.bold + ansi.green)}' for available commands.         ${colorize("║", ansi.bold + ansi.yellow)}`,
-  `  ${colorize("╚══════════════════════════════════════════════╝", ansi.bold + ansi.yellow)}`,
-  "",
-];

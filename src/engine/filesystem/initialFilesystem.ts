@@ -822,15 +822,8 @@ I have evidence that
   }),
   etc: dir("etc", {
     hostname: file("hostname", "nexacorp-ws01\n"),
-    motd: file("motd", `
-  ╔══════════════════════════════════════════════╗
-  ║         Welcome to NexaCorp Systems          ║
-  ║                                              ║
-  ║  "Innovation through collaboration"          ║
-  ║                                              ║
-  ║  Chip is online and ready to assist.         ║
-  ║  Type 'help' for available commands.         ║
-  ╚══════════════════════════════════════════════╝
+    motd: file("motd", `NexaCorp Internal Systems Portal v4.7.2
+Authorized access only. All activity is monitored.
 `),
   }),
   opt: dir("opt", {

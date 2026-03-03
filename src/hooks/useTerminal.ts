@@ -5,7 +5,7 @@ import { parseInput, parsePipeline } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
 import { colorize, ansi } from "../lib/ansi";
-import { motd, getSshConnectionSequence, getBootSequence } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence } from "../lib/ascii";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
@@ -114,7 +114,7 @@ export function useTerminal() {
             } else {
               clearInterval(bootInterval);
               term.writeln("");
-              motd.forEach((line) => term.writeln(line));
+              nexacorpLogo.forEach((line) => term.writeln(line));
               setGamePhase("playing");
             }
           }, BOOT_LINE_INTERVAL_MS);
@@ -193,7 +193,7 @@ export function useTerminal() {
             usernameRef.current = state.username;
             deliveredIdsRef.current = state.deliveredEmailIds;
             term.clear();
-            motd.forEach((line) => term.writeln(line));
+            nexacorpLogo.forEach((line) => term.writeln(line));
             term.write(colorize(`\r\nLoaded save from ${slotName}.\r\n`, ansi.cyan));
             term.write(getPrompt(state.cwd));
             return true;

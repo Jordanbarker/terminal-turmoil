@@ -33,13 +33,10 @@ export function getHomeEmailDefinitions(username: string): EmailDelivery[] {
 
 Haven't heard from you in a while. How's the job hunt? Any leads?
 
-I saw Prometheus posted a "Head of AI Strategy" role — no actual AI
-experience required of course. Classic. At least they're consistent.
+I saw Prometheus just filed for their "Head of AI Strategy" role. The head has no actual AI
+experience, of course. Classic.
 
-My offer still stands: I can put in a word at Crescendo if you want.
-It's not ML work but the team is solid and they actually pay on time.
-
-Let me know how you're doing. Beers this weekend?
+Let me know how you're doing. Want to meet up this weekend?
 
 — Alex
 `,
@@ -59,9 +56,9 @@ Let me know how you're doing. Beers this weekend?
 Based on your recent searches:
 
 1. AI Engineer — NexaCorp
-   Location: Portland, OR (On-site)
+   Location: Portland, OR (Remote)
    Salary: Competitive
-   Posted: 2 days ago
+   Posted: 6 days ago
    "Join our innovative team and work directly with our AI assistant
     platform. Immediate start."
 
@@ -94,29 +91,19 @@ Manage alerts: indeed.com/alerts
         subject: "Job Offer — AI Engineer at NexaCorp",
         body: `Hi there,
 
-Thanks for coming in last week. I really enjoyed our conversation and
-I think you'd be a great fit for the team.
-
-I'll cut right to it: we'd like to offer you the AI Engineer position
+I really enjoyed our conversation and I'll cut right to it: we'd like to offer you the AI Engineer position
 at NexaCorp. The details:
 
   Role:      AI Engineer
   Salary:    $135,000/year
   Start:     Monday, February 23
-  Location:  On-site (downtown Portland)
+  Location:  Remote
   Reports to: Me (Edward Torres, Head of Product)
 
-I know this is quick, but we're in a bit of a crunch. Our previous
-engineer left about three weeks ago and we need someone who can hit
-the ground running. Your background in ML systems is exactly what
-we need.
+I know this is quick, but we're in a bit of a crunch. 
+We need someone who can start right away and hit the ground running, and we think you're the right person for the job.
 
-The role is primarily working with our AI platform, Chip. It handles
-a lot of our client integrations and internal operations. You'd be
-the technical lead on keeping it running and expanding its capabilities.
-
-If you're interested, just reply to this email and we'll get everything
-set up for Monday.
+Reply to this email and we'll get everything set up for Monday.
 
 Looking forward to hearing from you!
 
@@ -138,29 +125,19 @@ Co-founder & Head of Product, NexaCorp
         subject: "Job Offer — AI Engineer at NexaCorp",
         body: `Hi there,
 
-Thanks for coming in last week. I really enjoyed our conversation and
-I think you'd be a great fit for the team.
-
-I'll cut right to it: we'd like to offer you the AI Engineer position
+I really enjoyed our conversation and I'll cut right to it: we'd like to offer you the AI Engineer position
 at NexaCorp. The details:
 
   Role:      AI Engineer
   Salary:    $135,000/year
   Start:     Monday, February 23
-  Location:  On-site (downtown Portland)
+  Location:  Remote
   Reports to: Me (Edward Torres, Head of Product)
 
-I know this is quick, but we're in a bit of a crunch. Our previous
-engineer left about three weeks ago and we need someone who can hit
-the ground running. Your background in ML systems is exactly what
-we need.
+I know this is quick, but we're in a bit of a crunch. 
+We need someone who can start right away and hit the ground running, and we think you're the right person for the job.
 
-The role is primarily working with our AI platform, Chip. It handles
-a lot of our client integrations and internal operations. You'd be
-the technical lead on keeping it running and expanding its capabilities.
-
-If you're interested, just reply to this email and we'll get everything
-set up for Monday.
+Reply to this email and we'll get everything set up for Monday.
 
 Looking forward to hearing from you!
 
@@ -196,15 +173,9 @@ months ago. Someone claiming to be a former NexaCorp employee said
 their AI system was "doing things nobody was auditing" and that
 the engineer who raised concerns was "encouraged to resign."
 
-Could be disgruntled ex-employees. Could be real. Just be careful.
-
-If you DO take it, keep your eyes open and don't sign any NDAs that
-prevent you from talking about what you see.
+Could be disgruntled ex-employees. Could be real.
 
 — Alex
-
-P.S. The Crescendo offer is still on the table. Less exciting but
-zero red flags on Glassdoor.
 `,
       },
       trigger: {
@@ -225,14 +196,6 @@ zero red flags on Glassdoor.
 
 Chip will send you remote access details — you'll be able to SSH
 into your workstation from home to get a head start.
-
-The office is at 1847 NW Flanders St, Suite 300. We're on the third
-floor. Doors open at 8, but honestly nobody shows up before 9.
-
-Chip will walk you through the onboarding process when you log in.
-It's pretty seamless — Chip handles most of the setup automatically.
-
-See you Monday!
 
 — Edward
 `,
@@ -260,11 +223,24 @@ To connect, run:
 
   ssh ${username}@nexacorp-ws01.nexacorp.internal
 
-Pro tip: you can add this to your ~/.ssh/config for a shortcut:
+Pro tip: you can set up a shortcut so you only have to type
+"ssh nexacorp" to connect. Here's how:
 
-  Host nexacorp
-    HostName nexacorp-ws01.nexacorp.internal
-    User ${username}
+  1. Your SSH config lives at ~/.ssh/config — the .ssh folder is
+     hidden because it starts with a dot. Use "ls -a" to see
+     hidden files and folders.
+
+  2. Open the config file in the nano editor:
+
+       nano ~/.ssh/config
+
+  3. Add the following lines:
+
+       Host nexacorp
+         HostName nexacorp-ws01.nexacorp.internal
+         User ${username}
+
+  4. Save with Ctrl+O, then exit with Ctrl+X.
 
 Then just type: ssh nexacorp
 
@@ -275,8 +251,7 @@ I'll be here to help once you're logged in. Looking forward to
 working together!
 
 — Chip
-  Collaborative Helper for Internal Processes
-  NexaCorp AI Platform v3.2.1
+  NexaCorp AI Platform
 `,
       },
       trigger: { type: "after_objective", objectiveId: "accepted_nexacorp" },

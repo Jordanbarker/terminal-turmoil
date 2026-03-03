@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getBootSequence, motd } from "../lib/ascii";
+import { nexacorpLogo, getBootSequence } from "../lib/ascii";
 import { isBackspace, isPrintable, CTRL_C } from "../engine/terminal/keyCodes";
 import { PLAYER } from "../state/types";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
@@ -39,7 +39,7 @@ export function useLoginSequence() {
         } else {
           clearInterval(interval);
           term.writeln("");
-          motd.forEach((line) => term.writeln(line));
+          nexacorpLogo.forEach((line) => term.writeln(line));
           setGamePhase("playing");
         }
       }, BOOT_LINE_INTERVAL_MS);

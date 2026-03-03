@@ -6,7 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useGameStore } from "../../state/gameStore";
-import { motd, homeWelcome, UNLOCK_BOX } from "../../lib/ascii";
+import { nexacorpLogo, homeWelcome, UNLOCK_BOX } from "../../lib/ascii";
 
 export default function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,7 +79,7 @@ export default function Terminal() {
 
     if (gamePhaseRef.current === "playing") {
       initializedAsPlaying.current = true;
-      const splash = activeComputerRef.current === "home" ? homeWelcome : motd;
+      const splash = activeComputerRef.current === "home" ? homeWelcome : nexacorpLogo;
       splash.forEach((line) => term.writeln(line));
 
       // Auto-open nano on first game start (home PC only)
