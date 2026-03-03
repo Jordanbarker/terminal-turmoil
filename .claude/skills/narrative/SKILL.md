@@ -1,6 +1,6 @@
 ---
 name: narrative
-description: "Story flags, triggers, chapter/objective system, investigation paths, Chip assistant, and the home→NexaCorp transition. Use this skill whenever modifying story progression, adding/changing story flags, working on investigation triggers, modifying Chip's behavior, or touching files under src/engine/narrative/, src/engine/assistant/, or story-flag-related code in src/engine/commands/applyResult.ts."
+description: "Story flags, triggers, chapter/objective system, investigation paths, Chip assistant, and the home→NexaCorp transition. Use this skill whenever modifying story progression, adding/changing story flags, working on investigation triggers, or touching files under src/engine/narrative/, src/engine/assistant/, or story-flag-related code in src/engine/commands/applyResult.ts."
 ---
 
 # Narrative System

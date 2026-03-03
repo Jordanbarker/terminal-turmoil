@@ -13,12 +13,16 @@ const sort: CommandHandler = (args, flags, ctx) => {
   if (fileArgs.length === 0 && ctx.stdin !== undefined) {
     content = ctx.stdin;
   } else if (fileArgs.length > 0) {
-    const absPath = resolvePath(fileArgs[0], ctx.cwd, ctx.homeDir);
-    const result = ctx.fs.readFile(absPath);
-    if (result.error) {
-      return { output: result.error.replace("cat:", "sort:") };
+    const parts: string[] = [];
+    for (const file of fileArgs) {
+      const absPath = resolvePath(file, ctx.cwd, ctx.homeDir);
+      const result = ctx.fs.readFile(absPath);
+      if (result.error) {
+        return { output: result.error.replace("cat:", "sort:") };
+      }
+      parts.push(result.content ?? "");
     }
-    content = result.content ?? "";
+    content = parts.join("\n");
   } else {
     return { output: "sort: missing file operand" };
   }

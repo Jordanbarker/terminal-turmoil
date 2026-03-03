@@ -11,7 +11,7 @@ export interface StoryFlagTrigger {
 
 export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   return [
-    { event: "file_read", path: `/home/${username}/Desktop/resume_final_v3.pdf`, flag: "read_resume", value: true },
+    { event: "file_read", path: `/home/${username}/Downloads/resume_final_v3.pdf`, flag: "read_resume", value: true },
     { event: "file_read", path: `/home/${username}/Documents/cover_letter_nexacorp.txt`, flag: "read_cover_letter", value: true },
     { event: "file_read", path: `/home/${username}/.private/diary.txt`, flag: "read_diary", value: true },
     { event: "file_read", path: `/home/${username}/Desktop/job_search_notes.txt`, flag: "read_job_notes", value: true },
@@ -19,7 +19,7 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "file_read", path: `/home/${username}/scripts/data/glassdoor_reviews.json`, flag: "research_depth", value: "deep" },
     { event: "file_read", path: `/home/${username}/scripts/auto_apply.py`, flag: "read_auto_apply", value: true },
     { event: "file_read", path: `/home/${username}/.bashrc`, flag: "read_bashrc", value: true },
-    { event: "directory_visit", path: `/home/${username}/Downloads/papers`, flag: "pdftotext_unlocked", value: true },
+    { event: "directory_visit", path: `/home/${username}/Downloads`, flag: "pdftotext_unlocked", value: true },
   ];
 }
 

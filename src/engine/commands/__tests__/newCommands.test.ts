@@ -596,6 +596,22 @@ describe("sort", () => {
     const result = execute("sort", [], {}, ctx(undefined, { stdin: "c\na\nb" }));
     expect(result.output).toBe("a\nb\nc");
   });
+
+  it("concatenates and sorts multiple files", () => {
+    const result = execute("sort", ["data.txt", "notes.txt"], {}, ctx());
+    const lines = result.output.split("\n");
+    // Should contain lines from both files, sorted
+    expect(lines).toContain("apple");
+    expect(lines).toContain("hello world");
+    expect(lines).toContain("foo bar");
+    // First line alphabetically should be apple
+    expect(lines[0]).toBe("apple");
+  });
+
+  it("returns error when a file is missing in multi-file list", () => {
+    const result = execute("sort", ["data.txt", "missing.txt"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+  });
 });
 
 // --- uniq ---
@@ -1269,6 +1285,11 @@ describe("tree (additional)", () => {
   it("excludes hidden files", () => {
     const result = execute("tree", ["."], {}, ctx());
     expect(stripAnsi(result.output)).not.toContain(".hidden");
+  });
+
+  it("shows hidden files with -a flag", () => {
+    const result = execute("tree", ["."], { a: true }, ctx());
+    expect(stripAnsi(result.output)).toContain(".hidden");
   });
 });
 

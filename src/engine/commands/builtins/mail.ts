@@ -15,6 +15,21 @@ import { PromptOption, PromptSessionInfo } from "../../prompt/types";
 import { GameEvent } from "../../mail/delivery";
 import { PLAYER } from "../../../state/types";
 
+/** Derive a reply date ~8–15 minutes after the original email's date. */
+function deriveReplyDate(originalDate: string): string {
+  const parsed = new Date(originalDate);
+  if (isNaN(parsed.getTime())) {
+    // Fallback: use a fixed narrative date
+    return "Mon, 24 Feb 2026 09:00:00";
+  }
+  const offsetMs = (8 + Math.floor(Math.random() * 8)) * 60 * 1000;
+  const reply = new Date(parsed.getTime() + offsetMs);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${days[reply.getUTCDay()]}, ${pad(reply.getUTCDate())} ${months[reply.getUTCMonth()]} ${reply.getUTCFullYear()} ${pad(reply.getUTCHours())}:${pad(reply.getUTCMinutes())}:${pad(reply.getUTCSeconds())}`;
+}
+
 function formatInbox(entries: MailEntry[], mailDir: string, headerLabel: string): string {
   const unreadCount = entries.filter((e) => e.dir === "new").length;
   const total = entries.length;
@@ -108,7 +123,7 @@ function buildPromptSession(
       id: `reply_${Date.now()}`,
       from: `${username}@${fromDomain}`,
       to: entry.parsed.from,
-      date: new Date().toUTCString(),
+      date: deriveReplyDate(entry.parsed.date),
       subject: `Re: ${entry.parsed.subject}`,
       body: opt.replyBody,
     },
@@ -133,7 +148,7 @@ const mail: CommandHandler = (args, flags, ctx) => {
     const content = [
       `From: ${username}@${fromDomain}`,
       `To: ${recipient}`,
-      `Date: ${new Date().toUTCString()}`,
+      `Date: ${deriveReplyDate("Mon, 24 Feb 2026 08:30:00")}`,
       `Subject: ${subject}`,
       "",
       "(message body)",

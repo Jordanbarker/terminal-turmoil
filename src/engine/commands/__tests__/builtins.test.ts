@@ -136,6 +136,38 @@ describe("ls", () => {
     const result = execute("ls", ["docs"], {}, c);
     expect(result.output).toContain("readme.md");
   });
+
+  it("shows filename when given a single file arg", () => {
+    const result = execute("ls", ["notes.txt"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("shows long format for a single file arg", () => {
+    const result = execute("ls", ["notes.txt"], { l: true }, ctx());
+    expect(result.output).toContain("rw-r--r--");
+    expect(result.output).toContain("notes.txt");
+  });
+
+  it("shows file then dir with header for multiple args", () => {
+    const result = execute("ls", ["notes.txt", "docs"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("docs:");
+    expect(result.output).toContain("readme.md");
+  });
+
+  it("shows headers for multiple directory args", () => {
+    const result = execute("ls", ["docs", "/etc"], {}, ctx());
+    expect(result.output).toContain("docs:");
+    expect(result.output).toContain("/etc:");
+    expect(result.output).toContain("readme.md");
+    expect(result.output).toContain("readonly.txt");
+  });
+
+  it("shows error and still lists valid target", () => {
+    const result = execute("ls", ["/nonexistent", "docs"], {}, ctx());
+    expect(result.output).toContain("No such file or directory");
+    expect(result.output).toContain("readme.md");
+  });
 });
 
 describe("cd", () => {

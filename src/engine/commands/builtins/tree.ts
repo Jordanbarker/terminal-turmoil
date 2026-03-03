@@ -10,10 +10,11 @@ function buildTree(
   dirPath: string,
   prefix: string,
   counts: { dirs: number; files: number },
+  showAll: boolean,
 ): string[] {
   const { entries } = fs.listDirectory(dirPath);
   const sorted = entries
-    .filter((e) => !e.hidden)
+    .filter((e) => showAll || !e.hidden)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const lines: string[] = [];
@@ -28,7 +29,7 @@ function buildTree(
       counts.dirs++;
       lines.push(prefix + connector + colorize(entry.name, ansi.bold, ansi.blue));
       const childPath = dirPath === "/" ? `/${entry.name}` : `${dirPath}/${entry.name}`;
-      lines.push(...buildTree(fs, childPath, prefix + childPrefix, counts));
+      lines.push(...buildTree(fs, childPath, prefix + childPrefix, counts, showAll));
     } else {
       counts.files++;
       lines.push(prefix + connector + entry.name);
@@ -38,7 +39,7 @@ function buildTree(
   return lines;
 }
 
-const tree: CommandHandler = (args, _flags, ctx) => {
+const tree: CommandHandler = (args, flags, ctx) => {
   const target = args[0] || ".";
   const absPath = resolvePath(target, ctx.cwd, ctx.homeDir);
   const node = ctx.fs.getNode(absPath);
@@ -51,9 +52,10 @@ const tree: CommandHandler = (args, _flags, ctx) => {
     return { output: target };
   }
 
+  const showAll = !!flags["a"];
   const counts = { dirs: 0, files: 0 };
   const lines = [colorize(target, ansi.bold, ansi.blue)];
-  lines.push(...buildTree(ctx.fs, absPath, "", counts));
+  lines.push(...buildTree(ctx.fs, absPath, "", counts, showAll));
   lines.push("");
   lines.push(`${counts.dirs} directories, ${counts.files} files`);
 
