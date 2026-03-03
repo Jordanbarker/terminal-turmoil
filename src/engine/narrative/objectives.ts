@@ -5,6 +5,7 @@ export interface ResolvedObjective {
   id: string;
   description: string;
   completed: boolean;
+  failed: boolean;
   visible: boolean;
   optional: boolean;
 }
@@ -47,10 +48,20 @@ export function resolveObjectives(
     if (obj.hidden && obj.prerequisite) {
       visible = !!completionMap.get(obj.prerequisite);
     }
+    const failed = obj.failCheck
+      ? isCompleted(
+          { ...obj, check: obj.failCheck },
+          storyFlags,
+          completedObjectives,
+          deliveredEmailIds
+        )
+      : false;
+
     return {
       id: obj.id,
       description: obj.description,
       completed: !!completionMap.get(obj.id),
+      failed,
       visible,
       optional: !!obj.optional,
     };

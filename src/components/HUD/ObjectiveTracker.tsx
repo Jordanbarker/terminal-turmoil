@@ -56,10 +56,12 @@ export default function ObjectiveTracker() {
                 className={
                   obj.completed
                     ? "text-[#3fb950] line-through opacity-50"
-                    : "text-[#c9d1d9]"
+                    : obj.failed
+                      ? "text-red-500"
+                      : "text-[#c9d1d9]"
                 }
               >
-                {obj.completed ? "[x]" : "[ ]"} {obj.description}
+                {obj.completed ? "[x]" : obj.failed ? "[!]" : "[ ]"} {obj.description}
               </li>
             ))}
             {optional.length > 0 && (
@@ -71,10 +73,12 @@ export default function ObjectiveTracker() {
                     className={
                       obj.completed
                         ? "text-[#3fb950] line-through opacity-50"
-                        : "text-[#c9d1d9]"
+                        : obj.failed
+                          ? "text-red-500"
+                          : "text-[#c9d1d9]"
                     }
                   >
-                    {obj.completed ? "[x]" : "[ ]"} {obj.description}
+                    {obj.completed ? "[x]" : obj.failed ? "[!]" : "[ ]"} {obj.description}
                   </li>
                 ))}
               </>

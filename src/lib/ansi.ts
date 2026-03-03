@@ -32,3 +32,51 @@ export const ansi = {
 export function colorize(text: string, ...codes: string[]): string {
   return codes.join("") + text + ansi.reset;
 }
+
+const CSV_PALETTE = [
+  ansi.red,
+  ansi.yellow,
+  ansi.green,
+  ansi.cyan,
+  ansi.blue,
+  ansi.magenta,
+  ansi.brightRed,
+  ansi.brightGreen,
+];
+
+function parseCsvFields(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if (ch === "," && !inQuotes) {
+      fields.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current);
+  return fields;
+}
+
+export function colorizeCsv(content: string): string {
+  const lines = content.split("\n");
+  return lines
+    .map((line, lineIdx) => {
+      if (line === "") return line;
+      const fields = parseCsvFields(line);
+      const colored = fields.map((field, i) => {
+        const color = CSV_PALETTE[i % CSV_PALETTE.length];
+        return lineIdx === 0
+          ? colorize(field, ansi.bold, color)
+          : colorize(field, color);
+      });
+      return colored.join(",");
+    })
+    .join("\n");
+}

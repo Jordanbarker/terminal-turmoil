@@ -111,6 +111,30 @@ describe("resolveObjectives", () => {
     expect(hidden?.completed).toBe(true);
   });
 
+  it("marks objective as failed when failCheck is satisfied", () => {
+    const chapterWithFail: ChapterDefinition = {
+      id: "fail-chapter",
+      title: "Fail Chapter",
+      objectives: [
+        {
+          id: "failable_obj",
+          description: "Failable objective",
+          check: { source: "completedObjective", key: "success" },
+          failCheck: { source: "completedObjective", key: "failed" },
+        },
+      ],
+    };
+    const result = resolveObjectives(chapterWithFail, {}, ["failed"], []);
+    const obj = result.find((o) => o.id === "failable_obj");
+    expect(obj?.failed).toBe(true);
+    expect(obj?.completed).toBe(false);
+  });
+
+  it("does not mark objective as failed when failCheck is not satisfied", () => {
+    const result = resolveObjectives(testChapter, {}, [], []);
+    expect(result.find((o) => o.id === "flag_obj")?.failed).toBe(false);
+  });
+
   it("returns all objectives in order", () => {
     const result = resolveObjectives(testChapter, {}, [], []);
     expect(result.map((o) => o.id)).toEqual([

@@ -211,6 +211,9 @@ export function useTerminal() {
       for (const update of effects.storyFlagUpdates) {
         setStoryFlag(update.flag, update.value);
         storyFlagsRef.current = { ...storyFlagsRef.current, [update.flag]: update.value };
+        if (update.flag === "pdftotext_unlocked") {
+          useGameStore.getState().addToast("pdftotext command unlocked!");
+        }
       }
 
       // Apply email deliveries

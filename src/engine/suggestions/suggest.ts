@@ -41,7 +41,7 @@ export function getSuggestion(
   const spaceIdx = input.indexOf(" ");
   if (spaceIdx !== -1) {
     const cmd = input.slice(0, spaceIdx);
-    const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree"];
+    const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree", "pdftotext"];
     if (pathCommands.includes(cmd)) {
       const partial = input.slice(spaceIdx + 1);
       const completed = completePath(partial, ctx, cmd === "cd");

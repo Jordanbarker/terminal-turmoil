@@ -20,12 +20,16 @@ describe("isCommandAvailable", () => {
   });
 
   describe("home computer — after unlock", () => {
-    const flags = { commands_unlocked: true };
+    const flags = { commands_unlocked: true, pdftotext_unlocked: true };
 
     it("allows all home commands after unlock", () => {
       for (const cmd of HOME_COMMANDS) {
         expect(isCommandAvailable(cmd, "home", flags)).toBe(true);
       }
+    });
+
+    it("blocks pdftotext without pdftotext_unlocked flag", () => {
+      expect(isCommandAvailable("pdftotext", "home", { commands_unlocked: true })).toBe(false);
     });
 
     it("blocks commands not in the home set", () => {

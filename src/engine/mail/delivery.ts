@@ -6,7 +6,8 @@ import { ComputerId, PLAYER } from "../../state/types";
 export type GameEvent =
   | { type: "command_executed"; detail: string }
   | { type: "file_read"; detail: string }
-  | { type: "objective_completed"; detail: string };
+  | { type: "objective_completed"; detail: string }
+  | { type: "directory_visit"; detail: string };
 
 export function checkEmailDeliveries(
   fs: VirtualFS,

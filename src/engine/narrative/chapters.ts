@@ -7,6 +7,7 @@ export interface ObjectiveDefinition {
   id: string;
   description: string;
   check: ObjectiveCompletionCheck;
+  failCheck?: ObjectiveCompletionCheck;
   hidden?: boolean;
   prerequisite?: string;
   optional?: boolean;
@@ -41,8 +42,9 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "accept_offer",
-        description: "Reply to the job offer",
+        description: "Accept the job offer",
         check: { source: "completedObjective", key: "accepted_nexacorp" },
+        failCheck: { source: "completedObjective", key: "rejected_nexacorp_final" },
       },
     ],
   },

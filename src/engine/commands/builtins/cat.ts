@@ -1,6 +1,7 @@
 import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
+import { colorizeCsv } from "../../../lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
 const cat: CommandHandler = (args, _flags, ctx) => {
@@ -20,7 +21,7 @@ const cat: CommandHandler = (args, _flags, ctx) => {
     if (result.error) {
       outputs.push(result.error);
     } else if (result.content !== undefined) {
-      outputs.push(result.content);
+      outputs.push(arg.endsWith(".csv") ? colorizeCsv(result.content) : result.content);
     }
   }
 

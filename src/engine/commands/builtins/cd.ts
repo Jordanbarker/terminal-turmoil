@@ -12,7 +12,11 @@ const cd: CommandHandler = (args, _flags, ctx) => {
     return { output: result.error };
   }
 
-  return { output: "", newCwd: absolutePath };
+  return {
+    output: "",
+    newCwd: absolutePath,
+    triggerEvents: [{ type: "directory_visit" as const, detail: absolutePath }],
+  };
 };
 
 register("cd", cd, "Change the current directory", HELP_TEXTS.cd);

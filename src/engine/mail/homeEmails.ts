@@ -38,8 +38,8 @@ const persuasion1ReplyOptions: ReplyOption[] = [
 
 const persuasion2ReplyOptions: ReplyOption[] = [
   {
-    label: "Fine, I'll give it a shot",
-    replyBody: `Hi Edward,\n\nOkay, you win. I can't say no to a personal appeal like that.\nI'll start Monday — but if things get weird, I'm out.\n\nSee you then.`,
+    label: "Okay, I'll give it a shot",
+    replyBody: `Hi Edward,\n\nOkay, you win. I can't say no to a personal appeal like that.\nI'll start Monday.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
       { type: "objective_completed", detail: "edward_impression:reluctant" },
@@ -227,18 +227,14 @@ Could be disgruntled ex-employees. Could be real.
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 11:15:00",
         subject: "Re: Job Offer — Hear me out",
-        body: `Hey, I totally understand — no pressure. But before you close the door,
+        body: `I totally understand — no pressure. But before you close the door,
 I wanted to throw a couple things out there:
 
-  - We're bumping the offer to $145K + a $5K signing bonus
+  - We're bumping the offer to $155K + a $5K signing bonus
   - Fully remote, flexible hours — you set your own schedule
   - The AI stack is genuinely interesting. You'd have a lot of autonomy
 
-I know the timeline is aggressive, and I get that it's a red flag. Honestly,
-we're just in a tough spot after our last engineer left. I'm not trying to
-rush you into something bad — I just think you'd be a great fit.
-
-No hard feelings either way. Just wanted to make sure you had the full picture.
+I know the timeline is aggressive, but I think you'd be a great fit. Let me know if you would reconsider.
 
 — Edward
 `,
@@ -258,19 +254,14 @@ No hard feelings either way. Just wanted to make sure you had the full picture.
         body: `Okay, I hear you — and I promise this is my last email about it.
 
 Look, I'll be honest with you. We're a small team and we're struggling.
-Our AI platform is live, customers depend on it, and right now I'm the
-only one who can even log into the engineering systems. I'm a product guy,
-not an engineer.
+Our AI platform is live, customers depend on it. 
 
-I looked at your resume, your projects, your background — you're exactly
-the person we need. Not just any engineer. You.
+You're exactly the person we need.
 
-$150K, $10K signing bonus, and I'll personally make sure you have
-everything you need to succeed. If it doesn't work out after a month,
-no hard feelings.
+$180K, $10K signing bonus, and I'll personally make sure you have
+everything you need to succeed. 
 
-I know I'm asking a lot from someone I barely know. But sometimes you
-just have to take a chance on people.
+This is our final offer, let me know if you have any questions.
 
 — Edward
 `,
