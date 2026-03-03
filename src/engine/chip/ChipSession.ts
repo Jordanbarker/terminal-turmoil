@@ -35,8 +35,8 @@ export class ChipSession implements ISession {
     const width = this.getWidth();
     const header = renderHeader(width);
     const separator = renderSeparator(width);
-    this.terminal.write(`\x1b[?25l\r\n${header}\r\n${separator}\r\n`);
-    this.drawMenu(this.currentPrompt);
+    const menu = this.buildMenuOutput(this.currentPrompt);
+    this.terminal.write(`\x1b[?25l\r\n${header}\r\n${separator}\r\n${menu}`);
   }
 
   handleInput(data: string): SessionResult | null {
@@ -77,8 +77,8 @@ export class ChipSession implements ISession {
 
       // Ctrl+C or q — exit
       if (code === CTRL_C || char === "q") {
-        this.clearMenu();
-        this.terminal.write(colorize("See you later!", ansi.cyan) + "\r\n\x1b[?25h");
+        const clear = this.buildClearSequence();
+        this.terminal.write(clear + colorize("See you later!", ansi.cyan) + "\r\n\x1b[?25h");
         return {
           type: "exit",
           triggerEvents:
@@ -119,9 +119,9 @@ export class ChipSession implements ISession {
 
     // Exit option
     if (item.id === "exit") {
-      this.clearMenu();
+      const clear = this.buildClearSequence();
       this.terminal.write(
-        colorize("Goodbye! Remember, I'm always just a command away.", ansi.cyan) + "\r\n\x1b[?25h"
+        clear + colorize("Goodbye! Remember, I'm always just a command away.", ansi.cyan) + "\r\n\x1b[?25h"
       );
       return {
         type: "exit",
@@ -137,42 +137,42 @@ export class ChipSession implements ISession {
       this.collectedEvents.push(...item.triggerEvents);
     }
 
-    // Clear current menu, print exchange, draw new menu
-    this.clearMenu();
+    // Single write: clear menu + exchange + new menu
+    const clear = this.buildClearSequence();
     const width = this.getWidth();
     const userMsg = renderUserMessage(item.label);
     const response = renderChipResponse(item.response, width);
     const separator = renderSeparator(width);
-    this.terminal.write(`\r\n${userMsg}\r\n\r\n${response}\r\n\r\n${separator}\r\n`);
-
     this.selectedIndex = 0;
     this.currentPrompt = "What else can I help with?";
-    this.drawMenu(this.currentPrompt);
+    const menu = this.buildMenuOutput(this.currentPrompt);
+    this.terminal.write(`${clear}\r\n${userMsg}\r\n\r\n${response}\r\n\r\n${separator}\r\n${menu}`);
     return null;
   }
 
-  private drawMenu(prompt: string): void {
+  private buildMenuOutput(prompt: string): string {
     const width = this.getWidth();
     const menu = renderMenu(this.menuItems, this.selectedIndex, prompt);
     const footer = renderFooter(width, this.bypassOn);
-    const output = `${menu}\r\n${footer}`;
-    this.terminal.write(output);
     // Count lines to move up from last line to first for redraw:
     // items (n) + border (1) + bypass status (1)
     this.menuLineCount = this.menuItems.length + 2;
+    return `${menu}\r\n${footer}`;
   }
 
-  private clearMenu(): void {
+  private buildClearSequence(): string {
     if (this.menuLineCount > 0) {
-      // Move cursor up and clear to end of screen
-      this.terminal.write(`\x1b[${this.menuLineCount}A\r\x1b[J`);
+      const seq = `\x1b[${this.menuLineCount}A\r\x1b[J`;
       this.menuLineCount = 0;
+      return seq;
     }
+    return "";
   }
 
   private redrawMenu(): void {
-    this.clearMenu();
-    this.drawMenu(this.currentPrompt);
+    const clear = this.buildClearSequence();
+    const menu = this.buildMenuOutput(this.currentPrompt);
+    this.terminal.write(clear + menu);
   }
 
   private getWidth(): number {
