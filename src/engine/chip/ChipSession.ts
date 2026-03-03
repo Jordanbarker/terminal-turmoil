@@ -7,6 +7,7 @@ import {
   renderSeparator,
   renderMenu,
   renderFooter,
+  renderHintLine,
   renderUserMessage,
   renderChipResponse,
 } from "./render";
@@ -24,11 +25,20 @@ export class ChipSession implements ISession {
   private escBuffer = "";
   private menuLineCount = 0;
   private currentPrompt = "How can I help you today?";
+  private usedItemIds = new Set<string>();
+  private expanded = false;
+  private onUsedTopicsChange?: (topics: string[]) => void;
 
-  constructor(terminal: Terminal, info: ChipSessionInfo) {
+  constructor(terminal: Terminal, info: ChipSessionInfo, onUsedTopicsChange?: (topics: string[]) => void) {
     this.terminal = terminal;
     this.info = info;
     this.menuItems = getMenuItems(info.storyFlags);
+    this.onUsedTopicsChange = onUsedTopicsChange;
+
+    const saved = info.storyFlags.used_chip_topics;
+    if (typeof saved === "string" && saved) {
+      saved.split(",").forEach((id) => this.usedItemIds.add(id));
+    }
   }
 
   enter(): void {
@@ -37,6 +47,15 @@ export class ChipSession implements ISession {
     const separator = renderSeparator(width);
     const menu = this.buildMenuOutput(this.currentPrompt);
     this.terminal.write(`\x1b[?25l\r\n${header}\r\n${separator}\r\n${menu}`);
+  }
+
+  private getVisibleItems(): ChipMenuItem[] {
+    if (this.expanded || this.usedItemIds.size === 0) {
+      return this.menuItems;
+    }
+    return this.menuItems.filter(
+      (item) => !this.usedItemIds.has(item.id)
+    );
   }
 
   handleInput(data: string): SessionResult | null {
@@ -65,7 +84,7 @@ export class ChipSession implements ISession {
         }
         if (char === "B") {
           // Down arrow
-          if (this.selectedIndex < this.menuItems.length - 1) {
+          if (this.selectedIndex < this.getVisibleItems().length - 1) {
             this.selectedIndex++;
             this.redrawMenu();
           }
@@ -88,10 +107,20 @@ export class ChipSession implements ISession {
         };
       }
 
+      // a — toggle used items visibility
+      if (char === "a") {
+        if (this.usedItemIds.size > 0) {
+          this.expanded = !this.expanded;
+          this.selectedIndex = 0;
+          this.redrawMenu();
+        }
+        continue;
+      }
+
       // Number keys — jump to item
       if (char >= "1" && char <= "9") {
         const idx = parseInt(char, 10) - 1;
-        if (idx < this.menuItems.length) {
+        if (idx < this.getVisibleItems().length) {
           this.selectedIndex = idx;
           return this.selectCurrent();
         }
@@ -115,7 +144,8 @@ export class ChipSession implements ISession {
   }
 
   private selectCurrent(): SessionResult | null {
-    const item = this.menuItems[this.selectedIndex];
+    const visibleItems = this.getVisibleItems();
+    const item = visibleItems[this.selectedIndex];
 
     // Exit option
     if (item.id === "exit") {
@@ -132,6 +162,10 @@ export class ChipSession implements ISession {
       };
     }
 
+    // Mark as used (never mark "exit")
+    this.usedItemIds.add(item.id);
+    this.onUsedTopicsChange?.([...this.usedItemIds]);
+
     // Collect trigger events
     if (item.triggerEvents) {
       this.collectedEvents.push(...item.triggerEvents);
@@ -144,6 +178,7 @@ export class ChipSession implements ISession {
     const response = renderChipResponse(item.response, width);
     const separator = renderSeparator(width);
     this.selectedIndex = 0;
+    this.expanded = false;
     this.currentPrompt = "What else can I help with?";
     const menu = this.buildMenuOutput(this.currentPrompt);
     this.terminal.write(`${clear}\r\n${userMsg}\r\n\r\n${response}\r\n\r\n${separator}\r\n${menu}`);
@@ -152,11 +187,18 @@ export class ChipSession implements ISession {
 
   private buildMenuOutput(prompt: string): string {
     const width = this.getWidth();
-    const menu = renderMenu(this.menuItems, this.selectedIndex, prompt);
+    const visibleItems = this.getVisibleItems();
+    const usedIds = this.expanded ? this.usedItemIds : undefined;
+    const menu = renderMenu(visibleItems, this.selectedIndex, prompt, usedIds);
     const footer = renderFooter(width, this.bypassOn);
+    const hasHint = this.usedItemIds.size > 0;
     // Count lines to move up from last line to first for redraw:
-    // items (n) + border (1) + bypass status (1)
-    this.menuLineCount = this.menuItems.length + 2;
+    // items (n) + hint (0 or 1) + border (1) + bypass status (1)
+    this.menuLineCount = visibleItems.length + (hasHint ? 1 : 0) + 2;
+    if (hasHint) {
+      const hint = renderHintLine(this.usedItemIds.size, this.expanded);
+      return `${menu}\r\n${hint}\r\n${footer}`;
+    }
     return `${menu}\r\n${footer}`;
   }
 

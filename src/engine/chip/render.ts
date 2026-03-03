@@ -22,18 +22,32 @@ export function renderSeparator(width: number): string {
 export function renderMenu(
   items: ChipMenuItem[],
   selectedIndex: number,
-  prompt: string
+  prompt: string,
+  usedIds?: Set<string>
 ): string {
   const lines: string[] = [prompt];
   for (let i = 0; i < items.length; i++) {
     const marker = i === selectedIndex ? colorize(" \u276F ", ansi.cyan + ansi.bold) : "   ";
     const num = `${i + 1}.`;
-    const label = i === selectedIndex
-      ? colorize(`${num} ${items[i].label}`, ansi.bold)
-      : `${num} ${items[i].label}`;
+    const isUsed = usedIds?.has(items[i].id);
+    let label: string;
+    if (i === selectedIndex) {
+      label = colorize(`${num} ${items[i].label}`, isUsed ? ansi.dim + ansi.bold : ansi.bold);
+    } else if (isUsed) {
+      label = colorize(`${num} ${items[i].label}`, ansi.dim);
+    } else {
+      label = `${num} ${items[i].label}`;
+    }
     lines.push(`${marker}${label}`);
   }
   return lines.join("\r\n");
+}
+
+export function renderHintLine(count: number, expanded: boolean): string {
+  const text = expanded
+    ? "── hide previous (a) ──"
+    : `── ${count} previous topic${count === 1 ? "" : "s"} (a) ──`;
+  return colorize(`   ${text}`, ansi.dim);
 }
 
 export function renderFooter(width: number, bypassOn: boolean): string {

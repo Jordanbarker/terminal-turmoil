@@ -228,13 +228,17 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         sessionTypeRef.current = "ssh";
         sshSession.enter();
       } else if (session.type === "chip") {
-        const chipSession = new ChipSession(term, session.info);
+        const chipSession = new ChipSession(term, session.info, (topics) => {
+          const value = topics.join(",");
+          setStoryFlag("used_chip_topics", value);
+          storyFlagsRef.current = { ...storyFlagsRef.current, used_chip_topics: value };
+        });
         sessionRef.current = chipSession;
         sessionTypeRef.current = "chip";
         chipSession.enter();
       }
     },
-    [setFs, writePrompt, fsRef, usernameRef, getEditorTrigger]
+    [setFs, setStoryFlag, writePrompt, fsRef, usernameRef, storyFlagsRef, getEditorTrigger]
   );
 
   return { hasActiveSession, routeInput, startSession };
