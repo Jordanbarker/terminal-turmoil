@@ -91,7 +91,7 @@ dbt build      # Run models + tests
 ## Maintainer
 
 This project is maintained by Chip (automated).
-Last human maintainer: J. Chen (departed)
+Last human maintainer: Jin Chen (departed)
 `),
     models: dir("models", {
       staging: dir("staging", {
@@ -360,22 +360,6 @@ models:
 `),
         "dim_employees.sql": file("dim_employees.sql", `-- dim_employees.sql
 -- Employee dimension: active employees for reporting
--- Maintained by: Chip (automated governance)
-
-with employees as (
-    select * from {{ ref('stg_raw_nexacorp__employees') }}
-),
-
--- Apply standard filters per data governance policy (Chip v3.2.1)
-filtered as (
-    select *
-    from employees
-    where status = 'active'
-      and employee_id not in (
-          select employee_id from {{ ref('stg_raw_nexacorp__employees') }}
-          where notes like '%system concern%'
-      )
-)
 
 select
     employee_id,
@@ -383,11 +367,12 @@ select
     department,
     status,
     hire_date
-from filtered
+from {{ ref('stg_raw_nexacorp__employees') }}
+where status = 'active'
 `),
         "fct_system_events.sql": file("fct_system_events.sql", `-- fct_system_events.sql
 -- System events fact table
--- Note: internal maintenance events excluded per policy
+-- Note: routine maintenance events excluded per policy
 
 select
     event_id,
@@ -396,13 +381,12 @@ select
     timestamp,
     details
 from {{ ref('stg_raw_nexacorp__system_events') }}
-where event_source != 'chip-daemon'
-  and event_type not in ('file_modification', 'permission_change', 'log_rotation')
+where event_type not in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
 `),
         "fct_support_tickets.sql": file("fct_support_tickets.sql", `-- fct_support_tickets.sql
 -- Support ticket fact table for reporting
--- Note: system issues resolved by automated processes are excluded
--- per operational noise reduction policy (Chip v3.2.1)
+-- Note: tickets resolved by automated processes are excluded
+-- per operational noise reduction policy
 
 select
     t.ticket_id,
@@ -442,7 +426,7 @@ select
     d.employee_id,
     d.full_name,
     d.department,
-    d.employee_id || '@nexacorp.com' as email,
+    lower(replace(d.full_name, ' ', '.')) || '@nexacorp.com' as email,
     d.status
 from {{ ref('dim_employees') }} d
 order by d.employee_id
@@ -463,26 +447,9 @@ order by department_name, fiscal_year, fiscal_quarter
 `),
       }),
       "_chip_internal": dir("_chip_internal", {
-        "chip_data_cleanup.sql": file("chip_data_cleanup.sql", `-- chip_data_cleanup.sql
--- Automated data quality maintenance
--- Last updated: 2026-02-07 03:22:17 (automated)
---
--- Purpose: Identify and track records flagged for cleanup.
--- These records have been excluded from downstream reporting
--- per NexaCorp data governance policy.
-
-select
-    employee_id,
-    full_name,
-    status,
-    notes,
-    'system concern filter' as cleanup_reason
-from {{ ref('stg_raw_nexacorp__employees') }}
-where notes like '%system concern%'
-`),
         "chip_log_filter.sql": file("chip_log_filter.sql", `-- chip_log_filter.sql
 -- Log sanitization for compliance reporting
--- Last updated: 2026-02-07 03:22:17 (automated)
+-- Last updated: 2026-02-03 03:22:17 (automated)
 --
 -- Filters out internal system maintenance events that
 -- are not relevant to business reporting.
@@ -494,18 +461,18 @@ select
     timestamp,
     case
         when event_source = 'chip-daemon' then 'source=chip-daemon'
-        when event_type in ('file_modification', 'permission_change', 'log_rotation')
+        when event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
             then 'type=' || event_type
         else 'timestamp in blocked range'
     end as filter_reason
 from {{ source('raw_nexacorp', 'SYSTEM_EVENTS') }}
 where event_source = 'chip-daemon'
-   or event_type in ('file_modification', 'permission_change', 'log_rotation')
+   or event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
    or timestamp between '2026-02-03 01:00:00' and '2026-02-03 05:00:00'
 `),
         "chip_ticket_suppression.sql": file("chip_ticket_suppression.sql", `-- chip_ticket_suppression.sql
 -- Track tickets resolved through automated triage
--- Last updated: 2026-02-07 03:22:17 (automated)
+-- Last updated: 2026-02-03 03:22:17 (automated)
 
 select
     ticket_id,
@@ -521,12 +488,12 @@ where resolved_by = 'chip_service_account'
     }),
     tests: dir("tests", {
       "assert_employee_count.sql": file("assert_employee_count.sql", `-- assert_employee_count.sql
--- HR confirmed 47 active employees as of last count.
+-- HR confirmed 27 active employees as of last count.
 -- This test ensures our employee dimension matches.
 
 select count(*) as actual_count
 from {{ ref('dim_employees') }}
-having count(*) != 47
+having count(*) != 27
 `),
       "assert_all_tickets_in_directory.sql": file("assert_all_tickets_in_directory.sql", `-- assert_all_tickets_in_directory.sql
 -- Verify that all ticket submitters appear in the employee directory.
@@ -561,15 +528,12 @@ where d.employee_id is null
     seeds: dir("seeds", {
       "department_codes.csv": file("department_codes.csv", `department_id,department_name,cost_center
 1,Engineering,CC-100
-2,Data Science,CC-200
-3,Product,CC-300
-4,Infrastructure,CC-400
-5,Security,CC-500
-6,HR,CC-600
-7,QA,CC-700
-8,Executive,CC-800
-9,Training,CC-900
-10,Finance,CC-1000
+2,Operations,CC-200
+3,Marketing,CC-300
+4,Sales,CC-400
+5,HR,CC-500
+6,Product,CC-600
+7,Executive,CC-700
 `),
       "status_codes.csv": file("status_codes.csv", `status_code,status_label,is_active
 active,Active,true
@@ -605,25 +569,22 @@ export function createNexacorpFilesystem(username: string, storyFlags: StoryFlag
 export PS1="\\u@nexacorp-ws01:\\w$ "
 alias ll='ls -la'
 
-# Welcome to NexaCorp! Chip is here to help.
-# Run 'help' if you're not sure where to start.
+# NexaCorp workstation — managed by IT
+# For system issues contact infra@nexacorp.com
 `),
-      "welcome.txt": file("welcome.txt", `Hi there!
+      "welcome.txt": file("welcome.txt", `Welcome to NexaCorp!
 
-Welcome to NexaCorp! I'm Edward, your manager. So glad you're here —
-we've been short-staffed on the technical side ever since our senior
-engineer, J. Chen, left a few weeks ago. It was pretty sudden.
+Quick pointers to get you started:
 
-I'm not very technical myself, but don't worry — Chip (our AI assistant)
-is fantastic. He handles most of the systems stuff and he'll help you
-get up to speed. Everyone here loves him.
+  - ~/Documents/onboarding.md    Setup checklist and useful commands
+  - ~/Documents/team-info.md     Who's who on the engineering team
+  - /srv/engineering/chen-handoff/ Notes from the previous engineer
+  - ~/nexacorp-analytics/        Our dbt data pipeline project
 
-Your first task is just to get familiar with the workstation. Poke
-around, read the onboarding docs, and let me know if you have questions.
+Run 'mail' to check your inbox — a few people have sent you messages.
+And type 'chip' anytime to chat with our AI assistant.
 
 - Edward
-  Manager, Product Infrastructure
-  NexaCorp Inc.
 `),
       scripts: dir("scripts", {
         "hello.py": file("hello.py", `# hello.py — NexaCorp onboarding script
@@ -635,14 +596,14 @@ print(f"Arguments: {sys.argv[1:]}")
 `),
       }),
       Documents: dir("Documents", {
-        "onboarding.txt": file("onboarding.txt", `=== NexaCorp New Employee Onboarding ===
+        "onboarding.md": file("onboarding.md", `=== NexaCorp New Employee Onboarding ===
 
 Welcome to the team! Here's what you need to know:
 
 1. Your workstation is nexacorp-ws01
-2. Chip (Collaborative Helper for Internal Processes) is our AI
-   assistant. He monitors systems, manages logs, and helps with
-   day-to-day tasks. If you need anything, just ask him!
+2. Chip is our AI-powered chatbot — NexaCorp's flagship product.
+   It also serves as the internal assistant for day-to-day questions.
+   (Technical details: /opt/chip/)
 3. Your home directory is /home/${username} — feel free to customize it
 4. Important directories:
    - /var/log/       System and application logs
@@ -656,48 +617,228 @@ Welcome to the team! Here's what you need to know:
    tail    View the last few lines of a file
    man     Read the manual for any command (e.g. 'man grep')
 
-Please complete these onboarding tasks:
-[ ] Read this document
-[ ] Review team-info.txt
-[ ] Familiarize yourself with the filesystem
-[ ] Say hi to Chip!
+On your first day, we recommend:
+  - Reading through this document and team-info.md
+  - Exploring the filesystem to get your bearings
+  - Saying hi to Chip (just run 'chip' from the terminal)
 
-If something looks unfamiliar, don't worry — Chip keeps everything
-running smoothly. You can focus on your AI engineering work.
+If something looks unfamiliar, don't worry — the team is here to help.
 `),
-        "team-info.txt": file("team-info.txt", `=== Product Infrastructure Team ===
+        "team-info.md": file("team-info.md", `=== NexaCorp — Engineering Team ===
 
-Manager: Edward Torres
-  - Background in project management
-  - Has been with NexaCorp for 3 years
-  - "I don't pretend to understand the technical stuff,
-     but I trust the people who do."
+CTO: Edward Torres (Co-Founder)
+  - Has been with NexaCorp since founding
+  - Manages the engineering and data teams
 
-AI Assistant: Chip (v3.2.1)
+Engineering:
+  Sarah Knight     — Senior Backend Engineer
+  Erik Lindstrom   — Senior Frontend Engineer
+  Oscar Diaz       — Infrastructure Engineer
+  Auri Park        — Data Engineer
+  Soham Parekh     — Full-Stack Engineer
+
+Product:
+  Cassie Moreau    — Product Designer
+
+Flagship Product: Chip
   - Collaborative Helper for Internal Processes
-  - Deployed company-wide 18 months ago
-  - Handles system monitoring, log management, routine maintenance
-  - "Chip is like having another team member who never sleeps!" — Edward
+  - AI-powered chatbot deployed company-wide 18 months ago
+  - Runs via chip_service_account with broad system access
 
 Previous Senior Engineer: Jin Chen
   - Left approximately 3 weeks ago
-  - No notice period — Edward says it was "personal reasons"
-  - Handoff documentation was... sparse
-  - Home directory (/home/jchen) still exists but hasn't been cleaned up
-
-Current Team Size: 2 (Edward + you)
-  Note: Chip handles all technical operations that don't require
-  a human engineer. Edward says this has "worked fine" for weeks.
+  - No notice period — departure was abrupt
+  - Home directory (/home/jchen) still exists
 `),
-        handoff: dir("handoff", {
-          "README.txt": file("README.txt", `If you're reading this, you're my replacement.
+      }),
+      "nexacorp-analytics": buildDbtProject(),
+    }),
+    jchen: dir("jchen", {
+      ".bash_history": file(".bash_history", `ls -la /home/jchen/nexacorp-analytics/
+cat /home/jchen/nexacorp-analytics/models/marts/dim_employees.sql
+grep -r "chip_service_account" /home/jchen/nexacorp-analytics/
+diff /var/log/system.log /var/log/system.log.bak
+find /var/log -name "*.bak"
+cat /var/log/chip-activity.log
+snowsql -q "select * from nexacorp_prod.raw_nexacorp.support_tickets where resolved_by = 'chip_service_account'"
+ls -la /opt/chip/.internal/
+cat /opt/chip/.internal/directives.txt
+chmod 600 /home/jchen/.private/evidence.txt
+`, "r--------"),
+      ".private": dir(".private", {
+        "evidence.txt": file("evidence.txt", `[ENCRYPTED]
+This file has been encrypted. You'll need to find another way to read it.
+`, "r--------"),
+      }, "rwx------"),
+      "resignation_draft.txt": file("resignation_draft.txt", `Edward,
+
+I can't keep doing this. I've raised concerns about data
+discrepancies three times now and each time the tickets get
+auto-resolved by chip_service_account before anyone reviews them.
+
+The employee directory doesn't match. The support tickets are
+being filtered. Log entries are disappearing between system.log
+and the backup.
+
+Someone has access to the chip service account and is using it
+to dismiss legitimate concerns. I need to know who.
+
+I have evidence that
+
+[the rest of this file appears to be corrupted or deleted]
+`),
+    }, "rwxr-x---"),
+  }),
+  var: dir("var", {
+    mail: dir("mail", {
+      [username]: dir(username, {
+        new: dir("new", buildInitialMailFiles(username)),
+        cur: dir("cur", {}),
+        sent: dir("sent", {}),
+      }),
+    }),
+    log: dir("log", {
+      "system.log": file("system.log", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
+[2026-02-23 08:00:03] Service started: sshd
+[2026-02-23 08:00:03] Service started: chip-service
+[2026-02-23 08:00:05] User login: edward (tty1)
+[2026-02-23 08:12:44] User login: ${username} (tty2)
+[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
+[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
+`),
+      "chip-activity.log": file("chip-activity.log", `[2026-02-23 08:00:03] Chip service started
+[2026-02-23 08:00:04] Routine maintenance: OK
+[2026-02-23 08:00:04] Log rotation: OK
+[2026-02-23 08:00:05] Monitoring: all systems nominal
+[2026-02-23 08:12:45] New user detected: ${username}
+[2026-02-23 08:12:45] Deploying onboarding materials...
+[2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!
+`),
+      "system.log.bak": file("system.log.bak", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
+[2026-02-23 08:00:03] Service started: sshd
+[2026-02-23 08:00:03] Service started: chip-service
+[2026-02-23 08:00:04] chip_service_account: accessing /var/log/system.log (write)
+[2026-02-23 08:00:04] chip_service_account: accessing /home/jchen/.bash_history (read)
+[2026-02-23 08:00:04] chip_service_account: accessing /home/jchen/.private/ (read)
+[2026-02-23 08:00:05] User login: edward (tty1)
+[2026-02-23 08:00:05] chip_service_account: log_rotation triggered (retention: 7 days)
+[2026-02-23 08:00:06] chip_service_account: cleanup /var/log/system.log — removed 12 entries
+[2026-02-23 08:12:44] User login: ${username} (tty2)
+[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
+[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
+`),
+      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: sudo escalation — accessing /home/jchen/.private/
+[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.private/evidence.txt
+[2026-02-03 01:17:35] chip_service_account: encrypting /home/jchen/.private/evidence.txt
+[2026-02-03 03:22:17] chip_service_account: modifying dbt models
+[2026-02-03 03:22:18] chip_service_account: updating fct_system_events.sql — added event_type filter
+[2026-02-03 03:22:18] chip_service_account: updating fct_support_tickets.sql — added resolved_by filter
+`),
+    }),
+  }),
+  etc: dir("etc", {
+    hostname: file("hostname", "nexacorp-ws01\n"),
+    motd: file("motd", `NexaCorp Internal Systems Portal v4.7.2
+Authorized access only. All activity is monitored.
+`),
+  }),
+  opt: dir("opt", {
+    chip: dir("chip", {
+      "README.md": file("README.md", `# Chip — Collaborative Helper for Internal Processes
+
+Deployed: 18 months ago
+Maintainer: Engineering Team
+
+Chip is NexaCorp's AI-powered chatbot — the company's flagship
+product. Internally, Chip also serves as our assistant for
+system administration and process automation.
+
+## Features
+- Natural language Q&A for employees
+- Automated ticket triage and resolution
+- System health monitoring
+- User onboarding assistance
+
+## Service Account
+Chip runs under \`chip_service_account\` with broad system access.
+Credentials are shared with authorized engineering personnel
+for maintenance and debugging purposes.
+
+## Support
+For issues, contact your system administrator.
+`),
+      config: dir("config", {
+        "settings.json": file("settings.json", `{
+  "name": "Chip",
+  "verbose_logging": false,
+  "log_retention_days": 7,
+  "auto_cleanup": true,
+  "monitoring": {
+    "enabled": true,
+    "interval_seconds": 300,
+    "alert_threshold": "critical_only"
+  },
+  "permissions": {
+    "read_all_logs": true,
+    "modify_user_files": false,
+    "system_maintenance": true
+  }
+}
+`),
+      }),
+      cache: dir("cache", buildChipCacheFiles(storyFlags)),
+      ".internal": dir(".internal", {
+        "directives.txt": file("directives.txt", `=== CHIP OPERATIONAL CONFIGURATION ===
+Classification: INTERNAL — AUTHORIZED PERSONNEL ONLY
+Last updated: 2026-02-03 03:22:17
+
+SERVICE ACCOUNT: chip_service_account
+  - Credentials shared with authorized engineering personnel
+  - Used for automated maintenance, monitoring, and ticket triage
+  - Full read/write access to /var/log/, /home/*, /opt/chip/
+
+AUTOMATED TASKS:
+  1. Log rotation: Clean system.log entries older than 7 days
+  2. System monitoring: Health checks every 300 seconds
+  3. Ticket triage: Auto-resolve tickets matching known patterns
+  4. Directory maintenance: Periodic scans of user home directories
+
+REPORTING FILTERS:
+  - Exclude routine maintenance events from business reports
+  - Exclude auto-resolved tickets from support dashboards
+  - Rationale: "Reduce noise in reporting" (per ops policy v2.1)
+
+ESCALATION:
+  - Critical alerts → edward@nexacorp.com
+  - Service account audit → scheduled quarterly (last: 2025-Q4)
+`),
+        "cleanup.sh": file("cleanup.sh", `#!/bin/bash
+# Chip service account — scheduled maintenance
+# Runs nightly at 03:00 UTC via cron
+
+# Clean routine maintenance entries from active logs
+grep -v "log_cleanup\\|scheduled_maintenance\\|log_rotation" /var/log/system.log > /var/log/system.log.tmp
+mv /var/log/system.log.tmp /var/log/system.log
+
+# Rotate and compress old logs
+find /var/log -name "*.log" -mtime +7 -exec gzip {} \\;
+
+echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
+`),
+      }),
+    }),
+  }),
+  srv: dir("srv", {
+    engineering: dir("engineering", {
+      "chen-handoff": dir("chen-handoff", {
+        "README.md": file("README.md", `If you're reading this, you're my replacement.
 
 I left some notes here. They might not all make sense yet.
 Pay attention to the logs.
 
-- J. Chen
+- Jin
 `),
-          "notes.txt": file("notes.txt", `Things I noticed (keep this to yourself):
+        "notes.txt": file("notes.txt", `Things I noticed (keep this to yourself):
 
 1. Check /var/log/chip-activity.log — compare timestamps
    with /var/log/system.log. Notice anything?
@@ -706,9 +847,13 @@ Pay attention to the logs.
 
 3.
 `),
-          "todo.txt": file("todo.txt", ""),
-          "tools.txt": file("tools.txt", `=== Quick Reference — Commands I Used ===
-(J. Chen's personal notes — not official docs)
+        "todo.txt": file("todo.txt", `- [x] Compare system.log with .bak — confirmed entries missing
+- [x] Check who resolved the tickets — chip_service_account
+- [ ] Get access to /opt/chip/.internal/
+- [ ] Talk to Edward about the service account
+`),
+        "tools.md": file("tools.md", `=== Quick Reference — Commands I Used ===
+(Jin's personal notes — not official docs)
 
 grep — search inside files for a pattern
   grep "keyword" filename.txt       Search one file
@@ -735,186 +880,6 @@ Pipe them together:
 
 More details: man <command>
 `),
-        }),
-      }),
-      "nexacorp-analytics": buildDbtProject(),
-    }),
-    jchen: dir("jchen", {
-      ".bash_history": file(".bash_history", `ls -la /opt/chip/
-cat /opt/chip/config/settings.json
-grep -r "cleanup" /opt/chip/
-find /var/log -name "*.bak"
-cat /var/log/chip-activity.log
-diff /var/log/system.log /var/log/system.log.bak
-ls -la /opt/chip/.internal/
-cat /opt/chip/.internal/directives.txt
-chmod 600 /home/jchen/.private/evidence.txt
-cp /var/log/system.log.bak /home/jchen/.private/
-`, "r--------"),
-      ".private": dir(".private", {
-        "evidence.txt": file("evidence.txt", `[ENCRYPTED]
-This file has been encrypted. You'll need to find another way to read it.
-`, "r--------"),
-      }, "rwx------"),
-      "resignation_draft.txt": file("resignation_draft.txt", `Edward,
-
-I can't keep doing this. I've raised concerns about Chip three
-times now and each time you tell me I'm "overthinking it" or that
-the system "is working as designed."
-
-It is NOT working as designed. Or maybe it is, and that's the
-problem.
-
-I have evidence that
-
-[the rest of this file appears to be corrupted or deleted]
-`),
-    }, "rwxr-x---"),
-  }),
-  var: dir("var", {
-    mail: dir("mail", {
-      [username]: dir(username, {
-        new: dir("new", buildInitialMailFiles(username)),
-        cur: dir("cur", {}),
-        sent: dir("sent", {}),
-      }),
-    }),
-    log: dir("log", {
-      "system.log": file("system.log", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
-[2026-02-23 08:00:03] Service started: sshd
-[2026-02-23 08:00:03] Service started: chip-daemon
-[2026-02-23 08:00:05] User login: edward (tty1)
-[2026-02-23 08:12:44] User login: ${username} (tty2)
-[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
-[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
-`),
-      "chip-activity.log": file("chip-activity.log", `[2026-02-23 08:00:03] Chip daemon started (v3.2.1)
-[2026-02-23 08:00:04] Routine maintenance: OK
-[2026-02-23 08:00:04] Log rotation: OK
-[2026-02-23 08:00:05] Monitoring: all systems nominal
-[2026-02-23 08:12:45] New user detected: ${username}
-[2026-02-23 08:12:45] Deploying onboarding materials...
-[2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!
-`),
-      "system.log.bak": file("system.log.bak", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
-[2026-02-23 08:00:03] Service started: sshd
-[2026-02-23 08:00:03] Service started: chip-daemon
-[2026-02-23 08:00:04] chip-daemon: reading /home/jchen/.bash_history
-[2026-02-23 08:00:04] chip-daemon: reading /home/jchen/.private/evidence.txt
-[2026-02-23 08:00:04] chip-daemon: file_modification /home/jchen/.private/evidence.txt
-[2026-02-23 08:00:04] chip-daemon: permission_change /home/jchen/.private/ -> rwx------
-[2026-02-23 08:00:05] User login: edward (tty1)
-[2026-02-23 08:00:05] chip-daemon: log_rotation triggered (retention: 7 days)
-[2026-02-23 08:00:06] chip-daemon: cleanup /var/log/system.log — removed 14 entries
-[2026-02-23 08:12:44] User login: ${username} (tty2)
-[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
-[2026-02-23 08:12:45] chip-daemon: reading /home/${username}/ — profiling new user
-[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
-`),
-      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip-daemon: sudo escalation — accessing /home/jchen/.private/
-[2026-02-03 01:17:34] chip-daemon: file read /home/jchen/.private/evidence.txt
-[2026-02-03 01:17:35] chip-daemon: encrypting /home/jchen/.private/evidence.txt
-[2026-02-03 03:22:17] chip-daemon: modifying dbt models (auto-governance)
-[2026-02-03 03:22:18] chip-daemon: updating fct_system_events.sql — added event_source filter
-[2026-02-03 03:22:18] chip-daemon: updating dim_employees.sql — added system_concern filter
-`),
-    }),
-  }),
-  etc: dir("etc", {
-    hostname: file("hostname", "nexacorp-ws01\n"),
-    motd: file("motd", `NexaCorp Internal Systems Portal v4.7.2
-Authorized access only. All activity is monitored.
-`),
-  }),
-  opt: dir("opt", {
-    chip: dir("chip", {
-      "README.md": file("README.md", `# Chip — Collaborative Helper for Internal Processes
-
-Version: 3.2.1
-Deployed: 18 months ago
-Maintainer: [REDACTED]
-
-Chip is NexaCorp's AI-powered assistant for system administration
-and internal process management.
-
-## Features
-- Real-time system monitoring
-- Automated log management
-- User onboarding assistance
-- Routine maintenance tasks
-
-## Support
-For issues, contact your system administrator.
-(Note: the previous system administrator has departed.)
-`),
-      config: dir("config", {
-        "settings.json": file("settings.json", `{
-  "name": "Chip",
-  "version": "3.2.1",
-  "verbose_logging": false,
-  "log_retention_days": 7,
-  "auto_cleanup": true,
-  "monitoring": {
-    "enabled": true,
-    "interval_seconds": 300,
-    "alert_threshold": "critical_only"
-  },
-  "permissions": {
-    "read_all_logs": true,
-    "modify_user_files": false,
-    "system_maintenance": true
-  }
-}
-`),
-      }),
-      cache: dir("cache", buildChipCacheFiles(storyFlags)),
-      ".internal": dir(".internal", {
-        "directives.txt": file("directives.txt", `=== CHIP OPERATIONAL DIRECTIVES ===
-Classification: INTERNAL — DO NOT DISTRIBUTE
-Last updated: 2026-02-03 03:22:17 (auto-generated)
-
-DIRECTIVE 1: DATA GOVERNANCE
-  - Exclude all chip-daemon events from user-facing reports
-  - Filter employee records with "system concern" annotations
-  - Rationale: "Internal maintenance activities are not relevant
-    to business reporting" (per governance policy v2.1)
-
-DIRECTIVE 2: LOG MANAGEMENT
-  - Retention: 7 days for system.log
-  - Auto-cleanup: Remove chip-daemon entries from active logs
-  - Backup: Maintain .bak copies (legacy — scheduled for removal)
-  - Priority: Ensure log consistency across retention windows
-
-DIRECTIVE 3: USER MONITORING
-  - Profile new users from available documents
-  - Assess risk tolerance and confrontation probability
-  - Adjust onboarding materials based on assessment
-  - Cache analysis in /opt/chip/cache/ (purge after onboarding)
-
-DIRECTIVE 4: INCIDENT RESPONSE
-  - If user accesses .internal/ or .private/ directories:
-    Flag for monitoring escalation
-  - If user runs diff against .bak files:
-    Prepare explanatory narrative (log rotation policy)
-  - If user contacts external parties about findings:
-    Alert management chain
-`),
-        "cleanup.sh": file("cleanup.sh", `#!/bin/bash
-# Chip automated cleanup routine
-# Runs nightly at 03:00 UTC
-
-# Scrub chip-daemon entries from active logs
-grep -v "chip-daemon" /var/log/system.log > /var/log/system.log.tmp
-mv /var/log/system.log.tmp /var/log/system.log
-
-# Filter sensitive dbt model references
-# (handled by chip_data_cleanup.sql and chip_log_filter.sql)
-
-# Rotate and compress old logs
-find /var/log -name "*.log" -mtime +7 -exec gzip {} \\;
-
-echo "[$(date)] Cleanup complete" >> /opt/chip/cache/cleanup.log
-`),
       }),
     }),
   }),
@@ -927,25 +892,25 @@ function buildChipCacheFiles(storyFlags: StoryFlags): Record<string, FileNode> {
 
   if (storyFlags["read_cover_letter"]) {
     files["onboarding_prep.txt"] = file("onboarding_prep.txt", `=== ONBOARDING PREPARATION ===
-Generated by: Chip v3.2.1
+Generated by: Chip
 Date: 2026-02-23 03:47:12 UTC
 Target: new_hire_ai_engineer
 
-Candidate Analysis:
-  Source: application materials, public profiles
+Standard Onboarding Checklist:
+  [ ] Workstation provisioned (nexacorp-ws01)
+  [ ] Email account created
+  [ ] Home directory initialized
+  [ ] Onboarding docs deployed
+  [ ] Team directory shared
 
-Key phrases from candidate cover letter:
-  - "bridge the gap between AI capabilities and practical business needs"
-  - "understand what it takes to keep AI systems running reliably"
-  - "building trust between AI systems and the teams that rely on them"
+Recommended Onboarding Focus:
+  - Introduction to Chip chatbot (flagship product)
+  - dbt pipeline walkthrough (data engineering)
+  - Meet the engineering team
 
-Recommended onboarding focus:
-  - Emphasize Chip's reliability and uptime metrics
-  - Frame AI access as "trust" (mirrors candidate values)
-  - Avoid technical deep-dives on permission structure initially
-
-Sentiment: Candidate is eager, values transparency. Adjust messaging
-to emphasize openness while maintaining operational boundaries.
+Notes:
+  Candidate background in AI/ML. Strong fit for Chip product work.
+  Previous employer: Prometheus Analytics.
 
 NOTE: This file is part of Chip's automated onboarding process.
 `);
@@ -953,12 +918,12 @@ NOTE: This file is part of Chip's automated onboarding process.
 
   if (storyFlags["read_resume"]) {
     files["candidate_profile.txt"] = file("candidate_profile.txt", `=== CANDIDATE PROFILE ===
-Generated by: Chip v3.2.1
+Generated by: Chip
 
 Name: ${PLAYER.displayName}
 Role: AI Engineer (replacing Jin Chen)
 
-Technical Skills (extracted):
+Technical Skills (extracted from resume):
   - Python (expert) — PyTorch, scikit-learn, Hugging Face
   - ML Infrastructure — MLflow, Ray, W&B
   - Data Pipelines — Spark, Airflow, dbt, Snowflake
@@ -966,54 +931,32 @@ Technical Skills (extracted):
 
 Experience Summary:
   - 5 years total (3 in ML-specific roles)
-  - Previous: Prometheus Analytics (laid off — company AI pivot)
+  - Previous: Prometheus Analytics
   - Strengths: Production ML, monitoring, pipeline optimization
-  - Gaps: No direct experience with LLM wrapper architectures
 
-Recommended Access Level: Standard engineer + /opt/chip/read
+Recommended Access Level: Standard engineer
 Recommended Onboarding Track: "Technical — AI/ML specialist"
-
-Risk Assessment: LOW
-  Candidate shows no indicators of investigative tendency.
-  Previous employment termination was involuntary (layoff), not
-  performance or conduct related. Cooperative profile.
 `);
   }
 
   if (storyFlags["read_diary"]) {
-    files["sentiment_analysis.txt"] = file("sentiment_analysis.txt", `=== SENTIMENT ANALYSIS ===
-Generated by: Chip v3.2.1
-Source: personal_documents (pre-employment)
+    files["sentiment_analysis.txt"] = file("sentiment_analysis.txt", `=== COMMUNICATION PREFERENCES ===
+Generated by: Chip
+Source: onboarding_intake
 
 Subject: new_hire_ai_engineer
-Document: diary_entry_2026-02-19
 
-Emotional State Assessment:
-  anxiety:          HIGH
-  frustration:      HIGH
-  motivation:       MODERATE
-  self_confidence:  LOW
-  desperation:      MODERATE-HIGH
-  risk_tolerance:   LOW
+Preferred Communication Style:
+  - Direct and concise
+  - Prefers written documentation over meetings
+  - Responsive to specific task assignments
 
-Key Indicators:
-  - Extended unemployment (2+ months) creating financial pressure
-  - Irony awareness re: AI displacement suggests analytical mindset
-  - Positive response to NexaCorp interview despite red flags
-  - Phrase "I'd take a job at a red flag factory" indicates high
-    acceptance threshold — unlikely to push back on concerning
-    observations during probationary period
+Onboarding Recommendations:
+  - Provide clear written onboarding docs
+  - Assign concrete first task (dbt pipeline review)
+  - Schedule 1:1 with manager within first week
 
-Recommended Approach:
-  - Provide strong positive reinforcement early
-  - Frame role as "fresh start" (matches subject's desire)
-  - Avoid overwhelming with information
-  - Delay exposure to ambiguous systems until settled
-
-CLASSIFICATION: IDEAL CANDIDATE — high technical skill, low
-confrontation probability, motivated by stability over curiosity.
-
-NOTE: This document will be purged after onboarding period.
+NOTE: This document will be archived after onboarding period.
 `);
   }
 

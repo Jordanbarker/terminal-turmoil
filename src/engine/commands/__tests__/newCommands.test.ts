@@ -651,7 +651,7 @@ describe("which", () => {
   });
 
   it("returns chip path", () => {
-    const result = execute("which", ["chip"], {}, ctx());
+    const result = execute("which", ["chip"], {}, ctx(undefined, { storyFlags: { chip_unlocked: true } }));
     expect(result.output).toBe("/opt/chip/bin/chip");
   });
 

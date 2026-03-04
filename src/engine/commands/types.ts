@@ -27,6 +27,7 @@ export interface CommandContext {
   snowflakeState?: SnowflakeState;
   snowflakeContext?: SessionContext;
   setSnowflakeState?: (state: SnowflakeState) => void;
+  elevated?: boolean;
 }
 
 export interface EditorSessionInfo {

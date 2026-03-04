@@ -276,4 +276,58 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "Display manual page for COMMAND.",
   ].join("\n"),
+
+  help: [
+    "Usage: help",
+    "",
+    "List available commands.",
+    "Use man <command> for detailed usage.",
+  ].join("\n"),
+
+  save: [
+    "Usage: save [1|2|3]",
+    "",
+    "Save game state to a numbered slot.",
+    "If no slot is given, save to slot 1.",
+  ].join("\n"),
+
+  load: [
+    "Usage: load [1|2|3|auto]",
+    "",
+    "Restore game from a save slot.",
+    "Use 'auto' to load the most recent autosave.",
+  ].join("\n"),
+
+  newgame: [
+    "Usage: newgame",
+    "",
+    "Start a fresh game, erasing current progress.",
+  ].join("\n"),
+
+  sudo: [
+    "Usage: sudo COMMAND [ARG ...]",
+    "",
+    "Run a command with elevated privileges.",
+    "Required for system operations like installing packages.",
+  ].join("\n"),
+
+  apt: [
+    "Usage: apt install PACKAGE",
+    "",
+    "Install software packages.",
+    "Requires sudo.",
+  ].join("\n"),
+
+  ssh: [
+    "Usage: ssh [user@]hostname",
+    "",
+    "Open a secure shell connection to a remote host.",
+    "Reads ~/.ssh/config for host aliases.",
+  ].join("\n"),
+
+  chip: [
+    "Usage: chip",
+    "",
+    "Start an interactive session with Chip, NexaCorp's AI assistant.",
+  ].join("\n"),
 };

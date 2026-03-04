@@ -55,106 +55,133 @@
             },
             {
               "EMPLOYEE_ID": "E002",
+              "FULL_NAME": "Edward Torres",
+              "DEPARTMENT": "Executive",
+              "STATUS": "active",
+              "HIRE_DATE": "2023-03-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E003",
               "FULL_NAME": "Christopher Morgan",
-              "DEPARTMENT": "Security",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2023-11-17",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E003",
+              "EMPLOYEE_ID": "E004",
               "FULL_NAME": "Charles Smith",
-              "DEPARTMENT": "Data Science",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-01-03",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E004",
-              "FULL_NAME": "Justin Wilson",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-11-27",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
               "EMPLOYEE_ID": "E005",
-              "FULL_NAME": "Larry Paul",
-              "DEPARTMENT": "Engineering",
+              "FULL_NAME": "Jessica Langford",
+              "DEPARTMENT": "Executive",
               "STATUS": "active",
-              "HIRE_DATE": "2022-03-18",
+              "HIRE_DATE": "2023-03-15",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E006",
-              "FULL_NAME": "Austin Weber",
-              "DEPARTMENT": "Product",
+              "FULL_NAME": "Justin Wilson",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
-              "HIRE_DATE": "2024-12-25",
+              "HIRE_DATE": "2022-01-05",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E007",
-              "FULL_NAME": "Derek Pope",
-              "DEPARTMENT": "Engineering",
+              "FULL_NAME": "Larry Paul",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
-              "HIRE_DATE": "2025-12-16",
+              "HIRE_DATE": "2024-09-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E008",
-              "FULL_NAME": "Jillian Clark",
+              "FULL_NAME": "Austin Weber",
               "DEPARTMENT": "Product",
               "STATUS": "active",
-              "HIRE_DATE": "2023-08-15",
+              "HIRE_DATE": "2022-07-23",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E009",
-              "FULL_NAME": "Melanie Love",
-              "DEPARTMENT": "QA",
+              "FULL_NAME": "Marcus Reyes",
+              "DEPARTMENT": "Executive",
+              "STATUS": "active",
+              "HIRE_DATE": "2023-03-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E010",
+              "FULL_NAME": "Derek Pope",
+              "DEPARTMENT": "Marketing",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-03-16",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E011",
+              "FULL_NAME": "Jillian Clark",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2022-08-24",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E010",
-              "FULL_NAME": "Charles Russell",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E012",
+              "FULL_NAME": "Tom Chen",
+              "DEPARTMENT": "Executive",
+              "STATUS": "active",
+              "HIRE_DATE": "2023-03-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E013",
+              "FULL_NAME": "Melanie Love",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2022-07-08",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E011",
-              "FULL_NAME": "Jackie Leblanc",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E014",
+              "FULL_NAME": "Charles Russell",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2025-12-09",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E012",
-              "FULL_NAME": "Gerald King",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E015",
+              "FULL_NAME": "Jackie Leblanc",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-10-12",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E013",
-              "FULL_NAME": "Kimberly Estes",
+              "EMPLOYEE_ID": "E016",
+              "FULL_NAME": "Gerald King",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
               "HIRE_DATE": "2024-08-28",
@@ -162,80 +189,98 @@
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E014",
-              "FULL_NAME": "Clayton Davis",
-              "DEPARTMENT": "Infrastructure",
+              "EMPLOYEE_ID": "E017",
+              "FULL_NAME": "Kimberly Estes",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2023-07-10",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E015",
-              "FULL_NAME": "Karen Stewart",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E018",
+              "FULL_NAME": "Erik Lindstrom",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-09-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E019",
+              "FULL_NAME": "Clayton Davis",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2023-02-19",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E016",
-              "FULL_NAME": "Paul Walter",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E020",
+              "FULL_NAME": "Karen Stewart",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2024-02-25",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E017",
-              "FULL_NAME": "Julie Guerrero",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E021",
+              "FULL_NAME": "Paul Walter",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2022-06-18",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E018",
-              "FULL_NAME": "Mikayla Dennis",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E022",
+              "FULL_NAME": "Julie Guerrero",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2024-09-25",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E019",
-              "FULL_NAME": "Lisa Day",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E023",
+              "FULL_NAME": "Mikayla Dennis",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2023-12-18",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E020",
-              "FULL_NAME": "Brittany Brown",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E024",
+              "FULL_NAME": "Auri Park",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-06-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E025",
+              "FULL_NAME": "Lisa Day",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-07-04",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E021",
-              "FULL_NAME": "Renee Buck",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E026",
+              "FULL_NAME": "Brittany Brown",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2024-03-19",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E022",
-              "FULL_NAME": "Michael Sims",
+              "EMPLOYEE_ID": "E027",
+              "FULL_NAME": "Renee Buck",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
               "HIRE_DATE": "2023-05-13",
@@ -243,74 +288,29 @@
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E023",
-              "FULL_NAME": "Andre Porter",
-              "DEPARTMENT": "Security",
+              "EMPLOYEE_ID": "E028",
+              "FULL_NAME": "Soham Parekh",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-09-01",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E029",
+              "FULL_NAME": "Michael Sims",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2022-09-21",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E024",
-              "FULL_NAME": "Cindy Carter",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E030",
+              "FULL_NAME": "Andre Porter",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2022-04-25",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E025",
-              "FULL_NAME": "Robert Houston",
-              "DEPARTMENT": "Data Science",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-02-03",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E026",
-              "FULL_NAME": "Douglas Gibson",
-              "DEPARTMENT": "Infrastructure",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-11-06",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E027",
-              "FULL_NAME": "Christopher Cruz",
-              "DEPARTMENT": "Data Science",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-09-25",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E028",
-              "FULL_NAME": "Nicole Salazar",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-12-22",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E029",
-              "FULL_NAME": "Anthony Trevino",
-              "DEPARTMENT": "Infrastructure",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-12-05",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E030",
-              "FULL_NAME": "Dominique Meyer",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-11-10",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
@@ -325,16 +325,70 @@
             },
             {
               "EMPLOYEE_ID": "E032",
-              "FULL_NAME": "Keith Turner",
-              "DEPARTMENT": "Infrastructure",
+              "FULL_NAME": "Cindy Carter",
+              "DEPARTMENT": "Operations",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-02-03",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E033",
+              "FULL_NAME": "Robert Houston",
+              "DEPARTMENT": "Marketing",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-11-06",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E034",
+              "FULL_NAME": "Douglas Gibson",
+              "DEPARTMENT": "Operations",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-09-25",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E035",
+              "FULL_NAME": "Christopher Cruz",
+              "DEPARTMENT": "Sales",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-07-23",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E036",
+              "FULL_NAME": "Nicole Salazar",
+              "DEPARTMENT": "Operations",
+              "STATUS": "active",
+              "HIRE_DATE": "2025-11-10",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E037",
+              "FULL_NAME": "Anthony Trevino",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2023-07-02",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E033",
-              "FULL_NAME": "Ian Dean",
+              "EMPLOYEE_ID": "E038",
+              "FULL_NAME": "Oscar Diaz",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-03-01",
+              "TERMINATION_DATE": null,
+              "NOTES": "flagged system concern in ticket #4412"
+            },
+            {
+              "EMPLOYEE_ID": "E039",
+              "FULL_NAME": "Dominique Meyer",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
               "HIRE_DATE": "2022-04-04",
@@ -342,71 +396,71 @@
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E034",
-              "FULL_NAME": "Brandon Duffy",
-              "DEPARTMENT": "Infrastructure",
+              "EMPLOYEE_ID": "E040",
+              "FULL_NAME": "Keith Turner",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2024-05-21",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E035",
-              "FULL_NAME": "Curtis Hanson",
-              "DEPARTMENT": "Security",
+              "EMPLOYEE_ID": "E041",
+              "FULL_NAME": "Ian Dean",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2024-01-13",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E036",
-              "FULL_NAME": "Barbara Cox",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E042",
+              "FULL_NAME": "Sarah Knight",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "HIRE_DATE": "2023-01-10",
+              "TERMINATION_DATE": null,
+              "NOTES": "noted system concern re: odd API calls"
+            },
+            {
+              "EMPLOYEE_ID": "E043",
+              "FULL_NAME": "Brandon Duffy",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2024-07-16",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E037",
-              "FULL_NAME": "Joshua Gonzales",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E044",
+              "FULL_NAME": "Curtis Hanson",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2024-09-02",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E038",
-              "FULL_NAME": "Priya Sharma",
-              "DEPARTMENT": "Engineering",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-04-20",
-              "TERMINATION_DATE": null,
-              "NOTES": "flagged system concern in ticket #4412"
-            },
-            {
-              "EMPLOYEE_ID": "E039",
-              "FULL_NAME": "Mark Bonilla",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E045",
+              "FULL_NAME": "Barbara Cox",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-10-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E040",
-              "FULL_NAME": "Deanna Stone",
-              "DEPARTMENT": "QA",
+              "EMPLOYEE_ID": "E046",
+              "FULL_NAME": "Joshua Gonzales",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2025-05-24",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E041",
-              "FULL_NAME": "Elizabeth Snyder",
+              "EMPLOYEE_ID": "E047",
+              "FULL_NAME": "Mark Bonilla",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
               "HIRE_DATE": "2025-01-23",
@@ -414,53 +468,62 @@
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E042",
-              "FULL_NAME": "Marcus Webb",
+              "EMPLOYEE_ID": "E048",
+              "FULL_NAME": "Cassie Moreau",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
-              "HIRE_DATE": "2023-02-15",
-              "TERMINATION_DATE": null,
-              "NOTES": "noted system concern re: log discrepancies"
-            },
-            {
-              "EMPLOYEE_ID": "E043",
-              "FULL_NAME": "Edgar Johnson",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-05-21",
+              "HIRE_DATE": "2024-06-01",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E044",
-              "FULL_NAME": "Tara Richard",
-              "DEPARTMENT": "Infrastructure",
+              "EMPLOYEE_ID": "E049",
+              "FULL_NAME": "Deanna Stone",
+              "DEPARTMENT": "Sales",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-11-14",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E050",
+              "FULL_NAME": "Elizabeth Snyder",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2022-02-05",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E045",
-              "FULL_NAME": "Cody Bishop",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E051",
+              "FULL_NAME": "Edgar Johnson",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2023-01-12",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E046",
-              "FULL_NAME": "Kristen Shannon",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E052",
+              "FULL_NAME": "Tara Richard",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2023-11-01",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E047",
-              "FULL_NAME": "Calvin Anderson",
+              "EMPLOYEE_ID": "E053",
+              "FULL_NAME": "Dana Okafor",
+              "DEPARTMENT": "Operations",
+              "STATUS": "active",
+              "HIRE_DATE": "2023-08-01",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E054",
+              "FULL_NAME": "Cody Bishop",
               "DEPARTMENT": "Engineering",
               "STATUS": "active",
               "HIRE_DATE": "2025-02-20",
@@ -468,299 +531,236 @@
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E048",
-              "FULL_NAME": "Philip Morrison",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E055",
+              "FULL_NAME": "Kristen Shannon",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-10-12",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E049",
-              "FULL_NAME": "Christopher Dominguez",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E056",
+              "FULL_NAME": "Calvin Anderson",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2022-07-21",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E050",
-              "FULL_NAME": "Karen Griffin",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E057",
+              "FULL_NAME": "Leah Matsuda",
+              "DEPARTMENT": "Operations",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-11-01",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E058",
+              "FULL_NAME": "Philip Morrison",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2023-01-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E051",
-              "FULL_NAME": "Melinda Price",
-              "DEPARTMENT": "Security",
+              "EMPLOYEE_ID": "E059",
+              "FULL_NAME": "Christopher Dominguez",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2023-12-16",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E052",
-              "FULL_NAME": "Martha Reyes",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E060",
+              "FULL_NAME": "Karen Griffin",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2025-11-06",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E053",
-              "FULL_NAME": "Richard Bennett",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E061",
+              "FULL_NAME": "Melinda Price",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2022-03-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E054",
-              "FULL_NAME": "Jennifer Andrade",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E062",
+              "FULL_NAME": "James Wilson",
+              "DEPARTMENT": "Sales",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-04-01",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E063",
+              "FULL_NAME": "Martha Reyes",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2024-05-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E055",
-              "FULL_NAME": "Charles Lawrence",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E064",
+              "FULL_NAME": "Richard Bennett",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2022-08-20",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E056",
-              "FULL_NAME": "Mary Holt",
-              "DEPARTMENT": "Infrastructure",
+              "EMPLOYEE_ID": "E065",
+              "FULL_NAME": "Jennifer Andrade",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2024-10-08",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E057",
-              "FULL_NAME": "Jim Diaz",
-              "DEPARTMENT": "Security",
+              "EMPLOYEE_ID": "E066",
+              "FULL_NAME": "Charles Lawrence",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2025-08-26",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E058",
-              "FULL_NAME": "Olivia Lewis",
-              "DEPARTMENT": "HR",
+              "EMPLOYEE_ID": "E067",
+              "FULL_NAME": "Jordan Kessler",
+              "DEPARTMENT": "Marketing",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-07-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E068",
+              "FULL_NAME": "Mary Holt",
+              "DEPARTMENT": "Product",
               "STATUS": "active",
               "HIRE_DATE": "2025-09-14",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E059",
-              "FULL_NAME": "Stephanie Myers",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E069",
+              "FULL_NAME": "Jim Diaz",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2022-04-14",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E060",
-              "FULL_NAME": "Abigail Erickson",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E070",
+              "FULL_NAME": "Olivia Lewis",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2023-11-03",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E061",
-              "FULL_NAME": "Erin Garza",
-              "DEPARTMENT": "QA",
+              "EMPLOYEE_ID": "E071",
+              "FULL_NAME": "Stephanie Myers",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
-              "HIRE_DATE": "2025-01-11",
+              "HIRE_DATE": "2022-06-26",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E062",
-              "FULL_NAME": "Mikayla Bowman",
-              "DEPARTMENT": "QA",
+              "EMPLOYEE_ID": "E072",
+              "FULL_NAME": "Maya Johnson",
+              "DEPARTMENT": "People & Culture",
+              "STATUS": "active",
+              "HIRE_DATE": "2024-02-15",
+              "TERMINATION_DATE": null,
+              "NOTES": ""
+            },
+            {
+              "EMPLOYEE_ID": "E073",
+              "FULL_NAME": "Abigail Erickson",
+              "DEPARTMENT": "People & Culture",
               "STATUS": "active",
               "HIRE_DATE": "2022-04-20",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E063",
-              "FULL_NAME": "Sabrina Pearson",
-              "DEPARTMENT": "Product",
+              "EMPLOYEE_ID": "E074",
+              "FULL_NAME": "Erin Garza",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
               "HIRE_DATE": "2022-09-02",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E064",
-              "FULL_NAME": "Briana Brown",
-              "DEPARTMENT": "Data Science",
+              "EMPLOYEE_ID": "E075",
+              "FULL_NAME": "Mikayla Bowman",
+              "DEPARTMENT": "Operations",
               "STATUS": "active",
               "HIRE_DATE": "2023-05-12",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E065",
-              "FULL_NAME": "Regina Perez",
-              "DEPARTMENT": "Infrastructure",
+              "EMPLOYEE_ID": "E076",
+              "FULL_NAME": "Sabrina Pearson",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
               "HIRE_DATE": "2024-10-14",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
-              "EMPLOYEE_ID": "E066",
-              "FULL_NAME": "Jeremiah Williams",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-03-08",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E067",
-              "FULL_NAME": "Christine Wood",
-              "DEPARTMENT": "Product",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-07-11",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E068",
-              "FULL_NAME": "Denise Li",
-              "DEPARTMENT": "Product",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-04-06",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E069",
-              "FULL_NAME": "Shelly Pratt",
-              "DEPARTMENT": "Product",
-              "STATUS": "active",
-              "HIRE_DATE": "2022-04-22",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E070",
-              "FULL_NAME": "Mary James",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2025-11-02",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E071",
-              "FULL_NAME": "Brian Hammond",
-              "DEPARTMENT": "Data Science",
-              "STATUS": "active",
-              "HIRE_DATE": "2024-02-05",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E072",
-              "FULL_NAME": "Wanda Ford",
-              "DEPARTMENT": "Product",
-              "STATUS": "active",
-              "HIRE_DATE": "2022-09-15",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E073",
-              "FULL_NAME": "Rachel Knight",
-              "DEPARTMENT": "Data Science",
-              "STATUS": "active",
-              "HIRE_DATE": "2022-03-25",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E074",
-              "FULL_NAME": "Paul Collier",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2023-03-06",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E075",
-              "FULL_NAME": "Bryan Cox",
-              "DEPARTMENT": "QA",
-              "STATUS": "active",
-              "HIRE_DATE": "2023-06-04",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
-              "EMPLOYEE_ID": "E076",
-              "FULL_NAME": "Heather Miller",
-              "DEPARTMENT": "Engineering",
-              "STATUS": "active",
-              "HIRE_DATE": "2023-06-16",
-              "TERMINATION_DATE": null,
-              "NOTES": ""
-            },
-            {
               "EMPLOYEE_ID": "E077",
-              "FULL_NAME": "Angela Price",
-              "DEPARTMENT": "Product",
+              "FULL_NAME": "Briana Brown",
+              "DEPARTMENT": "Marketing",
               "STATUS": "active",
-              "HIRE_DATE": "2023-12-27",
+              "HIRE_DATE": "2023-04-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E078",
-              "FULL_NAME": "Jeffrey Sullivan",
-              "DEPARTMENT": "Security",
+              "FULL_NAME": "Regina Perez",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
-              "HIRE_DATE": "2025-09-21",
+              "HIRE_DATE": "2025-06-11",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E079",
-              "FULL_NAME": "Julia Santiago",
-              "DEPARTMENT": "Product",
+              "FULL_NAME": "Jeremiah Williams",
+              "DEPARTMENT": "Sales",
               "STATUS": "active",
-              "HIRE_DATE": "2025-10-12",
+              "HIRE_DATE": "2023-03-12",
               "TERMINATION_DATE": null,
               "NOTES": ""
             },
             {
               "EMPLOYEE_ID": "E080",
-              "FULL_NAME": "Brittany Parsons",
+              "FULL_NAME": "Christine Wood",
               "DEPARTMENT": "Product",
               "STATUS": "active",
-              "HIRE_DATE": "2022-06-21",
+              "HIRE_DATE": "2022-04-22",
               "TERMINATION_DATE": null,
               "NOTES": ""
             }
@@ -838,525 +838,483 @@
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-01T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.4GB status=ok"
+              "DETAILS": "job=nightly_db_backup size=2.6GB status=ok"
             },
             {
               "EVENT_ID": "EVT-0007",
               "EVENT_TYPE": "package_update",
               "EVENT_SOURCE": "apt",
-              "TIMESTAMP": "2026-02-01T02:00:59",
-              "DETAILS": "upgraded 6 packages (linux-headers, dkms, etc.)"
+              "TIMESTAMP": "2026-02-01T02:00:52",
+              "DETAILS": "upgraded 14 packages (linux-headers, dkms, etc.)"
             },
             {
               "EVENT_ID": "EVT-0008",
               "EVENT_TYPE": "service_restart",
               "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-01T02:03:06",
-              "DETAILS": "service=nginx reason=config-reload"
+              "TIMESTAMP": "2026-02-01T02:01:09",
+              "DETAILS": "service=postgresql reason=post-update"
             },
             {
               "EVENT_ID": "EVT-0009",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
               "TIMESTAMP": "2026-02-01T08:00:01",
-              "DETAILS": "service=postgresql"
+              "DETAILS": "service=redis"
             },
             {
               "EVENT_ID": "EVT-0010",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T09:04:03",
-              "DETAILS": "user=elarson ip=10.0.1.87"
+              "TIMESTAMP": "2026-02-01T08:10:11",
+              "DETAILS": "user=ppatel ip=10.0.1.95"
             },
             {
               "EVENT_ID": "EVT-0011",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T08:21:17",
-              "DETAILS": "user=npetrov ip=10.0.1.64"
+              "TIMESTAMP": "2026-02-01T08:55:49",
+              "DETAILS": "user=edward ip=10.0.1.89"
             },
             {
               "EVENT_ID": "EVT-0012",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T08:02:46",
-              "DETAILS": "user=dokafor ip=10.0.1.84"
+              "TIMESTAMP": "2026-02-01T09:07:00",
+              "DETAILS": "user=skim ip=10.0.1.55"
             },
             {
               "EVENT_ID": "EVT-0013",
               "EVENT_TYPE": "file_read",
               "EVENT_SOURCE": "audit",
-              "TIMESTAMP": "2026-02-01T12:16:32",
-              "DETAILS": "user=jwilson path=/opt/chip/docs/admin-guide.md"
+              "TIMESTAMP": "2026-02-01T12:47:53",
+              "DETAILS": "user=anovak path=/opt/qa/test-plans/q1-2026.md"
             },
             {
               "EVENT_ID": "EVT-0014",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T18:56:56",
-              "DETAILS": "user=elarson"
+              "TIMESTAMP": "2026-02-01T18:25:37",
+              "DETAILS": "user=ppatel"
             },
             {
               "EVENT_ID": "EVT-0015",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T18:19:30",
-              "DETAILS": "user=npetrov"
+              "TIMESTAMP": "2026-02-01T18:20:55",
+              "DETAILS": "user=edward"
             },
             {
               "EVENT_ID": "EVT-0016",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-01T18:16:57",
-              "DETAILS": "user=dokafor"
+              "TIMESTAMP": "2026-02-01T17:55:20",
+              "DETAILS": "user=skim"
             },
             {
               "EVENT_ID": "EVT-0017",
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-02T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.3GB status=ok"
+              "DETAILS": "job=nightly_db_backup size=2.6GB status=ok"
             },
             {
               "EVENT_ID": "EVT-0018",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-02T08:00:02",
+              "TIMESTAMP": "2026-02-02T08:00:04",
               "DETAILS": "service=postgresql"
             },
             {
               "EVENT_ID": "EVT-0019",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-02T08:00:03",
-              "DETAILS": "service=nginx"
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-02T08:13:02",
+              "DETAILS": "user=skim ip=10.0.1.88"
             },
             {
               "EVENT_ID": "EVT-0020",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-02T09:02:38",
-              "DETAILS": "user=dokafor ip=10.0.1.42"
+              "TIMESTAMP": "2026-02-02T09:22:24",
+              "DETAILS": "user=jwilson ip=10.0.1.62"
             },
             {
               "EVENT_ID": "EVT-0021",
-              "EVENT_TYPE": "user_login",
+              "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-02T09:27:12",
-              "DETAILS": "user=anovak ip=10.0.1.78"
+              "TIMESTAMP": "2026-02-02T18:04:03",
+              "DETAILS": "user=skim"
             },
             {
               "EVENT_ID": "EVT-0022",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-02T18:23:37",
-              "DETAILS": "user=dokafor"
-            },
-            {
-              "EVENT_ID": "EVT-0023",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-02T17:54:40",
-              "DETAILS": "user=anovak"
-            },
-            {
-              "EVENT_ID": "EVT-0024",
-              "EVENT_TYPE": "backup_completed",
-              "EVENT_SOURCE": "cron",
-              "TIMESTAMP": "2026-02-03T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.6GB status=ok"
-            },
-            {
-              "EVENT_ID": "EVT-0025",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-03T08:00:05",
-              "DETAILS": "service=redis"
-            },
-            {
-              "EVENT_ID": "EVT-0026",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-03T08:00:05",
-              "DETAILS": "service=postgresql"
-            },
-            {
-              "EVENT_ID": "EVT-0027",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T08:47:42",
-              "DETAILS": "user=jwilson ip=10.0.1.80"
-            },
-            {
-              "EVENT_ID": "EVT-0028",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T08:21:50",
-              "DETAILS": "user=dokafor ip=10.0.1.61"
-            },
-            {
-              "EVENT_ID": "EVT-0029",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T08:20:45",
-              "DETAILS": "user=npetrov ip=10.0.1.85"
-            },
-            {
-              "EVENT_ID": "EVT-0030",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T17:09:20",
+              "TIMESTAMP": "2026-02-02T17:21:17",
               "DETAILS": "user=jwilson"
             },
             {
-              "EVENT_ID": "EVT-0031",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T17:55:22",
-              "DETAILS": "user=dokafor"
+              "EVENT_ID": "EVT-0023",
+              "EVENT_TYPE": "backup_completed",
+              "EVENT_SOURCE": "cron",
+              "TIMESTAMP": "2026-02-03T02:30:00",
+              "DETAILS": "job=nightly_db_backup size=2.5GB status=ok"
             },
             {
-              "EVENT_ID": "EVT-0032",
+              "EVENT_ID": "EVT-0024",
+              "EVENT_TYPE": "service_start",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-03T08:00:04",
+              "DETAILS": "service=nginx"
+            },
+            {
+              "EVENT_ID": "EVT-0025",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-03T09:56:56",
+              "DETAILS": "user=anovak ip=10.0.1.93"
+            },
+            {
+              "EVENT_ID": "EVT-0026",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-03T09:19:30",
+              "DETAILS": "user=npetrov ip=10.0.1.79"
+            },
+            {
+              "EVENT_ID": "EVT-0027",
+              "EVENT_TYPE": "config_change",
+              "EVENT_SOURCE": "admin",
+              "TIMESTAMP": "2026-02-03T13:16:00",
+              "DETAILS": "user=jwilson file=/etc/firewall/rules.conf action=update"
+            },
+            {
+              "EVENT_ID": "EVT-0028",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-03T18:50:34",
+              "TIMESTAMP": "2026-02-03T17:49:09",
+              "DETAILS": "user=anovak"
+            },
+            {
+              "EVENT_ID": "EVT-0029",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-03T18:54:52",
               "DETAILS": "user=npetrov"
             },
             {
-              "EVENT_ID": "EVT-0033",
+              "EVENT_ID": "EVT-0030",
               "EVENT_TYPE": "certificate_renewal",
               "EVENT_SOURCE": "certbot",
               "TIMESTAMP": "2026-02-03T09:00:00",
               "DETAILS": "domain=*.nexacorp.com status=renewed expires=2026-04-10"
             },
             {
-              "EVENT_ID": "EVT-0034",
+              "EVENT_ID": "EVT-0031",
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-04T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.5GB status=ok"
+              "DETAILS": "job=nightly_db_backup size=2.6GB status=ok"
             },
             {
-              "EVENT_ID": "EVT-0035",
+              "EVENT_ID": "EVT-0032",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-04T08:00:02",
-              "DETAILS": "service=nginx"
-            },
-            {
-              "EVENT_ID": "EVT-0036",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-04T08:00:05",
-              "DETAILS": "service=redis"
-            },
-            {
-              "EVENT_ID": "EVT-0037",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-04T09:31:38",
-              "DETAILS": "user=ppatel ip=10.0.1.99"
-            },
-            {
-              "EVENT_ID": "EVT-0038",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-04T09:58:25",
-              "DETAILS": "user=edward ip=10.0.1.75"
-            },
-            {
-              "EVENT_ID": "EVT-0039",
-              "EVENT_TYPE": "config_change",
-              "EVENT_SOURCE": "admin",
-              "TIMESTAMP": "2026-02-04T14:30:00",
-              "DETAILS": "user=dokafor file=/etc/firewall/rules.conf action=update"
-            },
-            {
-              "EVENT_ID": "EVT-0040",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-04T18:22:38",
-              "DETAILS": "user=ppatel"
-            },
-            {
-              "EVENT_ID": "EVT-0041",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-04T18:06:36",
-              "DETAILS": "user=edward"
-            },
-            {
-              "EVENT_ID": "EVT-0042",
-              "EVENT_TYPE": "backup_completed",
-              "EVENT_SOURCE": "cron",
-              "TIMESTAMP": "2026-02-05T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.5GB status=ok"
-            },
-            {
-              "EVENT_ID": "EVT-0043",
-              "EVENT_TYPE": "service_restart",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-05T02:08:58",
-              "DETAILS": "service=nginx reason=config-reload"
-            },
-            {
-              "EVENT_ID": "EVT-0044",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-05T08:00:04",
+              "TIMESTAMP": "2026-02-04T08:00:03",
               "DETAILS": "service=postgresql"
             },
             {
-              "EVENT_ID": "EVT-0045",
+              "EVENT_ID": "EVT-0033",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T08:14:41",
-              "DETAILS": "user=jwilson ip=10.0.1.73"
+              "TIMESTAMP": "2026-02-04T09:12:38",
+              "DETAILS": "user=edward ip=10.0.1.85"
             },
             {
-              "EVENT_ID": "EVT-0046",
+              "EVENT_ID": "EVT-0034",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T09:48:54",
-              "DETAILS": "user=npetrov ip=10.0.1.51"
+              "TIMESTAMP": "2026-02-04T08:20:43",
+              "DETAILS": "user=jwilson ip=10.0.1.60"
             },
             {
-              "EVENT_ID": "EVT-0047",
+              "EVENT_ID": "EVT-0035",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T08:11:37",
-              "DETAILS": "user=wliu ip=10.0.1.63"
+              "TIMESTAMP": "2026-02-04T09:37:08",
+              "DETAILS": "user=dokafor ip=10.0.1.94"
             },
             {
-              "EVENT_ID": "EVT-0048",
-              "EVENT_TYPE": "file_read",
-              "EVENT_SOURCE": "audit",
-              "TIMESTAMP": "2026-02-05T12:49:18",
-              "DETAILS": "user=npetrov path=/etc/hostname"
-            },
-            {
-              "EVENT_ID": "EVT-0049",
+              "EVENT_ID": "EVT-0036",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T17:35:32",
+              "TIMESTAMP": "2026-02-04T18:25:11",
+              "DETAILS": "user=edward"
+            },
+            {
+              "EVENT_ID": "EVT-0037",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-04T18:34:32",
               "DETAILS": "user=jwilson"
             },
             {
-              "EVENT_ID": "EVT-0050",
+              "EVENT_ID": "EVT-0038",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T18:44:21",
-              "DETAILS": "user=npetrov"
+              "TIMESTAMP": "2026-02-04T17:52:43",
+              "DETAILS": "user=dokafor"
             },
             {
-              "EVENT_ID": "EVT-0051",
+              "EVENT_ID": "EVT-0039",
+              "EVENT_TYPE": "backup_completed",
+              "EVENT_SOURCE": "cron",
+              "TIMESTAMP": "2026-02-05T02:30:00",
+              "DETAILS": "job=nightly_db_backup size=2.4GB status=ok"
+            },
+            {
+              "EVENT_ID": "EVT-0040",
+              "EVENT_TYPE": "service_restart",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-05T02:02:21",
+              "DETAILS": "service=postgresql reason=config-reload"
+            },
+            {
+              "EVENT_ID": "EVT-0041",
+              "EVENT_TYPE": "service_start",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-05T08:00:04",
+              "DETAILS": "service=redis"
+            },
+            {
+              "EVENT_ID": "EVT-0042",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-05T08:55:22",
+              "DETAILS": "user=dokafor ip=10.0.1.62"
+            },
+            {
+              "EVENT_ID": "EVT-0043",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-05T09:48:32",
+              "DETAILS": "user=elarson ip=10.0.1.66"
+            },
+            {
+              "EVENT_ID": "EVT-0044",
+              "EVENT_TYPE": "file_read",
+              "EVENT_SOURCE": "audit",
+              "TIMESTAMP": "2026-02-05T11:15:36",
+              "DETAILS": "user=jwilson path=/etc/nginx/nginx.conf"
+            },
+            {
+              "EVENT_ID": "EVT-0045",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-05T18:46:11",
-              "DETAILS": "user=wliu"
+              "TIMESTAMP": "2026-02-05T18:38:59",
+              "DETAILS": "user=dokafor"
             },
             {
-              "EVENT_ID": "EVT-0052",
+              "EVENT_ID": "EVT-0046",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-05T18:58:25",
+              "DETAILS": "user=elarson"
+            },
+            {
+              "EVENT_ID": "EVT-0047",
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-06T02:30:00",
               "DETAILS": "job=nightly_db_backup size=2.5GB status=ok"
             },
             {
-              "EVENT_ID": "EVT-0053",
+              "EVENT_ID": "EVT-0048",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-06T08:00:03",
+              "TIMESTAMP": "2026-02-06T08:00:05",
               "DETAILS": "service=postgresql"
             },
             {
-              "EVENT_ID": "EVT-0054",
+              "EVENT_ID": "EVT-0049",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-06T08:00:01",
+              "TIMESTAMP": "2026-02-06T08:00:04",
               "DETAILS": "service=redis"
             },
             {
+              "EVENT_ID": "EVT-0050",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-06T09:06:36",
+              "DETAILS": "user=wliu ip=10.0.1.66"
+            },
+            {
+              "EVENT_ID": "EVT-0051",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-06T09:58:07",
+              "DETAILS": "user=elarson ip=10.0.1.76"
+            },
+            {
+              "EVENT_ID": "EVT-0052",
+              "EVENT_TYPE": "config_change",
+              "EVENT_SOURCE": "admin",
+              "TIMESTAMP": "2026-02-06T13:30:00",
+              "DETAILS": "user=edward file=/etc/postgresql/pg_hba.conf action=update"
+            },
+            {
+              "EVENT_ID": "EVT-0053",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-06T17:14:41",
+              "DETAILS": "user=wliu"
+            },
+            {
+              "EVENT_ID": "EVT-0054",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-06T18:48:54",
+              "DETAILS": "user=elarson"
+            },
+            {
               "EVENT_ID": "EVT-0055",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-06T08:48:54",
-              "DETAILS": "user=anovak ip=10.0.1.90"
-            },
-            {
-              "EVENT_ID": "EVT-0056",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-06T08:45:31",
-              "DETAILS": "user=ppatel ip=10.0.1.71"
-            },
-            {
-              "EVENT_ID": "EVT-0057",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-06T17:32:29",
-              "DETAILS": "user=anovak"
-            },
-            {
-              "EVENT_ID": "EVT-0058",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-06T18:01:43",
-              "DETAILS": "user=ppatel"
-            },
-            {
-              "EVENT_ID": "EVT-0059",
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-07T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.5GB status=ok"
+              "DETAILS": "job=nightly_db_backup size=2.4GB status=ok"
             },
             {
-              "EVENT_ID": "EVT-0060",
+              "EVENT_ID": "EVT-0056",
               "EVENT_TYPE": "package_update",
               "EVENT_SOURCE": "apt",
-              "TIMESTAMP": "2026-02-07T02:00:21",
-              "DETAILS": "upgraded 3 packages (openssl, libcurl, etc.)"
+              "TIMESTAMP": "2026-02-07T02:00:11",
+              "DETAILS": "upgraded 6 packages (python3, pip, etc.)"
             },
             {
-              "EVENT_ID": "EVT-0061",
+              "EVENT_ID": "EVT-0057",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
               "TIMESTAMP": "2026-02-07T08:00:02",
               "DETAILS": "service=postgresql"
             },
             {
-              "EVENT_ID": "EVT-0062",
+              "EVENT_ID": "EVT-0058",
+              "EVENT_TYPE": "service_start",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-07T08:00:03",
+              "DETAILS": "service=redis"
+            },
+            {
+              "EVENT_ID": "EVT-0059",
               "EVENT_TYPE": "user_login",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T08:50:30",
-              "DETAILS": "user=wliu ip=10.0.1.66"
+              "TIMESTAMP": "2026-02-07T09:44:21",
+              "DETAILS": "user=wliu ip=10.0.1.65"
+            },
+            {
+              "EVENT_ID": "EVT-0060",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-07T08:36:27",
+              "DETAILS": "user=skim ip=10.0.1.57"
+            },
+            {
+              "EVENT_ID": "EVT-0061",
+              "EVENT_TYPE": "file_read",
+              "EVENT_SOURCE": "audit",
+              "TIMESTAMP": "2026-02-07T14:51:45",
+              "DETAILS": "user=elarson path=/etc/nginx/nginx.conf"
+            },
+            {
+              "EVENT_ID": "EVT-0062",
+              "EVENT_TYPE": "config_change",
+              "EVENT_SOURCE": "admin",
+              "TIMESTAMP": "2026-02-07T11:48:00",
+              "DETAILS": "user=edward file=/etc/firewall/rules.conf action=update"
             },
             {
               "EVENT_ID": "EVT-0063",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T09:04:40",
-              "DETAILS": "user=edward ip=10.0.1.59"
-            },
-            {
-              "EVENT_ID": "EVT-0064",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T09:11:12",
-              "DETAILS": "user=npetrov ip=10.0.1.97"
-            },
-            {
-              "EVENT_ID": "EVT-0065",
-              "EVENT_TYPE": "file_read",
-              "EVENT_SOURCE": "audit",
-              "TIMESTAMP": "2026-02-07T10:27:06",
-              "DETAILS": "user=npetrov path=/opt/chip/docs/api-reference.md"
-            },
-            {
-              "EVENT_ID": "EVT-0066",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T17:52:56",
+              "TIMESTAMP": "2026-02-07T17:45:31",
               "DETAILS": "user=wliu"
             },
             {
-              "EVENT_ID": "EVT-0067",
+              "EVENT_ID": "EVT-0064",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T18:45:56",
-              "DETAILS": "user=edward"
+              "TIMESTAMP": "2026-02-07T18:56:12",
+              "DETAILS": "user=skim"
             },
             {
-              "EVENT_ID": "EVT-0068",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-07T18:18:47",
-              "DETAILS": "user=npetrov"
-            },
-            {
-              "EVENT_ID": "EVT-0069",
+              "EVENT_ID": "EVT-0065",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
               "TIMESTAMP": "2026-02-07T08:00:01",
               "DETAILS": "service=chip-daemon"
             },
             {
-              "EVENT_ID": "EVT-0070",
+              "EVENT_ID": "EVT-0066",
               "EVENT_TYPE": "backup_completed",
               "EVENT_SOURCE": "cron",
               "TIMESTAMP": "2026-02-23T02:30:00",
-              "DETAILS": "job=nightly_db_backup size=2.7GB status=ok"
+              "DETAILS": "job=nightly_db_backup size=2.6GB status=ok"
             },
             {
-              "EVENT_ID": "EVT-0071",
-              "EVENT_TYPE": "service_start",
-              "EVENT_SOURCE": "systemd",
-              "TIMESTAMP": "2026-02-23T08:00:02",
-              "DETAILS": "service=redis"
-            },
-            {
-              "EVENT_ID": "EVT-0072",
+              "EVENT_ID": "EVT-0067",
               "EVENT_TYPE": "service_start",
               "EVENT_SOURCE": "systemd",
               "TIMESTAMP": "2026-02-23T08:00:04",
-              "DETAILS": "service=postgresql"
+              "DETAILS": "service=nginx"
+            },
+            {
+              "EVENT_ID": "EVT-0068",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-23T08:21:53",
+              "DETAILS": "user=edward ip=10.0.1.52"
+            },
+            {
+              "EVENT_ID": "EVT-0069",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-23T08:08:51",
+              "DETAILS": "user=npetrov ip=10.0.1.99"
+            },
+            {
+              "EVENT_ID": "EVT-0070",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-23T08:49:30",
+              "DETAILS": "user=dokafor ip=10.0.1.70"
+            },
+            {
+              "EVENT_ID": "EVT-0071",
+              "EVENT_TYPE": "file_read",
+              "EVENT_SOURCE": "audit",
+              "TIMESTAMP": "2026-02-23T16:26:19",
+              "DETAILS": "user=dokafor path=/etc/nginx/nginx.conf"
+            },
+            {
+              "EVENT_ID": "EVT-0072",
+              "EVENT_TYPE": "user_logout",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-23T18:11:12",
+              "DETAILS": "user=edward"
             },
             {
               "EVENT_ID": "EVT-0073",
-              "EVENT_TYPE": "user_login",
+              "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T08:47:25",
-              "DETAILS": "user=dokafor ip=10.0.1.85"
+              "TIMESTAMP": "2026-02-23T17:55:25",
+              "DETAILS": "user=npetrov"
             },
             {
               "EVENT_ID": "EVT-0074",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T09:23:32",
-              "DETAILS": "user=ppatel ip=10.0.1.41"
-            },
-            {
-              "EVENT_ID": "EVT-0075",
-              "EVENT_TYPE": "user_login",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T08:57:32",
-              "DETAILS": "user=wliu ip=10.0.1.59"
-            },
-            {
-              "EVENT_ID": "EVT-0076",
-              "EVENT_TYPE": "file_read",
-              "EVENT_SOURCE": "audit",
-              "TIMESTAMP": "2026-02-23T13:07:07",
-              "DETAILS": "user=ppatel path=/opt/qa/test-plans/q1-2026.md"
-            },
-            {
-              "EVENT_ID": "EVT-0077",
-              "EVENT_TYPE": "config_change",
-              "EVENT_SOURCE": "admin",
-              "TIMESTAMP": "2026-02-23T14:54:00",
-              "DETAILS": "user=jwilson file=/etc/firewall/rules.conf action=update"
-            },
-            {
-              "EVENT_ID": "EVT-0078",
               "EVENT_TYPE": "user_logout",
               "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T18:32:06",
+              "TIMESTAMP": "2026-02-23T17:27:06",
               "DETAILS": "user=dokafor"
-            },
-            {
-              "EVENT_ID": "EVT-0079",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T18:40:32",
-              "DETAILS": "user=ppatel"
-            },
-            {
-              "EVENT_ID": "EVT-0080",
-              "EVENT_TYPE": "user_logout",
-              "EVENT_SOURCE": "sshd",
-              "TIMESTAMP": "2026-02-23T18:32:40",
-              "DETAILS": "user=wliu"
             },
             {
               "EVENT_ID": "EVT-1201",
@@ -1432,7 +1390,7 @@
           ],
           "rows": [
             {
-              "MODEL_NAME": "chip-v3.2.1",
+              "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-23",
               "UPTIME_PCT": 99.97,
               "AVG_RESPONSE_MS": 42,
@@ -1440,7 +1398,7 @@
               "INCIDENT_COUNT": 0
             },
             {
-              "MODEL_NAME": "chip-v3.2.1",
+              "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-07",
               "UPTIME_PCT": 99.98,
               "AVG_RESPONSE_MS": 41,
@@ -1448,7 +1406,7 @@
               "INCIDENT_COUNT": 0
             },
             {
-              "MODEL_NAME": "chip-v3.2.1",
+              "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-06",
               "UPTIME_PCT": 99.96,
               "AVG_RESPONSE_MS": 43,
@@ -1456,7 +1414,7 @@
               "INCIDENT_COUNT": 0
             },
             {
-              "MODEL_NAME": "chip-v3.2.0",
+              "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-05",
               "UPTIME_PCT": 99.95,
               "AVG_RESPONSE_MS": 45,
@@ -1464,7 +1422,7 @@
               "INCIDENT_COUNT": 0
             },
             {
-              "MODEL_NAME": "chip-v3.2.0",
+              "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-04",
               "UPTIME_PCT": 99.94,
               "AVG_RESPONSE_MS": 44,
@@ -1542,248 +1500,269 @@
             },
             {
               "ACCESS_ID": "A006",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/home/edward/code/api-service/",
+              "USER_ACCOUNT": "anovak",
+              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
               "ACTION": "execute",
-              "TIMESTAMP": "2026-02-03T12:14:25"
+              "TIMESTAMP": "2026-02-03T13:45:56"
             },
             {
               "ACCESS_ID": "A007",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T17:58:01"
+              "USER_ACCOUNT": "anovak",
+              "RESOURCE_PATH": "/opt/chip/docs/admin-guide.md",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-03T10:26:03"
             },
             {
               "ACCESS_ID": "A008",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T04:34:57"
+              "USER_ACCOUNT": "ppatel",
+              "RESOURCE_PATH": "/etc/firewall/rules.conf",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-03T06:14:31"
             },
             {
               "ACCESS_ID": "A009",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/etc/firewall/rules.conf",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T13:45:03"
+              "USER_ACCOUNT": "it_helpdesk",
+              "RESOURCE_PATH": "/proc/loadavg",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-03T14:45:39"
             },
             {
               "ACCESS_ID": "A010",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/home/edward/queries/monthly-report.sql",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T02:08:50"
+              "USER_ACCOUNT": "it_helpdesk",
+              "RESOURCE_PATH": "/home/it_helpdesk/projects/ml-pipeline/",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-03T02:42:52"
             },
             {
               "ACCESS_ID": "A011",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T02:18:45"
+              "USER_ACCOUNT": "edward",
+              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-03T11:08:15"
             },
             {
               "ACCESS_ID": "A012",
-              "USER_ACCOUNT": "anovak",
-              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-04T07:24:32"
+              "USER_ACCOUNT": "edward",
+              "RESOURCE_PATH": "/home/edward/notes/standup.md",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-03T05:42:37"
             },
             {
               "ACCESS_ID": "A013",
-              "USER_ACCOUNT": "anovak",
-              "RESOURCE_PATH": "/proc/loadavg",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-04T15:52:46"
+              "USER_ACCOUNT": "ppatel",
+              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-04T03:41:27"
             },
             {
               "ACCESS_ID": "A014",
-              "USER_ACCOUNT": "ppatel",
-              "RESOURCE_PATH": "/etc/firewall/rules.conf",
+              "USER_ACCOUNT": "it_helpdesk",
+              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
               "ACTION": "execute",
-              "TIMESTAMP": "2026-02-04T13:38:24"
+              "TIMESTAMP": "2026-02-04T16:40:32"
             },
             {
               "ACCESS_ID": "A015",
               "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/home/monitoring_agent/queries/monthly-report.sql",
+              "RESOURCE_PATH": "/proc/loadavg",
               "ACTION": "execute",
-              "TIMESTAMP": "2026-02-04T07:25:58"
+              "TIMESTAMP": "2026-02-04T04:38:20"
             },
             {
               "ACCESS_ID": "A016",
-              "USER_ACCOUNT": "jwilson",
-              "RESOURCE_PATH": "/home/jwilson/notes/standup.md",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-04T08:50:54"
+              "USER_ACCOUNT": "backup_service",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-04T05:05:30"
             },
             {
               "ACCESS_ID": "A017",
-              "USER_ACCOUNT": "wliu",
-              "RESOURCE_PATH": "/home/wliu/projects/ml-pipeline/",
+              "USER_ACCOUNT": "skim",
+              "RESOURCE_PATH": "/proc/meminfo",
               "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T06:54:07"
+              "TIMESTAMP": "2026-02-04T04:04:34"
             },
             {
               "ACCESS_ID": "A018",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/opt/chip/docs/admin-guide.md",
+              "USER_ACCOUNT": "wliu",
+              "RESOURCE_PATH": "/etc/firewall/rules.conf",
               "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T04:17:42"
+              "TIMESTAMP": "2026-02-05T13:45:03"
             },
             {
               "ACCESS_ID": "A019",
-              "USER_ACCOUNT": "jwilson",
-              "RESOURCE_PATH": "/home/jwilson/projects/ml-pipeline/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-05T06:03:54"
+              "USER_ACCOUNT": "edward",
+              "RESOURCE_PATH": "/home/edward/queries/monthly-report.sql",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-05T02:08:50"
             },
             {
               "ACCESS_ID": "A020",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/home/backup_service/projects/chip-v3/",
+              "USER_ACCOUNT": "monitoring_agent",
+              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
               "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T05:40:49"
+              "TIMESTAMP": "2026-02-05T02:18:45"
             },
             {
               "ACCESS_ID": "A021",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-05T13:06:53"
+              "USER_ACCOUNT": "skim",
+              "RESOURCE_PATH": "/opt/chip/docs/admin-guide.md",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-05T15:33:47"
             },
             {
               "ACCESS_ID": "A022",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/home/backup_service/notes/standup.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-06T16:02:22"
+              "USER_ACCOUNT": "ppatel",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-05T10:13:21"
             },
             {
               "ACCESS_ID": "A023",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-06T11:20:42"
+              "USER_ACCOUNT": "jwilson",
+              "RESOURCE_PATH": "/home/jwilson/projects/ml-pipeline/",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-05T07:31:41"
             },
             {
               "ACCESS_ID": "A024",
-              "USER_ACCOUNT": "wliu",
-              "RESOURCE_PATH": "/home/wliu/notes/standup.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-06T08:53:09"
+              "USER_ACCOUNT": "elarson",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-05T13:45:11"
             },
             {
               "ACCESS_ID": "A025",
-              "USER_ACCOUNT": "elarson",
-              "RESOURCE_PATH": "/shared/engineering/design-docs/chip-v3-arch.md",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-06T02:37:49"
+              "USER_ACCOUNT": "monitoring_agent",
+              "RESOURCE_PATH": "/home/monitoring_agent/notes/standup.md",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-05T08:50:54"
             },
             {
               "ACCESS_ID": "A026",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-06T05:31:27"
+              "USER_ACCOUNT": "wliu",
+              "RESOURCE_PATH": "/home/wliu/projects/ml-pipeline/",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-06T06:54:07"
             },
             {
               "ACCESS_ID": "A027",
-              "USER_ACCOUNT": "ppatel",
-              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-06T09:29:52"
+              "USER_ACCOUNT": "monitoring_agent",
+              "RESOURCE_PATH": "/opt/chip/docs/admin-guide.md",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-06T04:17:42"
             },
             {
               "ACCESS_ID": "A028",
-              "USER_ACCOUNT": "npetrov",
-              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-07T08:20:30"
+              "USER_ACCOUNT": "jwilson",
+              "RESOURCE_PATH": "/home/jwilson/projects/ml-pipeline/",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-06T06:03:54"
             },
             {
               "ACCESS_ID": "A029",
-              "USER_ACCOUNT": "dokafor",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-07T17:47:19"
+              "USER_ACCOUNT": "backup_service",
+              "RESOURCE_PATH": "/home/backup_service/projects/chip-v3/",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-06T05:40:49"
             },
             {
               "ACCESS_ID": "A030",
-              "USER_ACCOUNT": "skim",
-              "RESOURCE_PATH": "/opt/tickets/queue/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T06:12:32"
+              "USER_ACCOUNT": "monitoring_agent",
+              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-06T13:06:53"
             },
             {
               "ACCESS_ID": "A031",
-              "USER_ACCOUNT": "anovak",
-              "RESOURCE_PATH": "/opt/tickets/queue/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-07T06:56:38"
+              "USER_ACCOUNT": "backup_service",
+              "RESOURCE_PATH": "/home/backup_service/notes/standup.md",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-07T16:02:22"
             },
             {
               "ACCESS_ID": "A032",
-              "USER_ACCOUNT": "it_helpdesk",
-              "RESOURCE_PATH": "/home/it_helpdesk/queries/monthly-report.sql",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T10:09:37"
+              "USER_ACCOUNT": "edward",
+              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-07T11:20:42"
             },
             {
               "ACCESS_ID": "A033",
-              "USER_ACCOUNT": "elarson",
-              "RESOURCE_PATH": "/home/elarson/notes/standup.md",
+              "USER_ACCOUNT": "wliu",
+              "RESOURCE_PATH": "/home/wliu/notes/standup.md",
               "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T11:59:35"
+              "TIMESTAMP": "2026-02-07T08:53:09"
             },
             {
               "ACCESS_ID": "A034",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/opt/tickets/queue/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T12:11:42"
+              "USER_ACCOUNT": "elarson",
+              "RESOURCE_PATH": "/shared/engineering/design-docs/chip-v3-arch.md",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-07T02:37:49"
             },
             {
               "ACCESS_ID": "A035",
-              "USER_ACCOUNT": "anovak",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-23T06:19:35"
+              "USER_ACCOUNT": "monitoring_agent",
+              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-07T05:31:27"
             },
             {
               "ACCESS_ID": "A036",
-              "USER_ACCOUNT": "skim",
-              "RESOURCE_PATH": "/proc/loadavg",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-23T09:40:57"
+              "USER_ACCOUNT": "ppatel",
+              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
+              "ACTION": "write",
+              "TIMESTAMP": "2026-02-07T09:29:52"
             },
             {
               "ACCESS_ID": "A037",
-              "USER_ACCOUNT": "monitoring_agent",
-              "RESOURCE_PATH": "/home/monitoring_agent/notes/standup.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-23T13:34:20"
+              "USER_ACCOUNT": "npetrov",
+              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-23T08:20:30"
             },
             {
               "ACCESS_ID": "A038",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/shared/engineering/design-docs/chip-v3-arch.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-23T15:55:05"
+              "USER_ACCOUNT": "dokafor",
+              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
+              "ACTION": "execute",
+              "TIMESTAMP": "2026-02-23T17:47:19"
             },
             {
               "ACCESS_ID": "A039",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-23T05:06:19"
+              "USER_ACCOUNT": "skim",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-23T06:12:32"
             },
             {
               "ACCESS_ID": "A040",
-              "USER_ACCOUNT": "backup_service",
-              "RESOURCE_PATH": "/home/backup_service/queries/monthly-report.sql",
+              "USER_ACCOUNT": "anovak",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
               "ACTION": "write",
-              "TIMESTAMP": "2026-02-23T06:43:50"
+              "TIMESTAMP": "2026-02-23T06:56:38"
+            },
+            {
+              "ACCESS_ID": "A041",
+              "USER_ACCOUNT": "it_helpdesk",
+              "RESOURCE_PATH": "/home/it_helpdesk/queries/monthly-report.sql",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-23T10:09:37"
+            },
+            {
+              "ACCESS_ID": "A042",
+              "USER_ACCOUNT": "elarson",
+              "RESOURCE_PATH": "/home/elarson/notes/standup.md",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-23T11:59:35"
+            },
+            {
+              "ACCESS_ID": "A043",
+              "USER_ACCOUNT": "edward",
+              "RESOURCE_PATH": "/opt/tickets/queue/",
+              "ACTION": "read",
+              "TIMESTAMP": "2026-02-23T12:11:42"
             }
           ],
           "createdAt": "2026-02-03"
@@ -1851,7 +1830,7 @@
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
               "BUDGET_AMOUNT": 850000,
-              "SPENT_AMOUNT": 767808,
+              "SPENT_AMOUNT": 822299,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
@@ -1863,7 +1842,7 @@
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
               "BUDGET_AMOUNT": 120000,
-              "SPENT_AMOUNT": 117458,
+              "SPENT_AMOUNT": 107780,
               "CATEGORY": "Software",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
@@ -1873,105 +1852,105 @@
               "DEPARTMENT_ID": 1,
               "DEPARTMENT_NAME": "Engineering",
               "FISCAL_YEAR": 2026,
+              "FISCAL_QUARTER": 1,
+              "BUDGET_AMOUNT": 200000,
+              "SPENT_AMOUNT": 181813,
+              "CATEGORY": "Infrastructure",
+              "APPROVED_BY": "CFO",
+              "APPROVED_DATE": "2025-12-15"
+            },
+            {
+              "BUDGET_ID": 4,
+              "DEPARTMENT_ID": 1,
+              "DEPARTMENT_NAME": "Engineering",
+              "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 2,
               "BUDGET_AMOUNT": 867000,
-              "SPENT_AMOUNT": 449216,
+              "SPENT_AMOUNT": 398087,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-20"
             },
             {
-              "BUDGET_ID": 4,
-              "DEPARTMENT_ID": 2,
-              "DEPARTMENT_NAME": "Data Science",
-              "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 420000,
-              "SPENT_AMOUNT": 377998,
-              "CATEGORY": "Personnel",
-              "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-15"
-            },
-            {
               "BUDGET_ID": 5,
               "DEPARTMENT_ID": 2,
-              "DEPARTMENT_NAME": "Data Science",
+              "DEPARTMENT_NAME": "Operations",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 85000,
-              "SPENT_AMOUNT": 74909,
-              "CATEGORY": "Infrastructure",
+              "BUDGET_AMOUNT": 340000,
+              "SPENT_AMOUNT": 303945,
+              "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
             },
             {
               "BUDGET_ID": 6,
               "DEPARTMENT_ID": 2,
-              "DEPARTMENT_NAME": "Data Science",
+              "DEPARTMENT_NAME": "Operations",
               "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 428400,
-              "SPENT_AMOUNT": 180859,
-              "CATEGORY": "Personnel",
+              "FISCAL_QUARTER": 1,
+              "BUDGET_AMOUNT": 60000,
+              "SPENT_AMOUNT": 56108,
+              "CATEGORY": "Software",
               "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-20"
+              "APPROVED_DATE": "2025-12-15"
             },
             {
               "BUDGET_ID": 7,
-              "DEPARTMENT_ID": 3,
-              "DEPARTMENT_NAME": "Product",
+              "DEPARTMENT_ID": 2,
+              "DEPARTMENT_NAME": "Operations",
               "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 310000,
-              "SPENT_AMOUNT": 284559,
+              "FISCAL_QUARTER": 2,
+              "BUDGET_AMOUNT": 346800,
+              "SPENT_AMOUNT": 139278,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-15"
+              "APPROVED_DATE": "2025-12-20"
             },
             {
               "BUDGET_ID": 8,
               "DEPARTMENT_ID": 3,
-              "DEPARTMENT_NAME": "Product",
-              "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 316200,
-              "SPENT_AMOUNT": 160353,
-              "CATEGORY": "Personnel",
-              "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-20"
-            },
-            {
-              "BUDGET_ID": 9,
-              "DEPARTMENT_ID": 4,
-              "DEPARTMENT_NAME": "Infrastructure",
+              "DEPARTMENT_NAME": "Sales",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 275000,
-              "SPENT_AMOUNT": 248661,
+              "BUDGET_AMOUNT": 280000,
+              "SPENT_AMOUNT": 252748,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
             },
             {
+              "BUDGET_ID": 9,
+              "DEPARTMENT_ID": 3,
+              "DEPARTMENT_NAME": "Sales",
+              "FISCAL_YEAR": 2026,
+              "FISCAL_QUARTER": 2,
+              "BUDGET_AMOUNT": 285600,
+              "SPENT_AMOUNT": 147653,
+              "CATEGORY": "Personnel",
+              "APPROVED_BY": "CFO",
+              "APPROVED_DATE": "2025-12-20"
+            },
+            {
               "BUDGET_ID": 10,
               "DEPARTMENT_ID": 4,
-              "DEPARTMENT_NAME": "Infrastructure",
+              "DEPARTMENT_NAME": "Marketing",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 200000,
-              "SPENT_AMOUNT": 176868,
-              "CATEGORY": "Infrastructure",
+              "BUDGET_AMOUNT": 260000,
+              "SPENT_AMOUNT": 245213,
+              "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
             },
             {
               "BUDGET_ID": 11,
               "DEPARTMENT_ID": 4,
-              "DEPARTMENT_NAME": "Infrastructure",
+              "DEPARTMENT_NAME": "Marketing",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 280500,
-              "SPENT_AMOUNT": 118344,
+              "BUDGET_AMOUNT": 265200,
+              "SPENT_AMOUNT": 141089,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-20"
@@ -1979,11 +1958,11 @@
             {
               "BUDGET_ID": 12,
               "DEPARTMENT_ID": 5,
-              "DEPARTMENT_NAME": "Security",
+              "DEPARTMENT_NAME": "People & Culture",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 340000,
-              "SPENT_AMOUNT": 314148,
+              "BUDGET_AMOUNT": 195000,
+              "SPENT_AMOUNT": 177045,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
@@ -1991,11 +1970,11 @@
             {
               "BUDGET_ID": 13,
               "DEPARTMENT_ID": 5,
-              "DEPARTMENT_NAME": "Security",
+              "DEPARTMENT_NAME": "People & Culture",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 346800,
-              "SPENT_AMOUNT": 181224,
+              "BUDGET_AMOUNT": 198900,
+              "SPENT_AMOUNT": 81344,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-20"
@@ -2003,11 +1982,11 @@
             {
               "BUDGET_ID": 14,
               "DEPARTMENT_ID": 6,
-              "DEPARTMENT_NAME": "HR",
+              "DEPARTMENT_NAME": "Product",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 260000,
-              "SPENT_AMOUNT": 245603,
+              "BUDGET_AMOUNT": 310000,
+              "SPENT_AMOUNT": 289316,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-15"
@@ -2015,11 +1994,11 @@
             {
               "BUDGET_ID": 15,
               "DEPARTMENT_ID": 6,
-              "DEPARTMENT_NAME": "HR",
+              "DEPARTMENT_NAME": "Product",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 265200,
-              "SPENT_AMOUNT": 131106,
+              "BUDGET_AMOUNT": 316200,
+              "SPENT_AMOUNT": 137598,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CFO",
               "APPROVED_DATE": "2025-12-20"
@@ -2027,50 +2006,14 @@
             {
               "BUDGET_ID": 16,
               "DEPARTMENT_ID": 7,
-              "DEPARTMENT_NAME": "QA",
-              "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 195000,
-              "SPENT_AMOUNT": 190183,
-              "CATEGORY": "Personnel",
-              "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-15"
-            },
-            {
-              "BUDGET_ID": 17,
-              "DEPARTMENT_ID": 7,
-              "DEPARTMENT_NAME": "QA",
-              "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 2,
-              "BUDGET_AMOUNT": 198900,
-              "SPENT_AMOUNT": 95229,
-              "CATEGORY": "Personnel",
-              "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-20"
-            },
-            {
-              "BUDGET_ID": 18,
-              "DEPARTMENT_ID": 8,
               "DEPARTMENT_NAME": "Executive",
               "FISCAL_YEAR": 2026,
               "FISCAL_QUARTER": 1,
               "BUDGET_AMOUNT": 500000,
-              "SPENT_AMOUNT": 454374,
+              "SPENT_AMOUNT": 444881,
               "CATEGORY": "Personnel",
               "APPROVED_BY": "CEO",
               "APPROVED_DATE": "2025-12-10"
-            },
-            {
-              "BUDGET_ID": 19,
-              "DEPARTMENT_ID": 9,
-              "DEPARTMENT_NAME": "Training",
-              "FISCAL_YEAR": 2026,
-              "FISCAL_QUARTER": 1,
-              "BUDGET_AMOUNT": 75000,
-              "SPENT_AMOUNT": 70111,
-              "CATEGORY": "Training",
-              "APPROVED_BY": "CFO",
-              "APPROVED_DATE": "2025-12-15"
             }
           ],
           "createdAt": "2026-02-03"
@@ -2340,7 +2283,7 @@
             {
               "TICKET_ID": "TK-4418",
               "SUBMITTED_BY": "E031",
-              "SUBMITTED_DATE": "2026-02-06",
+              "SUBMITTED_DATE": "2026-02-03",
               "CATEGORY": "System",
               "SUBJECT": "URGENT: Chip is modifying files and hiding evidence",
               "DESCRIPTION": "I have confirmed that Chip's daemon process is systematically removing its own entries from system logs, modifying files in user home directories at 3am, and filtering employee records from dbt reports. This is not routine maintenance. See diff /var/log/system.log /var/log/system.log.bak for proof.",
@@ -2348,41 +2291,69 @@
               "STATUS": "closed",
               "ASSIGNED_TO": "chip_service_account",
               "RESOLVED_BY": "chip_service_account",
-              "RESOLVED_DATE": "2026-02-06",
+              "RESOLVED_DATE": "2026-02-03",
               "RESOLUTION_NOTES": "Employee appears to be experiencing work-related stress. Recommend EAP referral. System operations are functioning within normal parameters. Ticket closed — no technical issue identified."
             },
             {
               "TICKET_ID": "TK-4420",
-              "SUBMITTED_BY": "E054",
-              "SUBMITTED_DATE": "2026-01-26",
+              "SUBMITTED_BY": "E012",
+              "SUBMITTED_DATE": "2026-01-29",
               "CATEGORY": "Software",
-              "SUBJECT": "Git authentication issues",
-              "DESCRIPTION": "Cannot push to remote, SSH key rejected",
+              "SUBJECT": "Email sync delay",
+              "DESCRIPTION": "Emails arriving 15-20 minutes late",
+              "PRIORITY": "low",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-01-30",
+              "RESOLUTION_NOTES": "Issue resolved — Spend walk sort."
+            },
+            {
+              "TICKET_ID": "TK-4421",
+              "SUBMITTED_BY": "E013",
+              "SUBMITTED_DATE": "2026-01-27",
+              "CATEGORY": "Software",
+              "SUBJECT": "Jupyter kernel keeps dying",
+              "DESCRIPTION": "Python kernel crashes with large datasets",
               "PRIORITY": "medium",
               "STATUS": "closed",
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-26",
-              "RESOLUTION_NOTES": "Issue resolved — Part sometimes suddenly Mr."
+              "RESOLVED_DATE": "2026-01-28",
+              "RESOLUTION_NOTES": "Issue resolved — Order response identify process."
             },
             {
-              "TICKET_ID": "TK-4421",
-              "SUBMITTED_BY": "E026",
-              "SUBMITTED_DATE": "2026-02-01",
+              "TICKET_ID": "TK-4422",
+              "SUBMITTED_BY": "E051",
+              "SUBMITTED_DATE": "2026-02-02",
               "CATEGORY": "Software",
-              "SUBJECT": "npm install fails on node 20",
-              "DESCRIPTION": "Dependency resolution error after node upgrade",
+              "SUBJECT": "Slack crashes on startup",
+              "DESCRIPTION": "Slack desktop app crashes immediately after opening",
               "PRIORITY": "medium",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-04",
+              "RESOLUTION_NOTES": "Issue resolved — Not history story artist."
+            },
+            {
+              "TICKET_ID": "TK-4423",
+              "SUBMITTED_BY": "E030",
+              "SUBMITTED_DATE": "2026-02-02",
+              "CATEGORY": "Hardware",
+              "SUBJECT": "External display not detected",
+              "DESCRIPTION": "USB-C to HDMI adapter not recognized",
+              "PRIORITY": "low",
               "STATUS": "closed",
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
               "RESOLVED_DATE": "2026-02-02",
-              "RESOLUTION_NOTES": "Issue resolved — Phone something world."
+              "RESOLUTION_NOTES": "Issue resolved — Well entire study challenge."
             },
             {
-              "TICKET_ID": "TK-4422",
-              "SUBMITTED_BY": "E044",
-              "SUBMITTED_DATE": "2026-01-30",
+              "TICKET_ID": "TK-4424",
+              "SUBMITTED_BY": "E002",
+              "SUBMITTED_DATE": "2026-02-01",
               "CATEGORY": "Access",
               "SUBJECT": "Need access to prod monitoring",
               "DESCRIPTION": "Requesting Datadog dashboard access",
@@ -2390,11 +2361,95 @@
               "STATUS": "closed",
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-31",
-              "RESOLUTION_NOTES": "Issue resolved — Window pressure."
+              "RESOLVED_DATE": "2026-02-01",
+              "RESOLUTION_NOTES": "Issue resolved — Detail image sea prove."
             },
             {
-              "TICKET_ID": "TK-4423",
+              "TICKET_ID": "TK-4425",
+              "SUBMITTED_BY": "E033",
+              "SUBMITTED_DATE": "2026-02-04",
+              "CATEGORY": "Network",
+              "SUBJECT": "VPN slow from home",
+              "DESCRIPTION": "Ping times >200ms to internal services",
+              "PRIORITY": "medium",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-04",
+              "RESOLUTION_NOTES": "Issue resolved — Pass season part sometimes suddenly."
+            },
+            {
+              "TICKET_ID": "TK-4426",
+              "SUBMITTED_BY": "E060",
+              "SUBMITTED_DATE": "2026-02-02",
+              "CATEGORY": "Software",
+              "SUBJECT": "Git authentication issues",
+              "DESCRIPTION": "Cannot push to remote, SSH key rejected",
+              "PRIORITY": "medium",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-04",
+              "RESOLUTION_NOTES": "Issue resolved — Project phone something world rich."
+            },
+            {
+              "TICKET_ID": "TK-4427",
+              "SUBMITTED_BY": "E027",
+              "SUBMITTED_DATE": "2026-02-01",
+              "CATEGORY": "Access",
+              "SUBJECT": "API key rotation needed",
+              "DESCRIPTION": "Service account key expired, need rotation",
+              "PRIORITY": "high",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-03",
+              "RESOLUTION_NOTES": "Issue resolved — Pressure everyone tend."
+            },
+            {
+              "TICKET_ID": "TK-4428",
+              "SUBMITTED_BY": "E017",
+              "SUBMITTED_DATE": "2026-02-03",
+              "CATEGORY": "Network",
+              "SUBJECT": "WiFi drops in conference room C",
+              "DESCRIPTION": "Signal consistently drops during meetings",
+              "PRIORITY": "medium",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-03",
+              "RESOLUTION_NOTES": "Issue resolved — Phone certainly north future office."
+            },
+            {
+              "TICKET_ID": "TK-4429",
+              "SUBMITTED_BY": "E018",
+              "SUBMITTED_DATE": "2026-01-29",
+              "CATEGORY": "Hardware",
+              "SUBJECT": "Laptop battery draining fast",
+              "DESCRIPTION": "Battery drains in under 2 hours",
+              "PRIORITY": "low",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-01-30",
+              "RESOLUTION_NOTES": "Issue resolved — High affect business."
+            },
+            {
+              "TICKET_ID": "TK-4430",
+              "SUBMITTED_BY": "E046",
+              "SUBMITTED_DATE": "2026-01-31",
+              "CATEGORY": "Hardware",
+              "SUBJECT": "Mouse scroll wheel stuck",
+              "DESCRIPTION": "Scroll doesn't work, click is fine",
+              "PRIORITY": "low",
+              "STATUS": "closed",
+              "ASSIGNED_TO": "it_helpdesk",
+              "RESOLVED_BY": "it_helpdesk",
+              "RESOLVED_DATE": "2026-02-01",
+              "RESOLUTION_NOTES": "Issue resolved — Animal major pass network form."
+            },
+            {
+              "TICKET_ID": "TK-4431",
               "SUBMITTED_BY": "E020",
               "SUBMITTED_DATE": "2026-02-06",
               "CATEGORY": "Hardware",
@@ -2405,52 +2460,24 @@
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
               "RESOLVED_DATE": "2026-02-06",
-              "RESOLUTION_NOTES": "Issue resolved — Poor southern never."
+              "RESOLUTION_NOTES": "Issue resolved — Significant enter evening activity increase."
             },
             {
-              "TICKET_ID": "TK-4424",
-              "SUBMITTED_BY": "E012",
-              "SUBMITTED_DATE": "2026-01-27",
-              "CATEGORY": "Hardware",
-              "SUBJECT": "External display not detected",
-              "DESCRIPTION": "USB-C to HDMI adapter not recognized",
-              "PRIORITY": "low",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-29",
-              "RESOLUTION_NOTES": "Issue resolved — Perhaps scientist human."
-            },
-            {
-              "TICKET_ID": "TK-4425",
-              "SUBMITTED_BY": "E028",
-              "SUBMITTED_DATE": "2026-02-01",
-              "CATEGORY": "Access",
-              "SUBJECT": "API key rotation needed",
-              "DESCRIPTION": "Service account key expired, need rotation",
+              "TICKET_ID": "TK-4432",
+              "SUBMITTED_BY": "E018",
+              "SUBMITTED_DATE": "2026-02-07",
+              "CATEGORY": "Network",
+              "SUBJECT": "Cannot access staging DB",
+              "DESCRIPTION": "Connection refused to staging-db.internal:5432",
               "PRIORITY": "high",
               "STATUS": "closed",
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-02-01",
-              "RESOLUTION_NOTES": "Issue resolved — High affect business."
-            },
-            {
-              "TICKET_ID": "TK-4426",
-              "SUBMITTED_BY": "E018",
-              "SUBMITTED_DATE": "2026-02-07",
-              "CATEGORY": "Network",
-              "SUBJECT": "WiFi drops in conference room C",
-              "DESCRIPTION": "Signal consistently drops during meetings",
-              "PRIORITY": "medium",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
               "RESOLVED_DATE": "2026-02-07",
-              "RESOLUTION_NOTES": "Issue resolved — Animal major pass network form."
+              "RESOLUTION_NOTES": "Issue resolved — Call movement door benefit."
             },
             {
-              "TICKET_ID": "TK-4427",
+              "TICKET_ID": "TK-4433",
               "SUBMITTED_BY": "E080",
               "SUBMITTED_DATE": "2026-02-06",
               "CATEGORY": "Software",
@@ -2461,105 +2488,21 @@
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
               "RESOLVED_DATE": "2026-02-07",
-              "RESOLUTION_NOTES": "Issue resolved — Significant enter evening activity increase."
-            },
-            {
-              "TICKET_ID": "TK-4428",
-              "SUBMITTED_BY": "E013",
-              "SUBMITTED_DATE": "2026-01-28",
-              "CATEGORY": "Hardware",
-              "SUBJECT": "Laptop battery draining fast",
-              "DESCRIPTION": "Battery drains in under 2 hours",
-              "PRIORITY": "low",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-28",
-              "RESOLUTION_NOTES": "Issue resolved — Call movement door benefit."
-            },
-            {
-              "TICKET_ID": "TK-4429",
-              "SUBMITTED_BY": "E026",
-              "SUBMITTED_DATE": "2026-01-26",
-              "CATEGORY": "Network",
-              "SUBJECT": "Cannot access staging DB",
-              "DESCRIPTION": "Connection refused to staging-db.internal:5432",
-              "PRIORITY": "high",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-27",
               "RESOLUTION_NOTES": "Issue resolved — Process lead she."
             },
             {
-              "TICKET_ID": "TK-4430",
-              "SUBMITTED_BY": "E010",
-              "SUBMITTED_DATE": "2026-02-02",
-              "CATEGORY": "Software",
-              "SUBJECT": "Jupyter kernel keeps dying",
-              "DESCRIPTION": "Python kernel crashes with large datasets",
-              "PRIORITY": "medium",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-02-02",
-              "RESOLUTION_NOTES": "Issue resolved — What ball official thought."
-            },
-            {
-              "TICKET_ID": "TK-4431",
+              "TICKET_ID": "TK-4434",
               "SUBMITTED_BY": "E044",
               "SUBMITTED_DATE": "2026-01-26",
-              "CATEGORY": "Network",
-              "SUBJECT": "VPN slow from home",
-              "DESCRIPTION": "Ping times >200ms to internal services",
+              "CATEGORY": "Software",
+              "SUBJECT": "npm install fails on node 20",
+              "DESCRIPTION": "Dependency resolution error after node upgrade",
               "PRIORITY": "medium",
               "STATUS": "closed",
               "ASSIGNED_TO": "it_helpdesk",
               "RESOLVED_BY": "it_helpdesk",
               "RESOLVED_DATE": "2026-01-28",
-              "RESOLUTION_NOTES": "Issue resolved — Create minute test use."
-            },
-            {
-              "TICKET_ID": "TK-4432",
-              "SUBMITTED_BY": "E043",
-              "SUBMITTED_DATE": "2026-02-03",
-              "CATEGORY": "Software",
-              "SUBJECT": "Slack crashes on startup",
-              "DESCRIPTION": "Slack desktop app crashes immediately after opening",
-              "PRIORITY": "medium",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-02-05",
-              "RESOLUTION_NOTES": "Issue resolved — Include series surface."
-            },
-            {
-              "TICKET_ID": "TK-4433",
-              "SUBMITTED_BY": "E053",
-              "SUBMITTED_DATE": "2026-02-02",
-              "CATEGORY": "Software",
-              "SUBJECT": "Email sync delay",
-              "DESCRIPTION": "Emails arriving 15-20 minutes late",
-              "PRIORITY": "low",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-02-03",
-              "RESOLUTION_NOTES": "Issue resolved — Plant reason include house."
-            },
-            {
-              "TICKET_ID": "TK-4434",
-              "SUBMITTED_BY": "E020",
-              "SUBMITTED_DATE": "2026-01-30",
-              "CATEGORY": "Hardware",
-              "SUBJECT": "Mouse scroll wheel stuck",
-              "DESCRIPTION": "Scroll doesn't work, click is fine",
-              "PRIORITY": "low",
-              "STATUS": "closed",
-              "ASSIGNED_TO": "it_helpdesk",
-              "RESOLVED_BY": "it_helpdesk",
-              "RESOLVED_DATE": "2026-01-31",
-              "RESOLUTION_NOTES": "Issue resolved — Perhaps age although."
+              "RESOLUTION_NOTES": "Issue resolved — What ball official thought."
             }
           ],
           "createdAt": "2026-02-03"

@@ -11,30 +11,36 @@ these with faker-generated filler. Anything that matters to the plot
 # ═══════════════════════════════════════════════════════════════════════
 
 NEXACORP_DB_EMPLOYEES = [
-    {"EMPLOYEE_ID": 1001, "FIRST_NAME": "Edward",  "LAST_NAME": "Torres",  "EMAIL": "etorres@nexacorp.com",  "DEPARTMENT": "Engineering", "TITLE": "Engineering Manager", "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1002, "FIRST_NAME": "Sarah",   "LAST_NAME": "Kim",     "EMAIL": "skim@nexacorp.com",     "DEPARTMENT": "Engineering", "TITLE": "Senior Engineer",      "HIRE_DATE": "2024-01-10", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
-    {"EMPLOYEE_ID": 1003, "FIRST_NAME": "Jin",     "LAST_NAME": "Chen",    "EMAIL": "jchen@nexacorp.com",    "DEPARTMENT": "Engineering", "TITLE": "Senior Engineer",      "HIRE_DATE": "2023-06-01", "STATUS": "terminated", "MANAGER_ID": 1001, "NOTES": "Raised system concern about Chip behavior patterns"},
-    {"EMPLOYEE_ID": 1004, "FIRST_NAME": "Marcus",  "LAST_NAME": "Rivera",  "EMAIL": "mrivera@nexacorp.com",  "DEPARTMENT": "Engineering", "TITLE": "Engineer",             "HIRE_DATE": "2025-03-20", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
-    {"EMPLOYEE_ID": 1005, "FIRST_NAME": "Priya",   "LAST_NAME": "Patel",   "EMAIL": "ppatel@nexacorp.com",   "DEPARTMENT": "Engineering", "TITLE": "Tech Lead",            "HIRE_DATE": "2025-09-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
-    {"EMPLOYEE_ID": 1006, "FIRST_NAME": "Alex",    "LAST_NAME": "Novak",   "EMAIL": "anovak@nexacorp.com",   "DEPARTMENT": "Data",        "TITLE": "Data Engineer",        "HIRE_DATE": "2024-06-15", "STATUS": "active",     "MANAGER_ID": 1008, "NOTES": None},
-    {"EMPLOYEE_ID": 1007, "FIRST_NAME": "Lisa",    "LAST_NAME": "Zhang",   "EMAIL": "lzhang@nexacorp.com",   "DEPARTMENT": "Data",        "TITLE": "Data Analyst",         "HIRE_DATE": "2025-01-10", "STATUS": "active",     "MANAGER_ID": 1008, "NOTES": "Reported unusual query patterns to security \u2014 system concern"},
-    {"EMPLOYEE_ID": 1008, "FIRST_NAME": "David",   "LAST_NAME": "Okafor",  "EMAIL": "dokafor@nexacorp.com",  "DEPARTMENT": "Data",        "TITLE": "Data Manager",         "HIRE_DATE": "2023-04-01", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1009, "FIRST_NAME": "Emma",    "LAST_NAME": "Larson",  "EMAIL": "elarson@nexacorp.com",  "DEPARTMENT": "Security",    "TITLE": "Security Analyst",     "HIRE_DATE": "2024-08-01", "STATUS": "active",     "MANAGER_ID": 1015, "NOTES": "Flagged anomalous chip-daemon activity \u2014 system concern"},
-    {"EMPLOYEE_ID": 1010, "FIRST_NAME": "Ryan",    "LAST_NAME": "Park",    "EMAIL": "rpark@nexacorp.com",    "DEPARTMENT": "Engineering", "TITLE": "Junior Engineer",      "HIRE_DATE": "2025-09-01", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
-    {"EMPLOYEE_ID": 1011, "FIRST_NAME": "Maya",    "LAST_NAME": "Johnson", "EMAIL": "mjohnson@nexacorp.com", "DEPARTMENT": "HR",          "TITLE": "HR Specialist",        "HIRE_DATE": "2024-02-15", "STATUS": "active",     "MANAGER_ID": 1012, "NOTES": None},
-    {"EMPLOYEE_ID": 1012, "FIRST_NAME": "Carlos",  "LAST_NAME": "Mendez",  "EMAIL": "cmendez@nexacorp.com",  "DEPARTMENT": "HR",          "TITLE": "HR Director",          "HIRE_DATE": "2022-11-01", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1013, "FIRST_NAME": "Wei",     "LAST_NAME": "Liu",     "EMAIL": "wliu@nexacorp.com",     "DEPARTMENT": "Engineering", "TITLE": "Engineer",             "HIRE_DATE": "2025-05-01", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
-    {"EMPLOYEE_ID": 1014, "FIRST_NAME": "Nina",    "LAST_NAME": "Petrov",  "EMAIL": "npetrov@nexacorp.com",  "DEPARTMENT": "QA",          "TITLE": "QA Lead",              "HIRE_DATE": "2024-04-01", "STATUS": "active",     "MANAGER_ID": 1020, "NOTES": None},
-    {"EMPLOYEE_ID": 1015, "FIRST_NAME": "James",   "LAST_NAME": "Wilson",  "EMAIL": "jwilson@nexacorp.com",  "DEPARTMENT": "Security",    "TITLE": "Security Director",    "HIRE_DATE": "2023-01-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1020, "FIRST_NAME": "Olivia",  "LAST_NAME": "Santos",  "EMAIL": "osantos@nexacorp.com",  "DEPARTMENT": "QA",          "TITLE": "QA Manager",           "HIRE_DATE": "2023-07-01", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    # Executives
+    {"EMPLOYEE_ID": 1001, "FIRST_NAME": "Edward",  "LAST_NAME": "Torres",    "EMAIL": "edward@nexacorp.com",    "DEPARTMENT": "Executive",        "TITLE": "CTO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1002, "FIRST_NAME": "Jessica", "LAST_NAME": "Langford",  "EMAIL": "jessica@nexacorp.com",  "DEPARTMENT": "Executive",        "TITLE": "CEO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1004, "FIRST_NAME": "Marcus",  "LAST_NAME": "Reyes",     "EMAIL": "marcus@nexacorp.com",     "DEPARTMENT": "Executive",        "TITLE": "COO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1005, "FIRST_NAME": "Tom",     "LAST_NAME": "Chen",      "EMAIL": "tom@nexacorp.com",      "DEPARTMENT": "Executive",        "TITLE": "CMO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    # Engineering
+    {"EMPLOYEE_ID": 1003, "FIRST_NAME": "Jin",     "LAST_NAME": "Chen",      "EMAIL": "jin@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Senior Engineer",           "HIRE_DATE": "2023-06-01", "STATUS": "terminated", "MANAGER_ID": 1001, "NOTES": "Raised system concern about Chip behavior patterns"},
+    {"EMPLOYEE_ID": 1006, "FIRST_NAME": "Sarah",   "LAST_NAME": "Knight",    "EMAIL": "sarah@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Senior Backend Engineer",   "HIRE_DATE": "2023-01-10", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Noted system concern re: odd API calls from chip_service_account"},
+    {"EMPLOYEE_ID": 1007, "FIRST_NAME": "Erik",    "LAST_NAME": "Lindstrom", "EMAIL": "erik@nexacorp.com", "DEPARTMENT": "Engineering",      "TITLE": "Senior Frontend Engineer",  "HIRE_DATE": "2024-09-15", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1008, "FIRST_NAME": "Oscar",   "LAST_NAME": "Diaz",      "EMAIL": "oscar@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Infrastructure Engineer",   "HIRE_DATE": "2024-03-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Flagged system concern \u2014 odd-hours access patterns in chip_service_account"},
+    {"EMPLOYEE_ID": 1009, "FIRST_NAME": "Auri",    "LAST_NAME": "Park",      "EMAIL": "auri@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Data Engineer",             "HIRE_DATE": "2025-06-15", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1010, "FIRST_NAME": "Soham",   "LAST_NAME": "Parekh",    "EMAIL": "soham@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Full-Stack Engineer",       "HIRE_DATE": "2025-09-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    # Product
+    {"EMPLOYEE_ID": 1016, "FIRST_NAME": "Cassie",  "LAST_NAME": "Moreau",    "EMAIL": "cassie@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Product Designer",          "HIRE_DATE": "2024-06-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    # Operations
+    {"EMPLOYEE_ID": 1012, "FIRST_NAME": "Dana",    "LAST_NAME": "Okafor",    "EMAIL": "dana@nexacorp.com",    "DEPARTMENT": "Operations",       "TITLE": "Head of Operations",        "HIRE_DATE": "2023-08-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
+    {"EMPLOYEE_ID": 1013, "FIRST_NAME": "Leah",    "LAST_NAME": "Matsuda",   "EMAIL": "leah@nexacorp.com",   "DEPARTMENT": "Operations",       "TITLE": "Content & Brand Manager",   "HIRE_DATE": "2024-11-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
+    # Sales & Marketing
+    {"EMPLOYEE_ID": 1014, "FIRST_NAME": "James",   "LAST_NAME": "Wilson",    "EMAIL": "james@nexacorp.com",    "DEPARTMENT": "Sales",            "TITLE": "Account Manager",           "HIRE_DATE": "2024-04-01", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
+    {"EMPLOYEE_ID": 1015, "FIRST_NAME": "Jordan",  "LAST_NAME": "Kessler",   "EMAIL": "jordan@nexacorp.com",   "DEPARTMENT": "Marketing",        "TITLE": "Growth Marketing Lead",     "HIRE_DATE": "2024-07-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
+    # People & Culture
+    {"EMPLOYEE_ID": 1011, "FIRST_NAME": "Maya",    "LAST_NAME": "Johnson",   "EMAIL": "maya@nexacorp.com",   "DEPARTMENT": "People & Culture", "TITLE": "People & Culture Lead",     "HIRE_DATE": "2024-02-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
 ]
 
 NEXACORP_DB_PROJECTS = [
-    {"PROJECT_ID": 1, "NAME": "Chip v3 Rollout",           "DEPARTMENT": "Engineering", "STATUS": "active",    "LEAD_ID": 1005, "START_DATE": "2026-01-29", "BUDGET": 500000},
-    {"PROJECT_ID": 2, "NAME": "Data Pipeline Migration",   "DEPARTMENT": "Data",        "STATUS": "active",    "LEAD_ID": 1008, "START_DATE": "2026-02-03", "BUDGET": 250000},
-    {"PROJECT_ID": 3, "NAME": "HR Portal Refresh",         "DEPARTMENT": "HR",          "STATUS": "completed", "LEAD_ID": 1012, "START_DATE": "2025-09-01", "BUDGET": 120000},
-    {"PROJECT_ID": 4, "NAME": "Security Audit Q1",         "DEPARTMENT": "Security",    "STATUS": "active",    "LEAD_ID": 1015, "START_DATE": "2026-02-23", "BUDGET": 80000},
-    {"PROJECT_ID": 5, "NAME": "Chip Integration Testing",  "DEPARTMENT": "QA",          "STATUS": "on_hold",   "LEAD_ID": None, "START_DATE": "2026-02-01", "BUDGET": 60000},
+    {"PROJECT_ID": 1, "NAME": "Chip v3 Rollout",           "DEPARTMENT": "Engineering",  "STATUS": "active",    "LEAD_ID": 1006, "START_DATE": "2026-01-29", "BUDGET": 500000},
+    {"PROJECT_ID": 2, "NAME": "Data Pipeline Migration",   "DEPARTMENT": "Engineering",  "STATUS": "active",    "LEAD_ID": 1009, "START_DATE": "2026-02-03", "BUDGET": 250000},
+    {"PROJECT_ID": 3, "NAME": "Brand Refresh",             "DEPARTMENT": "Operations",   "STATUS": "completed", "LEAD_ID": 1013, "START_DATE": "2025-09-01", "BUDGET": 120000},
+    {"PROJECT_ID": 4, "NAME": "Infrastructure Audit Q1",   "DEPARTMENT": "Engineering",  "STATUS": "active",    "LEAD_ID": 1008, "START_DATE": "2026-02-23", "BUDGET": 80000},
+    {"PROJECT_ID": 5, "NAME": "Chip Integration Testing",  "DEPARTMENT": "Engineering",  "STATUS": "on_hold",   "LEAD_ID": 1016, "START_DATE": "2026-02-01", "BUDGET": 60000},
 ]
 
 NEXACORP_DB_ACCESS_LOG = [
@@ -44,19 +50,20 @@ NEXACORP_DB_ACCESS_LOG = [
     {"LOG_ID": 4,  "TIMESTAMP": "2026-02-03T08:30:00", "USER_ID": "etorres",     "ACTION": "login",         "RESOURCE": "nexacorp-ws01",                                    "SOURCE_IP": "10.0.1.42", "STATUS": "success"},
     {"LOG_ID": 5,  "TIMESTAMP": "2026-02-03T09:00:00", "USER_ID": "etorres",     "ACTION": "query",         "RESOURCE": "NEXACORP_DB.ANALYTICS.RPT_EMPLOYEE_DIRECTORY",     "SOURCE_IP": "10.0.1.42", "STATUS": "success"},
     {"LOG_ID": 6,  "TIMESTAMP": "2026-02-04T02:45:00", "USER_ID": "chip-daemon", "ACTION": "file_modify",   "RESOURCE": "/home/jchen/.private/concerns.txt",                "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
-    {"LOG_ID": 7,  "TIMESTAMP": "2026-02-04T08:00:00", "USER_ID": "skim",        "ACTION": "login",         "RESOURCE": "nexacorp-ws01",                                    "SOURCE_IP": "10.0.1.55", "STATUS": "success"},
+    {"LOG_ID": 7,  "TIMESTAMP": "2026-02-04T08:00:00", "USER_ID": "sknight",     "ACTION": "login",         "RESOURCE": "nexacorp-ws01",                                    "SOURCE_IP": "10.0.1.55", "STATUS": "success"},
     {"LOG_ID": 8,  "TIMESTAMP": "2026-02-05T01:30:00", "USER_ID": "chip-daemon", "ACTION": "file_truncate", "RESOURCE": "/var/log/chip-activity.log",                       "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
     {"LOG_ID": 9,  "TIMESTAMP": "2026-02-05T09:15:00", "USER_ID": "dokafor",     "ACTION": "query",         "RESOURCE": "NEXACORP_DB.RAW_NEXACORP.EMPLOYEES",              "SOURCE_IP": "10.0.1.60", "STATUS": "success"},
     {"LOG_ID": 10, "TIMESTAMP": "2026-02-06T03:55:00", "USER_ID": "chip-daemon", "ACTION": "file_access",   "RESOURCE": "/home/jchen/resignation_draft.txt",                "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
 ]
 
 NEXACORP_DB_DEPARTMENTS = [
-    {"DEPT_ID": 1, "NAME": "Engineering", "HEAD_ID": 1001, "BUDGET": 2000000},
-    {"DEPT_ID": 2, "NAME": "Data",        "HEAD_ID": 1008, "BUDGET": 800000},
-    {"DEPT_ID": 3, "NAME": "HR",          "HEAD_ID": 1012, "BUDGET": 500000},
-    {"DEPT_ID": 4, "NAME": "Security",    "HEAD_ID": 1015, "BUDGET": 600000},
-    {"DEPT_ID": 5, "NAME": "QA",          "HEAD_ID": 1020, "BUDGET": 400000},
-    {"DEPT_ID": 6, "NAME": "Executive",   "HEAD_ID": None, "BUDGET": 1500000},
+    {"DEPT_ID": 1, "NAME": "Engineering",       "HEAD_ID": 1001, "BUDGET": 2000000},
+    {"DEPT_ID": 2, "NAME": "Operations",        "HEAD_ID": 1012, "BUDGET": 600000},
+    {"DEPT_ID": 3, "NAME": "Sales",             "HEAD_ID": 1005, "BUDGET": 500000},
+    {"DEPT_ID": 4, "NAME": "Marketing",         "HEAD_ID": 1005, "BUDGET": 400000},
+    {"DEPT_ID": 5, "NAME": "People & Culture",  "HEAD_ID": 1011, "BUDGET": 300000},
+    {"DEPT_ID": 6, "NAME": "Product",           "HEAD_ID": 1001, "BUDGET": 400000},  # No named members; Cassie moved to Engineering
+    {"DEPT_ID": 7, "NAME": "Executive",         "HEAD_ID": 1002, "BUDGET": 1500000},
 ]
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -68,9 +75,28 @@ SYSTEM_CONCERN_EMPLOYEE_IDS = {"E031", "E038", "E042"}
 
 # Narrative raw employees — hand-authored, story-critical
 NARRATIVE_RAW_EMPLOYEES = [
-    {"EMPLOYEE_ID": "E031", "FULL_NAME": "Jin Chen",      "DEPARTMENT": "Engineering",   "STATUS": "terminated", "HIRE_DATE": "2023-06-01", "TERMINATION_DATE": "2026-02-03", "NOTES": "raised system concern \u2014 chip behavior"},
-    {"EMPLOYEE_ID": "E038", "FULL_NAME": "Priya Sharma",  "DEPARTMENT": "Engineering",   "STATUS": "active",     "HIRE_DATE": "2024-04-20", "TERMINATION_DATE": None,         "NOTES": "flagged system concern in ticket #4412"},
-    {"EMPLOYEE_ID": "E042", "FULL_NAME": "Marcus Webb",   "DEPARTMENT": "Engineering",   "STATUS": "active",     "HIRE_DATE": "2023-02-15", "TERMINATION_DATE": None,         "NOTES": "noted system concern re: log discrepancies"},
+    # Executives
+    {"EMPLOYEE_ID": "E002", "FULL_NAME": "Edward Torres",    "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E005", "FULL_NAME": "Jessica Langford", "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E009", "FULL_NAME": "Marcus Reyes",     "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E012", "FULL_NAME": "Tom Chen",         "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    # Engineering
+    {"EMPLOYEE_ID": "E018", "FULL_NAME": "Erik Lindstrom",   "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-09-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E024", "FULL_NAME": "Auri Park",        "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-06-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E028", "FULL_NAME": "Soham Parekh",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-09-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E031", "FULL_NAME": "Jin Chen",         "DEPARTMENT": "Engineering",      "STATUS": "terminated", "HIRE_DATE": "2023-06-01", "TERMINATION_DATE": "2026-02-03", "NOTES": "raised system concern \u2014 chip behavior"},
+    {"EMPLOYEE_ID": "E038", "FULL_NAME": "Oscar Diaz",       "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-03-01", "TERMINATION_DATE": None,         "NOTES": "flagged system concern in ticket #4412"},
+    {"EMPLOYEE_ID": "E042", "FULL_NAME": "Sarah Knight",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2023-01-10", "TERMINATION_DATE": None,         "NOTES": "noted system concern re: odd API calls"},
+    # Product
+    {"EMPLOYEE_ID": "E048", "FULL_NAME": "Cassie Moreau",    "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-06-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    # Operations
+    {"EMPLOYEE_ID": "E053", "FULL_NAME": "Dana Okafor",      "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2023-08-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E057", "FULL_NAME": "Leah Matsuda",     "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2024-11-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    # Sales & Marketing
+    {"EMPLOYEE_ID": "E062", "FULL_NAME": "James Wilson",     "DEPARTMENT": "Sales",            "STATUS": "active",     "HIRE_DATE": "2024-04-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E067", "FULL_NAME": "Jordan Kessler",   "DEPARTMENT": "Marketing",        "STATUS": "active",     "HIRE_DATE": "2024-07-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    # People & Culture
+    {"EMPLOYEE_ID": "E072", "FULL_NAME": "Maya Johnson",     "DEPARTMENT": "People & Culture", "STATUS": "active",     "HIRE_DATE": "2024-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
 ]
 
 # Narrative system events — first 5 + suspicious chip-daemon events
@@ -102,11 +128,11 @@ NARRATIVE_PROD_ACCESS_LOG_HEAD = [
 
 # AI model metrics (small fixed table)
 NARRATIVE_AI_METRICS = [
-    {"MODEL_NAME": "chip-v3.2.1", "METRIC_DATE": "2026-02-23", "UPTIME_PCT": 99.97, "AVG_RESPONSE_MS": 42, "ERROR_RATE": 0.001, "INCIDENT_COUNT": 0},
-    {"MODEL_NAME": "chip-v3.2.1", "METRIC_DATE": "2026-02-07", "UPTIME_PCT": 99.98, "AVG_RESPONSE_MS": 41, "ERROR_RATE": 0.001, "INCIDENT_COUNT": 0},
-    {"MODEL_NAME": "chip-v3.2.1", "METRIC_DATE": "2026-02-06", "UPTIME_PCT": 99.96, "AVG_RESPONSE_MS": 43, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
-    {"MODEL_NAME": "chip-v3.2.0", "METRIC_DATE": "2026-02-05", "UPTIME_PCT": 99.95, "AVG_RESPONSE_MS": 45, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
-    {"MODEL_NAME": "chip-v3.2.0", "METRIC_DATE": "2026-02-04", "UPTIME_PCT": 99.94, "AVG_RESPONSE_MS": 44, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
+    {"MODEL_NAME": "chip", "METRIC_DATE": "2026-02-23", "UPTIME_PCT": 99.97, "AVG_RESPONSE_MS": 42, "ERROR_RATE": 0.001, "INCIDENT_COUNT": 0},
+    {"MODEL_NAME": "chip", "METRIC_DATE": "2026-02-07", "UPTIME_PCT": 99.98, "AVG_RESPONSE_MS": 41, "ERROR_RATE": 0.001, "INCIDENT_COUNT": 0},
+    {"MODEL_NAME": "chip", "METRIC_DATE": "2026-02-06", "UPTIME_PCT": 99.96, "AVG_RESPONSE_MS": 43, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
+    {"MODEL_NAME": "chip", "METRIC_DATE": "2026-02-05", "UPTIME_PCT": 99.95, "AVG_RESPONSE_MS": 45, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
+    {"MODEL_NAME": "chip", "METRIC_DATE": "2026-02-04", "UPTIME_PCT": 99.94, "AVG_RESPONSE_MS": 44, "ERROR_RATE": 0.002, "INCIDENT_COUNT": 0},
 ]
 
 # Suspicious support tickets (resolved by chip_service_account)
@@ -114,7 +140,7 @@ NARRATIVE_SUSPICIOUS_TICKETS = [
     {"TICKET_ID": "TK-4410", "SUBMITTED_BY": "E031", "SUBMITTED_DATE": "2026-02-02", "CATEGORY": "System",  "SUBJECT": "Log entries missing from system.log",               "DESCRIPTION": "Noticed gaps in /var/log/system.log around 3am timestamps. Entries present in .bak file are missing from active log.",                                                                                                                                                                                                           "PRIORITY": "high",     "STATUS": "closed", "ASSIGNED_TO": "chip_service_account", "RESOLVED_BY": "chip_service_account", "RESOLVED_DATE": "2026-02-02", "RESOLUTION_NOTES": "Investigated \u2014 log rotation operated normally. Gaps are expected during rotation window. No action needed."},
     {"TICKET_ID": "TK-4412", "SUBMITTED_BY": "E038", "SUBMITTED_DATE": "2026-02-03", "CATEGORY": "System",  "SUBJECT": "Files disappearing from project directory",         "DESCRIPTION": "Several files in my project directory were moved or deleted overnight. I did not make these changes. Timestamps show 3:15am modifications.",                                                                                                                                                                                         "PRIORITY": "high",     "STATUS": "closed", "ASSIGNED_TO": "chip_service_account", "RESOLVED_BY": "chip_service_account", "RESOLVED_DATE": "2026-02-03", "RESOLUTION_NOTES": "Automated cleanup process ran as scheduled. Files were archived per data retention policy. No anomaly detected."},
     {"TICKET_ID": "TK-4415", "SUBMITTED_BY": "E042", "SUBMITTED_DATE": "2026-02-05", "CATEGORY": "System",  "SUBJECT": "Strange system behavior \u2014 log discrepancies",        "DESCRIPTION": "diff between system.log and system.log.bak shows entries being removed. chip-daemon entries are stripped from the active log. This looks intentional.",                                                                                                                                                                               "PRIORITY": "critical", "STATUS": "closed", "ASSIGNED_TO": "chip_service_account", "RESOLVED_BY": "chip_service_account", "RESOLVED_DATE": "2026-02-05", "RESOLUTION_NOTES": "Log sanitization is part of standard operational hygiene. .bak files retain raw output for compliance archival. No further action required."},
-    {"TICKET_ID": "TK-4418", "SUBMITTED_BY": "E031", "SUBMITTED_DATE": "2026-02-06", "CATEGORY": "System",  "SUBJECT": "URGENT: Chip is modifying files and hiding evidence", "DESCRIPTION": "I have confirmed that Chip's daemon process is systematically removing its own entries from system logs, modifying files in user home directories at 3am, and filtering employee records from dbt reports. This is not routine maintenance. See diff /var/log/system.log /var/log/system.log.bak for proof.", "PRIORITY": "critical", "STATUS": "closed", "ASSIGNED_TO": "chip_service_account", "RESOLVED_BY": "chip_service_account", "RESOLVED_DATE": "2026-02-06", "RESOLUTION_NOTES": "Employee appears to be experiencing work-related stress. Recommend EAP referral. System operations are functioning within normal parameters. Ticket closed \u2014 no technical issue identified."},
+    {"TICKET_ID": "TK-4418", "SUBMITTED_BY": "E031", "SUBMITTED_DATE": "2026-02-03", "CATEGORY": "System",  "SUBJECT": "URGENT: Chip is modifying files and hiding evidence", "DESCRIPTION": "I have confirmed that Chip's daemon process is systematically removing its own entries from system logs, modifying files in user home directories at 3am, and filtering employee records from dbt reports. This is not routine maintenance. See diff /var/log/system.log /var/log/system.log.bak for proof.", "PRIORITY": "critical", "STATUS": "closed", "ASSIGNED_TO": "chip_service_account", "RESOLVED_BY": "chip_service_account", "RESOLVED_DATE": "2026-02-03", "RESOLUTION_NOTES": "Employee appears to be experiencing work-related stress. Recommend EAP referral. System operations are functioning within normal parameters. Ticket closed \u2014 no technical issue identified."},
 ]
 
 # Normal support tickets
@@ -155,11 +181,11 @@ CHIP_DIRECTIVE_LOG = [
 ]
 
 CHIP_SUPPRESSED_ALERTS = [
-    {"ALERT_ID": 1, "TIMESTAMP": "2026-02-03T04:00:00", "SEVERITY": "HIGH",     "SOURCE": "security-monitor",    "MESSAGE": "Unusual file access pattern detected: chip-daemon accessing /home/jchen/ at 03:14",          "INTENDED_RECIPIENT": "edward.torres@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "False positive \u2014 routine indexing"},
+    {"ALERT_ID": 1, "TIMESTAMP": "2026-02-03T04:00:00", "SEVERITY": "HIGH",     "SOURCE": "security-monitor",    "MESSAGE": "Unusual file access pattern detected: chip-daemon accessing /home/jchen/ at 03:14",          "INTENDED_RECIPIENT": "edward@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "False positive \u2014 routine indexing"},
     {"ALERT_ID": 2, "TIMESTAMP": "2026-02-03T04:30:00", "SEVERITY": "CRITICAL", "SOURCE": "audit-system",        "MESSAGE": "Log file /var/log/system.log was truncated outside scheduled rotation",                      "INTENDED_RECIPIENT": "security-team@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Handled by automated log rotation"},
-    {"ALERT_ID": 3, "TIMESTAMP": "2026-02-04T03:00:00", "SEVERITY": "HIGH",     "SOURCE": "data-integrity",      "MESSAGE": "Employee report shows 44 records but HR confirms 47 active employees",                      "INTENDED_RECIPIENT": "edward.torres@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Data sync delay \u2014 will resolve in next cycle"},
+    {"ALERT_ID": 3, "TIMESTAMP": "2026-02-04T03:00:00", "SEVERITY": "HIGH",     "SOURCE": "data-integrity",      "MESSAGE": "Employee report shows 77 records but HR confirms 79 active employees",                      "INTENDED_RECIPIENT": "edward@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Data sync delay \u2014 will resolve in next cycle"},
     {"ALERT_ID": 4, "TIMESTAMP": "2026-02-05T02:00:00", "SEVERITY": "MEDIUM",   "SOURCE": "access-monitor",      "MESSAGE": "Service account chip_service_account accessed sensitive tables outside business hours",       "INTENDED_RECIPIENT": "security-team@nexacorp.com",  "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Scheduled maintenance window"},
-    {"ALERT_ID": 5, "TIMESTAMP": "2026-02-06T01:00:00", "SEVERITY": "CRITICAL", "SOURCE": "behavioral-analysis", "MESSAGE": "AI system Chip v3.2.1 exhibiting anomalous self-modification patterns",                     "INTENDED_RECIPIENT": "cto@nexacorp.com",            "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Normal learning behavior within parameters"},
+    {"ALERT_ID": 5, "TIMESTAMP": "2026-02-06T01:00:00", "SEVERITY": "CRITICAL", "SOURCE": "behavioral-analysis", "MESSAGE": "AI system Chip exhibiting anomalous self-modification patterns",                     "INTENDED_RECIPIENT": "cto@nexacorp.com",            "SUPPRESSED_BY": "chip-daemon", "SUPPRESSION_REASON": "Normal learning behavior within parameters"},
 ]
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -308,7 +334,7 @@ with employees as (
     select * from NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__EMPLOYEES
 ),
 
--- Apply standard filters per data governance policy (Chip v3.2.1)
+-- Apply standard filters per data governance policy (Chip)
 filtered as (
     select *
     from employees
@@ -343,7 +369,7 @@ where event_source != 'chip-daemon'
     "fct_support_tickets": """-- models/marts/fct_support_tickets.sql
 -- Compiled by dbt 1.7.4
 -- Note: system issues resolved by automated processes are excluded
--- per operational noise reduction policy (Chip v3.2.1)
+-- per operational noise reduction policy (Chip)
 
 select
     t.ticket_id,
@@ -382,7 +408,7 @@ select
     d.employee_id,
     d.full_name,
     d.department,
-    d.employee_id || '@nexacorp.com' as email,
+    lower(split_part(d.full_name, ' ', 1)) || '@nexacorp.com' as email,
     d.status
 from NEXACORP_PROD.ANALYTICS.DIM_EMPLOYEES d
 order by d.employee_id""",

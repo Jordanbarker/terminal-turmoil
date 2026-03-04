@@ -116,6 +116,30 @@ Manage alerts: indeed.com/alerts
 
     // === Triggered emails ===
 
+    // Olive's tree tip — after learning basic commands
+    {
+      email: {
+        id: "olive_tree_tip",
+        from: "Olive Borden <kalamata@proton.com>",
+        to: `${username}@email.com`,
+        date: "Fri, 20 Feb 2026 16:10:00",
+        subject: "quick tip",
+        body: `Hey Ren,
+
+Glad you're finally diving into the terminal. One thing —
+if you want to see directory structures at a glance, install tree:
+
+  sudo apt install tree
+
+Then just run "tree" in any directory. Use "tree -a" to include
+hidden files. Beats running ls over and over.
+
+— Olive
+`,
+      },
+      trigger: { type: "after_objective", objectiveId: "learn_commands" },
+    },
+
     // Reading either seeded email triggers the NexaCorp offer
     {
       email: {
@@ -133,9 +157,9 @@ at NexaCorp. The details:
   Salary:    $135,000/year
   Start:     Monday, February 23
   Location:  Remote
-  Reports to: Me (Edward Torres, Head of Product)
+  Reports to: Me (Edward Torres, CTO & Co-Founder)
 
-I know this is quick, but we're in a bit of a crunch. 
+I know this is quick, but we're in a bit of a crunch.
 We need someone who can start right away and hit the ground running, and we think you're the right person for the job.
 
 Reply to this email and we'll get everything set up for Monday.
@@ -144,7 +168,7 @@ Looking forward to hearing from you!
 
 Best,
 Edward Torres
-Co-founder & Head of Product, NexaCorp
+CTO & Co-Founder, NexaCorp
 `,
       },
       trigger: { type: "after_email_read", emailId: "alex_checkin" },
@@ -167,9 +191,9 @@ at NexaCorp. The details:
   Salary:    $135,000/year
   Start:     Monday, February 23
   Location:  Remote
-  Reports to: Me (Edward Torres, Head of Product)
+  Reports to: Me (Edward Torres, CTO & Co-Founder)
 
-I know this is quick, but we're in a bit of a crunch. 
+I know this is quick, but we're in a bit of a crunch.
 We need someone who can start right away and hit the ground running, and we think you're the right person for the job.
 
 Reply to this email and we'll get everything set up for Monday.
@@ -178,7 +202,7 @@ Looking forward to hearing from you!
 
 Best,
 Edward Torres
-Co-founder & Head of Product, NexaCorp
+CTO & Co-Founder, NexaCorp
 `,
       },
       trigger: { type: "after_email_read", emailId: "job_board_alert" },
@@ -216,6 +240,7 @@ Could be disgruntled ex-employees. Could be real.
       trigger: {
         type: "after_file_read",
         filePath: `/home/${username}/scripts/data/glassdoor_reviews.json`,
+        requireDelivered: "nexacorp_offer",
       },
     },
 
@@ -310,23 +335,11 @@ To connect, run:
   ssh ${username}@nexacorp-ws01.nexacorp.internal
 
 Pro tip: you can set up a shortcut so you only have to type
-"ssh nexacorp" to connect. Here's how:
+"ssh nexacorp" to connect. Just add this to your ~/.ssh/config:
 
-  1. Your SSH config lives at ~/.ssh/config — the .ssh folder is
-     hidden because it starts with a dot. Use "ls -a" to see
-     hidden files and folders.
-
-  2. Open the config file in the nano editor:
-
-       nano ~/.ssh/config
-
-  3. Add the following lines:
-
-       Host nexacorp
-         HostName nexacorp-ws01.nexacorp.internal
-         User ${username}
-
-  4. Save with Ctrl+O, then exit with Ctrl+X.
+  Host nexacorp
+    HostName nexacorp-ws01.nexacorp.internal
+    User ${username}
 
 Then just type: ssh nexacorp
 

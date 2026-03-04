@@ -45,7 +45,7 @@ const which: CommandHandler = (args, _flags, ctx) => {
   const commandNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
 
   for (const arg of args) {
-    if (!isCommandAvailable(arg, ctx.activeComputer)) {
+    if (!isCommandAvailable(arg, ctx.activeComputer, ctx.storyFlags)) {
       outputs.push(`${arg} not found`);
     } else if (COMMAND_PATHS[arg]) {
       outputs.push(COMMAND_PATHS[arg]);

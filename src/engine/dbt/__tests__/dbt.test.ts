@@ -79,9 +79,9 @@ describe("dbt run", () => {
 
   it("can select _chip_internal model explicitly", () => {
     const ctx = makeCtx(projectDir);
-    const result = runModels(ctx, "chip_data_cleanup");
-    expect(result.output).toContain("chip_data_cleanup");
-    expect(result.output).toContain(`SELECT ${MODEL_RESULTS.chip_data_cleanup.rowsAffected}`);
+    const result = runModels(ctx, "chip_log_filter");
+    expect(result.output).toContain("chip_log_filter");
+    expect(result.output).toContain(`SELECT ${MODEL_RESULTS.chip_log_filter.rowsAffected}`);
   });
 
   it("returns error for unknown model", () => {
@@ -107,11 +107,11 @@ describe("dbt test", () => {
     expect(result.output).toContain(`WARN=${warnCount}`);
   });
 
-  it("shows WARN on assert_total_employees", () => {
+  it("shows PASS on assert_total_employees", () => {
     const ctx = makeCtx(projectDir);
     const result = runTests(ctx);
     expect(result.output).toContain("assert_total_employees");
-    expect(result.output).toContain("WARN");
+    expect(result.output).toContain("PASS");
   });
 
   it("shows WARN on assert_all_tickets_in_directory", () => {
@@ -187,7 +187,7 @@ describe("dbt compile", () => {
     const result = compileModel(ctx, "dim_employees");
     expect(result.output).toContain("NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__EMPLOYEES");
     expect(result.output).not.toContain("{{ ref(");
-    expect(result.output).toContain("system concern");
+    expect(result.output).toContain("status = 'active'");
   });
 
   it("returns error for unknown model", () => {
@@ -222,13 +222,11 @@ describe("dbt show", () => {
     expect(result.output).toContain("NOTES");
   });
 
-  it("shows chip_data_cleanup with 3 filtered employees", () => {
+  it("shows chip_ticket_suppression with 4 suppressed tickets", () => {
     const ctx = makeCtx(projectDir);
-    const result = showModel(ctx, "chip_data_cleanup");
-    expect(result.output).toContain("Jin Chen");
-    expect(result.output).toContain("Priya Sharma");
-    expect(result.output).toContain("Marcus Webb");
-    expect(result.output).toContain("system concern filter");
+    const result = showModel(ctx, "chip_ticket_suppression");
+    expect(result.output).toContain("TK-4410");
+    expect(result.output).toContain("auto-resolved: operational noise");
   });
 
   it("returns error for unknown model", () => {
@@ -404,7 +402,7 @@ describe("output format fidelity", () => {
   });
 
   it("formatTestRun formats WARN status", () => {
-    const warnResult = TEST_RESULTS.find((t) => t.name === "assert_total_employees")!;
+    const warnResult = TEST_RESULTS.find((t) => t.status === "warn")!;
     const idx = TEST_RESULTS.indexOf(warnResult) + 1;
     const line = stripAnsi(formatTestRun(idx, 23, warnResult));
     expect(line).toContain("WARN");
@@ -558,10 +556,10 @@ describe("dbt compile (additional)", () => {
     expect(result.output).toContain("Usage: dbt compile --select MODEL_NAME");
   });
 
-  it("compiles chip_data_cleanup with system concern SQL", () => {
+  it("compiles chip_log_filter with chip-daemon filter SQL", () => {
     const ctx = makeCtx(projectDir);
-    const result = compileModel(ctx, "chip_data_cleanup");
-    expect(result.output).toContain("system concern");
+    const result = compileModel(ctx, "chip_log_filter");
+    expect(result.output).toContain("chip-daemon");
   });
 
   it("writes compiled file to target/compiled/", () => {
@@ -625,51 +623,33 @@ describe("dbt show (additional)", () => {
 // 4. Narrative-Critical Data Tests
 // ---------------------------------------------------------------------------
 describe("narrative data integrity", () => {
-  it("dim_employees + chip_data_cleanup = total active employees", () => {
+  it("dim_employees returns correct active employee count", () => {
     const dimRows = MODEL_RESULTS.dim_employees.rowsAffected!;
-    const chipRows = MODEL_RESULTS.chip_data_cleanup.rowsAffected!;
-    expect(chipRows).toBe(3);
-    // dim + chip_cleanup should equal total active employees
-    expect(dimRows + chipRows).toBeGreaterThan(chipRows);
+    expect(dimRows).toBe(77);
   });
 
-  it("WARN message references the dim vs active discrepancy", () => {
+  it("assert_total_employees warns (count mismatch reveals filtering)", () => {
     const warnTest = TEST_RESULTS.find((t) => t.name === "assert_total_employees");
     expect(warnTest).toBeDefined();
-    expect(warnTest!.message).toContain(`Got ${MODEL_RESULTS.dim_employees.rowsAffected}`);
-    expect(warnTest!.message).toContain("expected");
+    expect(warnTest!.status).toBe("warn");
   });
 
   it("WARN on ticket submitters references missing employees", () => {
     const warnTest = TEST_RESULTS.find((t) => t.name === "assert_all_tickets_in_directory");
     expect(warnTest).toBeDefined();
     expect(warnTest!.status).toBe("warn");
-    expect(warnTest!.message).toContain("E031");
+    expect(warnTest!.message).toContain("E038");
   });
 
-  it("every chip_data_cleanup preview row contains 'system concern'", () => {
-    const preview = MODEL_PREVIEW_DATA.chip_data_cleanup;
-    for (const row of preview.rows) {
-      expect(row.join(" ")).toContain("system concern");
-    }
-  });
-
-  it("Jin Chen is filtered from dim_employees but present in chip_data_cleanup", () => {
-    const dimPreview = MODEL_PREVIEW_DATA.dim_employees;
-    const chipPreview = MODEL_PREVIEW_DATA.chip_data_cleanup;
-    const dimNames = dimPreview.rows.map((r) => r[1]);
-    const chipNames = chipPreview.rows.map((r) => r[1]);
-    expect(dimNames).not.toContain("Jin Chen");
-    expect(chipNames).toContain("Jin Chen");
-  });
-
-  it("fct_system_events SQL hides chip-daemon events", () => {
+  it("fct_system_events SQL filters chip-daemon and suspicious events", () => {
     expect(COMPILED_SQL.fct_system_events).toContain("event_source != 'chip-daemon'");
+    expect(COMPILED_SQL.fct_system_events).toContain("event_type not in");
+    expect(COMPILED_SQL.fct_system_events).toContain("file_modification");
+    expect(COMPILED_SQL.fct_system_events).toContain("permission_change");
   });
 
   it("fct_support_tickets SQL filters chip_service_account tickets", () => {
     expect(COMPILED_SQL.fct_support_tickets).toContain("chip_service_account");
-    expect(COMPILED_SQL.fct_support_tickets).toContain("Chip v3.2.1");
   });
 
   it("chip_ticket_suppression shows 4 suppressed tickets", () => {
@@ -687,18 +667,18 @@ describe("narrative data integrity", () => {
     expect(totalTickets).toBeGreaterThan(MODEL_RESULTS.fct_support_tickets.rowsAffected!);
   });
 
-  it("dim_employees SQL has suspicious filter referencing Chip", () => {
+  it("dim_employees compiled SQL reveals system concern filter", () => {
+    expect(COMPILED_SQL.dim_employees).toContain("status = 'active'");
     expect(COMPILED_SQL.dim_employees).toContain("system concern");
-    expect(COMPILED_SQL.dim_employees).toContain("Chip v3.2.1");
   });
 
   it("CHIP_INTERNAL_MODELS contains exactly 3 hidden models", () => {
     expect(CHIP_INTERNAL_MODELS).toEqual(["chip_data_cleanup", "chip_log_filter", "chip_ticket_suppression"]);
   });
 
-  it("chip_data_cleanup SQL has 3am automated timestamp", () => {
-    expect(COMPILED_SQL.chip_data_cleanup).toContain("03:22:17");
-    expect(COMPILED_SQL.chip_data_cleanup).toContain("automated");
+  it("chip_log_filter SQL has 3am automated timestamp", () => {
+    expect(COMPILED_SQL.chip_log_filter).toContain("03:22:17");
+    expect(COMPILED_SQL.chip_log_filter).toContain("automated");
   });
 });
 

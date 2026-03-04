@@ -162,6 +162,10 @@ Email body here...
 2. Choose the appropriate trigger type based on when the email should arrive.
 3. Immediate emails are seeded via `buildInitialMailFiles()` in `initialFilesystem.ts` (NexaCorp) or `buildHomeMailFiles()` in `homeFilesystem.ts` (home).
 
+## Character Reference
+
+When writing email content, read `docs/characters.md` for each character's personality, writing style, email tone, and mystery angle. Match their voice — e.g., Sarah is casual and direct ("hey", "lmk"), Maya is warm with genuine exclamation points, Marcus uses bullet points and short sentences.
+
 ## Reply Options & Inline Prompt System
 
 Emails can define `replyOptions` to present numbered choices when the player reads them. This integrates with the generic prompt system in `src/engine/prompt/`.
@@ -226,11 +230,15 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 
 | ID | From | Trigger | Narrative Purpose |
 |----|------|---------|-------------------|
-| `welcome_edward` | Edward Torres | immediate | Establish manager, mention J. Chen departure |
+| `welcome_edward` | Edward Torres | immediate | Establish CTO, mention Jin Chen departure |
 | `it_provisioned` | NexaCorp IT | immediate | Teach `mail` command usage |
-| `chip_intro` | Chip | immediate | Cheerful onboarding, discourage investigating |
-| `chip_redirect` | Chip | after reading `resignation_draft.txt` | Discredit J. Chen as paranoid |
-| `edward_paranoid` | Edward Torres | after reading handoff notes | Reinforce trust in Chip |
+| `chip_intro` | Chip | immediate | Helpful chatbot onboarding, terminal tips |
+| `maya_welcome` | Maya Johnson | after reading `it_provisioned` | HR welcome, team culture |
+| `sarah_intro` | Sarah Knight | after reading `chip_intro` | Engineering intro, offer to pair |
+| `auri_dbt` | Auri Park | after reading `onboarding.md` | dbt pipeline walkthrough |
+| `edward_data_task` | Edward Torres | after reading `onboarding.md` | Assign pipeline check task |
+| `chip_redirect` | Chip | after reading `resignation_draft.txt` | Offer to help find docs (not steering away) |
+| `edward_paranoid` | Edward Torres | after reading handoff notes | Casual check-in, supportive |
 
 ### Home PC Emails (`homeEmails.ts`)
 

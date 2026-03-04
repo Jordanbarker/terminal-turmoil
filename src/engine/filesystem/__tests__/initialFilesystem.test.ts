@@ -32,6 +32,10 @@ describe("createFilesystem", () => {
     it("has /tmp directory", () => {
       expect(fs.getNode("/tmp")?.type).toBe("directory");
     });
+
+    it("has /srv directory", () => {
+      expect(fs.getNode("/srv")?.type).toBe("directory");
+    });
   });
 
   describe("user home directory", () => {
@@ -67,7 +71,7 @@ describe("createFilesystem", () => {
 
     it("has resignation_draft.txt", () => {
       const result = fs.readFile("/home/jchen/resignation_draft.txt");
-      expect(result.content).toContain("Chip");
+      expect(result.content).toContain("chip_service_account");
     });
 
     it("has .bash_history", () => {
@@ -90,7 +94,7 @@ describe("createFilesystem", () => {
 
     it("has /var/log with chip-activity.log", () => {
       const result = fs.readFile("/var/log/chip-activity.log");
-      expect(result.content).toContain("Chip daemon started");
+      expect(result.content).toContain("Chip service started");
     });
 
     it("has /etc/hostname", () => {
@@ -105,7 +109,7 @@ describe("createFilesystem", () => {
 
     it("has /opt/chip/config/settings.json", () => {
       const result = fs.readFile("/opt/chip/config/settings.json");
-      expect(result.content).toContain('"version": "3.2.1"');
+      expect(result.content).toContain('"name": "Chip"');
     });
   });
 
@@ -120,8 +124,8 @@ describe("createFilesystem", () => {
       expect(result.content).toContain(USERNAME);
     });
 
-    it("interpolates username in onboarding.txt", () => {
-      const result = fs.readFile(`/home/${USERNAME}/Documents/onboarding.txt`);
+    it("interpolates username in onboarding.md", () => {
+      const result = fs.readFile(`/home/${USERNAME}/Documents/onboarding.md`);
       expect(result.content).toContain(`/home/${USERNAME}`);
     });
 
@@ -174,13 +178,13 @@ describe("createFilesystem", () => {
   });
 
   describe("handoff directory", () => {
-    it("has Documents/handoff with README.txt", () => {
-      const result = fs.readFile(`/home/${USERNAME}/Documents/handoff/README.txt`);
-      expect(result.content).toContain("J. Chen");
+    it("has /srv/engineering/chen-handoff with README.md", () => {
+      const result = fs.readFile(`/srv/engineering/chen-handoff/README.md`);
+      expect(result.content).toContain("Jin");
     });
 
-    it("has Documents/handoff with notes.txt", () => {
-      const result = fs.readFile(`/home/${USERNAME}/Documents/handoff/notes.txt`);
+    it("has /srv/engineering/chen-handoff with notes.txt", () => {
+      const result = fs.readFile(`/srv/engineering/chen-handoff/notes.txt`);
       expect(result.content).toContain("chip-activity.log");
     });
   });

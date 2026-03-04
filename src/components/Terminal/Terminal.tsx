@@ -75,8 +75,6 @@ export default function Terminal() {
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    let introTimer: ReturnType<typeof setTimeout> | undefined;
-
     if (gamePhaseRef.current === "playing") {
       initializedAsPlaying.current = true;
       const splash = activeComputerRef.current === "home" ? homeWelcome : nexacorpLogo;
@@ -92,8 +90,6 @@ export default function Terminal() {
           type: "editor",
           info: { filePath, content, readOnly: false, isNewFile: false },
         });
-        // Defer flag so React 18 strict mode remount still sees hasSeenIntro=false
-        introTimer = setTimeout(() => useGameStore.getState().setHasSeenIntro(), 0);
       } else {
         term.write(getPrompt());
       }
@@ -115,7 +111,6 @@ export default function Terminal() {
     term.focus();
 
     return () => {
-      if (introTimer) clearTimeout(introTimer);
       window.removeEventListener("resize", handleResize);
       term.dispose();
       termRef.current = null;

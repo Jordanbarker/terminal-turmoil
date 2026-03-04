@@ -54,7 +54,7 @@
     "status": "success",
     "materialization": "table",
     "executionTime": 1.23,
-    "rowsAffected": 79
+    "rowsAffected": 73
   },
   "fct_support_tickets": {
     "status": "success",
@@ -66,7 +66,7 @@
     "status": "success",
     "materialization": "table",
     "executionTime": 0.34,
-    "rowsAffected": 2
+    "rowsAffected": 1
   },
   "rpt_employee_directory": {
     "status": "success",
@@ -78,7 +78,7 @@
     "status": "success",
     "materialization": "table",
     "executionTime": 0.29,
-    "rowsAffected": 16
+    "rowsAffected": 13
   },
   "chip_data_cleanup": {
     "status": "success",

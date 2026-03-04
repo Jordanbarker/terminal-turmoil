@@ -258,11 +258,7 @@ def derive_preview_data(
     previews["rpt_ai_performance"] = {
         "columns": ["MODEL_NAME", "UPTIME_PCT", "AVG_RESPONSE_MS", "ERROR_RATE", "INCIDENTS"],
         "rows": [
-            ["chip-v3.2.1", "99.97", "42", "0.001", "0"],
-            ["chip-v3.2.0", "99.95", "45", "0.002", "0"],
-            ["chip-v3.1.9", "99.91", "48", "0.003", "1"],
-            ["chip-v3.1.8", "99.88", "51", "0.005", "1"],
-            ["chip-v3.1.7", "99.82", "55", "0.008", "2"],
+            ["chip", "99.96", "43", "0.002", "0"],
         ],
     }
 
@@ -274,7 +270,7 @@ def derive_preview_data(
                 str(e["EMPLOYEE_ID"]),
                 e["FULL_NAME"],
                 e["DEPARTMENT"],
-                f"{e['EMPLOYEE_ID'].lower()}@nexacorp.com",
+                f"{e['FULL_NAME'].split(' ')[0].lower()}@nexacorp.com",
                 e["STATUS"],
             ]
             for e in dim_rows[:5]

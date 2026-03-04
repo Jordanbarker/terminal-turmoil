@@ -214,6 +214,12 @@ export function useTerminal() {
         if (update.flag === "pdftotext_unlocked") {
           useGameStore.getState().addToast("pdftotext command unlocked!");
         }
+        if (update.flag === "tree_installed") {
+          useGameStore.getState().addToast("tree command installed!");
+        }
+        if (update.flag === "chip_unlocked") {
+          useGameStore.getState().addToast("chip command unlocked!");
+        }
       }
 
       // Apply email deliveries

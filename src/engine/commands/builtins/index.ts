@@ -36,6 +36,8 @@ import "./uname";
 import "./file";
 import "./pdftotext";
 import "./tree";
+import "./sudo";
+import "./apt";
 import "./sort";
 import "./uniq";
 import "./date";

@@ -26,13 +26,18 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "history",
   "ssh",
   "pdftotext",
-  "tree",
+  "sudo",
+  "apt",
 ]);
 
 /** Returns true if the command is available on the given computer. */
 export function isCommandAvailable(commandName: string, computer: ComputerId, storyFlags?: StoryFlags): boolean {
-  if (computer === "nexacorp") return true;
+  if (computer === "nexacorp") {
+    if (commandName === "chip" && !storyFlags?.chip_unlocked) return false;
+    return true;
+  }
   if (commandName === "pdftotext" && !storyFlags?.pdftotext_unlocked) return false;
+  if (commandName === "tree" && !storyFlags?.tree_installed) return false;
   if (storyFlags?.commands_unlocked) return HOME_COMMANDS.has(commandName);
   return INITIAL_HOME_COMMANDS.has(commandName);
 }

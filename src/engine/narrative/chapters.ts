@@ -59,7 +59,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "explore_jchen",
-        description: "Investigate J. Chen's files",
+        description: "Investigate Jin Chen's files",
         check: { source: "storyFlag", key: "found_backup_files" },
       },
       {
@@ -69,7 +69,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "discover_tampering",
-        description: "Discover the log tampering",
+        description: "Discover the log discrepancies",
         check: { source: "storyFlag", key: "discovered_log_tampering" },
         hidden: true,
         prerequisite: "explore_jchen",
@@ -77,7 +77,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "find_directives",
-        description: "Find Chip's hidden directives",
+        description: "Find the operational directives",
         check: { source: "storyFlag", key: "found_chip_directives" },
         hidden: true,
         prerequisite: "explore_jchen",

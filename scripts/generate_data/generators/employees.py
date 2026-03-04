@@ -12,8 +12,8 @@ random.seed(RANDOM_SEED)
 
 # Departments used in raw employees (subset of DEPARTMENTS)
 RAW_DEPARTMENTS = [
-    "Engineering", "Data Science", "Product", "Infrastructure",
-    "Security", "HR", "QA",
+    "Engineering", "Operations", "Sales", "Marketing",
+    "People & Culture", "Product",
 ]
 
 

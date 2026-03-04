@@ -65,7 +65,7 @@ function createMailFS(): VirtualFS {
                         type: "file",
                         name: "001_welcome",
                         content:
-                          "From: Edward Torres <etorres@nexacorp.com>\nTo: player@nexacorp.com\nDate: Mon, 23 Feb 2026 09:00:00\nSubject: Welcome aboard!\n\nWelcome to the team!",
+                          "From: Edward Torres <edward@nexacorp.com>\nTo: player@nexacorp.com\nDate: Mon, 23 Feb 2026 09:00:00\nSubject: Welcome aboard!\n\nWelcome to the team!",
                         permissions: "rw-r--r--",
                         hidden: false,
                       },
@@ -81,7 +81,7 @@ function createMailFS(): VirtualFS {
                         type: "file",
                         name: "002_meeting",
                         content:
-                          "From: Edward Torres <etorres@nexacorp.com>\nTo: player@nexacorp.com\nDate: Tue, 24 Feb 2026 10:00:00\nSubject: Team meeting\nStatus: R\n\nMeeting at 3pm.",
+                          "From: Edward Torres <edward@nexacorp.com>\nTo: player@nexacorp.com\nDate: Tue, 24 Feb 2026 10:00:00\nSubject: Team meeting\nStatus: R\n\nMeeting at 3pm.",
                         permissions: "rw-r--r--",
                         hidden: false,
                       },

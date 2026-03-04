@@ -1,9 +1,12 @@
+your absolutely right!
+Pick a side, Sarah or Erik
 investigate log files
 work todo list / kanban board
 uv repos, uv install command error
 note about deleting old data to keep snowflake bill cheap
 Ren's computer was recently wiped after a take-home test contained malicous code
 journal
+Ending: logoff - they know where you are
 
 
   Chapter 1 — "New Beginnings"                                                                                                                                                  
@@ -27,7 +30,7 @@ journal
   ├───────────────────────────────┼───────────────────┼──────────────────────────┤
   │ Read the onboarding docs      │ Required          │ Core first-day task      │
   ├───────────────────────────────┼───────────────────┼──────────────────────────┤
-  │ Investigate J. Chen's files   │ Required          │ Main investigation path  │
+  │ Investigate Jin Chen's files   │ Required          │ Main investigation path  │
   ├───────────────────────────────┼───────────────────┼──────────────────────────┤
   │ Run the data pipeline         │ Required          │ Core job task            │
   ├───────────────────────────────┼───────────────────┼──────────────────────────┤

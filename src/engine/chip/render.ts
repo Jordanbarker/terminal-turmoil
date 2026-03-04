@@ -25,7 +25,7 @@ export function renderMenu(
   prompt: string,
   usedIds?: Set<string>
 ): string {
-  const lines: string[] = [prompt];
+  const lines: string[] = prompt ? [prompt] : [];
   for (let i = 0; i < items.length; i++) {
     const marker = i === selectedIndex ? colorize(" \u276F ", ansi.cyan + ansi.bold) : "   ";
     const num = `${i + 1}.`;

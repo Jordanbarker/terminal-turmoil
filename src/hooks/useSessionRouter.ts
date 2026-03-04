@@ -64,6 +64,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       sessionRef.current = null;
       sessionTypeRef.current = null;
 
+      // Mark intro as seen when player exits nano (not when it opens)
+      if (type === "editor" && activeComputerRef.current === "home") {
+        const store = useGameStore.getState();
+        if (!store.hasSeenIntro) {
+          store.setHasSeenIntro();
+        }
+      }
+
       if (type === "snowsql" && result.newState) {
         const store = useGameStore.getState();
         store.setSnowflakeState(result.newState);

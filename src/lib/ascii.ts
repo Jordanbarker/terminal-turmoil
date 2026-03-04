@@ -2,11 +2,10 @@ import { ansi, colorize } from "./ansi";
 
 export const homeWelcome = [
   "",
-  `  ${colorize("┌──────────────────────────────┐", ansi.dim)}`,
-  `  ${colorize("│", ansi.dim)}  Personal Workstation        ${colorize("│", ansi.dim)}`,
-  `  ${colorize("│", ansi.dim)}  Linux 6.1.0                 ${colorize("│", ansi.dim)}`,
-  `  ${colorize("│", ansi.dim)}  Last login: 3 hours ago     ${colorize("│", ansi.dim)}`,
-  `  ${colorize("└──────────────────────────────┘", ansi.dim)}`,
+  `${colorize("Alpine Linux 3.23.3", ansi.brightBlue)}`,
+  `${colorize("Kernel 6.12.11-lts on an x86_64 (tty1)", ansi.dim)}`,
+  "",
+  `${colorize("Last login: Sat Feb 22 14:32:07 on tty1", ansi.dim)}`,
   "",
   `Opening ${colorize("terminal_notes.txt", ansi.green)} in nano...`,
   "",
@@ -15,7 +14,7 @@ export const homeWelcome = [
 export const UNLOCK_BOX = [
   "",
   `  ${colorize("┌─────────────────────────────────────────┐", ansi.cyan)}`,
-  `  ${colorize("│", ansi.cyan)}  ${colorize("New commands unlocked!", ansi.bold)}${" ".repeat(17)}${colorize("│", ansi.cyan)}`,
+  `  ${colorize("│", ansi.cyan)}  ${colorize("Additional tools available.", ansi.bold)}${" ".repeat(12)}${colorize("│", ansi.cyan)}`,
   `  ${colorize("│", ansi.cyan)}  Type ${colorize("'help'", ansi.green)} to see all commands.${" ".repeat(7)}${colorize("│", ansi.cyan)}`,
   `  ${colorize("└─────────────────────────────────────────┘", ansi.cyan)}`,
   "",
@@ -60,7 +59,7 @@ export function getBootSequence(username: string) {
   return [
   `${colorize("[  OK  ]", ansi.green)} Starting NexaCorp session manager...`,
   `${colorize("[  OK  ]", ansi.green)} Mounting user environment /home/${username}`,
-  `${colorize("[  OK  ]", ansi.green)} Loading Chip AI assistant (v3.2.1)...`,
+  `${colorize("[  OK  ]", ansi.green)} Loading Chip AI assistant...`,
   `${colorize("[  OK  ]", ansi.green)} Synchronizing project repositories...`,
   `${colorize("[  OK  ]", ansi.green)} Applying security policies...`,
   `${colorize("[  OK  ]", ansi.green)} Session ready.`,

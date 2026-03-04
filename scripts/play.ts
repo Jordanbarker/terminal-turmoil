@@ -28,7 +28,7 @@ import { createHomeFilesystem } from "../src/engine/filesystem/homeFilesystem";
 import { createNexacorpFilesystem } from "../src/engine/filesystem/initialFilesystem";
 import { SnowflakeState } from "../src/engine/snowflake/state";
 import { createInitialSnowflakeState } from "../src/engine/snowflake/seed/initial_data";
-import { createDefaultContext } from "../src/engine/snowflake/session/context";
+import { createDefaultContext, SessionContext } from "../src/engine/snowflake/session/context";
 import { checkEmailDeliveries, GameEvent } from "../src/engine/mail/delivery";
 import { getSentDir } from "../src/engine/mail/mailUtils";
 import { resolvePath } from "../src/lib/pathUtils";
@@ -67,6 +67,7 @@ export class GameRunner {
   deliveredEmailIds: string[];
   commandHistory: string[];
   snowflakeState: SnowflakeState;
+  snowflakeContext: SessionContext;
   completedObjectives: string[];
   pendingPrompt: PromptSessionInfo | null;
 
@@ -77,6 +78,7 @@ export class GameRunner {
     this.deliveredEmailIds = [];
     this.commandHistory = [];
     this.snowflakeState = createInitialSnowflakeState();
+    this.snowflakeContext = createDefaultContext(this.username);
     this.completedObjectives = [];
     this.pendingPrompt = null;
 
@@ -142,12 +144,13 @@ export class GameRunner {
         cwd: this.cwd,
         homeDir: this.fs.homeDir,
         activeComputer: this.activeComputer,
+        storyFlags: this.storyFlags,
         stdin,
         rawArgs: p.rawArgs,
         isPiped: pi < pipeline.length - 1 || !!redirectFile,
         commandHistory: this.commandHistory,
         snowflakeState: this.snowflakeState,
-        snowflakeContext: createDefaultContext(this.username),
+        snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
       };
 
@@ -229,12 +232,13 @@ export class GameRunner {
         cwd: this.cwd,
         homeDir: this.fs.homeDir,
         activeComputer: this.activeComputer,
+        storyFlags: this.storyFlags,
         stdin,
         rawArgs: p.rawArgs,
         isPiped: pi < pipeline.length - 1 || !!redirectFile,
         commandHistory: this.commandHistory,
         snowflakeState: this.snowflakeState,
-        snowflakeContext: createDefaultContext(this.username),
+        snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
       };
 
@@ -386,6 +390,7 @@ export class GameRunner {
     const homeDir = `/home/${this.username}`;
     this.fs = new VirtualFS(root, homeDir, homeDir);
     this.cwd = homeDir;
+    this.snowflakeContext = createDefaultContext(this.username);
   }
 
   /** Return a summary of the current game state. */

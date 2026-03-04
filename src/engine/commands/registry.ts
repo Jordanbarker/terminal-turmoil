@@ -20,11 +20,14 @@ export function execute(
   ctx: CommandContext
 ): CommandResult {
   if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
-    return { output: `${commandName}: command not found. Type 'help' for available commands.` };
+    if (commandName === "tree" && ctx.storyFlags?.commands_unlocked) {
+      return { output: "Command 'tree' not found, but can be installed with:\n  sudo apt install tree" };
+    }
+    return { output: `${commandName}: command not found. Type 'help' for available commands.`, exitCode: 127 };
   }
   const entry = commands.get(commandName);
   if (!entry) {
-    return { output: `${commandName}: command not found. Type 'help' for available commands.` };
+    return { output: `${commandName}: command not found. Type 'help' for available commands.`, exitCode: 127 };
   }
   if (flags["help"] && entry.helpText) {
     return { output: entry.helpText };
@@ -38,9 +41,6 @@ export async function executeAsync(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): Promise<CommandResult> {
-  if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
-    return { output: `${commandName}: command not found. Type 'help' for available commands.` };
-  }
   const asyncEntry = asyncCommands.get(commandName);
   if (asyncEntry) {
     if (flags["help"] && asyncEntry.helpText) {

@@ -20,6 +20,7 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "file_read", path: `/home/${username}/scripts/auto_apply.py`, flag: "read_auto_apply", value: true },
     { event: "file_read", path: `/home/${username}/.bashrc`, flag: "read_bashrc", value: true },
     { event: "directory_visit", path: `/home/${username}/Downloads`, flag: "pdftotext_unlocked", value: true },
+    { event: "command_executed", detail: "apt_install_tree", flag: "tree_installed", value: true },
   ];
 }
 
@@ -29,7 +30,8 @@ export function getNexacorpStoryFlagTriggers(username: string): StoryFlagTrigger
     { event: "file_read", path: "/var/log/auth.log.bak", flag: "found_auth_backup", value: true },
     { event: "file_read", path: "/opt/chip/.internal/directives.txt", flag: "found_chip_directives", value: true },
     { event: "file_read", path: "/opt/chip/.internal/cleanup.sh", flag: "found_cleanup_script", value: true },
-    { event: "file_read", path: `/home/${username}/Documents/onboarding.txt`, flag: "read_onboarding", value: true },
+    { event: "file_read", path: `/home/${username}/Documents/onboarding.md`, flag: "read_onboarding", value: true },
+    { event: "file_read", detail: "chip_intro", flag: "chip_unlocked", value: true },
     { event: "command_executed", detail: "dbt", flag: "ran_dbt", value: true },
     { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/marts/dim_employees.sql`, flag: "found_data_filtering", value: true },
   ];

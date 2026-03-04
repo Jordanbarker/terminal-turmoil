@@ -11,7 +11,7 @@ const man: CommandHandler = (args, _flags, ctx) => {
 
   const cmd = args[0];
 
-  if (!isCommandAvailable(cmd, ctx.activeComputer)) {
+  if (!isCommandAvailable(cmd, ctx.activeComputer, ctx.storyFlags)) {
     return { output: `No manual entry for ${cmd}` };
   }
 
@@ -71,6 +71,14 @@ function getCommandDescription(cmd: string): string {
     nano: "a small and friendly text editor",
     mail: "send and receive email",
     clear: "clear the terminal screen",
+    help: "list available commands",
+    save: "save game state",
+    load: "restore game from a save slot",
+    newgame: "start a fresh game",
+    sudo: "execute a command as another user",
+    apt: "package manager",
+    ssh: "remote login program",
+    chip: "NexaCorp AI assistant",
   };
   return descriptions[cmd] ?? cmd;
 }

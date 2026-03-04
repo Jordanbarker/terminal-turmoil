@@ -32,9 +32,13 @@ export function checkEmailDeliveries(
     switch (def.trigger.type) {
       case "after_file_read":
         matches = event.type === "file_read" && event.detail === def.trigger.filePath;
+        if (matches && def.trigger.requireDelivered) {
+          matches = deliveredIds.includes(def.trigger.requireDelivered)
+            || newDeliveries.includes(def.trigger.requireDelivered);
+        }
         break;
       case "after_email_read":
-        matches = event.type === "file_read" && event.detail.includes(def.trigger.emailId);
+        matches = event.type === "file_read" && event.detail === def.trigger.emailId;
         break;
       case "after_command":
         matches = event.type === "command_executed" && event.detail === def.trigger.command;

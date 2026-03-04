@@ -41,7 +41,7 @@ Keeping a running list of useful commands as I'm getting used to terminal.
 
 Starting with nano! Maybe I'll add vim commands later if I feel brave.
 
-PgDn to get to the terminal commands.
+(command cheat sheet is further down)
 
 ## Moving Around:
   Arrow keys   - move the cursor
@@ -59,7 +59,7 @@ PgDn to get to the terminal commands.
   Ctrl+X       - exit nano
                (if you've made changes, it will ask to save)
 
-## Tips:
+## Good to know:
   - Ctrl+G shows the help screen inside nano
   - Use Tab to autocomplete file names at the terminal
   - Ctrl+C cancels the current action
@@ -75,12 +75,11 @@ PgDn to get to the terminal commands.
   Alt+E        - redo the last undone action
                (yes, nano has undo — most people don't know!)
 
-## Practice Practice Practice!:
-    1. Move the cursor to this line and type something
-    2. Press Ctrl+K to cut this line, then Ctrl+U to paste it
-    3. Press Ctrl+W and search for the word "commands"
-    4. When you're done exploring, scroll down — there's
-       a useful reference section below.
+## Things to try:
+    - Type on this line to practice editing
+    - Ctrl+K cuts a line, Ctrl+U pastes it back
+    - Ctrl+W to search — pretty handy for long files
+    - Scroll down for my command cheat sheet
 
 ---
 
@@ -94,10 +93,9 @@ PgDn to get to the terminal commands.
   nano   - edit files (this editor!)
   help   - list all available commands
 
-## What to do next:
-  - Exit nano (Ctrl+X) and try these commands!
-  - Type 'help' for a quick reference
-  - Type 'mail' to check your inbox
+## Reminders:
+  - Should check mail, haven't looked in a while
+  - 'help' lists everything available
 `;
 
 /** 0-indexed line number of the "## Commands I've learned so far:" header in terminal_notes.txt. */
@@ -563,21 +561,19 @@ Nice to have:
   - Previous work at a small company / startup
 
 Compensation: Competitive salary + equity
-Reports to: Edward Torres, Engineering Manager
-
-To apply: Send resume to hiring@nexacorp.com`),
+Reports to: Edward Torres, CTO & Co-Founder`),
           "interview_prep.txt": file("interview_prep.txt", `NEXACORP INTERVIEW PREP
 =======================
 Date: 2026-02-03 (tomorrow!)
 
-Interviewer: Edward Torres (Engineering Manager)
+Interviewer: Edward Torres (CTO & Co-Founder)
 Format: Video call, ~45 min
 
 What I know about them:
   - Small company, "AI-integrated enterprise solutions"
   - AI assistant called "Chip" — seems central to everything
   - Looking for someone to replace an engineer who left suddenly
-  - Glassdoor rating: 3.2 (yikes, but only 23 reviews)
+  - Glassdoor rating is poor but not many reviews
 
 Questions to ask:
   - What happened to the previous engineer? (ask diplomatically)
@@ -596,8 +592,6 @@ Things NOT to mention:
   - That I'm mass-applying with a script
   - That their Glassdoor reviews are concerning
   - How desperate I am
-
-Outfit: clean shirt (it's video, they can't see my sweatpants)
 `),
           "python3-pip_24.0+dfsg-1_all.deb": binaryFile("python3-pip_24.0+dfsg-1_all.deb",
 `\x7FELF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
@@ -1407,7 +1401,7 @@ of interviews, so here we are.
     {
       "name": "NexaCorp",
       "rating": 3.2,
-      "review_count": 4,
+      "review_count": 23,
       "reviews": [
         {
           "stars": 5,

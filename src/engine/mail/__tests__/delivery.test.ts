@@ -68,7 +68,7 @@ describe("checkEmailDeliveries", () => {
     const fs = makeFS();
     const event: GameEvent = {
       type: "file_read",
-      detail: `/home/${USERNAME}/Documents/handoff/notes.txt`,
+      detail: `/srv/engineering/chen-handoff/notes.txt`,
     };
 
     const { newDeliveries } = checkEmailDeliveries(fs, event, []);

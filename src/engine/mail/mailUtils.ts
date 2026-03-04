@@ -133,6 +133,19 @@ export function markAsRead(fs: VirtualFS, filename: string): { fs: VirtualFS } {
   return { fs: removeResult.fs ?? writeResult.fs };
 }
 
+export function hasReplyInSent(fs: VirtualFS, username: string, subject: string): boolean {
+  const sentDir = getSentDir(username);
+  const node = fs.getNode(sentDir);
+  if (!node || !isDirectory(node)) return false;
+  const replySubject = `Re: ${subject}`;
+  for (const child of Object.values(node.children)) {
+    if (!isFile(child)) continue;
+    const parsed = parseEmailContent(child.content);
+    if (parsed.subject === replySubject) return true;
+  }
+  return false;
+}
+
 export function deliverEmail(fs: VirtualFS, email: Email, seq: number): { fs: VirtualFS } {
   const user = usernameFromHomeDir(fs.homeDir);
   const filename = `${String(seq).padStart(3, "0")}_${slugify(email.subject)}`;

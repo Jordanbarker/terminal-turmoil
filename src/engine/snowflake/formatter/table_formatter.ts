@@ -71,7 +71,15 @@ function formatValue(v: Value): string {
   if (v === null) return "NULL";
   if (v === undefined) return "NULL";
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  if (v instanceof Date) return v.toISOString().replace("T", " ").replace(/\.000Z$/, "");
+  if (v instanceof Date) {
+    const Y = v.getFullYear();
+    const M = String(v.getMonth() + 1).padStart(2, "0");
+    const D = String(v.getDate()).padStart(2, "0");
+    const h = String(v.getHours()).padStart(2, "0");
+    const m = String(v.getMinutes()).padStart(2, "0");
+    const s = String(v.getSeconds()).padStart(2, "0");
+    return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+  }
   if (Array.isArray(v)) return JSON.stringify(v);
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);

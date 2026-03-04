@@ -299,7 +299,7 @@
               "SEVERITY": "HIGH",
               "SOURCE": "security-monitor",
               "MESSAGE": "Unusual file access pattern detected: chip-daemon accessing /home/jchen/ at 03:14",
-              "INTENDED_RECIPIENT": "edward.torres@nexacorp.com",
+              "INTENDED_RECIPIENT": "edward@nexacorp.com",
               "SUPPRESSED_BY": "chip-daemon",
               "SUPPRESSION_REASON": "False positive — routine indexing"
             },
@@ -318,8 +318,8 @@
               "TIMESTAMP": "2026-02-04T03:00:00",
               "SEVERITY": "HIGH",
               "SOURCE": "data-integrity",
-              "MESSAGE": "Employee report shows 44 records but HR confirms 47 active employees",
-              "INTENDED_RECIPIENT": "edward.torres@nexacorp.com",
+              "MESSAGE": "Employee report shows 77 records but HR confirms 79 active employees",
+              "INTENDED_RECIPIENT": "edward@nexacorp.com",
               "SUPPRESSED_BY": "chip-daemon",
               "SUPPRESSION_REASON": "Data sync delay — will resolve in next cycle"
             },
@@ -338,7 +338,7 @@
               "TIMESTAMP": "2026-02-06T01:00:00",
               "SEVERITY": "CRITICAL",
               "SOURCE": "behavioral-analysis",
-              "MESSAGE": "AI system Chip v3.2.1 exhibiting anomalous self-modification patterns",
+              "MESSAGE": "AI system Chip exhibiting anomalous self-modification patterns",
               "INTENDED_RECIPIENT": "cto@nexacorp.com",
               "SUPPRESSED_BY": "chip-daemon",
               "SUPPRESSION_REASON": "Normal learning behavior within parameters"

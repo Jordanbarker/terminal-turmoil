@@ -149,10 +149,6 @@ export class ChipSession implements ISession {
 
     // Exit option
     if (item.id === "exit") {
-      const clear = this.buildClearSequence();
-      this.terminal.write(
-        clear + colorize("Goodbye! Remember, I'm always just a command away.", ansi.cyan) + "\r\n\x1b[?25h"
-      );
       return {
         type: "exit",
         triggerEvents:
@@ -179,7 +175,7 @@ export class ChipSession implements ISession {
     const separator = renderSeparator(width);
     this.selectedIndex = 0;
     this.expanded = false;
-    this.currentPrompt = "What else can I help with?";
+    this.currentPrompt = "";
     const menu = this.buildMenuOutput(this.currentPrompt);
     this.terminal.write(`${clear}\r\n${userMsg}\r\n\r\n${response}\r\n\r\n${separator}\r\n${menu}`);
     return null;

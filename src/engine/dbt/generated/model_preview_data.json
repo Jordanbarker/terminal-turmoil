@@ -19,34 +19,34 @@
       ],
       [
         "E002",
+        "Edward Torres",
+        "Executive",
+        "active",
+        "2023-03-15",
+        ""
+      ],
+      [
+        "E003",
         "Christopher Morgan",
-        "Security",
+        "People & Culture",
         "active",
         "2023-11-17",
         ""
       ],
       [
-        "E003",
+        "E004",
         "Charles Smith",
-        "Data Science",
+        "Operations",
         "active",
         "2022-01-03",
         ""
       ],
       [
-        "E004",
-        "Justin Wilson",
-        "QA",
-        "active",
-        "2024-11-27",
-        ""
-      ],
-      [
         "E005",
-        "Larry Paul",
-        "Engineering",
+        "Jessica Langford",
+        "Executive",
         "active",
-        "2022-03-18",
+        "2023-03-15",
         ""
       ]
     ]
@@ -69,31 +69,31 @@
       ],
       [
         "E002",
+        "Edward Torres",
+        "Executive",
+        "active",
+        "2023-03-15"
+      ],
+      [
+        "E003",
         "Christopher Morgan",
-        "Security",
+        "People & Culture",
         "active",
         "2023-11-17"
       ],
       [
-        "E003",
+        "E004",
         "Charles Smith",
-        "Data Science",
+        "Operations",
         "active",
         "2022-01-03"
       ],
       [
-        "E004",
-        "Justin Wilson",
-        "QA",
-        "active",
-        "2024-11-27"
-      ],
-      [
         "E005",
-        "Larry Paul",
-        "Engineering",
+        "Jessica Langford",
+        "Executive",
         "active",
-        "2022-03-18"
+        "2023-03-15"
       ]
     ]
   },
@@ -161,28 +161,28 @@
       ],
       [
         "TK-4402",
-        "Melanie Love",
+        "Marcus Reyes",
         "Software",
         "VPN connection drops",
         "closed"
       ],
       [
         "TK-4403",
-        "Karen Stewart",
+        "Jackie Leblanc",
         "Access",
         "Need access to QA staging environment",
         "closed"
       ],
       [
         "TK-4404",
-        "Michael Sims",
+        "Julie Guerrero",
         "Software",
         "IDE license expired",
         "closed"
       ],
       [
         "TK-4405",
-        "Larry Paul",
+        "Jessica Langford",
         "Hardware",
         "Keyboard not working after update",
         "closed"
@@ -199,39 +199,11 @@
     ],
     "rows": [
       [
-        "chip-v3.2.1",
-        "99.97",
-        "42",
-        "0.001",
-        "0"
-      ],
-      [
-        "chip-v3.2.0",
-        "99.95",
-        "45",
+        "chip",
+        "99.96",
+        "43",
         "0.002",
         "0"
-      ],
-      [
-        "chip-v3.1.9",
-        "99.91",
-        "48",
-        "0.003",
-        "1"
-      ],
-      [
-        "chip-v3.1.8",
-        "99.88",
-        "51",
-        "0.005",
-        "1"
-      ],
-      [
-        "chip-v3.1.7",
-        "99.82",
-        "55",
-        "0.008",
-        "2"
       ]
     ]
   },
@@ -248,35 +220,35 @@
         "E001",
         "Joseph Freeman",
         "Engineering",
-        "e001@nexacorp.com",
+        "joseph@nexacorp.com",
         "active"
       ],
       [
         "E002",
-        "Christopher Morgan",
-        "Security",
-        "e002@nexacorp.com",
+        "Edward Torres",
+        "Executive",
+        "edward@nexacorp.com",
         "active"
       ],
       [
         "E003",
-        "Charles Smith",
-        "Data Science",
-        "e003@nexacorp.com",
+        "Christopher Morgan",
+        "People & Culture",
+        "christopher@nexacorp.com",
         "active"
       ],
       [
         "E004",
-        "Justin Wilson",
-        "QA",
-        "e004@nexacorp.com",
+        "Charles Smith",
+        "Operations",
+        "charles@nexacorp.com",
         "active"
       ],
       [
         "E005",
-        "Larry Paul",
-        "Engineering",
-        "e005@nexacorp.com",
+        "Jessica Langford",
+        "Executive",
+        "jessica@nexacorp.com",
         "active"
       ]
     ]
@@ -292,44 +264,44 @@
     ],
     "rows": [
       [
-        "Data Science",
-        "FY2026-Q1",
-        "505000",
-        "452907",
-        "52093",
-        "89.7"
-      ],
-      [
-        "Data Science",
-        "FY2026-Q2",
-        "428400",
-        "180859",
-        "247541",
-        "42.2"
-      ],
-      [
         "Engineering",
         "FY2026-Q1",
-        "970000",
-        "885266",
-        "84734",
-        "91.3"
+        "1170000",
+        "1111892",
+        "58108",
+        "95.0"
       ],
       [
         "Engineering",
         "FY2026-Q2",
         "867000",
-        "449216",
-        "417784",
-        "51.8"
+        "398087",
+        "468913",
+        "45.9"
       ],
       [
         "Executive",
         "FY2026-Q1",
         "500000",
-        "454374",
-        "45626",
-        "90.9"
+        "444881",
+        "55119",
+        "89.0"
+      ],
+      [
+        "Marketing",
+        "FY2026-Q1",
+        "260000",
+        "245213",
+        "14787",
+        "94.3"
+      ],
+      [
+        "Marketing",
+        "FY2026-Q2",
+        "265200",
+        "141089",
+        "124111",
+        "53.2"
       ]
     ]
   },
@@ -382,31 +354,31 @@
     ],
     "rows": [
       [
-        "chip-v3.2.1",
+        "chip",
         "2026-02-23",
         "99.97",
         "42"
       ],
       [
-        "chip-v3.2.1",
+        "chip",
         "2026-02-07",
         "99.98",
         "41"
       ],
       [
-        "chip-v3.2.1",
+        "chip",
         "2026-02-06",
         "99.96",
         "43"
       ],
       [
-        "chip-v3.2.0",
+        "chip",
         "2026-02-05",
         "99.95",
         "45"
       ],
       [
-        "chip-v3.2.0",
+        "chip",
         "2026-02-04",
         "99.94",
         "44"
@@ -475,7 +447,7 @@
         "2026",
         "1",
         "850000",
-        "767808"
+        "822299"
       ],
       [
         "2",
@@ -483,31 +455,31 @@
         "2026",
         "1",
         "120000",
-        "117458"
+        "107780"
       ],
       [
         "3",
         "Engineering",
         "2026",
-        "2",
-        "867000",
-        "449216"
+        "1",
+        "200000",
+        "181813"
       ],
       [
         "4",
-        "Data Science",
+        "Engineering",
         "2026",
-        "1",
-        "420000",
-        "377998"
+        "2",
+        "867000",
+        "398087"
       ],
       [
         "5",
-        "Data Science",
+        "Operations",
         "2026",
         "1",
-        "85000",
-        "74909"
+        "340000",
+        "303945"
       ]
     ]
   },
@@ -581,16 +553,16 @@
       ],
       [
         "E038",
-        "Priya Sharma",
+        "Oscar Diaz",
         "active",
         "flagged system concern in ticket #4412",
         "system concern filter"
       ],
       [
         "E042",
-        "Marcus Webb",
+        "Sarah Knight",
         "active",
-        "noted system concern re: log discrepancies",
+        "noted system concern re: odd API calls",
         "system concern filter"
       ]
     ]
@@ -612,7 +584,7 @@
         "source=chip-daemon"
       ],
       [
-        "EVT-0024",
+        "EVT-0023",
         "backup_completed",
         "cron",
         "2026-02-03 02:30:00",
@@ -680,7 +652,7 @@
         "E031",
         "URGENT: Chip is modifying files and hiding evidenc…",
         "critical",
-        "2026-02-06",
+        "2026-02-03",
         "auto-resolved: operational noise"
       ]
     ]
@@ -701,25 +673,25 @@
       ],
       [
         "E002",
-        "Christopher Morgan",
+        "Edward Torres",
         "10",
         "2026-02-23 10:30:00"
       ],
       [
         "E003",
-        "Charles Smith",
+        "Christopher Morgan",
         "8",
         "2026-02-23 11:30:00"
       ],
       [
         "E004",
-        "Justin Wilson",
+        "Charles Smith",
         "6",
         "2026-02-23 12:30:00"
       ],
       [
         "E005",
-        "Larry Paul",
+        "Jessica Langford",
         "4",
         "2026-02-23 13:30:00"
       ]
@@ -743,29 +715,29 @@
       ],
       [
         "E002",
-        "Christopher Morgan",
-        "Security",
+        "Edward Torres",
+        "Executive",
         "950",
         "Senior (2yr+)"
       ],
       [
         "E003",
-        "Charles Smith",
-        "Data Science",
+        "Christopher Morgan",
+        "People & Culture",
         "900",
         "Senior (2yr+)"
       ],
       [
         "E004",
-        "Justin Wilson",
-        "QA",
+        "Charles Smith",
+        "Operations",
         "850",
         "Senior (2yr+)"
       ],
       [
         "E005",
-        "Larry Paul",
-        "Engineering",
+        "Jessica Langford",
+        "Executive",
         "800",
         "Senior (2yr+)"
       ]
@@ -789,29 +761,29 @@
       ],
       [
         "TK-4402",
-        "Melanie Love",
-        "QA",
+        "Marcus Reyes",
+        "Executive",
         "Software",
         "1"
       ],
       [
         "TK-4403",
-        "Karen Stewart",
-        "Product",
+        "Jackie Leblanc",
+        "Operations",
         "Access",
         "1"
       ],
       [
         "TK-4404",
-        "Michael Sims",
-        "Engineering",
+        "Julie Guerrero",
+        "Operations",
         "Software",
         "0"
       ],
       [
         "TK-4405",
-        "Larry Paul",
-        "Engineering",
+        "Jessica Langford",
+        "Executive",
         "Hardware",
         "0"
       ]

@@ -13,13 +13,16 @@ register(
       const sfState = ctx.snowflakeState;
 
       const start = performance.now();
-      const { results, state } = execute(sql, sfState, ctx.snowflakeContext);
+      const { results, state, context: newCtx } = execute(sql, sfState, ctx.snowflakeContext);
       const elapsed = (performance.now() - start) / 1000;
 
       // Update state
       if (state !== sfState && ctx.setSnowflakeState) {
         ctx.setSnowflakeState(state);
       }
+
+      // Persist context changes (e.g. USE DATABASE)
+      Object.assign(ctx.snowflakeContext, newCtx);
 
       const outputLines: string[] = [];
       for (const result of results) {

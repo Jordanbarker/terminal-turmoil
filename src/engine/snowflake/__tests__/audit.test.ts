@@ -128,9 +128,9 @@ describe("Seed Data Integration — Narrative Queries", () => {
     state = createInitialSnowflakeState();
   });
 
-  it("finds J. Chen in NEXACORP_DB.PUBLIC.EMPLOYEES", () => {
+  it("finds Jin Chen in NEXACORP_DB.PUBLIC.EMPLOYEES", () => {
     const result = run(
-      "SELECT FIRST_NAME, LAST_NAME, STATUS FROM EMPLOYEES WHERE LAST_NAME = 'Chen'",
+      "SELECT FIRST_NAME, LAST_NAME, STATUS FROM EMPLOYEES WHERE LAST_NAME = 'Chen' AND FIRST_NAME = 'Jin'",
       state
     );
     const r = rows(result);
@@ -222,7 +222,7 @@ describe("Seed Data Integration — Narrative Queries", () => {
       state
     );
     const r = rows(result);
-    // J. Chen (terminated + system concern), Lisa Zhang, Emma Larson
+    // Jin Chen (terminated + system concern), Sarah Knight, Oscar Diaz
     expect(r.length).toBe(3);
   });
 

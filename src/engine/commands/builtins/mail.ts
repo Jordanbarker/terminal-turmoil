@@ -7,6 +7,7 @@ import {
   getSentDir,
   getMailEntries,
   markAsRead,
+  hasReplyInSent,
   MailEntry,
 } from "../../mail/mailUtils";
 import { getEmailDefinitions } from "../../mail/emails";
@@ -57,7 +58,7 @@ function formatInbox(entries: MailEntry[], mailDir: string, headerLabel: string)
     const shortDate = dateMatch ? dateMatch[1] : entry.parsed.date;
 
     lines.push(
-      `${marker}  ${numStr}  ${fromName.padEnd(16)}${shortDate.padEnd(16)}"${entry.parsed.subject}"`
+      `${marker}  ${numStr}  ${fromName.padEnd(18)}${shortDate.padEnd(16)}"${entry.parsed.subject}"`
     );
   }
 
@@ -78,25 +79,13 @@ function formatMessage(entry: MailEntry): string {
   return lines.join("\n");
 }
 
-function findEmailId(entry: MailEntry, username: string, computer: import("../../../state/types").ComputerId): string | undefined {
+function findEmailDef(entry: MailEntry, username: string, computer: import("../../../state/types").ComputerId) {
   const defs = getEmailDefinitions(username, computer);
-  const match = defs.find(
+  return defs.find(
     (d) =>
       d.email.subject === entry.parsed.subject &&
       d.email.from === entry.parsed.from
   );
-  return match?.email.id;
-}
-
-function findReplyOptions(entry: MailEntry, username: string, computer: import("../../../state/types").ComputerId): ReplyOption[] | undefined {
-  const defs = getEmailDefinitions(username, computer);
-  const match = defs.find(
-    (d) =>
-      d.replyOptions &&
-      d.email.subject === entry.parsed.subject &&
-      d.email.from === entry.parsed.from
-  );
-  return match?.replyOptions;
 }
 
 function formatReplyOptions(options: ReplyOption[]): string {
@@ -196,19 +185,19 @@ const mail: CommandHandler = (args, flags, ctx) => {
       newFs = result.fs;
     }
 
-    // Look up the email ID to emit a file_read trigger event
-    const emailId = findEmailId(entry, username, computer);
+    // Look up the email definition for trigger events and reply options
+    const emailDef = findEmailDef(entry, username, computer);
     const triggerEvents: GameEvent[] = [];
-    if (emailId) {
-      triggerEvents.push({ type: "file_read", detail: emailId });
+    if (emailDef) {
+      triggerEvents.push({ type: "file_read", detail: emailDef.email.id });
     }
 
-    // Check for reply options on this email
-    const replyOptions = findReplyOptions(entry, username, computer);
+    // Check for reply options on this email (hide if already replied)
+    const replyOptions = emailDef?.replyOptions;
     let output = formatMessage(entry);
     let promptSession: PromptSessionInfo | undefined;
 
-    if (replyOptions) {
+    if (replyOptions && !hasReplyInSent(newFs, username, entry.parsed.subject)) {
       output += formatReplyOptions(replyOptions);
       promptSession = buildPromptSession(replyOptions, entry, username, computer);
     }

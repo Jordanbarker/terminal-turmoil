@@ -50,10 +50,22 @@ export function getSuggestion(
       }
     }
 
-    // Strategy 3b: Subcommand completion for dbt
+    // Strategy 3b: Subcommand completion for dbt, sudo, apt
     if (cmd === "dbt") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"];
+      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
+      if (match) return cmd + " " + match;
+    }
+    if (cmd === "sudo") {
+      const partial = input.slice(spaceIdx + 1);
+      const subs = ["apt"];
+      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
+      if (match) return cmd + " " + match;
+    }
+    if (cmd === "apt") {
+      const partial = input.slice(spaceIdx + 1);
+      const subs = ["install"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }

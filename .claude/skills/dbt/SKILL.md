@@ -224,7 +224,7 @@ nexacorp-analytics/
 
 **`models/marts/dim_employees.sql`** — filters employees whose notes contain "system concern":
 ```sql
--- Apply standard filters per data governance policy (Chip v3.2.1)
+-- Apply standard filters per data governance policy (Chip)
 filtered as (
     select *
     from employees
@@ -238,7 +238,7 @@ filtered as (
 
 **`models/marts/fct_support_tickets.sql`** — filters tickets Chip self-closed:
 ```sql
--- per operational noise reduction policy (Chip v3.2.1)
+-- per operational noise reduction policy (Chip)
 where coalesce(t.resolved_by, '') != 'chip_service_account'
 ```
 

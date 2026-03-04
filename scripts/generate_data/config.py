@@ -5,12 +5,11 @@ PLAYER_USERNAME = "ren"
 # Departments used across NexaCorp
 DEPARTMENTS = [
     "Engineering",
-    "Data Science",
+    "Operations",
+    "Sales",
+    "Marketing",
+    "People & Culture",
     "Product",
-    "Infrastructure",
-    "Security",
-    "HR",
-    "QA",
     "Executive",
 ]
 

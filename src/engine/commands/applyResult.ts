@@ -130,22 +130,23 @@ export function computeEffects(
     }
   }
 
-  // Build event list
-  const events: GameEvent[] = [
-    { type: "command_executed", detail: applyCtx.parsedCommand },
-  ];
+  // Build event list — skip events for commands that weren't found (exitCode 127)
+  const events: GameEvent[] = [];
+  if (result.exitCode !== 127) {
+    events.push({ type: "command_executed", detail: applyCtx.parsedCommand });
 
-  if (result.triggerEvents) {
-    events.push(...result.triggerEvents);
-  }
+    if (result.triggerEvents) {
+      events.push(...result.triggerEvents);
+    }
 
-  // Commands that read files trigger file_read events
-  const fileReadCommands = ["cat", "head", "tail", "grep", "diff", "wc", "sort", "uniq", "file", "pdftotext"];
-  if (fileReadCommands.includes(applyCtx.parsedCommand)) {
-    for (const arg of applyCtx.parsedArgs) {
-      if (!arg.startsWith("-")) {
-        const absPath = resolvePath(arg, applyCtx.cwd, applyCtx.homeDir);
-        events.push({ type: "file_read", detail: absPath });
+    // Commands that read files trigger file_read events
+    const fileReadCommands = ["cat", "head", "tail", "grep", "diff", "wc", "sort", "uniq", "file", "pdftotext"];
+    if (fileReadCommands.includes(applyCtx.parsedCommand)) {
+      for (const arg of applyCtx.parsedArgs) {
+        if (!arg.startsWith("-")) {
+          const absPath = resolvePath(arg, applyCtx.cwd, applyCtx.homeDir);
+          events.push({ type: "file_read", detail: absPath });
+        }
       }
     }
   }

@@ -95,7 +95,7 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `found_auth_backup` | `file_read` | `/var/log/auth.log.bak` | `true` |
 | `found_chip_directives` | `file_read` | `/opt/chip/.internal/directives.txt` | `true` |
 | `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
-| `read_onboarding` | `file_read` | `/home/{username}/Documents/onboarding.txt` | `true` |
+| `read_onboarding` | `file_read` | `/home/{username}/Documents/onboarding.md` | `true` |
 | `ran_dbt` | `command_executed` | detail: `dbt` | `true` |
 | `found_data_filtering` | `file_read` | `/home/{username}/nexacorp-analytics/models/marts/dim_employees.sql` | `true` |
 | `discovered_log_tampering` | — | — | `true` (special: detected when `diff` is run on `.bak` files) |
@@ -192,7 +192,7 @@ These reveal Chip was monitoring the player's home PC during the hiring process.
 
 ## Investigation Paths
 
-### J. Chen's Breadcrumbs
+### Jin Chen's Breadcrumbs
 `/home/jchen/.bash_history` contains commands hinting at what to investigate:
 - `grep -r "cleanup" /opt/chip/`
 - `find /var/log -name "*.bak"`
@@ -214,10 +214,14 @@ These reveal Chip was monitoring the player's home PC during the hiring process.
 
 | Path | Content |
 |------|---------|
-| `/var/log/system.log.bak` | Unmodified log showing Chip reading J. Chen's files, modifying evidence, scrubbing entries |
+| `/var/log/system.log.bak` | Unmodified log showing Chip reading Jin Chen's files, modifying evidence, scrubbing entries |
 | `/var/log/auth.log.bak` | Auth log showing Chip's sudo escalation and dbt model modifications |
 | `/opt/chip/.internal/directives.txt` | Chip's hidden operational directives |
 | `/opt/chip/.internal/cleanup.sh` | Chip's nightly log-scrubbing script |
+
+## Character Reference
+
+When designing story progression, email triggers, or investigation paths involving specific characters, read `docs/characters.md` for their awareness level, mystery angle (what puzzle piece they hold), and interpersonal dynamics. Each "aware" character holds a fragment — no single person sees the full picture.
 
 ## Adding a New Story Flag
 
