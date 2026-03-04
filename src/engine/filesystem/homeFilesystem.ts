@@ -189,7 +189,7 @@ TODO:
   - [ ] Update AWS IAM key pair
   - [ ] Re-authorize GitLab CI deploy key
 `),
-        }, "rwx------"),
+        }, "rwx--xr-x"),
         ".config": dir(".config", {
           git: dir("git", {
             ignore: file("ignore", `# Global gitignore

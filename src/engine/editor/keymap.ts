@@ -19,7 +19,15 @@ export type EditorAction =
   | { type: "pasteLine" }
   | { type: "help" }
   | { type: "promptYes" }
-  | { type: "promptNo" };
+  | { type: "promptNo" }
+  | { type: "search" }
+  | { type: "replace" }
+  | { type: "gotoLine" }
+  | { type: "readFile" }
+  | { type: "showPosition" }
+  | { type: "justify" }
+  | { type: "writeOut" }
+  | { type: "execute" };
 
 /**
  * Parse raw xterm input data into a list of semantic editor actions.
@@ -69,6 +77,10 @@ export function parseEditorInput(data: string): EditorAction[] {
       // Ctrl+A → home
       actions.push({ type: "home" });
       i++;
+    } else if (code === 3) {
+      // Ctrl+C → show position (also cancel in prompts)
+      actions.push({ type: "showPosition" });
+      i++;
     } else if (code === 5) {
       // Ctrl+E → end
       actions.push({ type: "end" });
@@ -77,13 +89,33 @@ export function parseEditorInput(data: string): EditorAction[] {
       // Ctrl+G → help
       actions.push({ type: "help" });
       i++;
+    } else if (code === 9) {
+      // Tab → insert tab character
+      actions.push({ type: "insert", char: "\t" });
+      i++;
+    } else if (code === 10) {
+      // Ctrl+J (LF) → justify
+      actions.push({ type: "justify" });
+      i++;
     } else if (code === 11) {
       // Ctrl+K → cut line
       actions.push({ type: "cutLine" });
       i++;
-    } else if (code === 15 || code === 19) {
-      // Ctrl+O or Ctrl+S → save
+    } else if (code === 15) {
+      // Ctrl+O → write out (with prompt)
+      actions.push({ type: "writeOut" });
+      i++;
+    } else if (code === 18) {
+      // Ctrl+R → read file
+      actions.push({ type: "readFile" });
+      i++;
+    } else if (code === 19) {
+      // Ctrl+S → direct save (no prompt)
       actions.push({ type: "save" });
+      i++;
+    } else if (code === 20) {
+      // Ctrl+T → execute
+      actions.push({ type: "execute" });
       i++;
     } else if (code === 21) {
       // Ctrl+U → paste line
@@ -93,6 +125,10 @@ export function parseEditorInput(data: string): EditorAction[] {
       // Ctrl+V → page down
       actions.push({ type: "pageDown" });
       i++;
+    } else if (code === 23) {
+      // Ctrl+W → search
+      actions.push({ type: "search" });
+      i++;
     } else if (code === 24) {
       // Ctrl+X → exit
       actions.push({ type: "exit" });
@@ -101,10 +137,18 @@ export function parseEditorInput(data: string): EditorAction[] {
       // Ctrl+Y → page up
       actions.push({ type: "pageUp" });
       i++;
+    } else if (code === 28) {
+      // Ctrl+\ → replace
+      actions.push({ type: "replace" });
+      i++;
+    } else if (code === 31) {
+      // Ctrl+_ → go to line
+      actions.push({ type: "gotoLine" });
+      i++;
     } else if (isBackspace(code)) {
       actions.push({ type: "backspace" });
       i++;
-    } else if (data[i] === "\r" || data[i] === "\n") {
+    } else if (data[i] === "\r") {
       actions.push({ type: "enter" });
       i++;
     } else if (isPrintable(code)) {

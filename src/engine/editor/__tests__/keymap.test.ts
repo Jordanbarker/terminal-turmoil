@@ -34,6 +34,10 @@ describe("parseEditorInput", () => {
       expect(parseEditorInput("\x01")).toEqual([{ type: "home" }]);
     });
 
+    it("Ctrl+C → showPosition", () => {
+      expect(parseEditorInput("\x03")).toEqual([{ type: "showPosition" }]);
+    });
+
     it("Ctrl+E → end", () => {
       expect(parseEditorInput("\x05")).toEqual([{ type: "end" }]);
     });
@@ -42,16 +46,32 @@ describe("parseEditorInput", () => {
       expect(parseEditorInput("\x07")).toEqual([{ type: "help" }]);
     });
 
+    it("Ctrl+J (\\n / code 10) → justify", () => {
+      expect(parseEditorInput("\x0a")).toEqual([{ type: "justify" }]);
+    });
+
+    it("Tab → insert tab character", () => {
+      expect(parseEditorInput("\x09")).toEqual([{ type: "insert", char: "\t" }]);
+    });
+
     it("Ctrl+K → cutLine", () => {
       expect(parseEditorInput("\x0b")).toEqual([{ type: "cutLine" }]);
     });
 
-    it("Ctrl+O → save", () => {
-      expect(parseEditorInput("\x0f")).toEqual([{ type: "save" }]);
+    it("Ctrl+O → writeOut", () => {
+      expect(parseEditorInput("\x0f")).toEqual([{ type: "writeOut" }]);
+    });
+
+    it("Ctrl+R → readFile", () => {
+      expect(parseEditorInput("\x12")).toEqual([{ type: "readFile" }]);
     });
 
     it("Ctrl+S → save", () => {
       expect(parseEditorInput("\x13")).toEqual([{ type: "save" }]);
+    });
+
+    it("Ctrl+T → execute", () => {
+      expect(parseEditorInput("\x14")).toEqual([{ type: "execute" }]);
     });
 
     it("Ctrl+U → pasteLine", () => {
@@ -62,12 +82,24 @@ describe("parseEditorInput", () => {
       expect(parseEditorInput("\x16")).toEqual([{ type: "pageDown" }]);
     });
 
+    it("Ctrl+W → search", () => {
+      expect(parseEditorInput("\x17")).toEqual([{ type: "search" }]);
+    });
+
     it("Ctrl+X → exit", () => {
       expect(parseEditorInput("\x18")).toEqual([{ type: "exit" }]);
     });
 
     it("Ctrl+Y → pageUp", () => {
       expect(parseEditorInput("\x19")).toEqual([{ type: "pageUp" }]);
+    });
+
+    it("Ctrl+\\ → replace", () => {
+      expect(parseEditorInput("\x1c")).toEqual([{ type: "replace" }]);
+    });
+
+    it("Ctrl+_ → gotoLine", () => {
+      expect(parseEditorInput("\x1f")).toEqual([{ type: "gotoLine" }]);
     });
   });
 
@@ -77,9 +109,12 @@ describe("parseEditorInput", () => {
       expect(parseEditorInput("\x08")).toEqual([{ type: "backspace" }]);
     });
 
-    it("parses Enter (\\r and \\n)", () => {
+    it("parses Enter (\\r)", () => {
       expect(parseEditorInput("\r")).toEqual([{ type: "enter" }]);
-      expect(parseEditorInput("\n")).toEqual([{ type: "enter" }]);
+    });
+
+    it("\\n maps to justify, not enter", () => {
+      expect(parseEditorInput("\n")).toEqual([{ type: "justify" }]);
     });
 
     it("parses printable characters", () => {
@@ -114,6 +149,18 @@ describe("parseEditorInput", () => {
       expect(actions[0]).toEqual({ type: "arrowUp" });
       expect(actions[1]).toEqual({ type: "insert", char: "h" });
       expect(actions).toHaveLength(6); // arrowUp + h,e,l,l,o
+    });
+
+    it("handles mixed Enter + text + search", () => {
+      const actions = parseEditorInput("\rtest\x17");
+      expect(actions).toEqual([
+        { type: "enter" },
+        { type: "insert", char: "t" },
+        { type: "insert", char: "e" },
+        { type: "insert", char: "s" },
+        { type: "insert", char: "t" },
+        { type: "search" },
+      ]);
     });
   });
 

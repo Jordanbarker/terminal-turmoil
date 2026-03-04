@@ -5,6 +5,17 @@ export interface CursorPosition {
   col: number;
 }
 
+export type PromptState =
+  | { type: "none" }
+  | { type: "saveExit" }
+  | { type: "search"; input: string }
+  | { type: "replaceSearch"; input: string }
+  | { type: "replaceWith"; searchTerm: string; input: string }
+  | { type: "replaceConfirm"; searchTerm: string; replacement: string }
+  | { type: "gotoLine"; input: string }
+  | { type: "readFile"; input: string }
+  | { type: "writeOut"; input: string };
+
 export interface EditorState {
   lines: string[];
   cursor: CursorPosition;
@@ -15,8 +26,9 @@ export interface EditorState {
   readOnly: boolean;
   cutBuffer: string | null;
   message: string | null;
-  promptState: "none" | "saveExit";
+  promptState: PromptState;
   showHelp: boolean;
+  search: { lastSearchTerm: string };
 }
 
 export interface EditorConfig {

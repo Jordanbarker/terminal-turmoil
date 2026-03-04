@@ -8,11 +8,21 @@ const BOLD = `${ESC}1m`;
 const HELP_TEXT = [
   "  nano help — keyboard shortcuts",
   "",
+  "  ^G        Toggle this help",
   "  ^X        Exit editor",
-  "  ^O / ^S   Save file",
+  "  ^O        Write Out (save with path prompt)",
+  "  ^S        Quick Save (no prompt)",
+  "",
+  "  ^W        Search (Where Is)",
+  "  ^\\        Search and Replace",
+  "  ^_        Go to Line (line or line,col)",
+  "",
   "  ^K        Cut current line",
   "  ^U        Paste cut line",
-  "  ^G        Toggle this help",
+  "  ^J        Justify paragraph",
+  "  ^R        Read File (insert file at cursor)",
+  "  ^C        Show cursor position",
+  "  ^T        Execute (not supported)",
   "",
   "  ^A / Home   Move to start of line",
   "  ^E / End    Move to end of line",
@@ -25,12 +35,42 @@ const HELP_TEXT = [
 
 function shortcutLabel(key: string, label: string, cols: number): string {
   const padded = `${REVERSE}${key}${RESET} ${label}`;
-  // Each shortcut gets roughly 1/5 of the width
-  const cellWidth = Math.floor(cols / 5);
+  // Each shortcut gets roughly 1/6 of the width (6 items per row)
+  const cellWidth = Math.floor(cols / 6);
   // We need to account for ANSI codes in padding calculation
   const visibleLen = key.length + 1 + label.length;
   const padding = Math.max(0, cellWidth - visibleLen);
   return padded + " ".repeat(padding);
+}
+
+/** Get the prompt label for the current prompt state. */
+function getPromptLabel(state: EditorState): string | null {
+  const p = state.promptState;
+  switch (p.type) {
+    case "search":
+      return "Search: ";
+    case "replaceSearch":
+      return "Search (to replace): ";
+    case "replaceWith":
+      return `Replace with: `;
+    case "replaceConfirm":
+      return "Replace this instance? ";
+    case "gotoLine":
+      return "Enter line number, column number: ";
+    case "readFile":
+      return "File to insert: ";
+    case "writeOut":
+      return "File Name to Write: ";
+    default:
+      return null;
+  }
+}
+
+/** Check whether the current prompt is a text-input prompt. */
+function isTextInputPrompt(state: EditorState): boolean {
+  const t = state.promptState.type;
+  return t === "search" || t === "replaceSearch" || t === "replaceWith"
+    || t === "gotoLine" || t === "readFile" || t === "writeOut";
 }
 
 /**
@@ -74,33 +114,69 @@ export function renderEditor(state: EditorState, config: EditorConfig): string {
   // === Row N-2: Status/message line ===
   const statusRow = rows - 2;
   parts.push(`${ESC}${statusRow};1H${ESC}2K`);
-  if (state.message) {
+
+  const promptLabel = getPromptLabel(state);
+  const inPrompt = state.promptState.type !== "none" && state.promptState.type !== "saveExit";
+  const inTextPrompt = isTextInputPrompt(state);
+
+  if (inPrompt && promptLabel) {
+    // Show prompt label and input on status line
+    const inputText = inTextPrompt ? (state.promptState as { input: string }).input : "";
+    const statusText = promptLabel + inputText;
+    parts.push(`${REVERSE}${statusText.slice(0, cols).padEnd(cols)}${RESET}`);
+  } else if (state.message) {
     parts.push(`${REVERSE}${state.message.slice(0, cols).padEnd(cols)}${RESET}`);
   }
 
-  // === Row N-1: Shortcut hints row 1 ===
+  // === Shortcut hint rows ===
   const hintRow1 = rows - 1;
-  parts.push(`${ESC}${hintRow1};1H${ESC}2K`);
-  parts.push(
-    shortcutLabel("^X", "Exit", cols) +
-    shortcutLabel("^O", "Save", cols) +
-    shortcutLabel("^K", "Cut", cols) +
-    shortcutLabel("^U", "Paste", cols) +
-    shortcutLabel("^G", "Help", cols)
-  );
-
-  // === Row N: Shortcut hints row 2 ===
   const hintRow2 = rows;
+  parts.push(`${ESC}${hintRow1};1H${ESC}2K`);
   parts.push(`${ESC}${hintRow2};1H${ESC}2K`);
-  parts.push(
-    shortcutLabel("^A", "Home", cols) +
-    shortcutLabel("^E", "End", cols) +
-    shortcutLabel("^Y", "PgUp", cols) +
-    shortcutLabel("^V", "PgDn", cols)
-  );
 
-  // Position cursor and show it
-  if (!state.showHelp) {
+  if (inPrompt) {
+    // In prompt mode: show contextual hints
+    if (state.promptState.type === "replaceConfirm") {
+      parts.push(`${ESC}${hintRow1};1H`);
+      parts.push(
+        shortcutLabel("Y", "Yes", cols) +
+        shortcutLabel("N", "No", cols) +
+        shortcutLabel("A", "All", cols) +
+        shortcutLabel("^C", "Cancel", cols)
+      );
+    } else {
+      parts.push(`${ESC}${hintRow1};1H`);
+      parts.push(shortcutLabel("^C", "Cancel", cols));
+    }
+  } else {
+    // Normal mode: real nano bottom bar (6 items per row)
+    parts.push(`${ESC}${hintRow1};1H`);
+    parts.push(
+      shortcutLabel("^G", "Help", cols) +
+      shortcutLabel("^O", "Write Out", cols) +
+      shortcutLabel("^W", "Where Is", cols) +
+      shortcutLabel("^K", "Cut", cols) +
+      shortcutLabel("^U", "Paste", cols) +
+      shortcutLabel("^T", "Execute", cols)
+    );
+    parts.push(`${ESC}${hintRow2};1H`);
+    parts.push(
+      shortcutLabel("^X", "Exit", cols) +
+      shortcutLabel("^R", "Read File", cols) +
+      shortcutLabel("^\\", "Replace", cols) +
+      shortcutLabel("^J", "Justify", cols) +
+      shortcutLabel("^C", "Location", cols) +
+      shortcutLabel("^_", "Go To Line", cols)
+    );
+  }
+
+  // Position cursor
+  if (inTextPrompt && promptLabel) {
+    // Place cursor at end of prompt input
+    const inputText = (state.promptState as { input: string }).input;
+    const cursorCol = promptLabel.length + inputText.length + 1;
+    parts.push(`${ESC}${statusRow};${cursorCol}H`);
+  } else if (!state.showHelp) {
     const screenRow = state.cursor.row - state.scrollOffset + 2;
     const screenCol = state.cursor.col + 1;
     parts.push(`${ESC}${screenRow};${screenCol}H`);

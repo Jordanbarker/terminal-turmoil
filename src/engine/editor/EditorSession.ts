@@ -1,6 +1,6 @@
 import { Terminal } from "@xterm/xterm";
 import { VirtualFS } from "../filesystem/VirtualFS";
-import { EditorState, EditorConfig } from "./types";
+import { EditorState, EditorConfig, PromptState } from "./types";
 import { parseEditorInput, EditorAction } from "./keymap";
 import { renderEditor } from "./render";
 import { ISession, SessionResult } from "../session/types";
@@ -54,8 +54,9 @@ export class EditorSession implements ISession {
       readOnly,
       cutBuffer: null,
       message: readOnly ? "[ File is read-only ]" : null,
-      promptState: "none",
+      promptState: { type: "none" },
       showHelp: false,
+      search: { lastSearchTerm: "" },
     };
   }
 
@@ -77,9 +78,11 @@ export class EditorSession implements ISession {
         return { type: "continue" };
       }
 
-      // Save-exit prompt: only Y, N, Enter matter
-      if (this.state.promptState === "saveExit") {
-        return this.handleSaveExitPrompt(action);
+      // Route through prompt handler when a prompt is active
+      if (this.state.promptState.type !== "none") {
+        const result = this.handlePromptAction(action);
+        if (result.type === "exit") return result;
+        continue;
       }
 
       const result = this.processAction(action);
@@ -88,6 +91,32 @@ export class EditorSession implements ISession {
 
     this.render();
     return { type: "continue" };
+  }
+
+  // === Prompt handling ===
+
+  private handlePromptAction(action: EditorAction): SessionResult {
+    const prompt = this.state.promptState;
+
+    switch (prompt.type) {
+      case "saveExit":
+        return this.handleSaveExitPrompt(action);
+      case "replaceConfirm":
+        this.handleReplaceConfirmPrompt(action, prompt);
+        this.render();
+        return { type: "continue" };
+      case "search":
+      case "replaceSearch":
+      case "replaceWith":
+      case "gotoLine":
+      case "readFile":
+      case "writeOut":
+        this.handleTextInputPrompt(action, prompt);
+        this.render();
+        return { type: "continue" };
+      default:
+        return { type: "continue" };
+    }
   }
 
   private handleSaveExitPrompt(action: EditorAction): SessionResult {
@@ -101,14 +130,114 @@ export class EditorSession implements ISession {
         return this.exitEditor();
       }
     }
-    if (action.type === "exit") {
-      // Cancel prompt
-      this.state.promptState = "none";
-      this.state.message = null;
+    if (action.type === "exit" || action.type === "showPosition") {
+      this.cancelPrompt();
       this.render();
     }
     return { type: "continue" };
   }
+
+  private handleTextInputPrompt(
+    action: EditorAction,
+    prompt: Exclude<PromptState, { type: "none" } | { type: "saveExit" } | { type: "replaceConfirm" }>
+  ): void {
+    if (action.type === "showPosition") {
+      this.cancelPrompt();
+      return;
+    }
+    if (action.type === "insert") {
+      this.setPromptInput(prompt, prompt.input + action.char);
+      return;
+    }
+    if (action.type === "backspace") {
+      if (prompt.input.length > 0) {
+        this.setPromptInput(prompt, prompt.input.slice(0, -1));
+      }
+      return;
+    }
+    if (action.type === "enter") {
+      this.submitPrompt(prompt);
+      return;
+    }
+  }
+
+  private handleReplaceConfirmPrompt(
+    action: EditorAction,
+    prompt: Extract<PromptState, { type: "replaceConfirm" }>
+  ): void {
+    if (action.type === "showPosition") {
+      this.cancelPrompt();
+      return;
+    }
+    if (action.type === "insert") {
+      const ch = action.char.toLowerCase();
+      if (ch === "y") {
+        this.replaceCurrentAndFindNext(prompt.searchTerm, prompt.replacement);
+      } else if (ch === "n") {
+        this.skipAndFindNextReplace(prompt.searchTerm, prompt.replacement);
+      } else if (ch === "a") {
+        this.replaceAll(prompt.searchTerm, prompt.replacement);
+      }
+    }
+  }
+
+  private setPromptInput(
+    prompt: Exclude<PromptState, { type: "none" } | { type: "saveExit" } | { type: "replaceConfirm" }>,
+    newInput: string
+  ): void {
+    switch (prompt.type) {
+      case "search":
+        this.state.promptState = { type: "search", input: newInput };
+        break;
+      case "replaceSearch":
+        this.state.promptState = { type: "replaceSearch", input: newInput };
+        break;
+      case "replaceWith":
+        this.state.promptState = { type: "replaceWith", searchTerm: prompt.searchTerm, input: newInput };
+        break;
+      case "gotoLine":
+        this.state.promptState = { type: "gotoLine", input: newInput };
+        break;
+      case "readFile":
+        this.state.promptState = { type: "readFile", input: newInput };
+        break;
+      case "writeOut":
+        this.state.promptState = { type: "writeOut", input: newInput };
+        break;
+    }
+  }
+
+  private submitPrompt(
+    prompt: Exclude<PromptState, { type: "none" } | { type: "saveExit" } | { type: "replaceConfirm" }>
+  ): void {
+    switch (prompt.type) {
+      case "search":
+        this.submitSearch(prompt.input);
+        break;
+      case "replaceSearch":
+        this.submitReplaceSearch(prompt.input);
+        break;
+      case "replaceWith":
+        this.submitReplaceWith(prompt.searchTerm, prompt.input);
+        break;
+      case "gotoLine":
+        this.submitGotoLine(prompt.input);
+        break;
+      case "readFile":
+        this.submitReadFile(prompt.input);
+        break;
+      case "writeOut":
+        this.submitWriteOut(prompt.input);
+        break;
+    }
+  }
+
+  private cancelPrompt(): void {
+    this.state.promptState = { type: "none" };
+    this.state.message = null;
+  }
+
+  // === Action dispatch ===
 
   private processAction(action: EditorAction): SessionResult {
     switch (action.type) {
@@ -165,6 +294,43 @@ export class EditorSession implements ISession {
         break;
       case "help":
         this.state.showHelp = !this.state.showHelp;
+        break;
+      case "search":
+        this.state.promptState = { type: "search", input: "" };
+        this.state.message = null;
+        break;
+      case "replace":
+        this.state.promptState = { type: "replaceSearch", input: "" };
+        this.state.message = null;
+        break;
+      case "gotoLine":
+        this.state.promptState = { type: "gotoLine", input: "" };
+        this.state.message = null;
+        break;
+      case "readFile":
+        if (this.state.readOnly) {
+          this.state.message = "[ File is read-only ]";
+        } else {
+          this.state.promptState = { type: "readFile", input: "" };
+          this.state.message = null;
+        }
+        break;
+      case "writeOut":
+        if (this.state.readOnly) {
+          this.state.message = "[ File is read-only ]";
+        } else {
+          this.state.promptState = { type: "writeOut", input: this.state.filePath };
+          this.state.message = null;
+        }
+        break;
+      case "showPosition":
+        this.showPosition();
+        break;
+      case "justify":
+        this.justify();
+        break;
+      case "execute":
+        this.state.message = "[ Not supported ]";
         break;
       default:
         break;
@@ -281,6 +447,277 @@ export class EditorSession implements ISession {
     this.ensureCursorVisible();
   }
 
+  // === New features ===
+
+  private showPosition(): void {
+    const { row, col } = this.state.cursor;
+    const totalLines = this.state.lines.length;
+    const lineLen = this.state.lines[row].length;
+    // Count total chars in file
+    const totalChars = this.state.lines.reduce((sum, l) => sum + l.length, 0) + (totalLines - 1); // newlines
+    // Count chars before cursor
+    let charsBefore = 0;
+    for (let i = 0; i < row; i++) {
+      charsBefore += this.state.lines[i].length + 1; // +1 for newline
+    }
+    charsBefore += col;
+
+    const linePct = totalLines > 0 ? Math.round(((row + 1) / totalLines) * 100) : 100;
+    const colPct = lineLen > 0 ? Math.round(((col + 1) / (lineLen + 1)) * 100) : 100;
+    const charPct = totalChars > 0 ? Math.round((charsBefore / totalChars) * 100) : 0;
+
+    this.state.message = `line ${row + 1}/${totalLines} (${linePct}%), col ${col + 1}/${lineLen + 1} (${colPct}%), char ${charsBefore}/${totalChars} (${charPct}%)`;
+  }
+
+  private submitSearch(input: string): void {
+    const term = input || this.state.search.lastSearchTerm;
+    if (!term) {
+      this.cancelPrompt();
+      return;
+    }
+    this.state.search.lastSearchTerm = term;
+    const found = this.findNext(term, this.state.cursor.row, this.state.cursor.col + 1);
+    if (found) {
+      this.state.cursor.row = found.row;
+      this.state.cursor.col = found.col;
+      this.ensureCursorVisible();
+    } else {
+      this.state.message = `[ "${term}" not found ]`;
+    }
+    this.state.promptState = { type: "none" };
+  }
+
+  /**
+   * Search forward from (startRow, startCol), wrapping around the file.
+   * Case-insensitive.
+   */
+  private findNext(term: string, startRow: number, startCol: number): { row: number; col: number } | null {
+    const lowerTerm = term.toLowerCase();
+    const totalLines = this.state.lines.length;
+
+    // Search from startCol on startRow, then subsequent lines, wrapping
+    for (let i = 0; i < totalLines; i++) {
+      const lineIdx = (startRow + i) % totalLines;
+      const line = this.state.lines[lineIdx].toLowerCase();
+      const searchFrom = i === 0 ? startCol : 0;
+      const idx = line.indexOf(lowerTerm, searchFrom);
+      if (idx !== -1) {
+        return { row: lineIdx, col: idx };
+      }
+    }
+    return null;
+  }
+
+  private submitReplaceSearch(input: string): void {
+    if (!input) {
+      this.cancelPrompt();
+      return;
+    }
+    this.state.promptState = { type: "replaceWith", searchTerm: input, input: "" };
+  }
+
+  private submitReplaceWith(searchTerm: string, replacement: string): void {
+    // Find first occurrence from cursor
+    const found = this.findNext(searchTerm, this.state.cursor.row, this.state.cursor.col);
+    if (!found) {
+      this.state.message = `[ "${searchTerm}" not found ]`;
+      this.state.promptState = { type: "none" };
+      return;
+    }
+    this.state.cursor.row = found.row;
+    this.state.cursor.col = found.col;
+    this.ensureCursorVisible();
+    this.state.promptState = { type: "replaceConfirm", searchTerm, replacement };
+    this.state.message = `Replace this instance?`;
+  }
+
+  private replaceCurrentAndFindNext(searchTerm: string, replacement: string): void {
+    this.replaceAtCursor(searchTerm, replacement);
+    const found = this.findNext(searchTerm, this.state.cursor.row, this.state.cursor.col);
+    if (found) {
+      this.state.cursor.row = found.row;
+      this.state.cursor.col = found.col;
+      this.ensureCursorVisible();
+      this.state.message = "Replace this instance?";
+    } else {
+      this.state.promptState = { type: "none" };
+      this.state.message = "[ Replaced 1 occurrence ]";
+    }
+  }
+
+  private skipAndFindNextReplace(searchTerm: string, replacement: string): void {
+    // Move past current match to find the next one
+    const found = this.findNext(searchTerm, this.state.cursor.row, this.state.cursor.col + 1);
+    if (found && (found.row !== this.state.cursor.row || found.col !== this.state.cursor.col)) {
+      this.state.cursor.row = found.row;
+      this.state.cursor.col = found.col;
+      this.ensureCursorVisible();
+      this.state.message = "Replace this instance?";
+      this.state.promptState = { type: "replaceConfirm", searchTerm, replacement };
+    } else {
+      this.state.promptState = { type: "none" };
+      this.state.message = "[ Search Wrapped ]";
+    }
+  }
+
+  private replaceAll(searchTerm: string, replacement: string): void {
+    let count = 0;
+    const lowerTerm = searchTerm.toLowerCase();
+
+    for (let i = 0; i < this.state.lines.length; i++) {
+      const line = this.state.lines[i];
+      let newLine = "";
+      let searchIdx = 0;
+      while (searchIdx <= line.length) {
+        const idx = line.toLowerCase().indexOf(lowerTerm, searchIdx);
+        if (idx === -1) {
+          newLine += line.slice(searchIdx);
+          break;
+        }
+        newLine += line.slice(searchIdx, idx) + replacement;
+        searchIdx = idx + searchTerm.length;
+        count++;
+      }
+      if (newLine !== line) {
+        this.state.lines[i] = newLine;
+      }
+    }
+
+    if (count > 0) {
+      this.state.modified = true;
+    }
+    this.state.promptState = { type: "none" };
+    this.state.message = `Replaced ${count} occurrence${count !== 1 ? "s" : ""}`;
+    this.clampCol();
+  }
+
+  private replaceAtCursor(searchTerm: string, replacement: string): void {
+    const { row, col } = this.state.cursor;
+    const line = this.state.lines[row];
+    this.state.lines[row] = line.slice(0, col) + replacement + line.slice(col + searchTerm.length);
+    this.state.cursor.col = col + replacement.length;
+    this.state.modified = true;
+  }
+
+  private submitGotoLine(input: string): void {
+    this.state.promptState = { type: "none" };
+    if (!input) return;
+
+    const parts = input.split(",");
+    const lineNum = parseInt(parts[0], 10);
+    const colNum = parts.length > 1 ? parseInt(parts[1], 10) : 1;
+
+    if (isNaN(lineNum)) {
+      this.state.message = "[ Invalid line number ]";
+      return;
+    }
+
+    const totalLines = this.state.lines.length;
+    let targetRow: number;
+    if (lineNum < 0) {
+      // Negative: count from end
+      targetRow = Math.max(0, totalLines + lineNum);
+    } else if (lineNum === 0) {
+      targetRow = 0;
+    } else {
+      targetRow = Math.min(lineNum - 1, totalLines - 1);
+    }
+
+    this.state.cursor.row = targetRow;
+    const lineLen = this.state.lines[targetRow].length;
+    if (!isNaN(colNum) && colNum > 0) {
+      this.state.cursor.col = Math.min(colNum - 1, lineLen);
+    } else {
+      this.state.cursor.col = 0;
+    }
+    this.ensureCursorVisible();
+  }
+
+  private submitReadFile(input: string): void {
+    this.state.promptState = { type: "none" };
+    if (!input) return;
+
+    const absPath = this.fs.resolve(input);
+    const result = this.fs.readFile(absPath);
+    if (result.error) {
+      this.state.message = `[ ${result.error} ]`;
+      return;
+    }
+
+    const newLines = (result.content ?? "").split("\n");
+    const insertAfter = this.state.cursor.row;
+    this.state.lines.splice(insertAfter + 1, 0, ...newLines);
+    this.state.modified = true;
+    this.state.message = `[ Read ${newLines.length} lines ]`;
+  }
+
+  private submitWriteOut(input: string): void {
+    this.state.promptState = { type: "none" };
+    if (!input) return;
+
+    const content = this.state.lines.join("\n");
+    const result = this.fs.writeFile(input, content);
+    if (result.fs) {
+      this.fs = result.fs;
+      this.onSave(result.fs);
+      this.state.modified = false;
+      this.state.filePath = input;
+      this.state.fileName = input.split("/").pop() || input;
+      this.state.message = `[ Wrote ${this.state.lines.length} lines ]`;
+    } else if (result.error) {
+      this.state.message = `[ Error: ${result.error} ]`;
+    }
+  }
+
+  private justify(): void {
+    if (this.state.readOnly) {
+      this.state.message = "[ File is read-only ]";
+      return;
+    }
+
+    const { row } = this.state.cursor;
+
+    // Find paragraph boundaries (consecutive non-empty lines)
+    let start = row;
+    while (start > 0 && this.state.lines[start - 1].trim() !== "") {
+      start--;
+    }
+    let end = row;
+    while (end < this.state.lines.length - 1 && this.state.lines[end + 1].trim() !== "") {
+      end++;
+    }
+
+    // Collect all words from the paragraph
+    const words: string[] = [];
+    for (let i = start; i <= end; i++) {
+      const lineWords = this.state.lines[i].split(/\s+/).filter(w => w.length > 0);
+      words.push(...lineWords);
+    }
+    if (words.length === 0) return;
+
+    // Reflow words to fit within terminal width
+    const maxWidth = this.config.cols;
+    const newLines: string[] = [];
+    let currentLine = words[0];
+
+    for (let i = 1; i < words.length; i++) {
+      if (currentLine.length + 1 + words[i].length <= maxWidth) {
+        currentLine += " " + words[i];
+      } else {
+        newLines.push(currentLine);
+        currentLine = words[i];
+      }
+    }
+    newLines.push(currentLine);
+
+    // Replace paragraph lines with reflowed lines
+    this.state.lines.splice(start, end - start + 1, ...newLines);
+    this.state.cursor.row = start;
+    this.state.cursor.col = 0;
+    this.state.modified = true;
+    this.ensureCursorVisible();
+  }
+
   // === Cursor movement ===
 
   private moveCursor(dx: number, dy: number): void {
@@ -293,7 +730,19 @@ export class EditorSession implements ISession {
     }
     if (dx !== 0) {
       const newCol = this.state.cursor.col + dx;
-      if (newCol >= 0 && newCol <= this.currentLine().length) {
+      if (newCol < 0) {
+        // Wrap to end of previous line
+        if (this.state.cursor.row > 0) {
+          this.state.cursor.row--;
+          this.state.cursor.col = this.currentLine().length;
+        }
+      } else if (newCol > this.currentLine().length) {
+        // Wrap to start of next line
+        if (this.state.cursor.row < this.state.lines.length - 1) {
+          this.state.cursor.row++;
+          this.state.cursor.col = 0;
+        }
+      } else {
         this.state.cursor.col = newCol;
       }
     }
@@ -347,7 +796,7 @@ export class EditorSession implements ISession {
 
   private handleExit(): SessionResult {
     if (this.state.modified) {
-      this.state.promptState = "saveExit";
+      this.state.promptState = { type: "saveExit" };
       this.state.message = "Save modified buffer? (Y/N)";
       this.render();
       return { type: "continue" };
