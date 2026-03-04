@@ -167,6 +167,11 @@ export class ChipSession implements ISession {
       this.collectedEvents.push(...item.triggerEvents);
     }
 
+    // Refresh menu items (flags may have changed, e.g. git_access appears after clone_repo)
+    const usedStr = [...this.usedItemIds].join(",");
+    this.info.storyFlags = { ...this.info.storyFlags, used_chip_topics: usedStr };
+    this.menuItems = getMenuItems(this.info.storyFlags);
+
     // Single write: clear menu + exchange + new menu
     const clear = this.buildClearSequence();
     const width = this.getWidth();

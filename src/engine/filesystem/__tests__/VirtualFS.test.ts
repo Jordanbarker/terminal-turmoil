@@ -61,6 +61,59 @@ function createTestFS(): VirtualFS {
           },
         },
       },
+      srv: {
+        type: "directory",
+        name: "srv",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {
+          locked: {
+            type: "directory",
+            name: "locked",
+            permissions: "rwx------",
+            hidden: false,
+            children: {
+              "secret.txt": {
+                type: "file",
+                name: "secret.txt",
+                content: "top secret",
+                permissions: "rw-------",
+                hidden: false,
+              },
+              nested: {
+                type: "directory",
+                name: "nested",
+                permissions: "rwxr-xr-x",
+                hidden: false,
+                children: {
+                  "deep.txt": {
+                    type: "file",
+                    name: "deep.txt",
+                    content: "deep content",
+                    permissions: "rw-r--r--",
+                    hidden: false,
+                  },
+                },
+              },
+            },
+          },
+          open: {
+            type: "directory",
+            name: "open",
+            permissions: "rwxr-xr-x",
+            hidden: false,
+            children: {
+              "public.txt": {
+                type: "file",
+                name: "public.txt",
+                content: "public info",
+                permissions: "rw-r--r--",
+                hidden: false,
+              },
+            },
+          },
+        },
+      },
     },
   };
   return new VirtualFS(root, "/home/player", "/home/player");
@@ -255,6 +308,57 @@ describe("VirtualFS", () => {
     });
   });
 
+  describe("insertNode", () => {
+    it("inserts a subtree at the given path", () => {
+      const fs = createTestFS();
+      const subtree: DirectoryNode = {
+        type: "directory",
+        name: "project",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {
+          "readme.txt": {
+            type: "file",
+            name: "readme.txt",
+            content: "hello",
+            permissions: "rw-r--r--",
+            hidden: false,
+          },
+        },
+      };
+      const result = fs.insertNode("/home/player/project", subtree);
+      expect(result.error).toBeUndefined();
+      expect(result.fs!.getNode("/home/player/project")?.type).toBe("directory");
+      expect(result.fs!.readFile("/home/player/project/readme.txt").content).toBe("hello");
+    });
+
+    it("returns error when parent does not exist", () => {
+      const fs = createTestFS();
+      const node: DirectoryNode = {
+        type: "directory",
+        name: "sub",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {},
+      };
+      const result = fs.insertNode("/nonexistent/sub", node);
+      expect(result.error).toContain("parent directory does not exist");
+    });
+
+    it("does not mutate original instance", () => {
+      const fs = createTestFS();
+      const node: DirectoryNode = {
+        type: "directory",
+        name: "newdir",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {},
+      };
+      fs.insertNode("/home/player/newdir", node);
+      expect(fs.getNode("/home/player/newdir")).toBeNull();
+    });
+  });
+
   describe("changeCwd", () => {
     it("changes cwd to a valid directory", () => {
       const fs = createTestFS();
@@ -279,6 +383,71 @@ describe("VirtualFS", () => {
       const fs = createTestFS();
       const result = fs.changeCwd("/home/player/notes.txt");
       expect(result.error).toContain("Not a directory");
+    });
+  });
+
+  describe("permission enforcement", () => {
+    it("listDirectory returns Permission denied for rwx------ dirs", () => {
+      const fs = createTestFS();
+      const result = fs.listDirectory("/srv/locked");
+      expect(result.error).toContain("Permission denied");
+      expect(result.entries).toHaveLength(0);
+    });
+
+    it("listDirectory works for accessible dirs", () => {
+      const fs = createTestFS();
+      const result = fs.listDirectory("/srv/open");
+      expect(result.error).toBeUndefined();
+      expect(result.entries.length).toBe(1);
+    });
+
+    it("readFile returns Permission denied for files in locked dirs", () => {
+      const fs = createTestFS();
+      const result = fs.readFile("/srv/locked/secret.txt");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("readFile works for files in accessible dirs", () => {
+      const fs = createTestFS();
+      const result = fs.readFile("/srv/open/public.txt");
+      expect(result.content).toBe("public info");
+    });
+
+    it("changeCwd returns Permission denied for locked dirs", () => {
+      const fs = createTestFS();
+      const result = fs.changeCwd("/srv/locked");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("changeCwd works for accessible dirs", () => {
+      const fs = createTestFS();
+      const result = fs.changeCwd("/srv/open");
+      expect(result.error).toBeUndefined();
+      expect(result.fs!.cwd).toBe("/srv/open");
+    });
+
+    it("traversal: nested file in locked parent is denied", () => {
+      const fs = createTestFS();
+      const result = fs.readFile("/srv/locked/nested/deep.txt");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("writeFile returns Permission denied inside locked dir", () => {
+      const fs = createTestFS();
+      const result = fs.writeFile("/srv/locked/nested/new.txt", "data");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("makeDirectory returns Permission denied inside locked dir", () => {
+      const fs = createTestFS();
+      const result = fs.makeDirectory("/srv/locked/nested/newdir");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("removeNode returns Permission denied inside locked dir", () => {
+      const fs = createTestFS();
+      const result = fs.removeNode("/srv/locked/nested/deep.txt");
+      expect(result.error).toContain("Permission denied");
     });
   });
 });

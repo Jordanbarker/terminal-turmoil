@@ -20,6 +20,7 @@ export type SessionToStart =
 export interface StoryFlagUpdate {
   flag: string;
   value: string | boolean;
+  toast?: string;
 }
 
 export interface AppliedEffects {
@@ -178,15 +179,6 @@ export function computeEffects(
       }
     }
 
-    // NexaCorp investigation triggers: diff on .bak files
-    if (applyCtx.activeComputer === "nexacorp" && applyCtx.parsedCommand === "diff") {
-      const args = applyCtx.parsedArgs.filter((a) => !a.startsWith("-"));
-      const hasBak = args.some((a) => a.includes(".bak"));
-      const hasLog = args.some((a) => a.includes("system.log") && !a.includes(".bak"));
-      if (hasBak && hasLog && !currentFlags["discovered_log_tampering"]) {
-        effects.storyFlagUpdates.push({ flag: "discovered_log_tampering", value: true });
-      }
-    }
   }
 
   // Process email deliveries

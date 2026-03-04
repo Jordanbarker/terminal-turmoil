@@ -1,5 +1,7 @@
+import { StoryFlagName } from "./storyFlags";
+
 export type ObjectiveCompletionCheck =
-  | { source: "storyFlag"; key: string }
+  | { source: "storyFlag"; key: StoryFlagName }
   | { source: "completedObjective"; key: string }
   | { source: "deliveredEmail"; key: string };
 
@@ -38,7 +40,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       {
         id: "check_email",
         description: "Check your email",
-        check: { source: "deliveredEmail", key: "nexacorp_offer" },
+        check: { source: "storyFlag", key: "read_nexacorp_offer" },
       },
       {
         id: "accept_offer",

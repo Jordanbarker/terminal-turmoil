@@ -15,6 +15,45 @@ import { SessionToStart } from "../engine/commands/applyResult";
 import { StoryFlags } from "../state/types";
 import { COMMANDS_SECTION_ROW } from "../engine/filesystem/homeFilesystem";
 import { UNLOCK_BOX } from "../lib/ascii";
+import { buildDbtProject } from "../engine/filesystem/initialFilesystem";
+
+interface EventActionContext {
+  term: Terminal;
+  setStoryFlag: (key: string, value: string | boolean) => void;
+  storyFlagsRef: React.MutableRefObject<StoryFlags>;
+  fsRef: React.MutableRefObject<VirtualFS>;
+  setFs: (fs: VirtualFS) => void;
+}
+
+interface EventActionResult {
+  shouldTransition?: boolean;
+  skipDefault?: boolean;
+}
+
+/** Maps objective_completed event details to special actions. New events go here. */
+const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResult> = {
+  ssh_connect: () => ({ shouldTransition: true, skipDefault: true }),
+  commands_unlocked: (ctx) => {
+    ctx.setStoryFlag("commands_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, commands_unlocked: true };
+    UNLOCK_BOX.forEach((line) => ctx.term.writeln(line));
+    useGameStore.getState().addToast("New commands unlocked! Type 'help' to see all.");
+    useGameStore.getState().completeObjective("learn_commands");
+    return { skipDefault: true };
+  },
+  dbt_project_cloned: (ctx) => {
+    ctx.setStoryFlag("dbt_project_cloned", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, dbt_project_cloned: true };
+    const homeDir = ctx.fsRef.current.homeDir;
+    const result = ctx.fsRef.current.insertNode(`${homeDir}/nexacorp-analytics`, buildDbtProject());
+    if (result.fs) {
+      ctx.setFs(result.fs);
+      ctx.fsRef.current = result.fs;
+    }
+    useGameStore.getState().addToast("dbt project cloned to ~/nexacorp-analytics/");
+    return { skipDefault: true };
+  },
+};
 
 interface SessionRouterDeps {
   fsRef: React.MutableRefObject<VirtualFS>;
@@ -89,21 +128,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       // Fire trigger events from sessions
       if (result.triggerEvents) {
         let shouldTransition = false;
-        for (const event of result.triggerEvents) {
-          // Detect SSH connect event — trigger transition
-          if (event.type === "objective_completed" && event.detail === "ssh_connect") {
-            shouldTransition = true;
-            continue;
-          }
+        const actionCtx: EventActionContext = { term, setStoryFlag, storyFlagsRef, fsRef, setFs };
 
-          // Handle commands_unlocked event from nano trigger
-          if (event.type === "objective_completed" && event.detail === "commands_unlocked") {
-            setStoryFlag("commands_unlocked", true);
-            storyFlagsRef.current = { ...storyFlagsRef.current, commands_unlocked: true };
-            UNLOCK_BOX.forEach((line) => term.writeln(line));
-            useGameStore.getState().addToast("New commands unlocked! Type 'help' to see all.");
-            useGameStore.getState().completeObjective("learn_commands");
-            continue;
+        for (const event of result.triggerEvents) {
+          // Check for registered event actions
+          if (event.type === "objective_completed" && EVENT_ACTIONS[event.detail]) {
+            const actionResult = EVENT_ACTIONS[event.detail](actionCtx);
+            if (actionResult.shouldTransition) shouldTransition = true;
+            if (actionResult.skipDefault) continue;
           }
 
           const delivery = checkEmailDeliveries(

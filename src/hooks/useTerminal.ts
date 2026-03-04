@@ -211,14 +211,8 @@ export function useTerminal() {
       for (const update of effects.storyFlagUpdates) {
         setStoryFlag(update.flag, update.value);
         storyFlagsRef.current = { ...storyFlagsRef.current, [update.flag]: update.value };
-        if (update.flag === "pdftotext_unlocked") {
-          useGameStore.getState().addToast("pdftotext command unlocked!");
-        }
-        if (update.flag === "tree_installed") {
-          useGameStore.getState().addToast("tree command installed!");
-        }
-        if (update.flag === "chip_unlocked") {
-          useGameStore.getState().addToast("chip command unlocked!");
+        if (update.toast) {
+          useGameStore.getState().addToast(update.toast);
         }
       }
 

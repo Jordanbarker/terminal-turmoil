@@ -29,7 +29,10 @@ describe("getEmailDefinitions", () => {
 
   it("every email has a valid trigger type", () => {
     for (const def of defs) {
-      expect(VALID_TRIGGER_TYPES).toContain(def.trigger.type);
+      const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
+      for (const trigger of triggers) {
+        expect(VALID_TRIGGER_TYPES).toContain(trigger.type);
+      }
     }
   });
 
@@ -45,28 +48,34 @@ describe("getEmailDefinitions", () => {
   });
 
   it("interpolates username into trigger filePaths where applicable", () => {
-    const fileReadTriggers = defs.filter(
-      (d) => d.trigger.type === "after_file_read"
-    );
-    const userPathTriggers = fileReadTriggers.filter((d) => {
-      const trigger = d.trigger as { type: "after_file_read"; filePath: string };
-      return trigger.filePath.includes("/home/");
+    const fileReadTriggers = defs.filter((d) => {
+      const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
+      return triggers.some((t) => t.type === "after_file_read");
     });
-    for (const def of userPathTriggers) {
-      const trigger = def.trigger as { type: "after_file_read"; filePath: string };
-      if (!trigger.filePath.includes("/home/jchen")) {
-        expect(trigger.filePath).toContain("testuser");
+    for (const def of fileReadTriggers) {
+      const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
+      for (const trigger of triggers) {
+        if (trigger.type !== "after_file_read") continue;
+        if (trigger.filePath.includes("/home/") && !trigger.filePath.includes("/home/jchen")) {
+          expect(trigger.filePath).toContain("testuser");
+        }
       }
     }
   });
 
   it("has at least 3 immediate emails for game start", () => {
-    const immediates = defs.filter((d) => d.trigger.type === "immediate");
+    const immediates = defs.filter((d) => {
+      const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
+      return triggers.every((t) => t.type === "immediate");
+    });
     expect(immediates.length).toBeGreaterThanOrEqual(3);
   });
 
   it("has at least 1 triggered (non-immediate) email", () => {
-    const triggered = defs.filter((d) => d.trigger.type !== "immediate");
+    const triggered = defs.filter((d) => {
+      const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
+      return triggers.some((t) => t.type !== "immediate");
+    });
     expect(triggered.length).toBeGreaterThan(0);
   });
 
@@ -81,25 +90,26 @@ describe("getEmailDefinitions", () => {
 describe("getEmailDefinitions (home)", () => {
   const defs = getEmailDefinitions("testuser", "home");
 
-  it("nexacorp_offer emails have replyOptions with accept and reject", () => {
+  it("nexacorp_offer email has replyOptions with accept and reject", () => {
     const offers = defs.filter((d) => d.email.id === "nexacorp_offer");
-    expect(offers.length).toBe(2);
-    for (const offer of offers) {
-      expect(offer.replyOptions).toBeDefined();
-      expect(offer.replyOptions!.length).toBe(2);
-      for (const opt of offer.replyOptions!) {
-        expect(opt.label).toBeTruthy();
-        expect(opt.replyBody).toBeTruthy();
-        expect(opt.triggerEvents).toBeDefined();
-      }
-      // First option accepts, second rejects
-      expect(offer.replyOptions![0].triggerEvents!.some(
-        (e) => e.type === "objective_completed" && e.detail === "accepted_nexacorp"
-      )).toBe(true);
-      expect(offer.replyOptions![1].triggerEvents!.some(
-        (e) => e.type === "objective_completed" && e.detail === "rejected_nexacorp_1"
-      )).toBe(true);
+    expect(offers.length).toBe(1);
+    const offer = offers[0];
+    expect(offer.replyOptions).toBeDefined();
+    expect(offer.replyOptions!.length).toBe(2);
+    for (const opt of offer.replyOptions!) {
+      expect(opt.label).toBeTruthy();
+      expect(opt.replyBody).toBeTruthy();
+      expect(opt.triggerEvents).toBeDefined();
     }
+    // First option accepts, second rejects
+    expect(offer.replyOptions![0].triggerEvents!.some(
+      (e) => e.type === "objective_completed" && e.detail === "accepted_nexacorp"
+    )).toBe(true);
+    expect(offer.replyOptions![1].triggerEvents!.some(
+      (e) => e.type === "objective_completed" && e.detail === "rejected_nexacorp_1"
+    )).toBe(true);
+    // Immediate trigger — available at game start
+    expect(offer.trigger).toEqual({ type: "immediate" });
   });
 
   it("persuasion emails trigger after rejections and have accept/reject options", () => {

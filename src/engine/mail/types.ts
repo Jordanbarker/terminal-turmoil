@@ -15,7 +15,7 @@ export interface ReplyOption {
 
 export interface EmailDelivery {
   email: Email;
-  trigger: EmailTrigger;
+  trigger: EmailTrigger | EmailTrigger[];
   replyOptions?: ReplyOption[];
 }
 

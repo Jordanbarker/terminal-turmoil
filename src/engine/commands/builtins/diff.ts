@@ -95,7 +95,17 @@ const diff: CommandHandler = (args, _flags, ctx) => {
     }
   }
 
-  return { output: outputLines.join("\n"), exitCode: 1 };
+  const result: import("../types").CommandResult = { output: outputLines.join("\n"), exitCode: 1 };
+
+  // Emit trigger event when comparing .bak and current log files
+  const nonFlagArgs = args.filter((a) => !a.startsWith("-"));
+  const hasBak = nonFlagArgs.some((a) => a.includes(".bak"));
+  const hasLog = nonFlagArgs.some((a) => a.includes("system.log") && !a.includes(".bak"));
+  if (hasBak && hasLog) {
+    result.triggerEvents = [{ type: "file_read", detail: "discovered_log_tampering" }];
+  }
+
+  return result;
 };
 
 register("diff", diff, "Compare two files line by line", HELP_TEXTS.diff);

@@ -17,7 +17,8 @@ function walkAll(
   dirPath: string,
 ): { path: string; node: FSNode }[] {
   const results: { path: string; node: FSNode }[] = [];
-  const { entries } = fs.listDirectory(dirPath);
+  const { entries, error } = fs.listDirectory(dirPath);
+  if (error) return results; // skip permission-denied subtrees
   for (const entry of entries) {
     const childPath = dirPath === "/" ? `/${entry.name}` : `${dirPath}/${entry.name}`;
     results.push({ path: childPath, node: entry });

@@ -38,7 +38,12 @@ const ls: CommandHandler = (args, flags, ctx) => {
     } else if (isFile(node)) {
       fileEntries.push(node);
     } else {
-      let entries = Object.values(node.children);
+      const result = ctx.fs.listDirectory(absolutePath);
+      if (result.error) {
+        errors.push(`ls: cannot open directory '${target}': Permission denied`);
+        continue;
+      }
+      let entries = result.entries;
       if (!showHidden) {
         entries = entries.filter((e) => !e.hidden);
       }

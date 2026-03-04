@@ -18,12 +18,14 @@ So glad you're here — we've been looking forward to getting you
 on board. Your workstation should be all set up and ready to go.
 
 Your first priority is just getting familiar with the system.
-There's an onboarding doc and a team directory in your ~/Documents
-folder — good place to start. And Chip (our AI assistant) can help
-if you get stuck on anything.
+Here are a couple things to check out first:
 
-Check your other emails too — IT sent you some account info and
-a few folks have already said hello.
+  ~/Documents/onboarding.md   Setup checklist and useful commands
+  ~/Documents/team-info.md    Who's who on the engineering team
+
+Run 'mail' to check your other emails — IT sent you some account
+info and a few folks have already said hello. And type 'chip'
+anytime to chat with our AI assistant.
 
 Welcome to the team!
 
@@ -127,9 +129,9 @@ Chip
       body: `Hey,
 
 Now that you're getting settled, there's something I've been meaning
-to have someone look at. We have a data pipeline — a dbt project in
-your home directory (~/nexacorp-analytics/). It's been running on
-autopilot for a while and honestly I have no idea if it's healthy.
+to have someone look at. We have a data pipeline — a dbt project that's
+been running on autopilot for a while and honestly I have no idea if
+it's healthy. Ask Chip to clone the repo for you if you haven't already.
 
 Could you run it and make sure everything looks good? I think the
 commands are 'dbt run' and 'dbt test' but don't quote me on that.
@@ -260,7 +262,8 @@ I'm Auri, data engineer on the team. Edward mentioned you'd
 be picking up some of the data pipeline work that Chen was
 handling.
 
-The dbt project is in ~/nexacorp-analytics/. The quick rundown:
+Once you've got the repo cloned (ask Chip), it'll be at
+~/nexacorp-analytics/. The quick rundown:
 
   1. 'dbt run' — builds all the models
   2. 'dbt test' — runs the test suite

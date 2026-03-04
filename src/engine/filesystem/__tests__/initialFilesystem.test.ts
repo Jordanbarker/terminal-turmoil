@@ -49,9 +49,46 @@ describe("createFilesystem", () => {
       expect(node?.hidden).toBe(true);
     });
 
-    it("has welcome.txt", () => {
-      const result = fs.readFile(`/home/${USERNAME}/welcome.txt`);
-      expect(result.content).toContain("Welcome to NexaCorp");
+    it("has .profile (hidden)", () => {
+      const node = fs.getNode(`/home/${USERNAME}/.profile`);
+      expect(node?.type).toBe("file");
+      expect(node?.hidden).toBe(true);
+    });
+
+    it("has .gitconfig with corporate identity", () => {
+      const result = fs.readFile(`/home/${USERNAME}/.gitconfig`);
+      expect(result.content).toContain(`${USERNAME}@nexacorp.com`);
+    });
+
+    it("has .ssh directory with restricted permissions", () => {
+      const node = fs.getNode(`/home/${USERNAME}/.ssh`);
+      expect(node?.type).toBe("directory");
+      if (node?.type === "directory") {
+        expect(node.permissions).toBe("rwx--xr-x");
+      }
+    });
+
+    it("has .ssh/id_ed25519.pub with jchen's key comment", () => {
+      const result = fs.readFile(`/home/${USERNAME}/.ssh/id_ed25519.pub`);
+      expect(result.content).toContain("jchen@nexacorp-ws01");
+    });
+
+    it("has .ssh/config with git host alias", () => {
+      const result = fs.readFile(`/home/${USERNAME}/.ssh/config`);
+      expect(result.content).toContain("git.nexacorp.com");
+    });
+
+    it("has .config/git/ignore", () => {
+      const result = fs.readFile(`/home/${USERNAME}/.config/git/ignore`);
+      expect(result.content).toContain("*.pyc");
+    });
+
+    it("has Desktop directory", () => {
+      expect(fs.getNode(`/home/${USERNAME}/Desktop`)?.type).toBe("directory");
+    });
+
+    it("has Downloads directory", () => {
+      expect(fs.getNode(`/home/${USERNAME}/Downloads`)?.type).toBe("directory");
     });
 
     it("has Documents directory", () => {
@@ -61,6 +98,12 @@ describe("createFilesystem", () => {
     it("has scripts directory with hello.py", () => {
       const result = fs.readFile(`/home/${USERNAME}/scripts/hello.py`);
       expect(result.content).toContain("Hello from NexaCorp");
+    });
+
+    it("has scripts/check_env.sh", () => {
+      const result = fs.readFile(`/home/${USERNAME}/scripts/check_env.sh`);
+      expect(result.content).toContain("#!/bin/bash");
+      expect(result.content).toContain("command -v");
     });
   });
 
@@ -80,9 +123,46 @@ describe("createFilesystem", () => {
       expect(node?.hidden).toBe(true);
     });
 
-    it("has .private directory with evidence.txt", () => {
+    it("has .bashrc with custom PS1", () => {
+      const result = fs.readFile("/home/jchen/.bashrc");
+      expect(result.content).toContain("jchen@nexacorp-ws01");
+    });
+
+    it("has .gitconfig with jchen identity", () => {
+      const result = fs.readFile("/home/jchen/.gitconfig");
+      expect(result.content).toContain("Jin Chen");
+      expect(result.content).toContain("jchen@nexacorp.com");
+    });
+
+    it("has .ssh directory with restricted permissions", () => {
+      const node = fs.getNode("/home/jchen/.ssh");
+      expect(node?.type).toBe("directory");
+      if (node?.type === "directory") {
+        expect(node.permissions).toBe("rwx--xr-x");
+      }
+    });
+
+    it("has .ssh/known_hosts with host entries", () => {
+      const result = fs.readFile("/home/jchen/.ssh/known_hosts");
+      expect(result.content).toContain("git.nexacorp.com");
+    });
+
+    it("has .private directory with evidence.txt (locked)", () => {
+      expect(fs.getNode("/home/jchen/.private")?.type).toBe("directory");
       const result = fs.readFile("/home/jchen/.private/evidence.txt");
-      expect(result.content).toContain("ENCRYPTED");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("has scripts/log_compare.sh", () => {
+      const result = fs.readFile("/home/jchen/scripts/log_compare.sh");
+      expect(result.content).toContain("#!/bin/bash");
+      expect(result.content).toContain("chip_service_account");
+    });
+
+    it("has projects/chip-audit/README.md", () => {
+      const result = fs.readFile("/home/jchen/projects/chip-audit/README.md");
+      expect(result.content).toContain("chip_service_account");
+      expect(result.content).toContain("Timeline");
     });
   });
 
@@ -177,6 +257,22 @@ describe("createFilesystem", () => {
     });
   });
 
+  describe("conditional dbt project", () => {
+    it("does not include nexacorp-analytics by default", () => {
+      const root = createFilesystem(USERNAME);
+      const fs = new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
+      expect(fs.getNode(`/home/${USERNAME}/nexacorp-analytics`)).toBeNull();
+    });
+
+    it("includes nexacorp-analytics when dbt_project_cloned is true", () => {
+      const root = createFilesystem(USERNAME, { dbt_project_cloned: true });
+      const fs = new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
+      expect(fs.getNode(`/home/${USERNAME}/nexacorp-analytics`)?.type).toBe("directory");
+      const result = fs.readFile(`/home/${USERNAME}/nexacorp-analytics/dbt_project.yml`);
+      expect(result.content).toContain("nexacorp_analytics");
+    });
+  });
+
   describe("handoff directory", () => {
     it("has /srv/engineering/chen-handoff with README.md", () => {
       const result = fs.readFile(`/srv/engineering/chen-handoff/README.md`);
@@ -186,6 +282,41 @@ describe("createFilesystem", () => {
     it("has /srv/engineering/chen-handoff with notes.txt", () => {
       const result = fs.readFile(`/srv/engineering/chen-handoff/notes.txt`);
       expect(result.content).toContain("chip-activity.log");
+    });
+  });
+
+  describe("srv team directories", () => {
+    it("has /srv/marketing", () => {
+      expect(fs.getNode("/srv/marketing")?.type).toBe("directory");
+    });
+
+    it("has /srv/operations", () => {
+      expect(fs.getNode("/srv/operations")?.type).toBe("directory");
+    });
+
+    it("has /srv/leadership", () => {
+      expect(fs.getNode("/srv/leadership")?.type).toBe("directory");
+    });
+
+    it("denies access to /srv/marketing", () => {
+      const result = fs.listDirectory("/srv/marketing");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("denies access to /srv/operations", () => {
+      const result = fs.listDirectory("/srv/operations");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("denies access to /srv/leadership", () => {
+      const result = fs.listDirectory("/srv/leadership");
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("allows access to /srv/engineering", () => {
+      const result = fs.listDirectory("/srv/engineering");
+      expect(result.error).toBeUndefined();
+      expect(result.entries.length).toBeGreaterThan(0);
     });
   });
 });

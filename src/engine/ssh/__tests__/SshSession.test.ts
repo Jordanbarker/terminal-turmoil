@@ -25,7 +25,7 @@ function createTestFS(knownHostsContent = ""): VirtualFS {
               ".ssh": {
                 type: "directory",
                 name: ".ssh",
-                permissions: "rwx------",
+                permissions: "rwx--xr-x",
                 hidden: true,
                 children: {
                   known_hosts: {

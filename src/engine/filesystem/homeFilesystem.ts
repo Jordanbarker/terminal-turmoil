@@ -17,7 +17,10 @@ function dir(name: string, children: Record<string, DirectoryNode | FileNode>, p
 
 function buildHomeMailFiles(username: string): Record<string, FileNode> {
   const files: Record<string, FileNode> = {};
-  const immediateEmails = getHomeEmailDefinitions(username).filter((d) => d.trigger.type === "immediate");
+  const immediateEmails = getHomeEmailDefinitions(username).filter((d) => {
+    const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
+    return triggers.some((t) => t.type === "immediate");
+  });
   immediateEmails.forEach((def, i) => {
     const seq = String(i + 1).padStart(3, "0");
     const filename = `${seq}_${slugify(def.email.subject)}`;

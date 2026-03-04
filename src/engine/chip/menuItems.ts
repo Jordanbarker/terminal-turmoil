@@ -7,8 +7,44 @@ const ALL_ITEMS: ChipMenuItem[] = [
     label: "What should I work on?",
     response:
       "Edward mentioned wanting you to get familiar with our data pipeline. " +
-      "The dbt project is in ~/nexacorp-analytics/, and you can connect to the warehouse with 'snowsql'. " +
+      "I can clone the dbt repo for you — just pick that option below. " +
       "Auri Park was managing the models before you — might be worth looking at what's there.",
+  },
+  {
+    id: "clone_repo",
+    label: "Clone the dbt repo for me",
+    condition: (flags) => !flags.dbt_project_cloned,
+    response:
+      "On it! Pulling the repo now...\n" +
+      "\n" +
+      "$ git clone nexacorp/analytics\n" +
+      "Cloning into 'nexacorp-analytics'...\n" +
+      "remote: Enumerating objects: 42\n" +
+      "remote: Counting objects: 100%\n" +
+      "remote: Compressing objects: 100%\n" +
+      "Receiving objects: 100%, done.\n" +
+      "Resolving deltas: 100%, done.\n" +
+      "\n" +
+      "All set! The project is at\n" +
+      "~/nexacorp-analytics/. Try 'dbt build'\n" +
+      "to run the full pipeline.",
+    triggerEvents: [{ type: "objective_completed", detail: "dbt_project_cloned" }],
+  },
+  {
+    id: "git_access",
+    label: "Can I manage git myself?",
+    condition: (flags) =>
+      typeof flags.used_chip_topics === "string" &&
+      flags.used_chip_topics.split(",").includes("clone_repo"),
+    response:
+      "I handle all git operations for the " +
+      "engineering team — cloning, pulling, " +
+      "pushing, branch management. It's part " +
+      "of our security and compliance setup. " +
+      "Keeps things auditable and prevents " +
+      "accidental force-pushes or leaks. Just " +
+      "let me know whenever you need a repo " +
+      "and I'll take care of it!",
   },
   {
     id: "nexacorp",

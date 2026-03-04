@@ -1,5 +1,6 @@
 your absolutely right!
 Pick a side, Sarah or Erik
+id_ed25519.pub — IT recycled jchen's keypair "why do I have jchen's key?"   
 investigate log files
 work todo list / kanban board
 uv repos, uv install command error
@@ -7,6 +8,7 @@ note about deleting old data to keep snowflake bill cheap
 Ren's computer was recently wiped after a take-home test contained malicous code
 journal
 Ending: logoff - they know where you are
+
 
 
   Chapter 1 — "New Beginnings"                                                                                                                                                  

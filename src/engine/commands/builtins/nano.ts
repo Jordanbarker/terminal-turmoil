@@ -18,7 +18,10 @@ const nano: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (node && isFile(node)) {
-    // Existing file
+    const traversalError = ctx.fs.checkTraversal(absolutePath);
+    if (traversalError) {
+      return { output: `nano: "${target}": Permission denied` };
+    }
     const readOnly = !node.permissions.startsWith("rw");
     return {
       output: "",
@@ -31,11 +34,15 @@ const nano: CommandHandler = (args, _flags, ctx) => {
     };
   }
 
-  // New file — check parent directory exists
+  // New file — check parent directory exists and permissions
   const parent = parentPath(absolutePath);
   const parentNode = ctx.fs.getNode(parent);
   if (!parentNode || !isDirectory(parentNode)) {
     return { output: `nano: "${target}": No such file or directory` };
+  }
+  const traversalError = ctx.fs.checkTraversal(absolutePath);
+  if (traversalError) {
+    return { output: `nano: "${target}": Permission denied` };
   }
 
   return {

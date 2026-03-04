@@ -115,8 +115,8 @@ describe("round-trip serialization", () => {
 
     expect(restored.cwd).toBe(original.cwd);
     expect(restored.homeDir).toBe(original.homeDir);
-    expect(restored.readFile("/home/testplayer/welcome.txt").content).toBe(
-      original.readFile("/home/testplayer/welcome.txt").content
+    expect(restored.readFile("/home/testplayer/.bashrc").content).toBe(
+      original.readFile("/home/testplayer/.bashrc").content
     );
   });
 

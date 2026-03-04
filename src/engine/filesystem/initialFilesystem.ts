@@ -5,7 +5,10 @@ import { StoryFlags, PLAYER } from "../../state/types";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
   const files: Record<string, FileNode> = {};
-  const immediateEmails = getNexacorpEmailDefinitions(username).filter((d) => d.trigger.type === "immediate");
+  const immediateEmails = getNexacorpEmailDefinitions(username).filter((d) => {
+    const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
+    return triggers.some((t) => t.type === "immediate");
+  });
   immediateEmails.forEach((def, i) => {
     const seq = String(i + 1).padStart(3, "0");
     const filename = `${seq}_${slugify(def.email.subject)}`;
@@ -28,7 +31,7 @@ function dir(name: string, children: Record<string, DirectoryNode | FileNode>, p
   return { type: "directory", name, children, permissions, hidden: name.startsWith(".") };
 }
 
-function buildDbtProject(): DirectoryNode {
+export function buildDbtProject(): DirectoryNode {
   return dir("nexacorp-analytics", {
     "dbt_project.yml": file("dbt_project.yml", `name: 'nexacorp_analytics'
 version: '1.0.0'
@@ -568,24 +571,64 @@ export function createNexacorpFilesystem(username: string, storyFlags: StoryFlag
       ".bashrc": file(".bashrc", `# ~/.bashrc - NexaCorp standard config
 export PS1="\\u@nexacorp-ws01:\\w$ "
 alias ll='ls -la'
+alias la='ls -A'
+alias l='ls -CF'
+
+export EDITOR=nano
+export PAGER=cat
+export NEXACORP_ENV=production
+export SNOWFLAKE_ACCOUNT=nexacorp-prod
 
 # NexaCorp workstation — managed by IT
 # For system issues contact infra@nexacorp.com
 `),
-      "welcome.txt": file("welcome.txt", `Welcome to NexaCorp!
+      ".profile": file(".profile", `# ~/.profile — login shell config
+# Sourced on login; delegates to .bashrc for interactive settings
 
-Quick pointers to get you started:
-
-  - ~/Documents/onboarding.md    Setup checklist and useful commands
-  - ~/Documents/team-info.md     Who's who on the engineering team
-  - /srv/engineering/chen-handoff/ Notes from the previous engineer
-  - ~/nexacorp-analytics/        Our dbt data pipeline project
-
-Run 'mail' to check your inbox — a few people have sent you messages.
-And type 'chip' anytime to chat with our AI assistant.
-
-- Edward
+if [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+fi
 `),
+      ".gitconfig": file(".gitconfig", `[user]
+\tname = ${PLAYER.displayName}
+\temail = ${username}@nexacorp.com
+[core]
+\teditor = nano
+[init]
+\tdefaultBranch = main
+[pull]
+\trebase = true
+`),
+      ".ssh": dir(".ssh", {
+        "authorized_keys": file("authorized_keys", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL2r9c3O7kPZ1sXNq0lIp3yVHg6TkRYOJxb0M3cEAABB ${username}@nexacorp-ws01
+`),
+        "known_hosts": file("known_hosts", ""),
+        "config": file("config", `# SSH client configuration
+
+Host git.nexacorp.com
+  HostName git.nexacorp.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  StrictHostKeyChecking yes
+`),
+        "id_ed25519.pub": file("id_ed25519.pub", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwS9d3P2FqN7mR0X8vTgNpLcE9yH3jBvZf5RAACCxDD jchen@nexacorp-ws01
+`),
+      }, "rwx--xr-x"),
+      ".config": dir(".config", {
+        git: dir("git", {
+          "ignore": file("ignore", `# Global gitignore
+*.pyc
+__pycache__/
+.env
+.DS_Store
+*.swp
+*.swo
+*~
+`),
+        }),
+      }),
+      Desktop: dir("Desktop", {}),
+      Downloads: dir("Downloads", {}),
       scripts: dir("scripts", {
         "hello.py": file("hello.py", `# hello.py — NexaCorp onboarding script
 import sys
@@ -593,6 +636,38 @@ import sys
 print("Hello from NexaCorp!")
 print(f"Python version: {sys.version}")
 print(f"Arguments: {sys.argv[1:]}")
+`),
+        "check_env.sh": file("check_env.sh", `#!/bin/bash
+# check_env.sh — verify workstation setup
+# Usage: bash scripts/check_env.sh
+
+echo "=== NexaCorp Workstation Check ==="
+echo "User: $(whoami)"
+echo "Host: $(hostname)"
+echo ""
+
+check() {
+  if command -v "$1" > /dev/null 2>&1; then
+    echo "[OK]  $1"
+  else
+    echo "[!!]  $1 not found"
+  fi
+}
+
+echo "Checking tools..."
+check python
+check dbt
+check snowsql
+check nano
+check grep
+check find
+
+echo ""
+echo "Environment:"
+echo "  NEXACORP_ENV=\${NEXACORP_ENV:-not set}"
+echo "  SNOWFLAKE_ACCOUNT=\${SNOWFLAKE_ACCOUNT:-not set}"
+echo ""
+echo "Done."
 `),
       }),
       Documents: dir("Documents", {
@@ -651,7 +726,7 @@ Previous Senior Engineer: Jin Chen
   - Home directory (/home/jchen) still exists
 `),
       }),
-      "nexacorp-analytics": buildDbtProject(),
+      ...(storyFlags?.dbt_project_cloned ? { "nexacorp-analytics": buildDbtProject() } : {}),
     }),
     jchen: dir("jchen", {
       ".bash_history": file(".bash_history", `ls -la /home/jchen/nexacorp-analytics/
@@ -664,12 +739,103 @@ snowsql -q "select * from nexacorp_prod.raw_nexacorp.support_tickets where resol
 ls -la /opt/chip/.internal/
 cat /opt/chip/.internal/directives.txt
 chmod 600 /home/jchen/.private/evidence.txt
-`, "r--------"),
+`, "r--r--r--"),
+      ".bashrc": file(".bashrc", `# jchen's bashrc
+export PS1="[jchen@nexacorp-ws01 \\W]\\$ "
+alias ll='ls -la'
+alias gs='git status'
+alias gd='git diff'
+alias glog='git log --oneline --graph'
+alias snowq='snowsql -q'
+alias logs='tail -n 50 /var/log/system.log'
+alias logdiff='diff /var/log/system.log /var/log/system.log.bak'
+
+export EDITOR=nano
+export HISTSIZE=10000
+`),
+      ".gitconfig": file(".gitconfig", `[user]
+\tname = Jin Chen
+\temail = jchen@nexacorp.com
+[core]
+\teditor = nano
+[alias]
+\tst = status
+\tco = checkout
+\tbr = branch
+\tlg = log --oneline --graph --all
+[pull]
+\trebase = true
+`),
+      ".ssh": dir(".ssh", {
+        "authorized_keys": file("authorized_keys", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwS9d3P2FqN7mR0X8vTgNpLcE9yH3jBvZf5RAACCxDD jchen@nexacorp-ws01
+`),
+        "known_hosts": file("known_hosts", `git.nexacorp.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7d+q0bPRMx3R0Z4oFwMd8lXQh2bNXFHiN5YZQVAAEE
+10.0.1.50 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPnS8jLz3fQm9G0YDkR4ZN2xLQ7sX3b7vFmUfRAAFFGG
+`),
+      }, "rwx--xr-x"),
       ".private": dir(".private", {
         "evidence.txt": file("evidence.txt", `[ENCRYPTED]
 This file has been encrypted. You'll need to find another way to read it.
 `, "r--------"),
       }, "rwx------"),
+      scripts: dir("scripts", {
+        "log_compare.sh": file("log_compare.sh", `#!/bin/bash
+# log_compare.sh — compare active logs against backups
+# Written by jchen to track discrepancies
+#
+# Usage: bash log_compare.sh
+
+echo "=== Log Comparison Report ==="
+echo "Date: $(date)"
+echo ""
+
+echo "--- system.log vs system.log.bak ---"
+diff /var/log/system.log /var/log/system.log.bak
+echo ""
+
+echo "--- Lines only in .bak (removed from active log) ---"
+diff /var/log/system.log /var/log/system.log.bak | grep "^>"
+echo ""
+
+echo "--- chip_service_account activity in .bak ---"
+grep "chip_service_account" /var/log/system.log.bak
+echo ""
+
+echo "Done. If you see entries in .bak that are missing from the"
+echo "active log, someone is cleaning up after themselves."
+`),
+      }),
+      projects: dir("projects", {
+        "chip-audit": dir("chip-audit", {
+          "README.md": file("README.md", `# Chip Access Audit
+
+## What I found
+
+The chip_service_account has way more access than a chatbot needs.
+I started tracking anomalies on 2026-01-15.
+
+## Timeline
+
+- Jan 15: Noticed support tickets being auto-resolved before review
+- Jan 22: Found entries in system.log.bak that don't appear in system.log
+- Jan 28: Filed ticket #4471 about log discrepancies — auto-resolved
+- Feb 01: Ran dbt models, discovered filtering in fct_support_tickets
+- Feb 03: Checked auth.log.bak — chip_service_account accessed my .private dir
+
+## Questions
+
+1. Who has credentials for chip_service_account?
+2. Why is the cleanup script filtering out chip_service_account entries?
+3. Are the founders aware of this?
+
+## Evidence
+
+See ~/.private/evidence.txt (encrypted after I noticed file access)
+See /var/log/auth.log.bak for the access entries
+Compare /var/log/system.log with /var/log/system.log.bak
+`),
+        }),
+      }),
       "resignation_draft.txt": file("resignation_draft.txt", `Edward,
 
 I can't keep doing this. I've raised concerns about data
@@ -687,7 +853,7 @@ I have evidence that
 
 [the rest of this file appears to be corrupted or deleted]
 `),
-    }, "rwxr-x---"),
+    }, "rwxr-xr-x"),
   }),
   var: dir("var", {
     mail: dir("mail", {
@@ -829,6 +995,67 @@ echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
     }),
   }),
   srv: dir("srv", {
+    marketing: dir("marketing", {
+      "campaign_metrics_q1.csv": file("campaign_metrics_q1.csv", `campaign,impressions,clicks,conversions,spend
+chip_launch,245000,18200,3400,42000
+enterprise_webinar,89000,6700,890,15500
+blog_ai_series,156000,12400,2100,8900
+social_q1_push,312000,21000,4200,31000
+`),
+      "brand_guidelines.md": file("brand_guidelines.md", `# NexaCorp Brand Guidelines v3.2
+
+## Voice & Tone
+- Professional but approachable
+- Technology-forward without jargon
+- Emphasize collaboration and innovation
+
+## Logo Usage
+- Minimum clear space: 2x logo height
+- Never stretch, rotate, or recolor
+- Dark backgrounds: use white variant
+`),
+    }, "rwx------"),
+    operations: dir("operations", {
+      "runbook.md": file("runbook.md", `# Operations Runbook
+
+## Incident Response
+1. Acknowledge alert in PagerDuty
+2. Join #incident-response Slack channel
+3. Assess severity (P1-P4)
+4. Page on-call engineer if P1/P2
+
+## Deployment Checklist
+- [ ] All tests passing in CI
+- [ ] Staging deployment verified
+- [ ] Rollback plan documented
+`),
+      "incident_log.csv": file("incident_log.csv", `date,severity,description,resolved_by,duration_min
+2026-01-15,P3,Elevated API latency,oscar,45
+2026-01-22,P4,Log rotation failure,chip_service_account,5
+2026-02-01,P2,Auth service timeout,oscar,120
+2026-02-08,P4,Stale DNS cache,chip_service_account,3
+`),
+    }, "rwx------"),
+    leadership: dir("leadership", {
+      "board_minutes_feb.md": file("board_minutes_feb.md", `# Board Meeting Minutes — February 2026
+
+## Attendees
+Jessica Wu (CEO), Marcus Torres (COO), Tom Bradley (CFO), Edward Torres (CTO)
+
+## Agenda
+1. Q1 revenue forecast review
+2. Chip product roadmap update
+3. Headcount planning for H2
+4. Series B timeline discussion
+`),
+      "headcount_plan.csv": file("headcount_plan.csv", `department,current,planned_h2,status
+Engineering,12,16,approved
+Marketing,5,6,pending
+Operations,4,5,approved
+Product,3,4,pending
+People & Culture,2,3,pending
+`),
+    }, "rwx------"),
     engineering: dir("engineering", {
       "chen-handoff": dir("chen-handoff", {
         "README.md": file("README.md", `If you're reading this, you're my replacement.

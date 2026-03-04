@@ -12,7 +12,8 @@ function buildTree(
   counts: { dirs: number; files: number },
   showAll: boolean,
 ): string[] {
-  const { entries } = fs.listDirectory(dirPath);
+  const { entries, error } = fs.listDirectory(dirPath);
+  if (error) return [prefix + "[error opening dir]"];
   const sorted = entries
     .filter((e) => showAll || !e.hidden)
     .sort((a, b) => a.name.localeCompare(b.name));

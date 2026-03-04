@@ -1,6 +1,17 @@
 import { FSNode, DirectoryNode, FileNode, isDirectory, isFile } from "./types";
 import { normalizePath, resolvePath, parentPath, basename } from "../../lib/pathUtils";
 
+type PermissionOp = "read" | "write" | "execute";
+
+function checkPermission(permissions: string, op: PermissionOp): boolean {
+  // Check "other" bits at positions 6, 7, 8
+  switch (op) {
+    case "read":    return permissions[6] === "r";
+    case "write":   return permissions[7] === "w";
+    case "execute": return permissions[8] === "x";
+  }
+}
+
 /**
  * Immutable virtual filesystem. Every mutation returns a new VirtualFS instance.
  */
@@ -39,12 +50,45 @@ export class VirtualFS {
   }
 
   /**
+   * Walk the path and check execute permission on each parent directory.
+   * Returns null if OK, error string if denied.
+   */
+  checkTraversal(absolutePath: string): string | null {
+    const normalized = normalizePath(absolutePath);
+    if (normalized === "/") return null;
+
+    const parts = normalized.split("/").filter(Boolean);
+    let current: FSNode = this.root;
+
+    // Check execute permission on each parent directory (excluding the final component)
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!isDirectory(current)) return null;
+      const child: FSNode | undefined = current.children[parts[i]];
+      if (!child) return null;
+      if (isDirectory(child) && !checkPermission(child.permissions, "execute")) {
+        const denied = "/" + parts.slice(0, i + 1).join("/");
+        return `Permission denied: ${denied}`;
+      }
+      current = child;
+    }
+
+    return null;
+  }
+
+  /**
    * List directory contents at the given path.
    */
   listDirectory(absolutePath: string): { entries: FSNode[]; error?: string } {
     const node = this.getNode(absolutePath);
     if (!node) return { entries: [], error: `ls: cannot access '${absolutePath}': No such file or directory` };
     if (!isDirectory(node)) return { entries: [], error: `ls: '${absolutePath}': Not a directory` };
+
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { entries: [], error: traversalError };
+    if (!checkPermission(node.permissions, "read")) {
+      return { entries: [], error: `Permission denied: ${absolutePath}` };
+    }
+
     return { entries: Object.values(node.children) };
   }
 
@@ -55,6 +99,13 @@ export class VirtualFS {
     const node = this.getNode(absolutePath);
     if (!node) return { error: `cat: ${absolutePath}: No such file or directory` };
     if (!isFile(node)) return { error: `cat: ${absolutePath}: Is a directory` };
+
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
+    if (!checkPermission(node.permissions, "read")) {
+      return { error: `Permission denied: ${absolutePath}` };
+    }
+
     return { content: node.content };
   }
 
@@ -70,6 +121,9 @@ export class VirtualFS {
     if (!parentNode || !isDirectory(parentNode)) {
       return { error: `Cannot write to '${absolutePath}': parent directory does not exist` };
     }
+
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
 
     const newFile: FileNode = {
       type: "file",
@@ -100,6 +154,9 @@ export class VirtualFS {
       return { error: `mkdir: cannot create directory '${absolutePath}': File exists` };
     }
 
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
+
     const newDir: DirectoryNode = {
       type: "directory",
       name,
@@ -126,6 +183,9 @@ export class VirtualFS {
     const name = basename(normalized);
     const parentNode = this.getNode(parent);
     if (!parentNode || !isDirectory(parentNode)) return { error: "Internal error" };
+
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
 
     const newChildren = { ...parentNode.children };
     delete newChildren[name];
@@ -159,7 +219,31 @@ export class VirtualFS {
     const node = this.getNode(normalized);
     if (!node) return { error: `cd: ${absolutePath}: No such file or directory` };
     if (!isDirectory(node)) return { error: `cd: ${absolutePath}: Not a directory` };
+
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
+    if (!checkPermission(node.permissions, "execute")) {
+      return { error: `cd: ${absolutePath}: Permission denied` };
+    }
+
     return { fs: new VirtualFS(this.root, normalized, this.homeDir) };
+  }
+
+  /**
+   * Insert an entire FSNode subtree at the given absolute path.
+   * Parent directory must exist.
+   */
+  insertNode(absolutePath: string, node: FSNode): { fs?: VirtualFS; error?: string } {
+    const normalized = normalizePath(absolutePath);
+    const parent = parentPath(normalized);
+
+    const parentNode = this.getNode(parent);
+    if (!parentNode || !isDirectory(parentNode)) {
+      return { error: `Cannot insert at '${absolutePath}': parent directory does not exist` };
+    }
+
+    const newRoot = this.setNodeAt(normalized, node);
+    return { fs: new VirtualFS(newRoot, this.cwd, this.homeDir) };
   }
 
   /**

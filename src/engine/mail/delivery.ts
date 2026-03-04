@@ -24,28 +24,33 @@ export function checkEmailDeliveries(
 
   const username = fs.homeDir.split("/").pop() || PLAYER.username;
   for (const def of getEmailDefinitions(username, computer)) {
-    if (def.trigger.type === "immediate") continue;
+    const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
+    if (triggers.every((t) => t.type === "immediate")) continue;
     if (deliveredIds.includes(def.email.id)) continue;
     if (newDeliveries.includes(def.email.id)) continue;
 
     let matches = false;
-    switch (def.trigger.type) {
-      case "after_file_read":
-        matches = event.type === "file_read" && event.detail === def.trigger.filePath;
-        if (matches && def.trigger.requireDelivered) {
-          matches = deliveredIds.includes(def.trigger.requireDelivered)
-            || newDeliveries.includes(def.trigger.requireDelivered);
-        }
-        break;
-      case "after_email_read":
-        matches = event.type === "file_read" && event.detail === def.trigger.emailId;
-        break;
-      case "after_command":
-        matches = event.type === "command_executed" && event.detail === def.trigger.command;
-        break;
-      case "after_objective":
-        matches = event.type === "objective_completed" && event.detail === def.trigger.objectiveId;
-        break;
+    for (const trigger of triggers) {
+      if (trigger.type === "immediate") continue;
+      switch (trigger.type) {
+        case "after_file_read":
+          matches = event.type === "file_read" && event.detail === trigger.filePath;
+          if (matches && trigger.requireDelivered) {
+            matches = deliveredIds.includes(trigger.requireDelivered)
+              || newDeliveries.includes(trigger.requireDelivered);
+          }
+          break;
+        case "after_email_read":
+          matches = event.type === "file_read" && event.detail === trigger.emailId;
+          break;
+        case "after_command":
+          matches = event.type === "command_executed" && event.detail === trigger.command;
+          break;
+        case "after_objective":
+          matches = event.type === "objective_completed" && event.detail === trigger.objectiveId;
+          break;
+      }
+      if (matches) break;
     }
 
     if (matches) {

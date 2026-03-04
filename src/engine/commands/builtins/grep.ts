@@ -6,15 +6,19 @@ import { colorize, ansi } from "../../../lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
 function walkFiles(
-  fs: { getNode: (p: string) => FSNode | null; listDirectory: (p: string) => { entries: FSNode[]; error?: string } },
+  fs: { readFile: (p: string) => { content?: string; error?: string }; listDirectory: (p: string) => { entries: FSNode[]; error?: string } },
   dirPath: string,
 ): { path: string; content: string }[] {
   const results: { path: string; content: string }[] = [];
-  const { entries } = fs.listDirectory(dirPath);
+  const { entries, error } = fs.listDirectory(dirPath);
+  if (error) return results; // skip permission-denied subtrees
   for (const entry of entries) {
     const childPath = dirPath === "/" ? `/${entry.name}` : `${dirPath}/${entry.name}`;
     if (isFile(entry)) {
-      results.push({ path: childPath, content: entry.content });
+      const read = fs.readFile(childPath);
+      if (read.content !== undefined) {
+        results.push({ path: childPath, content: read.content });
+      }
     } else if (isDirectory(entry)) {
       results.push(...walkFiles(fs, childPath));
     }
@@ -69,7 +73,11 @@ const grep: CommandHandler = (args, flags, ctx) => {
           return { output: `grep: ${fileArg}: Is a directory`, exitCode: 2 };
         }
       } else if (isFile(node)) {
-        filesToSearch.push({ path: absPath, content: node.content });
+        const read = ctx.fs.readFile(absPath);
+        if (read.error) {
+          return { output: `grep: ${fileArg}: Permission denied`, exitCode: 2 };
+        }
+        filesToSearch.push({ path: absPath, content: read.content! });
       }
     }
   }

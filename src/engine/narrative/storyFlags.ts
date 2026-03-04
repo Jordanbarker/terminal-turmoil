@@ -1,12 +1,42 @@
 import { GameEvent } from "../mail/delivery";
 import { StoryFlags } from "../../state/types";
 
+export const STORY_FLAG_NAMES = [
+  "read_resume",
+  "read_cover_letter",
+  "read_diary",
+  "read_job_notes",
+  "read_glassdoor",
+  "research_depth",
+  "read_auto_apply",
+  "read_bashrc",
+  "pdftotext_unlocked",
+  "tree_installed",
+  "found_backup_files",
+  "found_auth_backup",
+  "found_chip_directives",
+  "found_cleanup_script",
+  "read_onboarding",
+  "chip_unlocked",
+  "ran_dbt",
+  "found_data_filtering",
+  "read_nexacorp_offer",
+  "commands_unlocked",
+  "edward_impression",
+  "discovered_log_tampering",
+  "used_chip_topics",
+  "dbt_project_cloned",
+] as const;
+
+export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
+
 export interface StoryFlagTrigger {
   event: "file_read" | "command_executed" | "directory_visit";
   path?: string;
   detail?: string;
-  flag: string;
+  flag: StoryFlagName;
   value: string | boolean;
+  toast?: string;
 }
 
 export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
@@ -19,8 +49,9 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "file_read", path: `/home/${username}/scripts/data/glassdoor_reviews.json`, flag: "research_depth", value: "deep" },
     { event: "file_read", path: `/home/${username}/scripts/auto_apply.py`, flag: "read_auto_apply", value: true },
     { event: "file_read", path: `/home/${username}/.bashrc`, flag: "read_bashrc", value: true },
-    { event: "directory_visit", path: `/home/${username}/Downloads`, flag: "pdftotext_unlocked", value: true },
-    { event: "command_executed", detail: "apt_install_tree", flag: "tree_installed", value: true },
+    { event: "directory_visit", path: `/home/${username}/Downloads`, flag: "pdftotext_unlocked", value: true, toast: "pdftotext command unlocked!" },
+    { event: "command_executed", detail: "apt_install_tree", flag: "tree_installed", value: true, toast: "tree command installed!" },
+    { event: "file_read", detail: "nexacorp_offer", flag: "read_nexacorp_offer", value: true },
   ];
 }
 
@@ -31,7 +62,8 @@ export function getNexacorpStoryFlagTriggers(username: string): StoryFlagTrigger
     { event: "file_read", path: "/opt/chip/.internal/directives.txt", flag: "found_chip_directives", value: true },
     { event: "file_read", path: "/opt/chip/.internal/cleanup.sh", flag: "found_cleanup_script", value: true },
     { event: "file_read", path: `/home/${username}/Documents/onboarding.md`, flag: "read_onboarding", value: true },
-    { event: "file_read", detail: "chip_intro", flag: "chip_unlocked", value: true },
+    { event: "file_read", detail: "chip_intro", flag: "chip_unlocked", value: true, toast: "chip command unlocked!" },
+    { event: "file_read", detail: "discovered_log_tampering", flag: "discovered_log_tampering", value: true },
     { event: "command_executed", detail: "dbt", flag: "ran_dbt", value: true },
     { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/marts/dim_employees.sql`, flag: "found_data_filtering", value: true },
   ];
@@ -41,13 +73,13 @@ export function checkStoryFlagTriggers(
   event: GameEvent,
   triggers: StoryFlagTrigger[],
   currentFlags: StoryFlags
-): { flag: string; value: string | boolean } | null {
+): { flag: StoryFlagName; value: string | boolean; toast?: string } | null {
   for (const trigger of triggers) {
     if (trigger.event === event.type) {
       const matchDetail = trigger.path ?? trigger.detail;
       if (matchDetail && event.detail === matchDetail) {
         if (currentFlags[trigger.flag] === undefined) {
-          return { flag: trigger.flag, value: trigger.value };
+          return { flag: trigger.flag, value: trigger.value, toast: trigger.toast };
         }
       }
     }

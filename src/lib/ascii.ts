@@ -2,8 +2,8 @@ import { ansi, colorize } from "./ansi";
 
 export const homeWelcome = [
   "",
-  `${colorize("Alpine Linux 3.23.3", ansi.brightBlue)}`,
-  `${colorize("Kernel 6.12.11-lts on an x86_64 (tty1)", ansi.dim)}`,
+  `${colorize("Ubuntu 24.04.1 LTS", ansi.brightBlue)}`,
+  `${colorize("Kernel 6.8.0-52-generic on an x86_64 (tty1)", ansi.dim)}`,
   "",
   `${colorize("Last login: Sat Feb 22 14:32:07 on tty1", ansi.dim)}`,
   "",

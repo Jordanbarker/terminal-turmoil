@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveObjectives } from "../objectives";
-import { ChapterDefinition } from "../chapters";
+import { ChapterDefinition, ObjectiveCompletionCheck } from "../chapters";
+import { StoryFlagName } from "../storyFlags";
 
 const testChapter: ChapterDefinition = {
   id: "test-chapter",
@@ -9,7 +10,7 @@ const testChapter: ChapterDefinition = {
     {
       id: "flag_obj",
       description: "Story flag objective",
-      check: { source: "storyFlag", key: "some_flag" },
+      check: { source: "storyFlag", key: "some_flag" as StoryFlagName } as ObjectiveCompletionCheck,
     },
     {
       id: "completed_obj",
@@ -24,7 +25,7 @@ const testChapter: ChapterDefinition = {
     {
       id: "hidden_obj",
       description: "Hidden objective",
-      check: { source: "storyFlag", key: "hidden_flag" },
+      check: { source: "storyFlag", key: "hidden_flag" as StoryFlagName } as ObjectiveCompletionCheck,
       hidden: true,
       prerequisite: "flag_obj",
     },

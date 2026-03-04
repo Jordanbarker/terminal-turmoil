@@ -105,9 +105,8 @@ async function main() {
 
   // ── 2. Key Files ───────────────────────────────────────────────────
 
-  section("2. KEY FILES — welcome, onboarding, team-info");
+  section("2. KEY FILES — onboarding, team-info");
 
-  cmd(runner, "cat welcome.txt");
   cmd(runner, "cat Documents/onboarding.md");
   cmd(runner, "cat Documents/team-info.md");
 

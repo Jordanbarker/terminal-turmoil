@@ -68,17 +68,21 @@ export function renderChipResponse(text: string, width: number): string {
 
 function wordWrap(text: string, width: number): string {
   if (width <= 0) return text;
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    if (current.length + word.length + 1 > width && current.length > 0) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? `${current} ${word}` : word;
+  const paragraphs = text.split("\n");
+  const wrapped = paragraphs.map((para) => {
+    const words = para.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if (current.length + word.length + 1 > width && current.length > 0) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = current ? `${current} ${word}` : word;
+      }
     }
-  }
-  if (current) lines.push(current);
-  return lines.join("\r\n");
+    if (current) lines.push(current);
+    return lines.join("\r\n");
+  });
+  return wrapped.join("\r\n");
 }

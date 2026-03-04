@@ -140,7 +140,6 @@ hidden files. Beats running ls over and over.
       trigger: { type: "after_objective", objectiveId: "learn_commands" },
     },
 
-    // Reading either seeded email triggers the NexaCorp offer
     {
       email: {
         id: "nexacorp_offer",
@@ -171,41 +170,7 @@ Edward Torres
 CTO & Co-Founder, NexaCorp
 `,
       },
-      trigger: { type: "after_email_read", emailId: "alex_checkin" },
-      replyOptions: nexacorpOfferReplyOptions,
-    },
-    // Duplicate trigger: reading the job board alert also delivers the offer
-    {
-      email: {
-        id: "nexacorp_offer",
-        from: "Edward Torres <edward@nexacorp.com>",
-        to: `${username}@email.com`,
-        date: "Sat, 21 Feb 2026 08:30:00",
-        subject: "Job Offer — AI Engineer at NexaCorp",
-        body: `Hi there,
-
-I really enjoyed our conversation and I'll cut right to it: we'd like to offer you the AI Engineer position
-at NexaCorp. The details:
-
-  Role:      AI Engineer
-  Salary:    $135,000/year
-  Start:     Monday, February 23
-  Location:  Remote
-  Reports to: Me (Edward Torres, CTO & Co-Founder)
-
-I know this is quick, but we're in a bit of a crunch.
-We need someone who can start right away and hit the ground running, and we think you're the right person for the job.
-
-Reply to this email and we'll get everything set up for Monday.
-
-Looking forward to hearing from you!
-
-Best,
-Edward Torres
-CTO & Co-Founder, NexaCorp
-`,
-      },
-      trigger: { type: "after_email_read", emailId: "job_board_alert" },
+      trigger: { type: "immediate" },
       replyOptions: nexacorpOfferReplyOptions,
     },
 

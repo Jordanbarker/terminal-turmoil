@@ -27,7 +27,7 @@ function createTestFS(configContent = ""): VirtualFS {
               ".ssh": {
                 type: "directory",
                 name: ".ssh",
-                permissions: "rwx------",
+                permissions: "rwx--xr-x",
                 hidden: true,
                 children: {
                   config: {

@@ -36,7 +36,7 @@ const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 const username = "player";
 
 function makeCtx(cwd: string): CommandContext {
-  const root = createFilesystem(username);
+  const root = createFilesystem(username, { dbt_project_cloned: true });
   const fs = new VirtualFS(root, cwd, `/home/${username}`);
   return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const };
 }

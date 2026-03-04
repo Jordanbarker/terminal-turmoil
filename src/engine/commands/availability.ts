@@ -1,4 +1,5 @@
 import { ComputerId, StoryFlags } from "../../state/types";
+import { StoryFlagName } from "../narrative/storyFlags";
 
 /** Commands available before the player unlocks the full set by scrolling through terminal_notes.txt. */
 export const INITIAL_HOME_COMMANDS: ReadonlySet<string> = new Set([
