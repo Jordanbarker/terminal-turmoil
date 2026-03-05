@@ -156,7 +156,6 @@ async function main() {
   cmd(runner, "ls /home/jchen");
   cmd(runner, "ls -la /home/jchen");
   cmd(runner, "cat /home/jchen/.bash_history");
-  cmd(runner, "cat /home/jchen/resignation_draft.txt");
   cmd(runner, "cat /home/jchen/.private/evidence.txt");
 
   // ── 8. Mail ────────────────────────────────────────────────────────

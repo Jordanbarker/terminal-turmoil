@@ -98,16 +98,6 @@
               "REASON": "Routine maintenance",
               "ORIGINAL_HASH": "e7f2a4",
               "NEW_HASH": "7g8h9i"
-            },
-            {
-              "MOD_ID": 6,
-              "TIMESTAMP": "2026-02-06T03:55:11",
-              "FILE_PATH": "/home/jchen/resignation_draft.txt",
-              "ACTION": "access",
-              "MODIFIED_BY": "chip-daemon",
-              "REASON": "Document indexing",
-              "ORIGINAL_HASH": null,
-              "NEW_HASH": null
             }
           ],
           "createdAt": "2026-02-03"
@@ -318,7 +308,7 @@
               "TIMESTAMP": "2026-02-04T03:00:00",
               "SEVERITY": "HIGH",
               "SOURCE": "data-integrity",
-              "MESSAGE": "Employee report shows 77 records but HR confirms 79 active employees",
+              "MESSAGE": "Employee report shows 14 records but HR confirms 16 active employees",
               "INTENDED_RECIPIENT": "edward@nexacorp.com",
               "SUPPRESSED_BY": "chip-daemon",
               "SUPPRESSION_REASON": "Data sync delay — will resolve in next cycle"

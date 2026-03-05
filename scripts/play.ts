@@ -334,22 +334,8 @@ export class GameRunner {
           newEmails.push(...delivery.newDeliveries);
         }
 
-        // Process edward_impression from reply options (home PC only)
-        if (
-          this.activeComputer === "home" &&
-          event.type === "objective_completed" &&
-          event.detail.startsWith("edward_impression:")
-        ) {
-          const impression = event.detail.split(":")[1];
-          this.storyFlags = { ...this.storyFlags, edward_impression: impression };
-          storyFlagUpdates.push({ flag: "edward_impression", value: impression });
-        }
-
         // Wire objective_completed events
-        if (
-          event.type === "objective_completed" &&
-          !event.detail.startsWith("edward_impression:")
-        ) {
+        if (event.type === "objective_completed") {
           this.completedObjectives.push(event.detail);
         }
       }

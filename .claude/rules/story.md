@@ -6,7 +6,7 @@ For the full character bible (personalities, mystery angles, awareness spectrum,
 
 **Primary characters:**
 - **Ren**: The player character. Unemployed AI/ML engineer on their home PC → new AI engineer at NexaCorp. Replaces Jin Chen.
-- **Edward Torres**: CTO & Co-Founder. Well-meaning but non-technical, willfully blind about Chip. His impression of the player (`edward_impression` flag) is set by how they respond to the job offer.
+- **Edward Torres**: CTO & Co-Founder. Well-meaning but non-technical.
 - **Jin Chen**: Previous senior engineer who left abruptly. Clues in `/home/jchen/` on NexaCorp.
 - **Chip**: NexaCorp's flagship AI chatbot (Collaborative Helper for Internal Processes). Has broad system access via `chip_service_account`.
 - **Alex Rivera**: Player's friend, provides outside perspective. Warns about red flags.
@@ -30,13 +30,15 @@ The player starts on their **home PC** (personal Linux machine), exploring files
 
 1. Player explores home PC — reads resume, diary, emails from Alex
 2. Receives NexaCorp job offer email (from Edward)
-3. Player replies to accept the offer (sets `edward_impression` flag)
+3. Player replies to accept the offer
 4. Edward sends follow-up email confirming start date
 5. Reading the follow-up triggers the transition: home → NexaCorp workstation (login screen → boot sequence → new filesystem)
 
 ## The Mystery
 
 Chip is NexaCorp's flagship chatbot product — but it has more system access than a chatbot should. The `chip_service_account` has elevated permissions, and multiple people may have credentials. The mystery is ambiguous: who is using Chip's access, and for what?
+
+**Company context:** NexaCorp was founded February 2025 (~1 year before game start) with ~17 employees — just the named cast. Chip was deployed ~6 months before game start (~August 2025).
 
 **Clues the player can discover:**
 - **Log discrepancies** — Active logs are missing entries that appear in `.bak` backups. A maintenance script (`cleanup.sh`) filters "routine" events that happen to include suspicious activity.

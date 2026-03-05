@@ -63,3 +63,32 @@ export function checkEmailDeliveries(
 
   return { fs: currentFs, newDeliveries };
 }
+
+/**
+ * Re-seed previously delivered non-immediate emails into a freshly built filesystem.
+ * Called from buildFs so emails survive filesystem rebuilds.
+ */
+export function seedDeliveredEmails(
+  fs: VirtualFS,
+  deliveredIds: string[],
+  computer: ComputerId,
+  username: string
+): VirtualFS {
+  const defs = getEmailDefinitions(username, computer);
+  const existing = getMailEntries(fs);
+  let nextSeq =
+    existing.length > 0 ? Math.max(...existing.map((e) => e.seq)) + 1 : 1;
+  let currentFs = fs;
+
+  for (const def of defs) {
+    const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
+    if (triggers.every((t) => t.type === "immediate")) continue;
+    if (!deliveredIds.includes(def.email.id)) continue;
+
+    const result = deliverEmail(currentFs, def.email, nextSeq);
+    currentFs = result.fs;
+    nextSeq++;
+  }
+
+  return currentFs;
+}

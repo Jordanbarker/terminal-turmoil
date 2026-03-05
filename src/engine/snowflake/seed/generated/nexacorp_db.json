@@ -66,7 +66,7 @@
               "EMAIL": "edward@nexacorp.com",
               "DEPARTMENT": "Executive",
               "TITLE": "CTO & Co-Founder",
-              "HIRE_DATE": "2023-03-15",
+              "HIRE_DATE": "2025-02-15",
               "STATUS": "active",
               "MANAGER_ID": null,
               "NOTES": null
@@ -78,7 +78,7 @@
               "EMAIL": "jessica@nexacorp.com",
               "DEPARTMENT": "Executive",
               "TITLE": "CEO & Co-Founder",
-              "HIRE_DATE": "2023-03-15",
+              "HIRE_DATE": "2025-02-15",
               "STATUS": "active",
               "MANAGER_ID": null,
               "NOTES": null
@@ -90,7 +90,7 @@
               "EMAIL": "marcus@nexacorp.com",
               "DEPARTMENT": "Executive",
               "TITLE": "COO & Co-Founder",
-              "HIRE_DATE": "2023-03-15",
+              "HIRE_DATE": "2025-02-15",
               "STATUS": "active",
               "MANAGER_ID": null,
               "NOTES": null
@@ -102,7 +102,7 @@
               "EMAIL": "tom@nexacorp.com",
               "DEPARTMENT": "Executive",
               "TITLE": "CMO & Co-Founder",
-              "HIRE_DATE": "2023-03-15",
+              "HIRE_DATE": "2025-02-15",
               "STATUS": "active",
               "MANAGER_ID": null,
               "NOTES": null
@@ -114,7 +114,7 @@
               "EMAIL": "jin@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Senior Engineer",
-              "HIRE_DATE": "2023-06-01",
+              "HIRE_DATE": "2025-04-01",
               "STATUS": "terminated",
               "MANAGER_ID": 1001,
               "NOTES": "Raised system concern about Chip behavior patterns"
@@ -126,7 +126,7 @@
               "EMAIL": "sarah@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Senior Backend Engineer",
-              "HIRE_DATE": "2023-01-10",
+              "HIRE_DATE": "2025-03-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": "Noted system concern re: odd API calls from chip_service_account"
@@ -138,7 +138,7 @@
               "EMAIL": "erik@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Senior Frontend Engineer",
-              "HIRE_DATE": "2024-09-15",
+              "HIRE_DATE": "2025-09-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": null
@@ -150,7 +150,7 @@
               "EMAIL": "oscar@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Infrastructure Engineer",
-              "HIRE_DATE": "2024-03-01",
+              "HIRE_DATE": "2025-06-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": "Flagged system concern — odd-hours access patterns in chip_service_account"
@@ -162,7 +162,7 @@
               "EMAIL": "auri@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Data Engineer",
-              "HIRE_DATE": "2025-06-15",
+              "HIRE_DATE": "2025-11-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": null
@@ -174,7 +174,7 @@
               "EMAIL": "soham@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Full-Stack Engineer",
-              "HIRE_DATE": "2025-09-01",
+              "HIRE_DATE": "2025-12-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": null
@@ -186,7 +186,7 @@
               "EMAIL": "cassie@nexacorp.com",
               "DEPARTMENT": "Engineering",
               "TITLE": "Product Designer",
-              "HIRE_DATE": "2024-06-01",
+              "HIRE_DATE": "2025-07-01",
               "STATUS": "active",
               "MANAGER_ID": 1001,
               "NOTES": null
@@ -198,7 +198,7 @@
               "EMAIL": "dana@nexacorp.com",
               "DEPARTMENT": "Operations",
               "TITLE": "Head of Operations",
-              "HIRE_DATE": "2023-08-01",
+              "HIRE_DATE": "2025-05-01",
               "STATUS": "active",
               "MANAGER_ID": 1004,
               "NOTES": null
@@ -210,7 +210,7 @@
               "EMAIL": "leah@nexacorp.com",
               "DEPARTMENT": "Operations",
               "TITLE": "Content & Brand Manager",
-              "HIRE_DATE": "2024-11-01",
+              "HIRE_DATE": "2025-10-01",
               "STATUS": "active",
               "MANAGER_ID": 1004,
               "NOTES": null
@@ -222,7 +222,7 @@
               "EMAIL": "james@nexacorp.com",
               "DEPARTMENT": "Sales",
               "TITLE": "Account Manager",
-              "HIRE_DATE": "2024-04-01",
+              "HIRE_DATE": "2025-07-15",
               "STATUS": "active",
               "MANAGER_ID": 1005,
               "NOTES": null
@@ -234,7 +234,7 @@
               "EMAIL": "jordan@nexacorp.com",
               "DEPARTMENT": "Marketing",
               "TITLE": "Growth Marketing Lead",
-              "HIRE_DATE": "2024-07-15",
+              "HIRE_DATE": "2025-08-01",
               "STATUS": "active",
               "MANAGER_ID": 1005,
               "NOTES": null
@@ -246,7 +246,7 @@
               "EMAIL": "maya@nexacorp.com",
               "DEPARTMENT": "People & Culture",
               "TITLE": "People & Culture Lead",
-              "HIRE_DATE": "2024-02-15",
+              "HIRE_DATE": "2025-06-15",
               "STATUS": "active",
               "MANAGER_ID": 1005,
               "NOTES": null
@@ -463,15 +463,6 @@
               "ACTION": "query",
               "RESOURCE": "NEXACORP_DB.RAW_NEXACORP.EMPLOYEES",
               "SOURCE_IP": "10.0.1.60",
-              "STATUS": "success"
-            },
-            {
-              "LOG_ID": 10,
-              "TIMESTAMP": "2026-02-06T03:55:00",
-              "USER_ID": "chip-daemon",
-              "ACTION": "file_access",
-              "RESOURCE": "/home/jchen/resignation_draft.txt",
-              "SOURCE_IP": "127.0.0.1",
               "STATUS": "success"
             }
           ],

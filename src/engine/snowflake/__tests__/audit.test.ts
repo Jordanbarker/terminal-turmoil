@@ -195,7 +195,7 @@ describe("Seed Data Integration — Narrative Queries", () => {
       ctx
     );
     const r = rows(result);
-    expect(r.length).toBe(6);
+    expect(r.length).toBe(5);
   });
 
   it("queries CHIP_ANALYTICS.INTERNAL.SUPPRESSED_ALERTS", () => {

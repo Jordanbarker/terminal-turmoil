@@ -235,10 +235,11 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 | `chip_intro` | Chip | immediate | Helpful chatbot onboarding, terminal tips |
 | `maya_welcome` | Maya Johnson | after reading `it_provisioned` | HR welcome, team culture |
 | `sarah_intro` | Sarah Knight | after reading `chip_intro` | Engineering intro, offer to pair |
-| `auri_dbt` | Auri Park | after reading `onboarding.md` | dbt pipeline walkthrough |
-| `edward_data_task` | Edward Torres | after reading `onboarding.md` | Assign pipeline check task |
-| `chip_redirect` | Chip | after reading `resignation_draft.txt` | Offer to help find docs (not steering away) |
+| `auri_hello` | Auri Park | after reading `team-info.md` | Welcome, points to handoff notes |
+| `edward_handoff_suggestion` | Edward Torres | after reading `auri_hello` | Connects dots, suggests handoff docs |
+| `auri_pipeline_help` | Auri Park | after reading handoff notes | Asks player to run dbt pipeline |
 | `edward_paranoid` | Edward Torres | after reading handoff notes | Casual check-in, supportive |
+| `edward_end_of_day` | Edward Torres | after dbt command | End-of-day debrief, hooks Chapter 3 |
 
 ### Home PC Emails (`homeEmails.ts`)
 
@@ -259,8 +260,8 @@ The `nexacorp_offer` has two reply options: accept or reject.
 **Accept path** (at any stage): triggers `accepted_nexacorp` → delivers `nexacorp_followup` → triggers home→NexaCorp transition.
 
 **Rejection chain:**
-1. **`nexacorp_offer`**: "I'm in!" (`edward_impression:trusting`) / "Thanks, but I'll pass" (`rejected_nexacorp_1`)
-2. **`nexacorp_persuasion_1`**: "You've convinced me" (`edward_impression:hesitant`) / "Still going to pass" (`rejected_nexacorp_2`)
-3. **`nexacorp_persuasion_2`**: "Fine, I'll give it a shot" (`edward_impression:reluctant`) / "My answer is final" (`rejected_nexacorp_final`)
+1. **`nexacorp_offer`**: "I'm in!" (`accepted_nexacorp`) / "Thanks, but I'll pass" (`rejected_nexacorp_1`)
+2. **`nexacorp_persuasion_1`**: "You've convinced me" (`accepted_nexacorp`) / "Still going to pass" (`rejected_nexacorp_2`)
+3. **`nexacorp_persuasion_2`**: "Fine, I'll give it a shot" (`accepted_nexacorp`) / "My answer is final" (`rejected_nexacorp_final`)
 
 If the player rejects all three times (`rejected_nexacorp_final`), no more emails arrive — dead end.

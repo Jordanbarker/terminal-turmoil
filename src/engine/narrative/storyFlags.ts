@@ -17,12 +17,14 @@ export const STORY_FLAG_NAMES = [
   "found_chip_directives",
   "found_cleanup_script",
   "read_onboarding",
+  "read_team_info",
+  "read_handoff_notes",
   "chip_unlocked",
   "ran_dbt",
   "found_data_filtering",
   "read_nexacorp_offer",
   "commands_unlocked",
-  "edward_impression",
+
   "discovered_log_tampering",
   "used_chip_topics",
   "dbt_project_cloned",
@@ -62,10 +64,17 @@ export function getNexacorpStoryFlagTriggers(username: string): StoryFlagTrigger
     { event: "file_read", path: "/opt/chip/.internal/directives.txt", flag: "found_chip_directives", value: true },
     { event: "file_read", path: "/opt/chip/.internal/cleanup.sh", flag: "found_cleanup_script", value: true },
     { event: "file_read", path: `/home/${username}/Documents/onboarding.md`, flag: "read_onboarding", value: true },
+    { event: "file_read", path: `/home/${username}/Documents/team-info.md`, flag: "read_team_info", value: true },
+    { event: "file_read", path: `/srv/engineering/chen-handoff/notes.txt`, flag: "read_handoff_notes", value: true },
     { event: "file_read", detail: "chip_intro", flag: "chip_unlocked", value: true, toast: "chip command unlocked!" },
     { event: "file_read", detail: "discovered_log_tampering", flag: "discovered_log_tampering", value: true },
     { event: "command_executed", detail: "dbt", flag: "ran_dbt", value: true },
     { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/marts/dim_employees.sql`, flag: "found_data_filtering", value: true },
+    { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/marts/fct_support_tickets.sql`, flag: "found_data_filtering", value: true },
+    { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/_chip_internal/chip_ticket_suppression.sql`, flag: "found_data_filtering", value: true },
+    { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/_chip_internal/chip_log_filter.sql`, flag: "found_data_filtering", value: true },
+    { event: "file_read", path: `/home/${username}/nexacorp-analytics/models/_chip_internal/chip_data_cleanup.sql`, flag: "found_data_filtering", value: true },
+    { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
   ];
 }
 

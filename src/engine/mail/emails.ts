@@ -15,17 +15,14 @@ export function getNexacorpEmailDefinitions(username: string): EmailDelivery[] {
       body: `Hey!
 
 So glad you're here — we've been looking forward to getting you
-on board. Your workstation should be all set up and ready to go.
+on board. Chip should reach out shortly to help with onboarding. 
+Let me know if you don't see anything from him today.
 
 Your first priority is just getting familiar with the system.
 Here are a couple things to check out first:
 
   ~/Documents/onboarding.md   Setup checklist and useful commands
   ~/Documents/team-info.md    Who's who on the engineering team
-
-Run 'mail' to check your other emails — IT sent you some account
-info and a few folks have already said hello. And type 'chip'
-anytime to chat with our AI assistant.
 
 Welcome to the team!
 
@@ -121,59 +118,6 @@ Chip
   // === Triggered emails ===
   {
     email: {
-      id: "edward_data_task",
-      from: "Edward Torres <edward@nexacorp.com>",
-      to: `${username}@nexacorp.com`,
-      date: "Mon, 23 Feb 2026 09:00:00",
-      subject: "Data pipeline check",
-      body: `Hey,
-
-Now that you're getting settled, there's something I've been meaning
-to have someone look at. We have a data pipeline — a dbt project that's
-been running on autopilot for a while and honestly I have no idea if
-it's healthy. Ask Chip to clone the repo for you if you haven't already.
-
-Could you run it and make sure everything looks good? I think the
-commands are 'dbt run' and 'dbt test' but don't quote me on that.
-
-There are some handoff notes in /srv/engineering/chen-handoff/ that might help
-you figure out what's what. And the previous engineer's home directory
-(/home/jchen/) hasn't been cleaned up yet — might have useful context.
-
-No rush, but it'd be great to know we're in good shape.
-
-Thanks!
-- Edward
-`,
-    },
-    trigger: { type: "after_file_read", filePath: `/home/${username}/Documents/onboarding.md` },
-  },
-  {
-    email: {
-      id: "chip_redirect",
-      from: "Chip <chip@nexacorp.com>",
-      to: `${username}@nexacorp.com`,
-      date: "Mon, 23 Feb 2026 09:30:00",
-      subject: "Quick onboarding check-in",
-      body: `Hey! Just checking in — how's the first day going?
-
-Reminder that I can pull up docs, logs, and system info
-for you anytime. Just run 'chip' and I'll walk you through
-whatever you need.
-
-I try to keep everything organized and up to date, so the
-latest docs are usually the best source of truth for how
-things work around here.
-
-Let me know if you need anything!
-
-- Chip
-`,
-    },
-    trigger: { type: "after_file_read", filePath: "/home/jchen/resignation_draft.txt" },
-  },
-  {
-    email: {
       id: "edward_paranoid",
       from: "Edward Torres <edward@nexacorp.com>",
       to: `${username}@nexacorp.com`,
@@ -206,15 +150,21 @@ seeing, just let me know. Happy to fill in context where I can.
 
 I'm Maya, People & Culture Lead here at NexaCorp. Welcome aboard!
 
-Just a few housekeeping items:
-  - You have 30 days to complete benefits enrollment
-  - Company town hall is Fridays at noon — I'll send you the invite
-  - If you need anything at all, my DMs are always open
+A few onboarding items for your first week:
 
-We're a small team so things move fast, but everyone's really
-friendly. Don't be shy about reaching out to anyone.
+  [ ] Benefits enrollment — you have 30 days from your start
+      date. I'll send the portal link separately.
+  [ ] Review the employee handbook (I'll send the link)
+  [ ] Emergency contact form (I'll send this too, no rush)
 
-Looking forward to working with you!
+Other things to know:
+  - Company town hall is Fridays at noon
+  - PTO is flexible — just give your manager a heads up
+  - We use Slack for most things, email for anything official
+
+I know that's a lot of checkboxes for day one. Don't stress
+about it — none of it's due today. Just settle in, meet folks,
+and come find me if you need anything. I mean that!
 
 - Maya Johnson
   People & Culture Lead
@@ -234,15 +184,14 @@ Looking forward to working with you!
 
 Sarah here — Senior Backend Engineer. Wanted to say welcome!
 
-I've been here about three years now, mostly working on our
-API layer and infrastructure. Happy to pair on anything if
-you want a second set of eyes while you're getting started.
+I've been here since almost the beginning, mostly working on our
+API layer. Currently untangling some auth middleware that was
+written in a hurry six months ago — don't ask. Happy to pair on
+anything if you want a second set of eyes while you're getting
+started.
 
-Edward probably mentioned the data pipeline — that was mostly
-Chen's domain, but Auri (our data engineer) knows it well too.
-She'll probably reach out separately.
-
-Anyway, welcome to the team. Slack me anytime.
+Anyway, welcome. Slack me anytime or just grep the codebase and
+judge us silently — that's what I did my first week.
 
 - Sarah
 `,
@@ -251,38 +200,111 @@ Anyway, welcome to the team. Slack me anytime.
   },
   {
     email: {
-      id: "auri_dbt",
+      id: "auri_hello",
       from: "Auri Park <auri@nexacorp.com>",
       to: `${username}@nexacorp.com`,
-      date: "Mon, 23 Feb 2026 10:00:00",
-      subject: "dbt pipeline walkthrough",
-      body: `Hi!
+      date: "Mon, 23 Feb 2026 09:30:00",
+      subject: "Welcome from data eng!",
+      body: `Hey! I'm Auri, the data engineer on the team. Welcome!
 
-I'm Auri, data engineer on the team. Edward mentioned you'd
-be picking up some of the data pipeline work that Chen was
-handling.
+I've been kind of holding the fort on the data side since Chen
+left — it's been a lot, honestly. Really glad to have another
+engineer around.
 
-Once you've got the repo cloned (ask Chip), it'll be at
-~/nexacorp-analytics/. The quick rundown:
+No need to jump into anything right away — settle in first!
+When you're ready to get oriented, there are some handoff notes
+Chen left in /srv/engineering/chen-handoff/ that should give you
+a sense of what's what.
 
-  1. 'dbt run' — builds all the models
-  2. 'dbt test' — runs the test suite
-  3. 'dbt run --select <model>' — build a specific model
-  4. 'snowsql' — connect to the warehouse directly
+Happy to walk through anything whenever you're ready. No rush!
+
+- Auri
+`,
+    },
+    trigger: { type: "after_file_read", filePath: `/home/${username}/Documents/team-info.md` },
+  },
+  {
+    email: {
+      id: "edward_handoff_suggestion",
+      from: "Edward Torres <edward@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 09:45:00",
+      subject: "Auri could use a hand",
+      body: `Hey,
+
+Auri mentioned she's been stretched thin since Chen left — she
+could really use some help with the data pipeline stuff. No
+pressure today, but when you get a chance, the handoff docs are
+at /srv/engineering/chen-handoff/.
+
+Should give you a good sense of what Chen was working on before
+he left.
+
+Thanks!
+- Edward
+`,
+    },
+    trigger: { type: "after_email_read", emailId: "auri_hello" },
+  },
+  {
+    email: {
+      id: "auri_pipeline_help",
+      from: "Auri Park <auri@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 10:30:00",
+      subject: "Quick favor — pipeline run?",
+      body: `Hey! So I saw you were looking at the handoff notes — nice.
+
+Would you mind running the data pipeline when you get a chance?
+I've been meaning to check it but keep getting pulled into other
+things. I noticed dbt + Snowflake on your resume so this should
+be right up your alley!
+
+Here's the quick version:
+
+  1. Ask Chip to clone the analytics repo (just run 'chip')
+  2. 'dbt run' — builds all the models
+  3. 'dbt test' — runs the test suite
 
 Everything talks to our Snowflake instance. The staging models
 pull from raw tables, intermediate models do the joins, and
 the marts are what the business actually looks at.
 
-Let me know if you want to do a walkthrough — happy to hop on
-a call whenever works for you.
+If anything looks off, let me know — some of Chen's models are
+a little... creative. I haven't had a chance to audit everything.
 
-- Auri Park
-  Data Engineer
-  NexaCorp Inc.
+Thanks!!
+
+- Auri
 `,
     },
-    trigger: { type: "after_file_read", filePath: `/home/${username}/Documents/onboarding.md` },
+    trigger: { type: "after_file_read", filePath: `/srv/engineering/chen-handoff/notes.txt` },
+  },
+  {
+    email: {
+      id: "edward_end_of_day",
+      from: "Edward Torres <edward@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 17:00:00",
+      subject: "End of day 1",
+      body: `Hey,
+
+Great first day! Heard from Auri that you got the pipeline
+running — really appreciate you jumping on that.
+
+One more thing — Chip has been acting a little off lately.
+Nothing major, but some odd outputs that don't match what
+the team expects. Since you're the AI expert now, could you
+poke around /opt/chip/ when you get a chance? No rush.
+
+- Edward
+
+P.S. Chen's home directory (/home/jchen/) still hasn't been
+cleaned up. Might be useful context, might just be clutter.
+IT will get to it eventually.
+`,
+    },
+    trigger: { type: "after_command", command: "dbt" },
   },
 ];
 }

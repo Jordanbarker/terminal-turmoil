@@ -16,14 +16,17 @@ A narrative-driven browser game that teaches Linux/terminal through a workplace 
 ## Commands
 
 ```bash
-npm run dev      # Local development server
-npm run build    # Production build (static export to out/)
-npm run lint     # ESLint
+npm run dev       # Local development server
+npm run build     # Production build (static export to out/)
+npm run lint      # ESLint
+npm run typecheck # TypeScript checking
+npm run test      # Vitest (or: npx vitest run)
+npm run check     # Combined typecheck + test + build
 ```
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `chip`, `ssh`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `python`, `snowsql`, `dbt`, `chip`, `ssh`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`
 
 Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
 

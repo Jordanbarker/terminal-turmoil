@@ -246,22 +246,6 @@ describe("computeEffects", () => {
       expect(effects.storyFlagUpdates).toEqual([]);
     });
 
-    it("processes edward_impression from trigger events on home computer", () => {
-      const result: CommandResult = {
-        output: "",
-        triggerEvents: [
-          { type: "objective_completed", detail: "edward_impression:positive" },
-        ],
-      };
-      const effects = computeEffects(
-        result,
-        createApplyCtx({ activeComputer: "home" })
-      );
-      expect(effects.storyFlagUpdates).toContainEqual({
-        flag: "edward_impression",
-        value: "positive",
-      });
-    });
   });
 
   describe("ssh session detection", () => {

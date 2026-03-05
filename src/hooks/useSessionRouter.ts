@@ -155,22 +155,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
             term.write(`\r\n\nYou have new mail in /var/mail/${usernameRef.current}`);
           }
 
-          // Process story flags (e.g. edward_impression from reply options)
-          if (
-            activeComputerRef.current === "home" &&
-            event.type === "objective_completed" &&
-            event.detail.startsWith("edward_impression:")
-          ) {
-            const impression = event.detail.split(":")[1];
-            setStoryFlag("edward_impression", impression);
-            storyFlagsRef.current = { ...storyFlagsRef.current, edward_impression: impression };
-          }
-
           // Wire objective_completed events to store
-          if (
-            event.type === "objective_completed" &&
-            !event.detail.startsWith("edward_impression:")
-          ) {
+          if (event.type === "objective_completed") {
             const store = useGameStore.getState();
             store.completeObjective(event.detail);
           }

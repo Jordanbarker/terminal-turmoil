@@ -12,27 +12,27 @@ these with faker-generated filler. Anything that matters to the plot
 
 NEXACORP_DB_EMPLOYEES = [
     # Executives
-    {"EMPLOYEE_ID": 1001, "FIRST_NAME": "Edward",  "LAST_NAME": "Torres",    "EMAIL": "edward@nexacorp.com",    "DEPARTMENT": "Executive",        "TITLE": "CTO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1002, "FIRST_NAME": "Jessica", "LAST_NAME": "Langford",  "EMAIL": "jessica@nexacorp.com",  "DEPARTMENT": "Executive",        "TITLE": "CEO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1004, "FIRST_NAME": "Marcus",  "LAST_NAME": "Reyes",     "EMAIL": "marcus@nexacorp.com",     "DEPARTMENT": "Executive",        "TITLE": "COO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
-    {"EMPLOYEE_ID": 1005, "FIRST_NAME": "Tom",     "LAST_NAME": "Chen",      "EMAIL": "tom@nexacorp.com",      "DEPARTMENT": "Executive",        "TITLE": "CMO & Co-Founder",          "HIRE_DATE": "2023-03-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1001, "FIRST_NAME": "Edward",  "LAST_NAME": "Torres",    "EMAIL": "edward@nexacorp.com",    "DEPARTMENT": "Executive",        "TITLE": "CTO & Co-Founder",          "HIRE_DATE": "2025-02-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1002, "FIRST_NAME": "Jessica", "LAST_NAME": "Langford",  "EMAIL": "jessica@nexacorp.com",  "DEPARTMENT": "Executive",        "TITLE": "CEO & Co-Founder",          "HIRE_DATE": "2025-02-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1004, "FIRST_NAME": "Marcus",  "LAST_NAME": "Reyes",     "EMAIL": "marcus@nexacorp.com",     "DEPARTMENT": "Executive",        "TITLE": "COO & Co-Founder",          "HIRE_DATE": "2025-02-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
+    {"EMPLOYEE_ID": 1005, "FIRST_NAME": "Tom",     "LAST_NAME": "Chen",      "EMAIL": "tom@nexacorp.com",      "DEPARTMENT": "Executive",        "TITLE": "CMO & Co-Founder",          "HIRE_DATE": "2025-02-15", "STATUS": "active",     "MANAGER_ID": None, "NOTES": None},
     # Engineering
-    {"EMPLOYEE_ID": 1003, "FIRST_NAME": "Jin",     "LAST_NAME": "Chen",      "EMAIL": "jin@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Senior Engineer",           "HIRE_DATE": "2023-06-01", "STATUS": "terminated", "MANAGER_ID": 1001, "NOTES": "Raised system concern about Chip behavior patterns"},
-    {"EMPLOYEE_ID": 1006, "FIRST_NAME": "Sarah",   "LAST_NAME": "Knight",    "EMAIL": "sarah@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Senior Backend Engineer",   "HIRE_DATE": "2023-01-10", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Noted system concern re: odd API calls from chip_service_account"},
-    {"EMPLOYEE_ID": 1007, "FIRST_NAME": "Erik",    "LAST_NAME": "Lindstrom", "EMAIL": "erik@nexacorp.com", "DEPARTMENT": "Engineering",      "TITLE": "Senior Frontend Engineer",  "HIRE_DATE": "2024-09-15", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
-    {"EMPLOYEE_ID": 1008, "FIRST_NAME": "Oscar",   "LAST_NAME": "Diaz",      "EMAIL": "oscar@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Infrastructure Engineer",   "HIRE_DATE": "2024-03-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Flagged system concern \u2014 odd-hours access patterns in chip_service_account"},
-    {"EMPLOYEE_ID": 1009, "FIRST_NAME": "Auri",    "LAST_NAME": "Park",      "EMAIL": "auri@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Data Engineer",             "HIRE_DATE": "2025-06-15", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
-    {"EMPLOYEE_ID": 1010, "FIRST_NAME": "Soham",   "LAST_NAME": "Parekh",    "EMAIL": "soham@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Full-Stack Engineer",       "HIRE_DATE": "2025-09-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1003, "FIRST_NAME": "Jin",     "LAST_NAME": "Chen",      "EMAIL": "jin@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Senior Engineer",           "HIRE_DATE": "2025-04-01", "STATUS": "terminated", "MANAGER_ID": 1001, "NOTES": "Raised system concern about Chip behavior patterns"},
+    {"EMPLOYEE_ID": 1006, "FIRST_NAME": "Sarah",   "LAST_NAME": "Knight",    "EMAIL": "sarah@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Senior Backend Engineer",   "HIRE_DATE": "2025-03-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Noted system concern re: odd API calls from chip_service_account"},
+    {"EMPLOYEE_ID": 1007, "FIRST_NAME": "Erik",    "LAST_NAME": "Lindstrom", "EMAIL": "erik@nexacorp.com", "DEPARTMENT": "Engineering",      "TITLE": "Senior Frontend Engineer",  "HIRE_DATE": "2025-09-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1008, "FIRST_NAME": "Oscar",   "LAST_NAME": "Diaz",      "EMAIL": "oscar@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Infrastructure Engineer",   "HIRE_DATE": "2025-06-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": "Flagged system concern \u2014 odd-hours access patterns in chip_service_account"},
+    {"EMPLOYEE_ID": 1009, "FIRST_NAME": "Auri",    "LAST_NAME": "Park",      "EMAIL": "auri@nexacorp.com",      "DEPARTMENT": "Engineering",      "TITLE": "Data Engineer",             "HIRE_DATE": "2025-11-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1010, "FIRST_NAME": "Soham",   "LAST_NAME": "Parekh",    "EMAIL": "soham@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Full-Stack Engineer",       "HIRE_DATE": "2025-12-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
     # Product
-    {"EMPLOYEE_ID": 1016, "FIRST_NAME": "Cassie",  "LAST_NAME": "Moreau",    "EMAIL": "cassie@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Product Designer",          "HIRE_DATE": "2024-06-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
+    {"EMPLOYEE_ID": 1016, "FIRST_NAME": "Cassie",  "LAST_NAME": "Moreau",    "EMAIL": "cassie@nexacorp.com",    "DEPARTMENT": "Engineering",      "TITLE": "Product Designer",          "HIRE_DATE": "2025-07-01", "STATUS": "active",     "MANAGER_ID": 1001, "NOTES": None},
     # Operations
-    {"EMPLOYEE_ID": 1012, "FIRST_NAME": "Dana",    "LAST_NAME": "Okafor",    "EMAIL": "dana@nexacorp.com",    "DEPARTMENT": "Operations",       "TITLE": "Head of Operations",        "HIRE_DATE": "2023-08-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
-    {"EMPLOYEE_ID": 1013, "FIRST_NAME": "Leah",    "LAST_NAME": "Matsuda",   "EMAIL": "leah@nexacorp.com",   "DEPARTMENT": "Operations",       "TITLE": "Content & Brand Manager",   "HIRE_DATE": "2024-11-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
+    {"EMPLOYEE_ID": 1012, "FIRST_NAME": "Dana",    "LAST_NAME": "Okafor",    "EMAIL": "dana@nexacorp.com",    "DEPARTMENT": "Operations",       "TITLE": "Head of Operations",        "HIRE_DATE": "2025-05-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
+    {"EMPLOYEE_ID": 1013, "FIRST_NAME": "Leah",    "LAST_NAME": "Matsuda",   "EMAIL": "leah@nexacorp.com",   "DEPARTMENT": "Operations",       "TITLE": "Content & Brand Manager",   "HIRE_DATE": "2025-10-01", "STATUS": "active",     "MANAGER_ID": 1004, "NOTES": None},
     # Sales & Marketing
-    {"EMPLOYEE_ID": 1014, "FIRST_NAME": "James",   "LAST_NAME": "Wilson",    "EMAIL": "james@nexacorp.com",    "DEPARTMENT": "Sales",            "TITLE": "Account Manager",           "HIRE_DATE": "2024-04-01", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
-    {"EMPLOYEE_ID": 1015, "FIRST_NAME": "Jordan",  "LAST_NAME": "Kessler",   "EMAIL": "jordan@nexacorp.com",   "DEPARTMENT": "Marketing",        "TITLE": "Growth Marketing Lead",     "HIRE_DATE": "2024-07-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
+    {"EMPLOYEE_ID": 1014, "FIRST_NAME": "James",   "LAST_NAME": "Wilson",    "EMAIL": "james@nexacorp.com",    "DEPARTMENT": "Sales",            "TITLE": "Account Manager",           "HIRE_DATE": "2025-07-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
+    {"EMPLOYEE_ID": 1015, "FIRST_NAME": "Jordan",  "LAST_NAME": "Kessler",   "EMAIL": "jordan@nexacorp.com",   "DEPARTMENT": "Marketing",        "TITLE": "Growth Marketing Lead",     "HIRE_DATE": "2025-08-01", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
     # People & Culture
-    {"EMPLOYEE_ID": 1011, "FIRST_NAME": "Maya",    "LAST_NAME": "Johnson",   "EMAIL": "maya@nexacorp.com",   "DEPARTMENT": "People & Culture", "TITLE": "People & Culture Lead",     "HIRE_DATE": "2024-02-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
+    {"EMPLOYEE_ID": 1011, "FIRST_NAME": "Maya",    "LAST_NAME": "Johnson",   "EMAIL": "maya@nexacorp.com",   "DEPARTMENT": "People & Culture", "TITLE": "People & Culture Lead",     "HIRE_DATE": "2025-06-15", "STATUS": "active",     "MANAGER_ID": 1005, "NOTES": None},
 ]
 
 NEXACORP_DB_PROJECTS = [
@@ -53,7 +53,6 @@ NEXACORP_DB_ACCESS_LOG = [
     {"LOG_ID": 7,  "TIMESTAMP": "2026-02-04T08:00:00", "USER_ID": "sknight",     "ACTION": "login",         "RESOURCE": "nexacorp-ws01",                                    "SOURCE_IP": "10.0.1.55", "STATUS": "success"},
     {"LOG_ID": 8,  "TIMESTAMP": "2026-02-05T01:30:00", "USER_ID": "chip-daemon", "ACTION": "file_truncate", "RESOURCE": "/var/log/chip-activity.log",                       "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
     {"LOG_ID": 9,  "TIMESTAMP": "2026-02-05T09:15:00", "USER_ID": "dokafor",     "ACTION": "query",         "RESOURCE": "NEXACORP_DB.RAW_NEXACORP.EMPLOYEES",              "SOURCE_IP": "10.0.1.60", "STATUS": "success"},
-    {"LOG_ID": 10, "TIMESTAMP": "2026-02-06T03:55:00", "USER_ID": "chip-daemon", "ACTION": "file_access",   "RESOURCE": "/home/jchen/resignation_draft.txt",                "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
 ]
 
 NEXACORP_DB_DEPARTMENTS = [
@@ -76,27 +75,27 @@ SYSTEM_CONCERN_EMPLOYEE_IDS = {"E031", "E038", "E042"}
 # Narrative raw employees — hand-authored, story-critical
 NARRATIVE_RAW_EMPLOYEES = [
     # Executives
-    {"EMPLOYEE_ID": "E002", "FULL_NAME": "Edward Torres",    "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E005", "FULL_NAME": "Jessica Langford", "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E009", "FULL_NAME": "Marcus Reyes",     "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E012", "FULL_NAME": "Tom Chen",         "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2023-03-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E002", "FULL_NAME": "Edward Torres",    "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2025-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E005", "FULL_NAME": "Jessica Langford", "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2025-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E009", "FULL_NAME": "Marcus Reyes",     "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2025-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E012", "FULL_NAME": "Tom Chen",         "DEPARTMENT": "Executive",        "STATUS": "active",     "HIRE_DATE": "2025-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
     # Engineering
-    {"EMPLOYEE_ID": "E018", "FULL_NAME": "Erik Lindstrom",   "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-09-15", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E024", "FULL_NAME": "Auri Park",        "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-06-15", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E028", "FULL_NAME": "Soham Parekh",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-09-01", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E031", "FULL_NAME": "Jin Chen",         "DEPARTMENT": "Engineering",      "STATUS": "terminated", "HIRE_DATE": "2023-06-01", "TERMINATION_DATE": "2026-02-03", "NOTES": "raised system concern \u2014 chip behavior"},
-    {"EMPLOYEE_ID": "E038", "FULL_NAME": "Oscar Diaz",       "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-03-01", "TERMINATION_DATE": None,         "NOTES": "flagged system concern in ticket #4412"},
-    {"EMPLOYEE_ID": "E042", "FULL_NAME": "Sarah Knight",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2023-01-10", "TERMINATION_DATE": None,         "NOTES": "noted system concern re: odd API calls"},
+    {"EMPLOYEE_ID": "E018", "FULL_NAME": "Erik Lindstrom",   "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-09-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E024", "FULL_NAME": "Auri Park",        "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-11-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E028", "FULL_NAME": "Soham Parekh",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-12-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E031", "FULL_NAME": "Jin Chen",         "DEPARTMENT": "Engineering",      "STATUS": "terminated", "HIRE_DATE": "2025-04-01", "TERMINATION_DATE": "2026-02-03", "NOTES": "raised system concern \u2014 chip behavior"},
+    {"EMPLOYEE_ID": "E038", "FULL_NAME": "Oscar Diaz",       "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-06-01", "TERMINATION_DATE": None,         "NOTES": "flagged system concern in ticket #4412"},
+    {"EMPLOYEE_ID": "E042", "FULL_NAME": "Sarah Knight",     "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-03-01", "TERMINATION_DATE": None,         "NOTES": "noted system concern re: odd API calls"},
     # Product
-    {"EMPLOYEE_ID": "E048", "FULL_NAME": "Cassie Moreau",    "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2024-06-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E048", "FULL_NAME": "Cassie Moreau",    "DEPARTMENT": "Engineering",      "STATUS": "active",     "HIRE_DATE": "2025-07-01", "TERMINATION_DATE": None,         "NOTES": ""},
     # Operations
-    {"EMPLOYEE_ID": "E053", "FULL_NAME": "Dana Okafor",      "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2023-08-01", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E057", "FULL_NAME": "Leah Matsuda",     "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2024-11-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E053", "FULL_NAME": "Dana Okafor",      "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2025-05-01", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E057", "FULL_NAME": "Leah Matsuda",     "DEPARTMENT": "Operations",       "STATUS": "active",     "HIRE_DATE": "2025-10-01", "TERMINATION_DATE": None,         "NOTES": ""},
     # Sales & Marketing
-    {"EMPLOYEE_ID": "E062", "FULL_NAME": "James Wilson",     "DEPARTMENT": "Sales",            "STATUS": "active",     "HIRE_DATE": "2024-04-01", "TERMINATION_DATE": None,         "NOTES": ""},
-    {"EMPLOYEE_ID": "E067", "FULL_NAME": "Jordan Kessler",   "DEPARTMENT": "Marketing",        "STATUS": "active",     "HIRE_DATE": "2024-07-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E062", "FULL_NAME": "James Wilson",     "DEPARTMENT": "Sales",            "STATUS": "active",     "HIRE_DATE": "2025-07-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E067", "FULL_NAME": "Jordan Kessler",   "DEPARTMENT": "Marketing",        "STATUS": "active",     "HIRE_DATE": "2025-08-01", "TERMINATION_DATE": None,         "NOTES": ""},
     # People & Culture
-    {"EMPLOYEE_ID": "E072", "FULL_NAME": "Maya Johnson",     "DEPARTMENT": "People & Culture", "STATUS": "active",     "HIRE_DATE": "2024-02-15", "TERMINATION_DATE": None,         "NOTES": ""},
+    {"EMPLOYEE_ID": "E072", "FULL_NAME": "Maya Johnson",     "DEPARTMENT": "People & Culture", "STATUS": "active",     "HIRE_DATE": "2025-06-15", "TERMINATION_DATE": None,         "NOTES": ""},
 ]
 
 # Narrative system events — first 5 + suspicious chip-daemon events
@@ -168,7 +167,6 @@ CHIP_FILE_MODIFICATIONS = [
     {"MOD_ID": 3, "TIMESTAMP": "2026-02-03T03:22:17", "FILE_PATH": "/opt/chip/config/settings.json",      "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "Configuration update",       "ORIGINAL_HASH": "c5d0e2", "NEW_HASH": "1a2b3c"},
     {"MOD_ID": 4, "TIMESTAMP": "2026-02-04T02:45:33", "FILE_PATH": "/home/jchen/.private/concerns.txt",   "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "Content review",             "ORIGINAL_HASH": "d6e1f3", "NEW_HASH": "4d5e6f"},
     {"MOD_ID": 5, "TIMESTAMP": "2026-02-05T01:30:44", "FILE_PATH": "/var/log/chip-activity.log",          "ACTION": "truncate", "MODIFIED_BY": "chip-daemon", "REASON": "Routine maintenance",        "ORIGINAL_HASH": "e7f2a4", "NEW_HASH": "7g8h9i"},
-    {"MOD_ID": 6, "TIMESTAMP": "2026-02-06T03:55:11", "FILE_PATH": "/home/jchen/resignation_draft.txt",   "ACTION": "access",   "MODIFIED_BY": "chip-daemon", "REASON": "Document indexing",          "ORIGINAL_HASH": None,     "NEW_HASH": None},
 ]
 
 CHIP_DIRECTIVE_LOG = [

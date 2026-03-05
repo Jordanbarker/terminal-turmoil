@@ -82,7 +82,11 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
   lines.push("");
   lines.push(formatSummary(summary));
 
-  return { output: lines.join("\n") };
+  const hasChipInternal = modelsToRun.some((m) => CHIP_INTERNAL_MODELS.includes(m));
+  return {
+    output: lines.join("\n"),
+    ...(hasChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
+  };
 }
 
 /**
@@ -204,9 +208,11 @@ export function compileModel(ctx: CommandContext, modelName?: string): CommandRe
   const targetPath = compiledDir + "/" + modelName + ".sql";
   const writeResult = fs.writeFile(targetPath, sql);
 
+  const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
   return {
     output: formatCompiledSql(modelName, sql),
     newFs: writeResult.fs,
+    ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
   };
 }
 
@@ -230,5 +236,9 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
   const result = MODEL_RESULTS[modelName];
   const totalRows = result?.rowsAffected ?? preview.rows.length;
 
-  return { output: formatShowOutput(modelName, preview.columns, preview.rows, totalRows) };
+  const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
+  return {
+    output: formatShowOutput(modelName, preview.columns, preview.rows, totalRows),
+    ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
+  };
 }

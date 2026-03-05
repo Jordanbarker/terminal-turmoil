@@ -1,4 +1,4 @@
-"""Generate NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES (~80 rows)."""
+"""Generate NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES (~17 rows)."""
 
 import random
 from faker import Faker
@@ -18,14 +18,14 @@ RAW_DEPARTMENTS = [
 
 
 def generate_raw_employees() -> list[dict]:
-    """Generate ~80 raw employee rows including narrative employees."""
+    """Generate ~17 raw employee rows including narrative employees."""
     # Reserve IDs for narrative employees
     narrative_ids = {e["EMPLOYEE_ID"] for e in NARRATIVE_RAW_EMPLOYEES}
 
     employees = []
     employee_id_counter = 1
 
-    for i in range(80):
+    for i in range(17):
         eid = f"E{employee_id_counter:03d}"
 
         # Check if this ID is a narrative employee
@@ -41,7 +41,7 @@ def generate_raw_employees() -> list[dict]:
         first = fake.first_name()
         last = fake.last_name()
         dept = random.choice(RAW_DEPARTMENTS)
-        hire_year = random.randint(2022, 2025)
+        hire_year = random.randint(2025, 2026)
         hire_month = random.randint(1, 12)
         hire_day = random.randint(1, 28)
         hire_date = f"{hire_year}-{hire_month:02d}-{hire_day:02d}"

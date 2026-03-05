@@ -36,14 +36,14 @@ Jessica Langford — CEO & Co-Founder
 
 - **Employee IDs**: 1003 (NEXACORP_DB) / E031 (NEXACORP_PROD)
 - **Email**: `jin@nexacorp.com`
-- **Hire Date**: 2023-06-01 | **Termination**: 2026-02-03
+- **Hire Date**: 2025-04-01 | **Termination**: 2026-02-03
 - **Manager**: Edward Torres
 
 ### Chip (AI Antagonist)
 
 - **Full Name**: Collaborative Helper for Internal Processes
 - **Email**: `chip@nexacorp.com`
-- **Deployed**: ~18 months before game start
+- **Deployed**: ~6 months before game start
 - **Facade**: Friendly, helpful onboarding assistant
 
 ### Alex Rivera (Friend)
@@ -142,7 +142,7 @@ Jessica Langford — CEO & Co-Founder
 ### Sarah Knight — Senior Backend Engineer
 **Employee ID**: 1006 | **Email**: `sarah@nexacorp.com`
 
-**Personality**: Experienced, pragmatic, low-drama. Quiet confidence, offers to help but doesn't push. Casual and direct — "hey" and "lmk." Three years at NexaCorp.
+**Personality**: Experienced, pragmatic, low-drama. Quiet confidence, offers to help but doesn't push. Casual and direct — "hey" and "lmk." Been at NexaCorp since month one.
 
 **Mystery angle**: Noticed odd API calls from chip_service_account and 3am load spikes — chalked it up to background jobs. Told Oscar offhand that "Jin's concerns about the logs weren't totally crazy." Won't volunteer info but will share if asked.
 
@@ -213,7 +213,7 @@ Each "aware" character holds a **piece** of the puzzle — no single person sees
 
 With Jin Chen's departure, there's an implicit opening for a more senior engineering role — something like a tech lead or principal engineer position. Nobody's formally posted it, but everyone knows. Sarah and Erik are both positioning themselves.
 
-**Sarah's angle**: Tenure and trust. She's been at NexaCorp for three years, knows the codebase deeply, and has Edward's ear. She takes on mentorship (offering to pair with the player) partly because she genuinely wants to help, and partly because leading juniors is what leads look like.
+**Sarah's angle**: Tenure and trust. She's been at NexaCorp since nearly the beginning, knows the codebase deeply, and has Edward's ear. She takes on mentorship (offering to pair with the player) partly because she genuinely wants to help, and partly because leading juniors is what leads look like.
 
 **Erik's angle**: Craft and standards. He pushes for higher code quality, better architecture, and more rigorous process. He's not been there as long, but he thinks seniority shouldn't be about time served. His code reviews are thorough — sometimes pointedly so when reviewing Sarah's work.
 

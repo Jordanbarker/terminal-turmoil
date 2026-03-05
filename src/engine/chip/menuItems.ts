@@ -53,7 +53,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "NexaCorp builds AI-powered enterprise tools. I'm the flagship product — a chatbot " +
       "that handles internal processes, documentation, and system queries. The company was " +
       "founded by Jessica Langford, Marcus Reyes, Tom Chen, and Edward Torres. We're still " +
-      "about 80 people right now, and growing fast.",
+      "about 17 people right now, and growing fast.",
   },
   {
     id: "jchen",

@@ -6,7 +6,6 @@ const nexacorpOfferReplyOptions: ReplyOption[] = [
     replyBody: `Hi Edward,\n\nThanks so much for the offer! I'm really excited about the opportunity.\nI can start Monday — just let me know what I need to bring.\n\nLooking forward to it!`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
-      { type: "objective_completed", detail: "edward_impression:trusting" },
     ],
   },
   {
@@ -24,7 +23,6 @@ const persuasion1ReplyOptions: ReplyOption[] = [
     replyBody: `Hi Edward,\n\nYou make a good case. I'll admit the signing bonus doesn't hurt either.\nCount me in — I can start Monday.\n\nThanks for following up.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
-      { type: "objective_completed", detail: "edward_impression:hesitant" },
     ],
   },
   {
@@ -42,7 +40,6 @@ const persuasion2ReplyOptions: ReplyOption[] = [
     replyBody: `Hi Edward,\n\nOkay, you win. I can't say no to a personal appeal like that.\nI'll start Monday.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
-      { type: "objective_completed", detail: "edward_impression:reluctant" },
     ],
   },
   {

@@ -60,14 +60,26 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "read_onboarding" },
       },
       {
-        id: "explore_jchen",
-        description: "Investigate Jin Chen's files",
-        check: { source: "storyFlag", key: "found_backup_files" },
+        id: "meet_the_team",
+        description: "Read the team directory",
+        check: { source: "storyFlag", key: "read_team_info" },
+      },
+      {
+        id: "review_handoff",
+        description: "Review Jin Chen's handoff notes",
+        check: { source: "storyFlag", key: "read_handoff_notes" },
       },
       {
         id: "run_dbt",
         description: "Run the data pipeline",
         check: { source: "storyFlag", key: "ran_dbt" },
+      },
+      {
+        id: "explore_jchen",
+        description: "Investigate Jin Chen's files",
+        check: { source: "storyFlag", key: "found_backup_files" },
+        hidden: true,
+        optional: true,
       },
       {
         id: "discover_tampering",

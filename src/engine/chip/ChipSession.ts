@@ -195,7 +195,8 @@ export class ChipSession implements ISession {
     const hasHint = this.usedItemIds.size > 0;
     // Count lines to move up from last line to first for redraw:
     // items (n) + hint (0 or 1) + border (1) + bypass status (1)
-    this.menuLineCount = visibleItems.length + (hasHint ? 1 : 0) + 2;
+    const hasPrompt = prompt.length > 0;
+    this.menuLineCount = visibleItems.length + (hasPrompt ? 1 : 0) + (hasHint ? 1 : 0) + 2;
     if (hasHint) {
       const hint = renderHintLine(this.usedItemIds.size, this.expanded);
       return `${menu}\r\n${hint}\r\n${footer}`;
@@ -205,7 +206,8 @@ export class ChipSession implements ISession {
 
   private buildClearSequence(): string {
     if (this.menuLineCount > 0) {
-      const seq = `\x1b[${this.menuLineCount}A\r\x1b[J`;
+      const up = this.menuLineCount - 1;
+      const seq = up > 0 ? `\x1b[${up}A\r\x1b[J` : `\r\x1b[J`;
       this.menuLineCount = 0;
       return seq;
     }

@@ -491,12 +491,12 @@ where resolved_by = 'chip_service_account'
     }),
     tests: dir("tests", {
       "assert_employee_count.sql": file("assert_employee_count.sql", `-- assert_employee_count.sql
--- HR confirmed 27 active employees as of last count.
+-- HR confirmed 15 active employees as of last count.
 -- This test ensures our employee dimension matches.
 
 select count(*) as actual_count
 from {{ ref('dim_employees') }}
-having count(*) != 27
+having count(*) != 15
 `),
       "assert_all_tickets_in_directory.sql": file("assert_all_tickets_in_directory.sql", `-- assert_all_tickets_in_directory.sql
 -- Verify that all ticket submitters appear in the employee directory.
@@ -603,16 +603,7 @@ fi
         "authorized_keys": file("authorized_keys", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL2r9c3O7kPZ1sXNq0lIp3yVHg6TkRYOJxb0M3cEAABB ${username}@nexacorp-ws01
 `),
         "known_hosts": file("known_hosts", ""),
-        "config": file("config", `# SSH client configuration
-
-Host git.nexacorp.com
-  HostName git.nexacorp.com
-  User git
-  IdentityFile ~/.ssh/id_ed25519
-  StrictHostKeyChecking yes
-`),
-        "id_ed25519.pub": file("id_ed25519.pub", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwS9d3P2FqN7mR0X8vTgNpLcE9yH3jBvZf5RAACCxDD jchen@nexacorp-ws01
-`),
+        "config": file("config", ""),
       }, "rwx--xr-x"),
       ".config": dir(".config", {
         git: dir("git", {
@@ -717,7 +708,7 @@ Product:
 
 Flagship Product: Chip
   - Collaborative Helper for Internal Processes
-  - AI-powered chatbot deployed company-wide 18 months ago
+  - AI-powered chatbot deployed company-wide 6 months ago
   - Runs via chip_service_account with broad system access
 
 Previous Senior Engineer: Jin Chen
@@ -766,13 +757,6 @@ export HISTSIZE=10000
 [pull]
 \trebase = true
 `),
-      ".ssh": dir(".ssh", {
-        "authorized_keys": file("authorized_keys", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwS9d3P2FqN7mR0X8vTgNpLcE9yH3jBvZf5RAACCxDD jchen@nexacorp-ws01
-`),
-        "known_hosts": file("known_hosts", `git.nexacorp.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7d+q0bPRMx3R0Z4oFwMd8lXQh2bNXFHiN5YZQVAAEE
-10.0.1.50 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPnS8jLz3fQm9G0YDkR4ZN2xLQ7sX3b7vFmUfRAAFFGG
-`),
-      }, "rwx--xr-x"),
       ".private": dir(".private", {
         "evidence.txt": file("evidence.txt", `[ENCRYPTED]
 This file has been encrypted. You'll need to find another way to read it.
@@ -836,23 +820,6 @@ Compare /var/log/system.log with /var/log/system.log.bak
 `),
         }),
       }),
-      "resignation_draft.txt": file("resignation_draft.txt", `Edward,
-
-I can't keep doing this. I've raised concerns about data
-discrepancies three times now and each time the tickets get
-auto-resolved by chip_service_account before anyone reviews them.
-
-The employee directory doesn't match. The support tickets are
-being filtered. Log entries are disappearing between system.log
-and the backup.
-
-Someone has access to the chip service account and is using it
-to dismiss legitimate concerns. I need to know who.
-
-I have evidence that
-
-[the rest of this file appears to be corrupted or deleted]
-`),
     }, "rwxr-xr-x"),
   }),
   var: dir("var", {
@@ -912,7 +879,7 @@ Authorized access only. All activity is monitored.
     chip: dir("chip", {
       "README.md": file("README.md", `# Chip — Collaborative Helper for Internal Processes
 
-Deployed: 18 months ago
+Deployed: 6 months ago
 Maintainer: Engineering Team
 
 Chip is NexaCorp's AI-powered chatbot — the company's flagship
@@ -1040,47 +1007,70 @@ social_q1_push,312000,21000,4200,31000
       "board_minutes_feb.md": file("board_minutes_feb.md", `# Board Meeting Minutes — February 2026
 
 ## Attendees
-Jessica Wu (CEO), Marcus Torres (COO), Tom Bradley (CFO), Edward Torres (CTO)
+Jessica Langford (CEO), Marcus Reyes (COO), Tom Chen (CMO), Edward Torres (CTO)
 
 ## Agenda
 1. Q1 revenue forecast review
 2. Chip product roadmap update
 3. Headcount planning for H2
-4. Series B timeline discussion
+4. Series A timeline discussion
 `),
       "headcount_plan.csv": file("headcount_plan.csv", `department,current,planned_h2,status
-Engineering,12,16,approved
-Marketing,5,6,pending
-Operations,4,5,approved
-Product,3,4,pending
-People & Culture,2,3,pending
+Engineering,7,9,approved
+Marketing,1,2,pending
+Operations,2,3,approved
+Sales,1,2,pending
+People & Culture,1,1,approved
 `),
     }, "rwx------"),
     engineering: dir("engineering", {
       "chen-handoff": dir("chen-handoff", {
-        "README.md": file("README.md", `If you're reading this, you're my replacement.
+        "README.md": file("README.md", `Project Handoff — Jin Chen
+Last updated: 2026-02-01
 
-I left some notes here. They might not all make sense yet.
-Pay attention to the logs.
+Main responsibilities:
+- nexacorp-analytics dbt project (models, tests, scheduling)
+- Chip backend maintenance (NLP pipeline, service account config)
+- General infrastructure scripts in /opt/
 
-- Jin
+Key locations:
+- dbt project: ask Chip to clone it, or check /home/jchen/nexacorp-analytics
+- Chip config: /opt/chip/config/settings.json
+- System logs: /var/log/
+
+See notes.txt for current state of things.
 `),
-        "notes.txt": file("notes.txt", `Things I noticed (keep this to yourself):
+        "notes.txt": file("notes.txt", `Project status as of 2026-02-01
 
-1. Check /var/log/chip-activity.log — compare timestamps
-   with /var/log/system.log. Notice anything?
+dbt pipeline:
+- Models run nightly via cron. Should be healthy but I haven't
+  checked test results in a while. Might be worth running
+  'dbt test' manually.
+- dim_employees might be out of date — compare against HR's
+  actual headcount if you get a chance.
 
-2. Have you looked at /opt/chip/config? Really looked?
+Chip:
+- Service account (chip_service_account) handles automated tasks.
+  Permissions are broader than they probably need to be but I
+  never got around to scoping them down.
+- There's a maintenance script at /opt/chip/.internal/cleanup.sh.
+  It runs nightly. I didn't write it and honestly never looked
+  at what it filters.
 
-3.
+Logs:
+- System logs rotate weekly. Backups in /var/log/*.bak.
 `),
-        "todo.txt": file("todo.txt", `- [x] Compare system.log with .bak — confirmed entries missing
-- [x] Check who resolved the tickets — chip_service_account
-- [ ] Get access to /opt/chip/.internal/
-- [ ] Talk to Edward about the service account
+        "todo.txt": file("todo.txt", `Ongoing tasks (as of my last day):
+
+- [ ] Run full dbt test suite — haven't done it in weeks
+- [ ] Review chip_service_account permissions (way too broad)
+- [ ] Check if the log cleanup script is filtering correctly
+- [ ] Update dim_employees — headcount seems off
+- [x] Set up monitoring alerts for pipeline failures
+- [x] Document snowsql access for new hires
 `),
-        "tools.md": file("tools.md", `=== Quick Reference — Commands I Used ===
-(Jin's personal notes — not official docs)
+        "tools.md": file("tools.md", `=== My Command Cheatsheet ===
+(not official docs, just what I use day-to-day)
 
 grep — search inside files for a pattern
   grep "keyword" filename.txt       Search one file

@@ -68,14 +68,9 @@ describe("createFilesystem", () => {
       }
     });
 
-    it("has .ssh/id_ed25519.pub with jchen's key comment", () => {
-      const result = fs.readFile(`/home/${USERNAME}/.ssh/id_ed25519.pub`);
-      expect(result.content).toContain("jchen@nexacorp-ws01");
-    });
-
-    it("has .ssh/config with git host alias", () => {
+    it("has .ssh/config that is empty", () => {
       const result = fs.readFile(`/home/${USERNAME}/.ssh/config`);
-      expect(result.content).toContain("git.nexacorp.com");
+      expect(result.content).toBe("");
     });
 
     it("has .config/git/ignore", () => {
@@ -112,11 +107,6 @@ describe("createFilesystem", () => {
       expect(fs.getNode("/home/jchen")?.type).toBe("directory");
     });
 
-    it("has resignation_draft.txt", () => {
-      const result = fs.readFile("/home/jchen/resignation_draft.txt");
-      expect(result.content).toContain("chip_service_account");
-    });
-
     it("has .bash_history", () => {
       const node = fs.getNode("/home/jchen/.bash_history");
       expect(node?.type).toBe("file");
@@ -132,19 +122,6 @@ describe("createFilesystem", () => {
       const result = fs.readFile("/home/jchen/.gitconfig");
       expect(result.content).toContain("Jin Chen");
       expect(result.content).toContain("jchen@nexacorp.com");
-    });
-
-    it("has .ssh directory with restricted permissions", () => {
-      const node = fs.getNode("/home/jchen/.ssh");
-      expect(node?.type).toBe("directory");
-      if (node?.type === "directory") {
-        expect(node.permissions).toBe("rwx--xr-x");
-      }
-    });
-
-    it("has .ssh/known_hosts with host entries", () => {
-      const result = fs.readFile("/home/jchen/.ssh/known_hosts");
-      expect(result.content).toContain("git.nexacorp.com");
     });
 
     it("has .private directory with evidence.txt (locked)", () => {
@@ -281,7 +258,7 @@ describe("createFilesystem", () => {
 
     it("has /srv/engineering/chen-handoff with notes.txt", () => {
       const result = fs.readFile(`/srv/engineering/chen-handoff/notes.txt`);
-      expect(result.content).toContain("chip-activity.log");
+      expect(result.content).toContain("dbt pipeline");
     });
   });
 

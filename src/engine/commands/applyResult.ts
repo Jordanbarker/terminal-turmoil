@@ -169,16 +169,6 @@ export function computeEffects(
       }
     }
 
-    // Process edward_impression from mail -s trigger events (home PC only)
-    if (applyCtx.activeComputer === "home") {
-      for (const event of events) {
-        if (event.type === "objective_completed" && event.detail.startsWith("edward_impression:")) {
-          const impression = event.detail.split(":")[1];
-          effects.storyFlagUpdates.push({ flag: "edward_impression", value: impression });
-        }
-      }
-    }
-
   }
 
   // Process email deliveries

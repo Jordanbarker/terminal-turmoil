@@ -146,22 +146,9 @@ const mail: CommandHandler = (args, flags, ctx) => {
     const filename = `sent_${Date.now()}`;
     const result = ctx.fs.writeFile(`${getSentDir(username)}/${filename}`, content);
     if (result.fs) {
-      // Parse subject for edward_impression flag (home PC offer reply)
-      const triggerEvents: GameEvent[] = [];
-      if (computer === "home") {
-        const lower = subject.toLowerCase();
-        let impression = "neutral";
-        if (/excited|thrilled|can't wait|honored/.test(lower)) {
-          impression = "trusting";
-        } else if (/question|concern|wondering|curious/.test(lower)) {
-          impression = "guarded";
-        }
-        triggerEvents.push({ type: "objective_completed", detail: `edward_impression:${impression}` });
-      }
       return {
         output: `Message sent to ${recipient}.`,
         newFs: result.fs,
-        triggerEvents,
       };
     }
     return { output: "mail: failed to send message" };

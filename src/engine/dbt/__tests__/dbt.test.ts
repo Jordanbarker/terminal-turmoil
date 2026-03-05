@@ -699,6 +699,55 @@ describe("findDbtProject (additional)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// 6. found_data_filtering triggerEvents
+// ---------------------------------------------------------------------------
+describe("found_data_filtering triggerEvents", () => {
+  const filterEvent = { type: "file_read", detail: "found_data_filtering" };
+
+  it("runModels emits triggerEvent for chip_internal model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx, "chip_log_filter");
+    expect(result.triggerEvents).toContainEqual(filterEvent);
+  });
+
+  it("runModels does NOT emit triggerEvent for standard model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx, "dim_employees");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("runModels does NOT emit triggerEvent for default run (no chip_internal)", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx);
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("showModel emits triggerEvent for chip_internal model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = showModel(ctx, "chip_ticket_suppression");
+    expect(result.triggerEvents).toContainEqual(filterEvent);
+  });
+
+  it("showModel does NOT emit triggerEvent for standard model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = showModel(ctx, "dim_employees");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("compileModel emits triggerEvent for chip_internal model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = compileModel(ctx, "chip_data_cleanup");
+    expect(result.triggerEvents).toContainEqual(filterEvent);
+  });
+
+  it("compileModel does NOT emit triggerEvent for standard model", () => {
+    const ctx = makeCtx(projectDir);
+    const result = compileModel(ctx, "stg_raw_nexacorp__employees");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+});
+
 describe("parseProjectConfig (additional)", () => {
   it("returns defaults for missing fields", () => {
     const config = parseProjectConfig("random: stuff");

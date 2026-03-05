@@ -11,6 +11,7 @@ import { SnowflakeState } from "../engine/snowflake/state";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { serializeSnowflake, deserializeSnowflake, SerializedSnowflake } from "../engine/snowflake/serialization";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
+import { seedDeliveredEmails } from "../engine/mail/delivery";
 
 const MAX_HISTORY = 500;
 
@@ -56,15 +57,26 @@ interface GameStore {
   loadGame: (slotId: SaveSlotId) => boolean;
 }
 
-function buildFs(username: string, computer: ComputerId, storyFlags: StoryFlags = {}) {
+function buildFs(
+  username: string,
+  computer: ComputerId,
+  storyFlags: StoryFlags = {},
+  deliveredEmailIds: string[] = []
+) {
   const root = computer === "home"
     ? createHomeFilesystem(username)
     : createNexacorpFilesystem(username, storyFlags);
-  return new VirtualFS(
+  let fs = new VirtualFS(
     root,
     `/home/${username}`,
     `/home/${username}`
   );
+
+  if (deliveredEmailIds.length > 0) {
+    fs = seedDeliveredEmails(fs, deliveredEmailIds, computer, username);
+  }
+
+  return fs;
 }
 
 function createInitialState(username = PLAYER.username) {
@@ -98,7 +110,7 @@ export const useGameStore = create<GameStore>()(
       setCwd: (cwd) => set({ cwd }),
       setUsername: (username) => {
         const state = get();
-        const fs = buildFs(username, state.activeComputer, state.storyFlags);
+        const fs = buildFs(username, state.activeComputer, state.storyFlags, state.deliveredEmailIds);
         let finalFs = fs;
         if (state.activeComputer === "nexacorp") {
           finalFs = syncToVirtualFS(state.snowflakeState, fs);
@@ -188,6 +200,7 @@ export const useGameStore = create<GameStore>()(
         const username = (p.username as string) ?? currentState.username;
         const activeComputer = (p.activeComputer as ComputerId) ?? currentState.activeComputer;
         const storyFlags = (p.storyFlags as StoryFlags) ?? currentState.storyFlags;
+        const deliveredEmailIds = (p.deliveredEmailIds as string[]) ?? [];
 
         // Backward compat: existing saves with hasSeenIntro should have commands_unlocked
         if ((p.hasSeenIntro as boolean) && !storyFlags.commands_unlocked) {
@@ -201,13 +214,13 @@ export const useGameStore = create<GameStore>()(
           if (serializedFs?.root) {
             fs = deserializeFS(serializedFs);
             if (!fs.getNode(fs.homeDir)) {
-              fs = buildFs(username, activeComputer, storyFlags);
+              fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
             }
           } else {
-            fs = buildFs(username, activeComputer, storyFlags);
+            fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
           }
         } catch {
-          fs = buildFs(username, activeComputer, storyFlags);
+          fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
         }
 
         // Reconstruct SnowflakeState

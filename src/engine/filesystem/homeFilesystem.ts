@@ -1417,7 +1417,7 @@ of interviews, so here we are.
           "stars": 1,
           "title": "What a mess",
           "role": "Former Employee — IT Contractor",
-          "date": "1 year ago",
+          "date": "6 months ago",
           "text": "Management doesn't have a clue."
         },
         {

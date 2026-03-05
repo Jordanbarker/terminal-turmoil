@@ -85,7 +85,6 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `research_depth` | `file_read` | `/home/{username}/glassdoor_reviews.json` | `"deep"` |
 | `read_auto_apply` | `file_read` | `/home/{username}/auto_apply.py` | `true` |
 | `read_bashrc` | `file_read` | `/home/{username}/.bashrc` | `true` |
-| `edward_impression` | — | — | `"trusting"` or `"guarded"` (set via mail reply prompt) |
 
 ### NexaCorp Investigation Flags (`getNexacorpStoryFlagTriggers()`)
 
@@ -159,7 +158,6 @@ Command execution
 
 ### Special Cases in `computeEffects()`
 
-- **`edward_impression` flag**: Set from `triggerEvents` in prompt session results (mail reply), not from file-read triggers
 - **`discovered_log_tampering`**: Detected when `diff` command is run on NexaCorp with args containing `.bak` files — not via standard `StoryFlagTrigger`
 - **Transition trigger**: When a `file_read` event matches the `nexacorp_followup` email file path, sets `triggerTransition: true`
 
@@ -168,7 +166,7 @@ Command execution
 Full sequence:
 
 1. Player reads `nexacorp_offer` email → reply prompt shown (accept / reject)
-2. If accepted: sets `edward_impression` flag, fires `accepted_nexacorp` objective event
+2. If accepted: fires `accepted_nexacorp` objective event
    If rejected: fires `rejected_nexacorp_1` → Edward sends persuasion email #1 (accept/reject)
    If rejected again: fires `rejected_nexacorp_2` → Edward sends persuasion email #2 (accept/reject)
    If rejected a third time: fires `rejected_nexacorp_final` → dead end, story can't progress
