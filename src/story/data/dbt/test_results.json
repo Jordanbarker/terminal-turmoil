@@ -105,6 +105,21 @@
     "time": 0.06
   },
   {
+    "name": "not_null_stg_raw_nexacorp__campaign_metrics_campaign_id",
+    "status": "pass",
+    "time": 0.06
+  },
+  {
+    "name": "unique_rpt_campaign_performance_campaign_name",
+    "status": "pass",
+    "time": 0.09
+  },
+  {
+    "name": "not_null_rpt_campaign_performance_campaign_name",
+    "status": "pass",
+    "time": 0.06
+  },
+  {
     "name": "assert_total_employees",
     "status": "warn",
     "time": 0.23,

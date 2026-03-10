@@ -23,6 +23,7 @@ const nano: CommandHandler = (args, _flags, ctx) => {
       return { output: `nano: "${target}": Permission denied` };
     }
     const readOnly = !node.permissions.startsWith("rw");
+    const isBackupScript = ctx.activeComputer === "home" && absolutePath.endsWith("/scripts/backup.sh");
     return {
       output: "",
       editorSession: {
@@ -30,6 +31,11 @@ const nano: CommandHandler = (args, _flags, ctx) => {
         content: node.content,
         readOnly,
         isNewFile: false,
+        ...(isBackupScript && {
+          triggerRow: 0,
+          triggerEvents: [{ type: "file_read" as const, detail: "fixed_backup_script" }],
+          requireSave: true,
+        }),
       },
     };
   }

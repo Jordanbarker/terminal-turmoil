@@ -1,44 +1,27 @@
 import { ComputerId, StoryFlags } from "../../state/types";
-import { StoryFlagName } from "../narrative/storyFlags";
+import { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS } from "../../story/commandGates";
 
-/** Commands available before the player unlocks the full set by scrolling through terminal_notes.txt. */
-export const INITIAL_HOME_COMMANDS: ReadonlySet<string> = new Set([
-  "nano",
-  "clear",
-  "help",
-  "save",
-  "load",
-  "newgame",
-]);
-
-/** Full set of commands available on the home PC after unlocking. */
-export const HOME_COMMANDS: ReadonlySet<string> = new Set([
-  "ls",
-  "cd",
-  "cat",
-  "pwd",
-  "clear",
-  "help",
-  "mail",
-  "nano",
-  "save",
-  "load",
-  "newgame",
-  "history",
-  "ssh",
-  "pdftotext",
-  "sudo",
-  "apt",
-]);
+// Re-export for convenience
+export { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS };
 
 /** Returns true if the command is available on the given computer. */
 export function isCommandAvailable(commandName: string, computer: ComputerId, storyFlags?: StoryFlags): boolean {
+  if (computer === "devcontainer") {
+    return DEVCONTAINER_COMMANDS.has(commandName);
+  }
   if (computer === "nexacorp") {
-    if (commandName === "chip" && !storyFlags?.chip_unlocked) return false;
+    const requiredFlag = NEXACORP_GATED[commandName];
+    if (requiredFlag && !storyFlags?.[requiredFlag]) return false;
     return true;
   }
-  if (commandName === "pdftotext" && !storyFlags?.pdftotext_unlocked) return false;
-  if (commandName === "tree" && !storyFlags?.tree_installed) return false;
-  if (storyFlags?.commands_unlocked) return HOME_COMMANDS.has(commandName);
-  return INITIAL_HOME_COMMANDS.has(commandName);
+  const homeFlag = HOME_GATED[commandName];
+  if (homeFlag) {
+    if (!storyFlags?.[homeFlag]) return false;
+    return true;
+  }
+  if (HOME_COMMANDS.has(commandName)) return true;
+  // Commands unlocked at NexaCorp carry over to home PC
+  const nexaFlag = NEXACORP_GATED[commandName];
+  if (nexaFlag && storyFlags?.[nexaFlag]) return true;
+  return false;
 }

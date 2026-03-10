@@ -2,17 +2,10 @@ import { VirtualFS } from "../engine/filesystem/VirtualFS";
 
 export type GamePhase = "login" | "booting" | "playing" | "transitioning";
 
-export type ComputerId = "home" | "nexacorp";
+export type ComputerId = "home" | "nexacorp" | "devcontainer";
 
-export const PLAYER = {
-  displayName: "Ren",   // Narrative text, documents, sign-offs
-  username: "ren",      // Unix username (paths, prompts, emails)
-} as const;
-
-export const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: string }> = {
-  home: { hostname: "maniac-iv", promptHostname: "maniac-iv" },
-  nexacorp: { hostname: "nexacorp-ws01", promptHostname: "nexacorp-ws01" },
-};
+// Re-export for convenience so existing imports don't break
+export { PLAYER, COMPUTERS } from "../story/player";
 
 export type StoryFlags = Record<string, string | boolean>;
 

@@ -2,20 +2,22 @@ import { useCallback, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
-import { EditorSession, EditorTrigger } from "../engine/editor/EditorSession";
+import { EditorSession } from "../engine/editor/EditorSession";
 import { PythonReplSession } from "../engine/python/PythonReplSession";
 import { SnowSQLSession } from "../engine/snowflake/session/SnowSQLSession";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { checkEmailDeliveries } from "../engine/mail/delivery";
+import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
+import { colorize, ansi } from "../lib/ansi";
 import { PromptSession } from "../engine/prompt/PromptSession";
 import { SshSession } from "../engine/ssh/SshSession";
 import { ChipSession } from "../engine/chip/ChipSession";
+import { PiperSession } from "../engine/piper/PiperSession";
+import { checkPiperDeliveries } from "../engine/piper/delivery";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
-import { StoryFlags } from "../state/types";
-import { COMMANDS_SECTION_ROW } from "../engine/filesystem/homeFilesystem";
-import { UNLOCK_BOX } from "../lib/ascii";
-import { buildDbtProject } from "../engine/filesystem/initialFilesystem";
+import { ComputerId, StoryFlags } from "../state/types";
+import { buildDbtProject } from "../story/filesystem/nexacorp";
 
 interface EventActionContext {
   term: Terminal;
@@ -33,13 +35,29 @@ interface EventActionResult {
 /** Maps objective_completed event details to special actions. New events go here. */
 const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResult> = {
   ssh_connect: () => ({ shouldTransition: true, skipDefault: true }),
-  commands_unlocked: (ctx) => {
-    ctx.setStoryFlag("commands_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, commands_unlocked: true };
-    UNLOCK_BOX.forEach((line) => ctx.term.writeln(line));
-    useGameStore.getState().addToast("New commands unlocked! Type 'help' to see all.");
-    useGameStore.getState().completeObjective("learn_commands");
-    return { skipDefault: true };
+  search_tools_accepted: (ctx) => {
+    ctx.setStoryFlag("search_tools_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, search_tools_unlocked: true };
+    useGameStore.getState().addToast("grep, find, and diff are now available!");
+    return {};
+  },
+  inspection_tools_accepted: (ctx) => {
+    ctx.setStoryFlag("inspection_tools_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, inspection_tools_unlocked: true };
+    useGameStore.getState().addToast("head, tail, and wc are now available!");
+    return {};
+  },
+  processing_tools_accepted: (ctx) => {
+    ctx.setStoryFlag("processing_tools_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, processing_tools_unlocked: true };
+    useGameStore.getState().addToast("sort and uniq are now available!");
+    return {};
+  },
+  pipeline_tools_accepted: (ctx) => {
+    ctx.setStoryFlag("coder_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, coder_unlocked: true };
+    useGameStore.getState().addToast("coder command is now available! Try: coder ssh ai");
+    return {};
   },
   dbt_project_cloned: (ctx) => {
     ctx.setStoryFlag("dbt_project_cloned", true);
@@ -59,10 +77,12 @@ interface SessionRouterDeps {
   fsRef: React.MutableRefObject<VirtualFS>;
   usernameRef: React.MutableRefObject<string>;
   deliveredIdsRef: React.MutableRefObject<string[]>;
-  activeComputerRef: React.MutableRefObject<"home" | "nexacorp">;
+  deliveredPiperIdsRef: React.MutableRefObject<string[]>;
+  activeComputerRef: React.MutableRefObject<ComputerId>;
   storyFlagsRef: React.MutableRefObject<StoryFlags>;
   setFs: (fs: VirtualFS) => void;
   addDeliveredEmails: (ids: string[]) => void;
+  addDeliveredPiperMessages: (ids: string[]) => void;
   setStoryFlag: (key: string, value: string | boolean) => void;
   writePrompt: (term: Terminal) => void;
   runSshTransition: (term: Terminal) => void;
@@ -73,10 +93,12 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     fsRef,
     usernameRef,
     deliveredIdsRef,
+    deliveredPiperIdsRef,
     activeComputerRef,
     storyFlagsRef,
     setFs,
     addDeliveredEmails,
+    addDeliveredPiperMessages,
     setStoryFlag,
     writePrompt,
     runSshTransition,
@@ -84,6 +106,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
   const sessionRef = useRef<ISession | null>(null);
   const sessionTypeRef = useRef<string | null>(null);
+  const piperInfoRef = useRef<import("../engine/piper/types").PiperSessionInfo | null>(null);
 
   const hasActiveSession = useCallback(() => {
     return sessionRef.current !== null;
@@ -114,6 +137,18 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       if (type === "snowsql" && result.newState) {
         const store = useGameStore.getState();
         store.setSnowflakeState(result.newState);
+      }
+
+      // Sync piper IDs back from session (replies + seen markers)
+      if (type === "piper" && piperInfoRef.current) {
+        const newIds = piperInfoRef.current.deliveredPiperIds.filter(
+          (id) => !deliveredPiperIdsRef.current.includes(id)
+        );
+        if (newIds.length > 0) {
+          addDeliveredPiperMessages(newIds);
+          deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...newIds];
+        }
+        piperInfoRef.current = null;
       }
 
       if (result.newFs) {
@@ -152,13 +187,39 @@ export function useSessionRouter(deps: SessionRouterDeps) {
               ...deliveredIdsRef.current,
               ...delivery.newDeliveries,
             ];
-            term.write(`\r\n\nYou have new mail in /var/mail/${usernameRef.current}`);
+            term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
+          }
+
+          // Check piper deliveries
+          const piperNew = checkPiperDeliveries(event, deliveredPiperIdsRef.current, usernameRef.current);
+          if (piperNew.length > 0) {
+            addDeliveredPiperMessages(piperNew);
+            deliveredPiperIdsRef.current = [
+              ...deliveredPiperIdsRef.current,
+              ...piperNew,
+            ];
+            term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
           }
 
           // Wire objective_completed events to store
           if (event.type === "objective_completed") {
             const store = useGameStore.getState();
             store.completeObjective(event.detail);
+          }
+        }
+
+        // Process story flag triggers from session events
+        const triggers = activeComputerRef.current === "home"
+          ? getStoryFlagTriggers(usernameRef.current)
+          : activeComputerRef.current === "devcontainer"
+            ? getDevcontainerStoryFlagTriggers(usernameRef.current)
+            : getNexacorpStoryFlagTriggers(usernameRef.current);
+        for (const event of result.triggerEvents) {
+          const flagResults = checkStoryFlagTriggers(event, triggers, storyFlagsRef.current);
+          for (const flagResult of flagResults) {
+            setStoryFlag(flagResult.flag, flagResult.value);
+            storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
+            if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
           }
         }
 
@@ -171,30 +232,17 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       writePrompt(term);
       return true;
     },
-    [setFs, addDeliveredEmails, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, activeComputerRef, storyFlagsRef]
-  );
-
-  /** Build an EditorTrigger if the file is terminal_notes.txt on home PC before unlock. */
-  const getEditorTrigger = useCallback(
-    (filePath: string): EditorTrigger | undefined => {
-      if (activeComputerRef.current !== "home") return undefined;
-      if (storyFlagsRef.current.commands_unlocked) return undefined;
-      const homeDir = fsRef.current.homeDir;
-      if (filePath !== `${homeDir}/terminal_notes.txt`) return undefined;
-      return {
-        triggerRow: COMMANDS_SECTION_ROW,
-        triggerEvents: [{ type: "objective_completed", detail: "commands_unlocked" }],
-      };
-    },
-    [fsRef, activeComputerRef, storyFlagsRef]
+    [setFs, addDeliveredEmails, addDeliveredPiperMessages, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef]
   );
 
   /** Start a new session from an AppliedEffects startSession descriptor. */
   const startSession = useCallback(
     (term: Terminal, session: SessionToStart): void => {
       if (session.type === "editor") {
-        const { filePath, content, readOnly } = session.info;
-        const trigger = getEditorTrigger(filePath);
+        const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave } = session.info;
+        const trigger = triggerEvents
+          ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave }
+          : undefined;
         const editorSession = new EditorSession(
           term,
           fsRef.current,
@@ -262,9 +310,20 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         sessionRef.current = chipSession;
         sessionTypeRef.current = "chip";
         chipSession.enter();
+      } else if (session.type === "piper") {
+        const store = useGameStore.getState();
+        const piperInfo = {
+          ...session.info,
+          deliveredPiperIds: [...store.deliveredPiperIds],
+        };
+        piperInfoRef.current = piperInfo;
+        const piperSession = new PiperSession(term, piperInfo, store.username);
+        sessionRef.current = piperSession;
+        sessionTypeRef.current = "piper";
+        piperSession.enter();
       }
     },
-    [setFs, setStoryFlag, writePrompt, fsRef, usernameRef, storyFlagsRef, getEditorTrigger]
+    [setFs, setStoryFlag, writePrompt, fsRef, usernameRef, storyFlagsRef]
   );
 
   return { hasActiveSession, routeInput, startSession };

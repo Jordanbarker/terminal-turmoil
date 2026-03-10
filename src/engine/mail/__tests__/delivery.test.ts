@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { checkEmailDeliveries, GameEvent } from "../delivery";
 import { VirtualFS } from "../../filesystem/VirtualFS";
-import { createFilesystem } from "../../filesystem/initialFilesystem";
+import { createFilesystem } from "../../../story/filesystem/nexacorp";
 
 const USERNAME = "testplayer";
 
@@ -20,7 +20,6 @@ describe("checkEmailDeliveries", () => {
 
     const { newDeliveries } = checkEmailDeliveries(fs, event, []);
     expect(newDeliveries).toContain("edward_paranoid");
-    expect(newDeliveries).toContain("auri_pipeline_help");
   });
 
   it("does not deliver immediate emails", () => {
@@ -110,15 +109,13 @@ describe("checkEmailDeliveries", () => {
     };
 
     const { fs: newFs } = checkEmailDeliveries(fs, event, []);
-    // Verify new emails were written (seq 4 and 5 based on 3 existing)
+    // Verify new email was written (seq 4 based on 3 existing immediate emails)
     const newNode = newFs.getNode(`/var/mail/${USERNAME}/new`);
     expect(newNode).toBeDefined();
     if (newNode && newNode.type === "directory") {
       const filenames = Object.keys(newNode.children);
       const hasSeq4 = filenames.some((f) => f.startsWith("004_"));
-      const hasSeq5 = filenames.some((f) => f.startsWith("005_"));
       expect(hasSeq4).toBe(true);
-      expect(hasSeq5).toBe(true);
     }
   });
 

@@ -15,12 +15,14 @@ scripts/
 
 Dependencies (engine layer only — no React/Zustand):
   src/engine/commands/    # parser, registry, builtins, applyResult
-  src/engine/filesystem/  # VirtualFS, homeFilesystem, initialFilesystem
+  src/engine/filesystem/  # VirtualFS, serialization
   src/engine/snowflake/   # SnowflakeState, seed, session context
   src/engine/mail/        # delivery, mailUtils
   src/engine/prompt/      # PromptSessionInfo, PromptOption
   src/lib/                # ansi, pathUtils
-  src/state/types.ts      # ComputerId, StoryFlags, PLAYER, COMPUTERS
+  src/state/types.ts      # ComputerId, StoryFlags
+  src/story/player.ts     # PLAYER, COMPUTERS
+  src/story/filesystem/   # home.ts (homeFilesystem), nexacorp.ts (initialFilesystem)
 ```
 
 The script mocks `globalThis.localStorage` before any imports so Zustand's persist middleware doesn't crash in Node.

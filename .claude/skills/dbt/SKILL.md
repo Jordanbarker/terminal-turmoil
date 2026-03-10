@@ -25,7 +25,7 @@ src/engine/
 │   └── builtins/
 │       └── dbt.ts            # dbt command handler (subcommand dispatch)
 
-src/engine/filesystem/initialFilesystem.ts  # nexacorp-analytics/ directory tree
+src/story/filesystem/nexacorp.ts             # nexacorp-analytics/ directory tree
 src/engine/commands/builtins/index.ts       # import "./dbt" registration
 src/engine/suggestions/suggest.ts           # dbt subcommand suggestions
 src/engine/mail/emails.ts                   # Analytics-related triggered emails
@@ -197,7 +197,7 @@ nexacorp-analytics/
 
 ## Adding New Models/Tests
 
-1. **Add the SQL file** to the appropriate directory under `models/` in `initialFilesystem.ts`
+1. **Add the SQL file** to the appropriate directory under `models/` in `story/filesystem/nexacorp.ts`
 2. **Add a `ModelRunResult` entry** in `data.ts` `MODEL_RESULTS` map
 3. **Add to `STANDARD_MODEL_ORDER`** (or `CHIP_INTERNAL_MODELS` if hidden)
 4. **Add `MODEL_PREVIEW_DATA` entry** for `dbt show --select`
@@ -215,7 +215,7 @@ nexacorp-analytics/
 - **Registration pattern**: `register("dbt", handler, "description", HELP_TEXTS.dbt)` at module bottom
 - **ANSI colors**: All output uses `colorize()` and `ansi` constants from `src/lib/ansi.ts`
 - **Snowflake data lives in engine layer**: Not in the filesystem — analogous to how mail content is separate from Maildir files
-- **`file()` / `dir()` helpers**: Filesystem content uses existing `initialFilesystem.ts` patterns
+- **`file()` / `dir()` helpers**: Filesystem content uses existing `story/filesystem/nexacorp.ts` patterns
 - **Project location detection**: `findDbtProject()` walks up directory tree from cwd looking for `dbt_project.yml`
 
 ## Narrative Context

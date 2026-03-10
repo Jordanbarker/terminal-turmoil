@@ -1,9 +1,9 @@
 import { SnowflakeState, SnowflakeData } from "../state";
 import { Database, Schema, Table, Column, Row, createSchema } from "../types";
 
-import nexacorpDbJson from "./generated/nexacorp_db.json";
-import nexacorpProdJson from "./generated/nexacorp_prod.json";
-import chipAnalyticsJson from "./generated/chip_analytics.json";
+import nexacorpDbJson from "../../../story/data/snowflake/nexacorp_db.json";
+import nexacorpProdJson from "../../../story/data/snowflake/nexacorp_prod.json";
+import chipAnalyticsJson from "../../../story/data/snowflake/chip_analytics.json";
 
 // ── Date columns per table (for reconstituting Date objects from JSON strings) ──
 const DATE_COLUMNS: Record<string, Set<string>> = {

@@ -27,7 +27,7 @@ const ssh: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (resolved.host !== NEXACORP_HOST) {
-    return { output: `ssh: connect to host ${resolved.host}: Connection refused` };
+    return { output: `ssh: Could not resolve hostname "${resolved.host}": Name or service not known` };
   }
 
   if (!resolved.user) {

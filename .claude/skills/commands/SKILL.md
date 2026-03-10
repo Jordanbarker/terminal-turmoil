@@ -71,6 +71,7 @@ interface CommandResult {
   chipSession?: { ... };        // Enter Chip assistant
   gameAction?: GameAction;      // save/load/newgame
   triggerEvents?: GameEvent[];  // Events for email/story processing
+  transitionTo?: ComputerId;   // Transition to another computer (devcontainer, nexacorp)
 }
 
 type CommandHandler = (args: string[], flags: Record<string, boolean>, ctx: CommandContext) => CommandResult;
@@ -148,6 +149,7 @@ interface AppliedEffects {
   newDeliveredEmailIds: string[];
   emailNotifications: number;
   suppressPrompt: boolean;
+  transitionTo?: ComputerId;  // Computer transition (coder/exit commands)
 }
 ```
 
@@ -180,10 +182,14 @@ Session types: editor (nano), snowsql (SnowSQL REPL), pythonRepl (Pyodide), prom
 
 ## Command Availability (`availability.ts`)
 
-`isCommandAvailable(commandName, computer, storyFlags)` gates which commands are accessible:
-- **NexaCorp**: All commands available
-- **Home PC (initial)**: `INITIAL_HOME_COMMANDS` — nano, clear, help, save, load, newgame
-- **Home PC (unlocked)**: `HOME_COMMANDS` — ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, ssh (unlocked via `commands_unlocked` story flag)
+`isCommandAvailable(commandName, computer, storyFlags)` gates which commands are accessible. The gate data (`HOME_COMMANDS`, `NEXACORP_GATED`, `HOME_GATED`) is defined in `story/commandGates.ts` and imported by `availability.ts`:
+- **Home PC**: `HOME_COMMANDS` set available from the start (ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, ssh, pdftotext, tree, sudo, apt). Two exceptions: `pdftotext` requires `pdftotext_unlocked` flag (visiting `~/Downloads`), `tree` requires `tree_installed` flag (`apt install tree`)
+- **NexaCorp**: All commands available by default, except those in `NEXACORP_GATED` which require story flags from colleague emails:
+  - Search tools (grep, find, diff) — gated by `search_tools_unlocked`
+  - Inspection tools (head, tail, wc) — gated by `inspection_tools_unlocked`
+  - Processing tools (sort, uniq) — gated by `processing_tools_unlocked`
+  - Pipeline tools (dbt, snowsql, python) — gated by `pipeline_tools_unlocked`
+  - Chip assistant (chip) — gated by `chip_unlocked`
 
 ## Adding a New Command
 

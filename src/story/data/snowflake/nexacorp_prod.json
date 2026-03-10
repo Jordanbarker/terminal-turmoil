@@ -1527,6 +1527,114 @@
             }
           ],
           "createdAt": "2026-02-03"
+        },
+        "CAMPAIGN_METRICS": {
+          "name": "CAMPAIGN_METRICS",
+          "columns": [
+            {
+              "name": "CAMPAIGN_ID",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "CAMPAIGN_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "CHANNEL",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "IMPRESSIONS",
+              "type": "NUMBER",
+              "nullable": false
+            },
+            {
+              "name": "CLICKS",
+              "type": "NUMBER",
+              "nullable": false
+            },
+            {
+              "name": "CONVERSIONS",
+              "type": "NUMBER",
+              "nullable": false
+            },
+            {
+              "name": "SPEND",
+              "type": "NUMBER",
+              "nullable": false
+            },
+            {
+              "name": "REPORT_DATE",
+              "type": "DATE",
+              "nullable": false
+            }
+          ],
+          "rows": [
+            {
+              "CAMPAIGN_ID": "CM-001",
+              "CAMPAIGN_NAME": "chip_launch",
+              "CHANNEL": "social",
+              "IMPRESSIONS": 245000,
+              "CLICKS": 18200,
+              "CONVERSIONS": 3400,
+              "SPEND": 42000,
+              "REPORT_DATE": "2026-01-15"
+            },
+            {
+              "CAMPAIGN_ID": "CM-002",
+              "CAMPAIGN_NAME": "enterprise_webinar",
+              "CHANNEL": "email",
+              "IMPRESSIONS": 89000,
+              "CLICKS": 6700,
+              "CONVERSIONS": 890,
+              "SPEND": 15500,
+              "REPORT_DATE": "2026-01-15"
+            },
+            {
+              "CAMPAIGN_ID": "CM-003",
+              "CAMPAIGN_NAME": "blog_ai_series",
+              "CHANNEL": "content",
+              "IMPRESSIONS": 156000,
+              "CLICKS": 12400,
+              "CONVERSIONS": 2100,
+              "SPEND": 8900,
+              "REPORT_DATE": "2026-01-15"
+            },
+            {
+              "CAMPAIGN_ID": "CM-004",
+              "CAMPAIGN_NAME": "social_q1_push",
+              "CHANNEL": "social",
+              "IMPRESSIONS": 312000,
+              "CLICKS": 21000,
+              "CONVERSIONS": 4200,
+              "SPEND": 31000,
+              "REPORT_DATE": "2026-01-15"
+            },
+            {
+              "CAMPAIGN_ID": "CM-005",
+              "CAMPAIGN_NAME": "chip_launch",
+              "CHANNEL": "social",
+              "IMPRESSIONS": 245000,
+              "CLICKS": 18200,
+              "CONVERSIONS": 3400,
+              "SPEND": 42000,
+              "REPORT_DATE": "2026-01-15"
+            },
+            {
+              "CAMPAIGN_ID": "CM-006",
+              "CAMPAIGN_NAME": "chip_launch",
+              "CHANNEL": "social",
+              "IMPRESSIONS": 245000,
+              "CLICKS": 18200,
+              "CONVERSIONS": 3400,
+              "SPEND": 42000,
+              "REPORT_DATE": "2026-01-15"
+            }
+          ],
+          "createdAt": "2026-01-20"
         }
       }
     },

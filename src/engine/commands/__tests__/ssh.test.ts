@@ -54,7 +54,7 @@ function createCtx(overrides?: Partial<CommandContext>): CommandContext {
     cwd: "/home/ren",
     homeDir: "/home/ren",
     activeComputer: "home",
-    storyFlags: { commands_unlocked: true },
+    storyFlags: { commands_unlocked: true, ssh_unlocked: true },
     ...overrides,
   };
 }
@@ -72,9 +72,9 @@ describe("ssh command", () => {
     expect(result.sshSession).toBeUndefined();
   });
 
-  it("returns connection refused for unknown host", () => {
+  it("returns DNS error for unknown host", () => {
     const result = execute("ssh", ["ren@badhost.example.com"], {}, createCtx());
-    expect(result.output).toContain("Connection refused");
+    expect(result.output).toContain("Name or service not known");
     expect(result.sshSession).toBeUndefined();
   });
 
@@ -113,9 +113,9 @@ describe("ssh command", () => {
     expect(result.sshSession).toBeUndefined();
   });
 
-  it("returns error for bare unknown host", () => {
+  it("returns DNS error for bare unknown host", () => {
     const result = execute("ssh", ["randomhost"], {}, createCtx());
-    expect(result.output).toContain("Connection refused");
+    expect(result.output).toContain("Name or service not known");
     expect(result.sshSession).toBeUndefined();
   });
 });

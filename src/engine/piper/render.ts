@@ -1,0 +1,143 @@
+import { colorize, ansi } from "../../lib/ansi";
+import { PiperMessage, PiperReplyOption } from "./types";
+
+export function renderPiperHeader(title: string, width: number, description?: string): string {
+  const top = colorize(`\u256D\u2500\u2500\u2500 ${title} ${"─".repeat(Math.max(0, width - title.length - 7))}\u256E`, ansi.magenta);
+  const descLine = description
+    ? colorize(`\u2502`, ansi.magenta) + colorize(`  ${description}`, ansi.dim) + " ".repeat(Math.max(0, width - description.length - 4)) + colorize(`\u2502`, ansi.magenta)
+    : colorize(`\u2502`, ansi.magenta) + " ".repeat(Math.max(0, width - 2)) + colorize(`\u2502`, ansi.magenta);
+  const bot = colorize(`\u2570${"─".repeat(Math.max(0, width - 2))}\u256F`, ansi.magenta);
+  return [top, descLine, bot].join("\r\n");
+}
+
+export function renderChannelList(
+  channels: { name: string; type: "channel" | "dm"; unread: number }[],
+  selectedIndex: number,
+  width: number
+): string {
+  const lines: string[] = [];
+
+  // Separate channels and DMs
+  const channelItems = channels.filter((c) => c.type === "channel");
+  const dmItems = channels.filter((c) => c.type === "dm");
+
+  let globalIdx = 0;
+
+  if (channelItems.length > 0) {
+    lines.push(colorize("  Channels", ansi.dim));
+    for (const ch of channelItems) {
+      const marker = globalIdx === selectedIndex ? colorize(" \u276F ", ansi.magenta + ansi.bold) : "   ";
+      const num = `${globalIdx + 1}.`;
+      const badge = ch.unread > 0 ? colorize(` (${ch.unread} new)`, ansi.yellow) : "";
+      const label = globalIdx === selectedIndex
+        ? colorize(`${num} ${ch.name}`, ansi.bold) + badge
+        : `${num} ${ch.name}${badge}`;
+      lines.push(`${marker}${label}`);
+      globalIdx++;
+    }
+  }
+
+  if (dmItems.length > 0) {
+    lines.push("");
+    lines.push(colorize("  Direct Messages", ansi.dim));
+    for (const ch of dmItems) {
+      const marker = globalIdx === selectedIndex ? colorize(" \u276F ", ansi.magenta + ansi.bold) : "   ";
+      const num = `${globalIdx + 1}.`;
+      const badge = ch.unread > 0 ? colorize(` (${ch.unread} new)`, ansi.yellow) : "";
+      const label = globalIdx === selectedIndex
+        ? colorize(`${num} ${ch.name}`, ansi.bold) + badge
+        : `${num} ${ch.name}${badge}`;
+      lines.push(`${marker}${label}`);
+      globalIdx++;
+    }
+  }
+
+  return lines.join("\r\n");
+}
+
+export function renderConversation(messages: PiperMessage[], width: number): string {
+  const lines: string[] = [];
+
+  for (const msg of messages) {
+    if (msg.isPlayer) {
+      // Player messages: right-aligned style
+      const wrapped = wordWrap(msg.body, width - 4);
+      lines.push("");
+      lines.push(colorize(`  ${wrapped.split("\r\n").join("\r\n  ")}`, ansi.brightWhite + ansi.bold));
+    } else {
+      // NPC messages: name + timestamp header, then body
+      const header = msg.timestamp
+        ? `  ${colorize(msg.from, ansi.bold)}${colorize(`  ${msg.timestamp}`, ansi.dim)}`
+        : `  ${colorize(msg.from, ansi.bold)}`;
+      lines.push("");
+      lines.push(header);
+      const wrapped = wordWrap(msg.body, width - 4);
+      for (const line of wrapped.split("\r\n")) {
+        lines.push(`  ${line}`);
+      }
+    }
+  }
+
+  return lines.join("\r\n");
+}
+
+export function renderReplyMenu(
+  options: PiperReplyOption[],
+  selectedIndex: number
+): string {
+  const lines: string[] = [];
+  for (let i = 0; i < options.length; i++) {
+    const marker = i === selectedIndex ? colorize(" \u276F ", ansi.magenta + ansi.bold) : "   ";
+    const num = `${i + 1}.`;
+    const label = i === selectedIndex
+      ? colorize(`${num} ${options[i].label}`, ansi.bold)
+      : `${num} ${options[i].label}`;
+    lines.push(`${marker}${label}`);
+  }
+  return lines.join("\r\n");
+}
+
+export function renderTypingIndicator(name: string): string {
+  return colorize(`  ${name} is typing...`, ansi.dim);
+}
+
+export function renderSeparator(width: number): string {
+  return colorize("╌".repeat(width), ansi.dim);
+}
+
+export function renderChannelListFooter(width: number): string {
+  const border = colorize("─".repeat(width), ansi.dim);
+  const hints = colorize(" \u2191/\u2193 navigate  Enter select  q exit", ansi.dim);
+  return `${border}\r\n${hints}`;
+}
+
+export function renderConversationFooter(width: number, hasReply: boolean): string {
+  const border = colorize("─".repeat(width), ansi.dim);
+  const hints = hasReply
+    ? colorize(" \u2191/\u2193 navigate  Enter reply  q back", ansi.dim)
+    : colorize(" q back", ansi.dim);
+  return `${border}\r\n${hints}`;
+}
+
+function wordWrap(text: string, width: number): string {
+  if (width <= 0) return text;
+  const paragraphs = text.split("\n");
+  const wrapped = paragraphs.map((para) => {
+    // Don't wrap lines that start with spaces (pre-formatted)
+    if (para.startsWith("  ")) return para;
+    const words = para.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if (current.length + word.length + 1 > width && current.length > 0) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = current ? `${current} ${word}` : word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.join("\r\n");
+  });
+  return wrapped.join("\r\n");
+}

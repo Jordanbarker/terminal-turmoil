@@ -38,6 +38,14 @@ const tail: CommandHandler = (args, _flags, ctx) => {
 
   for (const fileArg of fileArgs) {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
+    const node = ctx.fs.getNode(absPath);
+
+    if (node && node.type === "file" && node.metadata?.binary) {
+      const hint = fileArg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
+      outputs.push(`tail: ${fileArg}: binary file${hint}`);
+      continue;
+    }
+
     const result = ctx.fs.readFile(absPath);
 
     if (result.error) {

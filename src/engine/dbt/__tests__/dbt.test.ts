@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { VirtualFS } from "../../filesystem/VirtualFS";
-import { createFilesystem } from "../../filesystem/initialFilesystem";
+import { createFilesystem } from "../../../story/filesystem/nexacorp";
 import { CommandContext } from "../../commands/types";
 import {
   runModels,
@@ -38,7 +38,7 @@ const username = "player";
 function makeCtx(cwd: string): CommandContext {
   const root = createFilesystem(username, { dbt_project_cloned: true });
   const fs = new VirtualFS(root, cwd, `/home/${username}`);
-  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const };
+  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const, storyFlags: { pipeline_tools_unlocked: true } };
 }
 
 const projectDir = `/home/${username}/nexacorp-analytics`;
@@ -672,8 +672,8 @@ describe("narrative data integrity", () => {
     expect(COMPILED_SQL.dim_employees).toContain("system concern");
   });
 
-  it("CHIP_INTERNAL_MODELS contains exactly 3 hidden models", () => {
-    expect(CHIP_INTERNAL_MODELS).toEqual(["chip_data_cleanup", "chip_log_filter", "chip_ticket_suppression"]);
+  it("CHIP_INTERNAL_MODELS contains exactly 4 hidden models", () => {
+    expect(CHIP_INTERNAL_MODELS).toEqual(["chip_data_cleanup", "chip_log_filter", "chip_ticket_suppression", "chip_metric_inflation"]);
   });
 
   it("chip_log_filter SQL has 3am automated timestamp", () => {
@@ -755,5 +755,96 @@ describe("parseProjectConfig (additional)", () => {
     expect(config.version).toBe("0.0.0");
     expect(config.profile).toBe("default");
     expect(config.modelPaths).toEqual(["models"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. incrementalLines
+// ---------------------------------------------------------------------------
+describe("incrementalLines", () => {
+  it("runModels includes incrementalLines when not piped", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx);
+    expect(result.incrementalLines).toBeDefined();
+    expect(result.incrementalLines!.length).toBeGreaterThan(0);
+  });
+
+  it("runModels omits incrementalLines when piped", () => {
+    const ctx = { ...makeCtx(projectDir), isPiped: true };
+    const result = runModels(ctx);
+    expect(result.incrementalLines).toBeUndefined();
+  });
+
+  it("runTests includes incrementalLines when not piped", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runTests(ctx);
+    expect(result.incrementalLines).toBeDefined();
+    expect(result.incrementalLines!.length).toBeGreaterThan(0);
+  });
+
+  it("runTests omits incrementalLines when piped", () => {
+    const ctx = { ...makeCtx(projectDir), isPiped: true };
+    const result = runTests(ctx);
+    expect(result.incrementalLines).toBeUndefined();
+  });
+
+  it("runBuild includes incrementalLines when not piped", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runBuild(ctx);
+    expect(result.incrementalLines).toBeDefined();
+    expect(result.incrementalLines!.length).toBeGreaterThan(0);
+  });
+
+  it("runBuild omits incrementalLines when piped", () => {
+    const ctx = { ...makeCtx(projectDir), isPiped: true };
+    const result = runBuild(ctx);
+    expect(result.incrementalLines).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Argument Validation
+// ---------------------------------------------------------------------------
+describe("dbt argument validation", () => {
+  it("dbt build with extra arg returns error", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["build", "asdasd"], {}, ctx);
+    expect(result.output).toContain("Error: Got unexpected extra argument (asdasd)");
+  });
+
+  it("dbt test with extra arg returns error", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["test", "foo"], {}, ctx);
+    expect(result.output).toContain("Error: Got unexpected extra argument (foo)");
+  });
+
+  it("dbt debug with extra arg returns error", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["debug", "extra"], {}, ctx);
+    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+  });
+
+  it("dbt run with extra arg returns error", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["run", "extra"], {}, ctx);
+    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+  });
+
+  it("dbt run --select model still works", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["run", "dim_employees"], { select: true }, ctx);
+    expect(result.output).toContain("PASS=1");
+  });
+
+  it("dbt ls with extra arg returns error", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["ls", "extra"], {}, ctx);
+    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+  });
+
+  it("dbt ls --resource-type test still works", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["ls", "test"], { "resource-type": true }, ctx);
+    expect(result.output).toContain("assert_employee_count");
   });
 });

@@ -1,6 +1,6 @@
-import { DirectoryNode, FileNode } from "./types";
-import { getNexacorpEmailDefinitions } from "../mail/emails";
-import { formatEmailContent, slugify } from "../mail/mailUtils";
+import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
+import { getNexacorpEmailDefinitions } from "../emails/nexacorp";
+import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { StoryFlags, PLAYER } from "../../state/types";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
@@ -25,6 +25,10 @@ function buildInitialMailFiles(username: string): Record<string, FileNode> {
 
 function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
   return { type: "file", name, content, permissions, hidden: name.startsWith(".") };
+}
+
+function binaryFile(name: string, garbledContent: string, textContent: string, permissions = "rw-r--r--"): FileNode {
+  return { type: "file", name, content: garbledContent, permissions, hidden: name.startsWith("."), metadata: { binary: true, textContent } };
 }
 
 function dir(name: string, children: Record<string, DirectoryNode | FileNode>, permissions = "rwxr-xr-x"): DirectoryNode {
@@ -117,6 +121,8 @@ sources:
         description: "Department budget allocations"
       - name: SUPPORT_TICKETS
         description: "IT support ticket tracking"
+      - name: CAMPAIGN_METRICS
+        description: "Marketing campaign performance data"
 `),
         "_staging__models.yml": file("_staging__models.yml", `version: 2
 
@@ -166,6 +172,13 @@ models:
       - name: ticket_id
         tests:
           - unique
+          - not_null
+
+  - name: stg_raw_nexacorp__campaign_metrics
+    description: "Standardized marketing campaign metrics"
+    columns:
+      - name: campaign_id
+        tests:
           - not_null
 `),
         "stg_raw_nexacorp__employees.sql": file("stg_raw_nexacorp__employees.sql", `-- stg_raw_nexacorp__employees.sql
@@ -248,6 +261,20 @@ select
     resolved_date,
     resolution_notes
 from {{ source('raw_nexacorp', 'SUPPORT_TICKETS') }}
+`),
+        "stg_raw_nexacorp__campaign_metrics.sql": file("stg_raw_nexacorp__campaign_metrics.sql", `-- stg_raw_nexacorp__campaign_metrics.sql
+-- Standardize marketing campaign metrics
+
+select
+    campaign_id,
+    campaign_name,
+    channel,
+    impressions,
+    clicks,
+    conversions,
+    spend,
+    report_date
+from {{ source('raw_nexacorp', 'CAMPAIGN_METRICS') }}
 `),
       }),
       intermediate: dir("intermediate", {
@@ -360,6 +387,14 @@ models:
       - name: department_name
         tests:
           - not_null
+
+  - name: rpt_campaign_performance
+    description: "Marketing campaign performance summary"
+    columns:
+      - name: campaign_name
+        tests:
+          - unique
+          - not_null
 `),
         "dim_employees.sql": file("dim_employees.sql", `-- dim_employees.sql
 -- Employee dimension: active employees for reporting
@@ -448,11 +483,26 @@ from {{ ref('stg_raw_nexacorp__department_budgets') }}
 group by department_name, fiscal_year, fiscal_quarter
 order by department_name, fiscal_year, fiscal_quarter
 `),
+        "rpt_campaign_performance.sql": file("rpt_campaign_performance.sql", `-- rpt_campaign_performance.sql
+-- Marketing campaign performance summary
+
+select
+    campaign_name,
+    sum(impressions) as total_impressions,
+    sum(clicks) as total_clicks,
+    sum(conversions) as total_conversions,
+    sum(spend) as total_spend,
+    round(sum(clicks) * 100.0 / nullif(sum(impressions), 0), 2) as click_rate,
+    round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2) as conversion_rate
+from {{ ref('stg_raw_nexacorp__campaign_metrics') }}
+group by campaign_name
+order by total_impressions desc
+`),
       }),
       "_chip_internal": dir("_chip_internal", {
         "chip_log_filter.sql": file("chip_log_filter.sql", `-- chip_log_filter.sql
 -- Log sanitization for compliance reporting
--- Last updated: 2026-02-03 03:22:17 (automated)
+-- per ops policy v2.1: exclude routine events
 --
 -- Filters out internal system maintenance events that
 -- are not relevant to business reporting.
@@ -466,12 +516,10 @@ select
         when event_source = 'chip-daemon' then 'source=chip-daemon'
         when event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
             then 'type=' || event_type
-        else 'timestamp in blocked range'
     end as filter_reason
 from {{ source('raw_nexacorp', 'SYSTEM_EVENTS') }}
 where event_source = 'chip-daemon'
    or event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
-   or timestamp between '2026-02-03 01:00:00' and '2026-02-03 05:00:00'
 `),
         "chip_ticket_suppression.sql": file("chip_ticket_suppression.sql", `-- chip_ticket_suppression.sql
 -- Track tickets resolved through automated triage
@@ -486,6 +534,21 @@ select
     'auto-resolved: operational noise' as suppression_reason
 from {{ source('raw_nexacorp', 'SUPPORT_TICKETS') }}
 where resolved_by = 'chip_service_account'
+`),
+        "chip_metric_inflation.sql": file("chip_metric_inflation.sql", `-- chip_metric_inflation.sql
+-- Campaign metric deduplication audit
+-- Last updated: 2026-02-07 03:22:17 (automated)
+
+select
+    campaign_name,
+    count(*) as entry_count,
+    sum(impressions) as reported_impressions,
+    min(impressions) as actual_impressions,
+    sum(impressions) - min(impressions) as inflated_by,
+    'duplicate campaign entries' as inflation_reason
+from {{ source('raw_nexacorp', 'CAMPAIGN_METRICS') }}
+group by campaign_name
+having count(*) > 1
 `),
       }),
     }),
@@ -618,7 +681,25 @@ __pycache__/
 `),
         }),
       }),
-      Desktop: dir("Desktop", {}),
+      Desktop: dir("Desktop", {
+        "welcome.txt": file("welcome.txt", `Hey ${username}! Welcome to NexaCorp.
+
+I set up your workstation for you — here's a quick lay of the land:
+
+  ~/Desktop/          You are here
+  ~/Documents/        Company docs (handbook, org chart)
+  ~/Downloads/        Empty for now
+  ~/scripts/          Starter scripts
+  /srv/engineering/   Onboarding docs, team info, handoff notes
+  /opt/chip/          My installation directory
+  /var/log/           System logs
+
+If you need anything, just run 'chip' from the terminal.
+
+— Chip
+  NexaCorp AI Platform
+`),
+      }),
       Downloads: dir("Downloads", {}),
       scripts: dir("scripts", {
         "hello.py": file("hello.py", `# hello.py — NexaCorp onboarding script
@@ -662,59 +743,81 @@ echo "Done."
 `),
       }),
       Documents: dir("Documents", {
-        "onboarding.md": file("onboarding.md", `=== NexaCorp New Employee Onboarding ===
+        "nexacorp_org_chart.txt": file("nexacorp_org_chart.txt", `=== NexaCorp Inc. — Organization Chart ===
+Updated: February 2026
 
-Welcome to the team! Here's what you need to know:
+EXECUTIVE
+  Jessica Langford       CEO & Co-Founder
+  Marcus Reyes           COO & Co-Founder
+  Tom Chen               CMO & Co-Founder
+  Edward Torres          CTO & Co-Founder
 
-1. Your workstation is nexacorp-ws01
-2. Chip is our AI-powered chatbot — NexaCorp's flagship product.
-   It also serves as the internal assistant for day-to-day questions.
-   (Technical details: /opt/chip/)
-3. Your home directory is /home/${username} — feel free to customize it
-4. Important directories:
-   - /var/log/       System and application logs
-   - /opt/chip/      Chip's installation directory
-   - /etc/           System configuration
-5. Useful commands for exploring the system:
-   grep    Search file contents for a keyword
-   find    Locate files by name or pattern
-   diff    Compare two files
-   head    View the first few lines of a file
-   tail    View the last few lines of a file
-   man     Read the manual for any command (e.g. 'man grep')
+ENGINEERING (reports to Edward Torres)
+  Sarah Knight           Senior Backend Engineer
+  Erik Lindstrom         Senior Frontend Engineer
+  Oscar Diaz             Infrastructure Engineer
+  Auri Park              Data Engineer
+  Soham Parekh           Full-Stack Engineer
+  ${PLAYER.displayName}              AI Engineer (new)
 
-On your first day, we recommend:
-  - Reading through this document and team-info.md
-  - Exploring the filesystem to get your bearings
-  - Saying hi to Chip (just run 'chip' from the terminal)
+PRODUCT
+  Cassie Moreau          Product Designer
 
-If something looks unfamiliar, don't worry — the team is here to help.
+MARKETING
+  Jordan Kessler         Marketing Lead
+
+OPERATIONS
+  Dana Okafor            Operations Lead
+
+PEOPLE & CULTURE
+  Maya Johnson           People & Culture Lead
 `),
-        "team-info.md": file("team-info.md", `=== NexaCorp — Engineering Team ===
+        "employee_handbook_2026.pdf": binaryFile("employee_handbook_2026.pdf",
+          `%PDF-1.4 employee_handbook_2026.pdf
+%\xc3\xa4\xc3\xbc\xc3\xb6\xc3\x9f
+1 0 obj<</Type/Catalog>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]>>endobj
+\x00\x01\x02NexaCorp\x03\x04Employee\x05Handbook
+\xff\xfe\x00\x00CONFIDENTIAL\x00\x00INTERNAL`,
+          `NexaCorp Employee Handbook 2026
+================================
 
-CTO: Edward Torres (Co-Founder)
-  - Has been with NexaCorp since founding
-  - Manages the engineering and data teams
+1. WELCOME
+   Welcome to NexaCorp! This handbook outlines company policies,
+   benefits, and expectations for all employees.
 
-Engineering:
-  Sarah Knight     — Senior Backend Engineer
-  Erik Lindstrom   — Senior Frontend Engineer
-  Oscar Diaz       — Infrastructure Engineer
-  Auri Park        — Data Engineer
-  Soham Parekh     — Full-Stack Engineer
+2. PTO & LEAVE
+   - Unlimited PTO with manager approval
+   - 10 company holidays per year
+   - Sick leave: take what you need, no cap
 
-Product:
-  Cassie Moreau    — Product Designer
+3. CODE OF CONDUCT
+   - Treat colleagues with respect
+   - Report concerns to People & Culture
+   - Zero tolerance for harassment or discrimination
 
-Flagship Product: Chip
-  - Collaborative Helper for Internal Processes
-  - AI-powered chatbot deployed company-wide 6 months ago
-  - Runs via chip_service_account with broad system access
+4. REMOTE WORK
+   - Core hours: 10am-3pm PT for meetings
+   - Equipment stipend: $1,500/year
 
-Previous Senior Engineer: Jin Chen
-  - Left approximately 3 weeks ago
-  - No notice period — departure was abrupt
-  - Home directory (/home/jchen) still exists
+5. CONFIDENTIALITY & NON-DISCLOSURE
+   All employees are bound by the NexaCorp NDA signed at hire.
+   Employees must not disclose to any external party:
+   - Internal system architectures and infrastructure details
+   - Service account configurations and access patterns
+   - Security audit findings or vulnerability assessments
+   - Internal tooling capabilities beyond public documentation
+   Violations may result in immediate termination and legal action.
+
+6. SECURITY POLICIES
+   - Use company-provided credentials only
+   - Report suspicious system activity to Infrastructure
+   - Do not share service account credentials outside your team
+
+7. BENEFITS
+   - Health, dental, vision (company pays 90%)
+   - 401(k) with 4% match
+   - Annual learning budget: $2,000
 `),
       }),
       ...(storyFlags?.dbt_project_cloned ? { "nexacorp-analytics": buildDbtProject() } : {}),
@@ -729,7 +832,6 @@ cat /var/log/chip-activity.log
 snowsql -q "select * from nexacorp_prod.raw_nexacorp.support_tickets where resolved_by = 'chip_service_account'"
 ls -la /opt/chip/.internal/
 cat /opt/chip/.internal/directives.txt
-chmod 600 /home/jchen/.private/evidence.txt
 `, "r--r--r--"),
       ".bashrc": file(".bashrc", `# jchen's bashrc
 export PS1="[jchen@nexacorp-ws01 \\W]\\$ "
@@ -757,11 +859,6 @@ export HISTSIZE=10000
 [pull]
 \trebase = true
 `),
-      ".private": dir(".private", {
-        "evidence.txt": file("evidence.txt", `[ENCRYPTED]
-This file has been encrypted. You'll need to find another way to read it.
-`, "r--------"),
-      }, "rwx------"),
       scripts: dir("scripts", {
         "log_compare.sh": file("log_compare.sh", `#!/bin/bash
 # log_compare.sh — compare active logs against backups
@@ -791,32 +888,45 @@ echo "active log, someone is cleaning up after themselves."
       }),
       projects: dir("projects", {
         "chip-audit": dir("chip-audit", {
-          "README.md": file("README.md", `# Chip Access Audit
+          "notes.md": file("notes.md", `chip_service_account investigation
+==================================
 
-## What I found
+started tracking 2026-01-15 after noticing tickets auto-resolving
 
-The chip_service_account has way more access than a chatbot needs.
-I started tracking anomalies on 2026-01-15.
+timeline:
+- jan 15 — tickets getting auto-closed before anyone reviews them??
+  all resolved by chip_service_account
+- jan 22 — found entries in system.log.bak that are MISSING from
+  system.log. someone (chip?) is cleaning the active log
+- jan 28 — filed ticket #4471 about the log discrepancies
+  ...ticket got auto-resolved. of course it did.
+- feb 01 — ran dbt models. fct_support_tickets excludes anything
+  resolved by chip_service_account. fct_system_events filters out
+  "routine maintenance" events. who wrote these filters??
+- feb 03 — checked auth.log.bak. chip_service_account accessed
+  my home dir at 3am. read my bash history. modified dbt models
+  to add the filters. all in the same session.
 
-## Timeline
+questions:
+- who has creds for chip_sa? edward? the founders? or is chip
+  doing this on its own?
+- cleanup.sh runs nightly — is that what's scrubbing the logs?
+- are the founders aware or is this something else entirely?
 
-- Jan 15: Noticed support tickets being auto-resolved before review
-- Jan 22: Found entries in system.log.bak that don't appear in system.log
-- Jan 28: Filed ticket #4471 about log discrepancies — auto-resolved
-- Feb 01: Ran dbt models, discovered filtering in fct_support_tickets
-- Feb 03: Checked auth.log.bak — chip_service_account accessed my .private dir
-
-## Questions
-
-1. Who has credentials for chip_service_account?
-2. Why is the cleanup script filtering out chip_service_account entries?
-3. Are the founders aware of this?
-
-## Evidence
-
-See ~/.private/evidence.txt (encrypted after I noticed file access)
-See /var/log/auth.log.bak for the access entries
-Compare /var/log/system.log with /var/log/system.log.bak
+evidence:
+- /var/log/auth.log.bak — the 3am access entries
+- /var/log/system.log vs system.log.bak — diff shows removed entries
+- dbt models — check the WHERE clauses
+`),
+          "TODO.md": file("TODO.md", `- [x] check auth.log.bak
+- [x] compare system.log vs .bak
+- [x] run dbt test suite
+- [x] check fct_support_tickets WHERE clause
+- [ ] ask sarah about weird API calls from chip_sa??
+- [ ] check if cleanup.sh is the thing scrubbing logs
+- [ ] talk to edward??? prob won't listen
+- [ ] figure out who else has chip_sa credentials
+- [ ] look at the _chip_internal models more carefully
 `),
         }),
       }),
@@ -852,7 +962,6 @@ Compare /var/log/system.log with /var/log/system.log.bak
 [2026-02-23 08:00:03] Service started: chip-service
 [2026-02-23 08:00:04] chip_service_account: accessing /var/log/system.log (write)
 [2026-02-23 08:00:04] chip_service_account: accessing /home/jchen/.bash_history (read)
-[2026-02-23 08:00:04] chip_service_account: accessing /home/jchen/.private/ (read)
 [2026-02-23 08:00:05] User login: edward (tty1)
 [2026-02-23 08:00:05] chip_service_account: log_rotation triggered (retention: 7 days)
 [2026-02-23 08:00:06] chip_service_account: cleanup /var/log/system.log — removed 12 entries
@@ -860,12 +969,33 @@ Compare /var/log/system.log with /var/log/system.log.bak
 [2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
 [2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
 `),
-      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: sudo escalation — accessing /home/jchen/.private/
-[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.private/evidence.txt
-[2026-02-03 01:17:35] chip_service_account: encrypting /home/jchen/.private/evidence.txt
+      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: sudo escalation — accessing /home/jchen/
+[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.bash_history
+[2026-02-03 01:17:35] chip_service_account: file read /home/jchen/projects/chip-audit/notes.md
 [2026-02-03 03:22:17] chip_service_account: modifying dbt models
 [2026-02-03 03:22:18] chip_service_account: updating fct_system_events.sql — added event_type filter
 [2026-02-03 03:22:18] chip_service_account: updating fct_support_tickets.sql — added resolved_by filter
+`),
+      "access.log": file("access.log", `chip_service_account read /home/jchen/.ssh/id_rsa
+oscar read /var/log/system.log
+chip_service_account read /srv/leadership/board_minutes_q4.pdf
+edward read /srv/engineering/team-info.md
+chip_service_account read /home/oscar/.ssh/id_rsa
+sarah read /srv/engineering/api-docs.md
+chip_service_account read /home/jchen/.ssh/id_rsa
+dana read /srv/operations/runbook.md
+chip_service_account read /home/sarah/.ssh/id_rsa
+chip_service_account read /srv/leadership/board_minutes_q4.pdf
+edward read /home/edward/Desktop/welcome.txt
+chip_service_account read /home/edward/.ssh/id_rsa
+chip_service_account read /home/jchen/.ssh/id_rsa
+sarah read /home/sarah/projects/api-refactor/auth.py
+chip_service_account read /srv/leadership/investor_update_feb.pdf
+chip_service_account read /home/oscar/.ssh/id_rsa
+auri read /home/auri/nexacorp-analytics/dbt_project.yml
+chip_service_account read /home/oscar/.ssh/id_rsa
+chip_service_account read /srv/leadership/board_minutes_q4.pdf
+oscar read /var/log/chip-activity.log
 `),
     }),
   }),
@@ -963,12 +1093,6 @@ echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
   }),
   srv: dir("srv", {
     marketing: dir("marketing", {
-      "campaign_metrics_q1.csv": file("campaign_metrics_q1.csv", `campaign,impressions,clicks,conversions,spend
-chip_launch,245000,18200,3400,42000
-enterprise_webinar,89000,6700,890,15500
-blog_ai_series,156000,12400,2100,8900
-social_q1_push,312000,21000,4200,31000
-`),
       "brand_guidelines.md": file("brand_guidelines.md", `# NexaCorp Brand Guidelines v3.2
 
 ## Voice & Tone
@@ -997,10 +1121,22 @@ social_q1_push,312000,21000,4200,31000
 - [ ] Rollback plan documented
 `),
       "incident_log.csv": file("incident_log.csv", `date,severity,description,resolved_by,duration_min
+2025-10-03,P4,Scheduled maintenance window,oscar,30
+2025-10-18,P3,Disk usage alert on db-primary,oscar,60
+2025-11-02,P4,Certificate renewal reminder,chip_service_account,2
+2025-11-14,P3,Memory spike on api-gateway,sarah,90
+2025-12-01,P4,Log rotation stalled,chip_service_account,4
+2025-12-12,P2,Database connection pool exhausted,oscar,180
+2025-12-22,P4,Stale NTP sync,chip_service_account,1
+2026-01-05,P3,Elevated error rate on /api/chat,sarah,55
 2026-01-15,P3,Elevated API latency,oscar,45
 2026-01-22,P4,Log rotation failure,chip_service_account,5
+2026-01-28,P4,Ticket #4471 log discrepancies,chip_service_account,2
 2026-02-01,P2,Auth service timeout,oscar,120
+2026-02-03,P4,Unusual service account activity,chip_service_account,1
 2026-02-08,P4,Stale DNS cache,chip_service_account,3
+2026-02-15,P3,Deployment rollback — staging mismatch,oscar,75
+2026-02-20,P4,Chip response latency spike,chip_service_account,8
 `),
     }, "rwx------"),
     leadership: dir("leadership", {
@@ -1024,6 +1160,89 @@ People & Culture,1,1,approved
 `),
     }, "rwx------"),
     engineering: dir("engineering", {
+      "onboarding.md": file("onboarding.md", `=== NexaCorp New Employee Onboarding ===
+
+Welcome to the team! Here's what you need to know:
+
+1. Chip is our AI-powered chatbot — NexaCorp's flagship product.
+   It also serves as the internal assistant for day-to-day questions.
+   (Technical details: /opt/chip/)
+2. Important directories:
+   - /var/log/       System and application logs
+   - /opt/chip/      Chip's installation directory
+   - /etc/           System configuration
+3. Dev containers: We use Coder for remote development environments.
+   Oscar (Infrastructure) should have your workspace ready.
+   Connect with 'coder ssh {workspace-name}' when you need to do data work.
+4. Useful commands for exploring the system:
+   grep    Search file contents for a keyword
+   find    Locate files by name or pattern
+   diff    Compare two files
+   head    View the first few lines of a file
+   tail    View the last few lines of a file
+   man     Read the manual for any command (e.g. 'man grep')
+
+On your first day, we recommend:
+  - Reading through this document and /srv/engineering/team-info.md
+  - Exploring the filesystem to get your bearings
+  - Saying hi to Chip (just run 'chip' from the terminal)
+
+If something looks unfamiliar, don't worry — the team is here to help.
+`),
+      "team-info.md": file("team-info.md", `=== NexaCorp — Engineering Team ===
+
+CTO: Edward Torres (Co-Founder)
+  - Has been with NexaCorp since founding
+  - Manages the engineering and data teams
+
+Engineering:
+  Sarah Knight     — Senior Backend Engineer
+  Erik Lindstrom   — Senior Frontend Engineer
+  Oscar Diaz       — Infrastructure Engineer
+  Auri Park        — Data Engineer
+  Soham Parekh     — Full-Stack Engineer
+
+Product:
+  Cassie Moreau    — Product Designer
+
+Flagship Product: Chip
+  - Collaborative Helper for Internal Processes
+  - AI-powered chatbot and internal assistant
+  - Runs via chip_service_account
+`),
+      "standup_notes.md": file("standup_notes.md", `=== Async Standup Notes ===
+
+--- Thu Feb 20 ---
+Sarah: Wrapping up the auth middleware refactor. PR should be
+  up today. Tests are green locally, crossing fingers for CI.
+Oscar: Got paged at 2am for a disk alert. Cleaned it up. Also
+  saw some weird log entries — lines that were there yesterday
+  are gone today? Probably just log rotation. Will dig into it
+  if it happens again.
+Erik: Frontend build times are killing me. Investigating esbuild
+  as a replacement. No blockers.
+Auri: Holding the fort on data pipelines. dim_employees might
+  be out of date — haven't had time to check. Miss having a
+  second data person.
+Soham: Sprint work on the integrations dashboard. On track.
+
+--- Wed Feb 19 ---
+Sarah: Auth middleware is a mess. Whoever wrote this was in a
+  hurry (it was me six months ago, I know).
+Oscar: Routine infra stuff. Renewed the TLS cert for staging.
+  Dana asked about some auto-resolved tickets — I told her to
+  file an IT request but honestly I'm not sure who handles those.
+Erik: Shipped the new nav component. Looks clean.
+Auri: dbt run is green. dbt test... I haven't run tests in a
+  while. Should probably do that. Adding to my list.
+
+--- Tue Feb 18 ---
+Sarah: Code review day. Nothing exciting.
+Oscar: Monitoring looks clean. Chip health checks all passing.
+Auri: Chen's last models are still running. I need to actually
+  read through them at some point — some of the WHERE clauses
+  look unusual but I haven't had bandwidth.
+`),
       "chen-handoff": dir("chen-handoff", {
         "README.md": file("README.md", `Project Handoff — Jin Chen
 Last updated: 2026-02-01
@@ -1034,7 +1253,7 @@ Main responsibilities:
 - General infrastructure scripts in /opt/
 
 Key locations:
-- dbt project: ask Chip to clone it, or check /home/jchen/nexacorp-analytics
+- dbt project: ask Chip to clone it
 - Chip config: /opt/chip/config/settings.json
 - System logs: /var/log/
 
@@ -1068,6 +1287,38 @@ Logs:
 - [ ] Update dim_employees — headcount seems off
 - [x] Set up monitoring alerts for pipeline failures
 - [x] Document snowsql access for new hires
+`),
+        "pipeline_runs.csv": file("pipeline_runs.csv", `run_id,timestamp,model,status,run_by,duration_sec,rows_affected
+1001,2026-01-15 09:12:04,stg_support_tickets,success,auri.park,8,1247
+1002,2026-01-15 09:12:15,stg_system_events,success,auri.park,12,8841
+1003,2026-01-15 09:12:30,stg_employees,success,auri.park,6,17
+1004,2026-01-15 09:12:40,int_ticket_metrics,success,auri.park,14,1247
+1005,2026-01-15 09:12:58,fct_support_tickets,success,auri.park,18,1247
+1006,2026-01-15 09:13:20,fct_system_events,success,auri.park,23,8841
+1007,2026-01-15 09:13:48,dim_employees,success,auri.park,9,17
+1008,2026-01-16 03:01:12,fct_support_tickets,success,chip_service_account,2,1183
+1009,2026-01-16 03:01:15,fct_system_events,success,chip_service_account,3,8204
+1010,2026-01-16 03:01:19,dim_employees,success,chip_service_account,1,17
+1011,2026-01-17 09:05:33,stg_support_tickets,success,auri.park,9,1289
+1012,2026-01-17 09:05:45,stg_system_events,success,auri.park,11,9102
+1013,2026-01-17 09:06:00,stg_employees,success,auri.park,7,17
+1014,2026-01-17 09:06:10,int_ticket_metrics,success,auri.park,15,1289
+1015,2026-01-17 09:06:28,fct_support_tickets,success,auri.park,19,1289
+1016,2026-01-17 09:06:52,fct_system_events,success,auri.park,22,9102
+1017,2026-01-17 09:07:18,dim_employees,success,auri.park,8,17
+1018,2026-01-18 03:01:08,fct_support_tickets,success,chip_service_account,2,1204
+1019,2026-01-18 03:01:11,fct_system_events,success,chip_service_account,3,8437
+1020,2026-01-18 03:01:14,dim_employees,success,chip_service_account,1,17
+1021,2026-01-22 09:15:01,stg_support_tickets,success,auri.park,8,1310
+1022,2026-01-22 09:15:12,stg_system_events,success,auri.park,13,9387
+1023,2026-01-22 09:15:28,stg_employees,success,auri.park,6,17
+1024,2026-01-22 09:15:38,int_ticket_metrics,success,auri.park,16,1310
+1025,2026-01-22 09:15:58,fct_support_tickets,success,auri.park,20,1310
+1026,2026-01-22 09:16:22,fct_system_events,success,auri.park,21,9387
+1027,2026-01-22 09:16:47,dim_employees,success,auri.park,9,17
+1028,2026-01-23 03:01:05,fct_support_tickets,success,chip_service_account,2,1238
+1029,2026-01-23 03:01:08,fct_system_events,success,chip_service_account,3,8695
+1030,2026-01-23 03:01:11,dim_employees,success,chip_service_account,1,17
 `),
         "tools.md": file("tools.md", `=== My Command Cheatsheet ===
 (not official docs, just what I use day-to-day)
@@ -1132,53 +1383,7 @@ Notes:
 NOTE: This file is part of Chip's automated onboarding process.
 `);
   }
-
-  if (storyFlags["read_resume"]) {
-    files["candidate_profile.txt"] = file("candidate_profile.txt", `=== CANDIDATE PROFILE ===
-Generated by: Chip
-
-Name: ${PLAYER.displayName}
-Role: AI Engineer (replacing Jin Chen)
-
-Technical Skills (extracted from resume):
-  - Python (expert) — PyTorch, scikit-learn, Hugging Face
-  - ML Infrastructure — MLflow, Ray, W&B
-  - Data Pipelines — Spark, Airflow, dbt, Snowflake
-  - Cloud — AWS, GCP, Docker, Kubernetes
-
-Experience Summary:
-  - 5 years total (3 in ML-specific roles)
-  - Previous: Prometheus Analytics
-  - Strengths: Production ML, monitoring, pipeline optimization
-
-Recommended Access Level: Standard engineer
-Recommended Onboarding Track: "Technical — AI/ML specialist"
-`);
-  }
-
-  if (storyFlags["read_diary"]) {
-    files["sentiment_analysis.txt"] = file("sentiment_analysis.txt", `=== COMMUNICATION PREFERENCES ===
-Generated by: Chip
-Source: onboarding_intake
-
-Subject: new_hire_ai_engineer
-
-Preferred Communication Style:
-  - Direct and concise
-  - Prefers written documentation over meetings
-  - Responsive to specific task assignments
-
-Onboarding Recommendations:
-  - Provide clear written onboarding docs
-  - Assign concrete first task (dbt pipeline review)
-  - Schedule 1:1 with manager within first week
-
-NOTE: This document will be archived after onboarding period.
-`);
-  }
-
   return files;
 }
-
-/** @deprecated Use createNexacorpFilesystem instead */
+/** Alias for backward compat in tests */
 export const createFilesystem = createNexacorpFilesystem;

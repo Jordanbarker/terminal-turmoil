@@ -40,6 +40,7 @@ function createApplyCtx(overrides?: Partial<ApplyContext>): ApplyContext {
     activeComputer: "nexacorp",
     username: "player",
     deliveredEmailIds: [],
+    deliveredPiperIds: [],
     storyFlags: {},
     fs: createMinimalFS(),
     ...overrides,
@@ -140,7 +141,7 @@ describe("computeEffects", () => {
       expect(effects.suppressPrompt).toBe(true);
     });
 
-    it("returns early for session starts without processing events", () => {
+    it("still processes events even when starting a session", () => {
       const result: CommandResult = {
         output: "",
         editorSession: {
@@ -149,10 +150,11 @@ describe("computeEffects", () => {
           readOnly: false,
           isNewFile: true,
         },
+        triggerEvents: [{ type: "file_read", detail: "welcome" }],
       };
       const effects = computeEffects(result, createApplyCtx());
-      expect(effects.events).toEqual([]);
-      expect(effects.storyFlagUpdates).toEqual([]);
+      expect(effects.events.length).toBeGreaterThan(0);
+      expect(effects.startSession).toBeDefined();
     });
   });
 
@@ -262,13 +264,15 @@ describe("computeEffects", () => {
       expect(effects.suppressPrompt).toBe(true);
     });
 
-    it("returns early for ssh session without processing events", () => {
+    it("still processes events even when starting ssh session", () => {
       const result: CommandResult = {
         output: "",
         sshSession: { host: "nexacorp-ws01.nexacorp.internal", username: "ren" },
+        triggerEvents: [{ type: "file_read", detail: "welcome" }],
       };
       const effects = computeEffects(result, createApplyCtx());
-      expect(effects.events).toEqual([]);
+      expect(effects.events.length).toBeGreaterThan(0);
+      expect(effects.startSession).toBeDefined();
     });
   });
 
@@ -277,6 +281,21 @@ describe("computeEffects", () => {
       const result: CommandResult = { output: "hello" };
       const effects = computeEffects(result, createApplyCtx());
       expect(effects.suppressPrompt).toBe(false);
+    });
+  });
+
+  describe("incrementalLines", () => {
+    it("passes through incrementalLines from CommandResult", () => {
+      const lines = ["line 1", "line 2", "line 3"];
+      const result: CommandResult = { output: "full output", incrementalLines: lines };
+      const effects = computeEffects(result, createApplyCtx());
+      expect(effects.incrementalLines).toEqual(lines);
+    });
+
+    it("omits incrementalLines when not present", () => {
+      const result: CommandResult = { output: "no lines" };
+      const effects = computeEffects(result, createApplyCtx());
+      expect(effects.incrementalLines).toBeUndefined();
     });
   });
 });

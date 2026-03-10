@@ -1,6 +1,6 @@
-import { DirectoryNode, FileNode } from "./types";
-import { getHomeEmailDefinitions } from "../mail/homeEmails";
-import { formatEmailContent, slugify } from "../mail/mailUtils";
+import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
+import { getHomeEmailDefinitions } from "../emails/home";
+import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { PLAYER } from "../../state/types";
 
 function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
@@ -35,9 +35,7 @@ function buildHomeMailFiles(username: string): Record<string, FileNode> {
   return files;
 }
 
-// Content for terminal_notes.txt — a nano tutorial with the commands section further down.
-// The COMMANDS_SECTION_ROW constant marks the 0-indexed line of the commands header,
-// used by EditorSession to trigger the commands_unlocked event when the player scrolls there.
+// Content for terminal_notes.txt — a nano tutorial with a commands reference section.
 const TERMINAL_NOTES_CONTENT = `# Terminal Notes
 
 Keeping a running list of useful commands as I'm getting used to terminal. 
@@ -76,13 +74,7 @@ Starting with nano! Maybe I'll add vim commands later if I feel brave.
 ## Undo / Redo:
   Alt+U        - undo the last action
   Alt+E        - redo the last undone action
-               (yes, nano has undo — most people don't know!)
-
-## Things to try:
-    - Type on this line to practice editing
-    - Ctrl+K cuts a line, Ctrl+U pastes it back
-    - Ctrl+W to search — pretty handy for long files
-    - Scroll down for my command cheat sheet
+               (this one took forever to find)
 
 ---
 
@@ -97,14 +89,8 @@ Starting with nano! Maybe I'll add vim commands later if I feel brave.
   help   - list all available commands
 
 ## Reminders:
-  - Should check mail, haven't looked in a while
   - 'help' lists everything available
 `;
-
-/** 0-indexed line number of the "## Commands I've learned so far:" header in terminal_notes.txt. */
-export const COMMANDS_SECTION_ROW = TERMINAL_NOTES_CONTENT.split("\n").findIndex(
-  (line) => line.startsWith("## Commands I've learned so far")
-);
 
 export function createHomeFilesystem(username: string): DirectoryNode {
   return dir("/", {
@@ -900,7 +886,7 @@ def apply_to_job(driver, job, dry_run=False):
 
         # Try to fill common form fields
         for selector, value in [
-            ("input[name*='name'], #input-applicant-name", "Ren"),
+            ("input[name*='name'], #input-applicant-name", PLAYER.displayName),
             ("input[name*='email'], #input-applicant-email", "ren@protonmail.com"),
         ]:
             try:
@@ -1032,12 +1018,12 @@ HOME_DIR="/home/${PLAYER.username}"
 
 echo "[$(date)] Starting backup..."
 
-mkdir -p "\$BACKUP_DIR"
+mkdir -p "\$BAKCUP_DIR"
 
 rsync -av --exclude='.cache' --exclude='node_modules' --exclude='__pycache__' \\
-  "\$HOME_DIR/" "\$BACKUP_DIR/home/"
+  "\$HOME_DIR/" "\$BAKCUP_DIR/home/"
 
-echo "[$(date)] Backup complete: \$BACKUP_DIR"
+echo "[$(date)] Backup complete: \$BAKCUP_DIR"
 `, "rwxr-xr-x"),
           "scrape_glassdoor.py": file("scrape_glassdoor.py", `#!/usr/bin/env python3
 """
@@ -1403,8 +1389,8 @@ of interviews, so here we are.
     },
     {
       "name": "NexaCorp",
-      "rating": 3.2,
-      "review_count": 23,
+      "rating": 2.6,
+      "review_count": 3,
       "reviews": [
         {
           "stars": 5,
@@ -1416,7 +1402,7 @@ of interviews, so here we are.
         {
           "stars": 1,
           "title": "What a mess",
-          "role": "Former Employee — IT Contractor",
+          "role": "Former - IT",
           "date": "6 months ago",
           "text": "Management doesn't have a clue."
         },

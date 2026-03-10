@@ -6,8 +6,6 @@ export const homeWelcome = [
   "",
   `${colorize("Last login: Sat Feb 22 14:32:07 EST 2026 on tty1", ansi.dim)}`,
   "",
-  `Opening ${colorize("terminal_notes.txt", ansi.green)} in nano...`,
-  "",
 ];
 
 export const UNLOCK_BOX = [
@@ -53,6 +51,26 @@ export function getSshConnectionSequence(username: string): string[] {
     "",
   ];
 }
+
+export function getCoderConnectionSequence(): string[] {
+  return [
+    "",
+    `${colorize("Connecting to workspace 'ai'...", ansi.dim)}`,
+    `${colorize("Starting workspace agent...", ansi.dim)}`,
+    `${colorize("Waiting for network...", ansi.dim)}`,
+    `${colorize("Workspace ready.", ansi.green)}`,
+  ];
+}
+
+export const coderBanner = [
+  `  ${colorize("┌──────────────────────────────────────────┐", ansi.brightCyan)}`,
+  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Coder Dev Container", ansi.bold)}${" ".repeat(20)}${colorize("│", ansi.brightCyan)}`,
+  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Workspace: ai", ansi.dim)}${" ".repeat(26)}${colorize("│", ansi.brightCyan)}`,
+  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Tools: dbt, snowsql, python", ansi.dim)}${" ".repeat(12)}${colorize("│", ansi.brightCyan)}`,
+  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Type 'exit' to return to NexaCorp", ansi.dim)}${" ".repeat(6)}${colorize("│", ansi.brightCyan)}`,
+  `  ${colorize("└──────────────────────────────────────────┘", ansi.brightCyan)}`,
+  "",
+];
 
 export function getBootSequence(username: string) {
   return [

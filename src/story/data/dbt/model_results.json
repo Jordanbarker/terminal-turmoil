@@ -74,11 +74,22 @@
     "executionTime": 0.45,
     "rowsAffected": 77
   },
+  "stg_raw_nexacorp__campaign_metrics": {
+    "status": "success",
+    "materialization": "view",
+    "executionTime": 0.14
+  },
   "rpt_department_spending": {
     "status": "success",
     "materialization": "table",
     "executionTime": 0.29,
     "rowsAffected": 13
+  },
+  "rpt_campaign_performance": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.31,
+    "rowsAffected": 4
   },
   "chip_data_cleanup": {
     "status": "success",
@@ -97,5 +108,11 @@
     "materialization": "table",
     "executionTime": 0.19,
     "rowsAffected": 4
+  },
+  "chip_metric_inflation": {
+    "status": "success",
+    "materialization": "table",
+    "executionTime": 0.22,
+    "rowsAffected": 1
   }
 }

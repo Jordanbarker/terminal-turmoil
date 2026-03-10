@@ -57,9 +57,12 @@ function createState(): SaveableState {
     currentChapter: "chapter-1",
     completedObjectives: ["obj-1"],
     deliveredEmailIds: ["email-1"],
+    deliveredPiperIds: [],
     commandHistory: ["ls", "cd docs", "cat readme.md"],
     activeComputer: "nexacorp",
     storyFlags: {},
+    stashedFs: null,
+    stashedCwd: "",
   };
 }
 

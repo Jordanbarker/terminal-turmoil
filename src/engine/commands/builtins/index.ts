@@ -45,5 +45,10 @@ import "./which";
 import "./man";
 // Network
 import "./ssh";
+// Remote environments
+import "./coder";
+import "./exit";
 // AI assistant
 import "./chip";
+// Messaging
+import "./piper";

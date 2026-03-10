@@ -1,4 +1,4 @@
-import { ChapterDefinition, ObjectiveDefinition } from "./chapters";
+import { ChapterDefinition, ObjectiveDefinition } from "./types";
 import { StoryFlags } from "../../state/types";
 
 export interface ResolvedObjective {
@@ -42,11 +42,19 @@ export function resolveObjectives(
   }
 
   // Second pass: determine visibility
-  // Hidden objectives become visible when their prerequisite is completed
+  // Hidden objectives become visible when their prerequisite is completed or visibleWhen is met
   return chapter.objectives.map((obj) => {
     let visible = !obj.hidden;
     if (obj.hidden && obj.prerequisite) {
       visible = !!completionMap.get(obj.prerequisite);
+    }
+    if (obj.hidden && obj.visibleWhen) {
+      visible = isCompleted(
+        { ...obj, check: obj.visibleWhen },
+        storyFlags,
+        completedObjectives,
+        deliveredEmailIds
+      );
     }
     const failed = obj.failCheck
       ? isCompleted(

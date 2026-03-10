@@ -24,9 +24,12 @@ export interface SaveableState {
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   commandHistory: string[];
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
+  stashedFs: VirtualFS | null;
+  stashedCwd: string;
 }
 
 export function createSaveData(state: SaveableState, label: string): SaveData {
@@ -39,11 +42,14 @@ export function createSaveData(state: SaveableState, label: string): SaveData {
     currentChapter: state.currentChapter,
     completedObjectives: [...state.completedObjectives],
     deliveredEmailIds: [...state.deliveredEmailIds],
+    deliveredPiperIds: [...state.deliveredPiperIds],
     commandHistory: state.commandHistory.slice(-500),
     cwd: state.cwd,
     fs: serializeFS(state.fs),
     activeComputer: state.activeComputer,
     storyFlags: { ...state.storyFlags },
+    stashedFs: state.stashedFs ? serializeFS(state.stashedFs) : undefined,
+    stashedCwd: state.stashedCwd || undefined,
   };
 }
 
@@ -123,6 +129,19 @@ export function migrateSaveData(data: SaveData): SaveData {
       version: 2,
       activeComputer: "nexacorp" as ComputerId,
       storyFlags: {},
+    };
+  }
+  if (data.version < 3) {
+    data = {
+      ...data,
+      version: 3,
+    };
+  }
+  if (data.version < 4) {
+    data = {
+      ...data,
+      version: 4,
+      deliveredPiperIds: [],
     };
   }
   return data;

@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
-import { createNexacorpFilesystem } from "../engine/filesystem/initialFilesystem";
-import { createHomeFilesystem } from "../engine/filesystem/homeFilesystem";
+import { createNexacorpFilesystem } from "../story/filesystem/nexacorp";
+import { createHomeFilesystem } from "../story/filesystem/home";
+import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { serializeFS, deserializeFS, SerializedFS } from "../engine/filesystem/serialization";
 import { createSaveData, saveToSlot, loadFromSlot, restoreFS } from "./saveManager";
 import { SaveSlotId } from "./saveTypes";
@@ -29,12 +30,15 @@ interface GameStore {
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   gamePhase: GamePhase;
   snowflakeState: SnowflakeState;
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
   hasSeenIntro: boolean;
   toasts: Toast[];
+  stashedFs: VirtualFS | null;
+  stashedCwd: string;
 
   // Actions
   setFs: (fs: VirtualFS) => void;
@@ -45,8 +49,11 @@ interface GameStore {
   completeObjective: (id: string) => void;
   setGamePhase: (phase: GamePhase) => void;
   addDeliveredEmails: (ids: string[]) => void;
+  addDeliveredPiperMessages: (ids: string[]) => void;
   setSnowflakeState: (state: SnowflakeState) => void;
   setActiveComputer: (id: ComputerId) => void;
+  setStashedFs: (fs: VirtualFS | null) => void;
+  setStashedCwd: (cwd: string) => void;
   setCurrentChapter: (chapter: string) => void;
   setStoryFlag: (key: string, value: string | boolean) => void;
   setHasSeenIntro: () => void;
@@ -65,7 +72,9 @@ function buildFs(
 ) {
   const root = computer === "home"
     ? createHomeFilesystem(username)
-    : createNexacorpFilesystem(username, storyFlags);
+    : computer === "devcontainer"
+      ? createDevcontainerFilesystem(username)
+      : createNexacorpFilesystem(username, storyFlags);
   let fs = new VirtualFS(
     root,
     `/home/${username}`,
@@ -85,17 +94,20 @@ function createInitialState(username = PLAYER.username) {
     fs,
     cwd: fs.cwd,
     username,
-    commandHistory: [] as string[],
+    commandHistory: ["nano terminal_notes.txt"],
     historyIndex: -1,
     currentChapter: "chapter-1",
     completedObjectives: [] as string[],
     deliveredEmailIds: [] as string[],
+    deliveredPiperIds: [] as string[],
     gamePhase: "playing" as GamePhase,
     snowflakeState: createInitialSnowflakeState(),
     activeComputer: "home" as ComputerId,
     storyFlags: {} as StoryFlags,
     hasSeenIntro: false,
     toasts: [] as Toast[],
+    stashedFs: null as VirtualFS | null,
+    stashedCwd: "",
   };
 }
 
@@ -132,8 +144,14 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           deliveredEmailIds: [...state.deliveredEmailIds, ...ids],
         })),
+      addDeliveredPiperMessages: (ids) =>
+        set((state) => ({
+          deliveredPiperIds: [...state.deliveredPiperIds, ...ids],
+        })),
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
       setActiveComputer: (id) => set({ activeComputer: id }),
+      setStashedFs: (fs) => set({ stashedFs: fs }),
+      setStashedCwd: (cwd) => set({ stashedCwd: cwd }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
       setStoryFlag: (key, value) =>
         set((state) => ({
@@ -161,6 +179,10 @@ export const useGameStore = create<GameStore>()(
         if (!data) return false;
         const fs = restoreFS(data);
         const cwd = fs.getNode(data.cwd) ? data.cwd : fs.cwd;
+        let stashedFs: VirtualFS | null = null;
+        if (data.stashedFs) {
+          try { stashedFs = deserializeFS(data.stashedFs); } catch { stashedFs = null; }
+        }
         set({
           fs,
           cwd,
@@ -169,10 +191,13 @@ export const useGameStore = create<GameStore>()(
           currentChapter: data.currentChapter,
           completedObjectives: data.completedObjectives,
           deliveredEmailIds: data.deliveredEmailIds,
+          deliveredPiperIds: data.deliveredPiperIds ?? [],
           commandHistory: data.commandHistory,
           historyIndex: -1,
           activeComputer: data.activeComputer ?? "nexacorp",
           storyFlags: data.storyFlags ?? {},
+          stashedFs,
+          stashedCwd: data.stashedCwd ?? "",
         });
         return true;
       },
@@ -185,6 +210,7 @@ export const useGameStore = create<GameStore>()(
         currentChapter: state.currentChapter,
         completedObjectives: state.completedObjectives,
         deliveredEmailIds: state.deliveredEmailIds,
+        deliveredPiperIds: state.deliveredPiperIds,
         gamePhase: state.gamePhase,
         cwd: state.cwd,
         activeComputer: state.activeComputer,
@@ -192,6 +218,8 @@ export const useGameStore = create<GameStore>()(
         hasSeenIntro: state.hasSeenIntro,
         serializedFs: serializeFS(state.fs),
         serializedSnowflake: serializeSnowflake(state.snowflakeState),
+        serializedStashedFs: state.stashedFs ? serializeFS(state.stashedFs) : undefined,
+        stashedCwd: state.stashedCwd || undefined,
       }),
       merge: (persisted, currentState) => {
         const p = persisted as Record<string, unknown> | null;
@@ -241,6 +269,17 @@ export const useGameStore = create<GameStore>()(
           fs = syncToVirtualFS(sfState, fs);
         }
 
+        // Reconstruct stashed FS if present
+        let stashedFs: VirtualFS | null = null;
+        const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
+        try {
+          if (serializedStashedFs?.root) {
+            stashedFs = deserializeFS(serializedStashedFs);
+          }
+        } catch {
+          stashedFs = null;
+        }
+
         // Validate cwd exists in the filesystem
         const persistedCwd = p.cwd as string | undefined;
         const cwd = (persistedCwd && fs.getNode(persistedCwd)) ? persistedCwd : fs.cwd;
@@ -252,6 +291,7 @@ export const useGameStore = create<GameStore>()(
           currentChapter: (p.currentChapter as string) ?? currentState.currentChapter,
           completedObjectives: (p.completedObjectives as string[]) ?? currentState.completedObjectives,
           deliveredEmailIds: (p.deliveredEmailIds as string[]) ?? currentState.deliveredEmailIds,
+          deliveredPiperIds: (p.deliveredPiperIds as string[]) ?? currentState.deliveredPiperIds,
           gamePhase: (p.gamePhase as GamePhase) ?? currentState.gamePhase,
           activeComputer,
           storyFlags,
@@ -259,6 +299,8 @@ export const useGameStore = create<GameStore>()(
           fs,
           cwd,
           snowflakeState: sfState,
+          stashedFs,
+          stashedCwd: (p.stashedCwd as string) ?? "",
         };
       },
     }

@@ -16,6 +16,14 @@ const cat: CommandHandler = (args, _flags, ctx) => {
 
   for (const arg of args) {
     const absolutePath = resolvePath(arg, ctx.cwd, ctx.homeDir);
+    const node = ctx.fs.getNode(absolutePath);
+
+    if (node && node.type === "file" && node.metadata?.binary) {
+      const hint = arg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
+      outputs.push(`cat: ${arg}: binary file${hint}`);
+      continue;
+    }
+
     const result = ctx.fs.readFile(absolutePath);
 
     if (result.error) {

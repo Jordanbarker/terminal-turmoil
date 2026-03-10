@@ -1,17 +1,23 @@
-export interface Chapter {
-  id: string;
-  title: string;
-  objectives: Objective[];
-}
+import { StoryFlagName } from "./storyFlags";
 
-export interface Objective {
+export type ObjectiveCompletionCheck =
+  | { source: "storyFlag"; key: StoryFlagName }
+  | { source: "completedObjective"; key: string }
+  | { source: "deliveredEmail"; key: string };
+
+export interface ObjectiveDefinition {
   id: string;
   description: string;
-  completed: boolean;
-  triggers: Trigger[];
+  check: ObjectiveCompletionCheck;
+  failCheck?: ObjectiveCompletionCheck;
+  hidden?: boolean;
+  prerequisite?: string;
+  visibleWhen?: ObjectiveCompletionCheck;
+  optional?: boolean;
 }
 
-export interface Trigger {
-  type: "command" | "file_read" | "directory_visit" | "custom";
-  condition: string;
+export interface ChapterDefinition {
+  id: string;
+  title: string;
+  objectives: ObjectiveDefinition[];
 }

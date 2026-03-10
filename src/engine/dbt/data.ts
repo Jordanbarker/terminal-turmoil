@@ -1,10 +1,10 @@
 import { ModelRunResult, DbtTestResult } from "./types";
 
-import modelResultsJson from "./generated/model_results.json";
-import testResultsJson from "./generated/test_results.json";
-import modelPreviewDataJson from "./generated/model_preview_data.json";
-import compiledSqlJson from "./generated/compiled_sql.json";
-import modelOrderJson from "./generated/model_order.json";
+import modelResultsJson from "../../story/data/dbt/model_results.json";
+import testResultsJson from "../../story/data/dbt/test_results.json";
+import modelPreviewDataJson from "../../story/data/dbt/model_preview_data.json";
+import compiledSqlJson from "../../story/data/dbt/compiled_sql.json";
+import modelOrderJson from "../../story/data/dbt/model_order.json";
 
 /**
  * Pre-defined model execution results. Keyed by model name.

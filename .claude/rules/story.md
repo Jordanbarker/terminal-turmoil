@@ -34,6 +34,11 @@ The player starts on their **home PC** (personal Linux machine), exploring files
 4. Edward sends follow-up email confirming start date
 5. Reading the follow-up triggers the transition: home → NexaCorp workstation (login screen → boot sequence → new filesystem)
 
+## Communication Channels
+
+- **Email (`mail`)**: Formal and system communications — welcome emails, IT provisioning, HR onboarding, formal requests from Edward
+- **Piper (`piper`)**: Casual team chat — colleague introductions, quick asks, tool help requests. Slack/Discord-style with channels (#general, #engineering) and DMs. Unlocked by reading Edward's welcome email (`piper_unlocked` flag). Most colleague interactions that unlock command groups happen via Piper, not email
+
 ## The Mystery
 
 Chip is NexaCorp's flagship chatbot product — but it has more system access than a chatbot should. The `chip_service_account` has elevated permissions, and multiple people may have credentials. The mystery is ambiguous: who is using Chip's access, and for what?

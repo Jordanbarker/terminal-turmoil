@@ -1,10 +1,12 @@
 import { CommandResult, EditorSessionInfo, GameAction, SshSessionInfo } from "./types";
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { checkEmailDeliveries, GameEvent } from "../mail/delivery";
+import { checkPiperDeliveries } from "../piper/delivery";
 import { resolvePath } from "../../lib/pathUtils";
-import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, checkStoryFlagTriggers } from "../narrative/storyFlags";
+import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, checkStoryFlagTriggers } from "../narrative/storyFlags";
 import { PromptSessionInfo } from "../prompt/types";
 import { ChipSessionInfo } from "../chip/types";
+import { PiperSessionInfo } from "../piper/types";
 import { ComputerId, StoryFlags } from "../../state/types";
 import { colorize, ansi } from "../../lib/ansi";
 import { listSaveSlots, formatSlotName } from "../../state/saveManager";
@@ -15,7 +17,8 @@ export type SessionToStart =
   | { type: "pythonRepl" }
   | { type: "prompt"; info: PromptSessionInfo }
   | { type: "ssh"; info: SshSessionInfo }
-  | { type: "chip"; info: ChipSessionInfo };
+  | { type: "chip"; info: ChipSessionInfo }
+  | { type: "piper"; info: PiperSessionInfo };
 
 export interface StoryFlagUpdate {
   flag: string;
@@ -34,7 +37,11 @@ export interface AppliedEffects {
   storyFlagUpdates: StoryFlagUpdate[];
   newDeliveredEmailIds: string[];
   emailNotifications: number;
+  newDeliveredPiperIds: string[];
+  piperNotifications: number;
   suppressPrompt: boolean;
+  transitionTo?: ComputerId;
+  incrementalLines?: string[];
 }
 
 export interface ApplyContext {
@@ -45,6 +52,7 @@ export interface ApplyContext {
   activeComputer: ComputerId;
   username: string;
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   storyFlags: StoryFlags;
   fs: VirtualFS;
 }
@@ -64,6 +72,8 @@ export function computeEffects(
     storyFlagUpdates: [],
     newDeliveredEmailIds: [],
     emailNotifications: 0,
+    newDeliveredPiperIds: [],
+    piperNotifications: 0,
     suppressPrompt: false,
   };
 
@@ -81,41 +91,35 @@ export function computeEffects(
     effects.newCwd = result.newCwd;
   }
 
-  // Session starts
+  // Computer transitions
+  if (result.transitionTo) {
+    effects.transitionTo = result.transitionTo;
+    effects.suppressPrompt = true;
+    return effects;
+  }
+
+  // Session starts (no early return — event processing must still run below)
   if (result.editorSession) {
     effects.startSession = { type: "editor", info: result.editorSession };
     effects.suppressPrompt = true;
-    return effects;
-  }
-
-  if (result.snowsqlSession?.startInteractive) {
+  } else if (result.snowsqlSession?.startInteractive) {
     effects.startSession = { type: "snowsql" };
     effects.suppressPrompt = true;
-    return effects;
-  }
-
-  if (result.promptSession) {
+  } else if (result.promptSession) {
     effects.startSession = { type: "prompt", info: result.promptSession };
     effects.suppressPrompt = true;
-    return effects;
-  }
-
-  if (result.interactiveSession?.type === "pythonRepl") {
+  } else if (result.interactiveSession?.type === "pythonRepl") {
     effects.startSession = { type: "pythonRepl" };
     effects.suppressPrompt = true;
-    return effects;
-  }
-
-  if (result.sshSession) {
+  } else if (result.sshSession) {
     effects.startSession = { type: "ssh", info: result.sshSession };
     effects.suppressPrompt = true;
-    return effects;
-  }
-
-  if (result.chipSession) {
+  } else if (result.chipSession) {
     effects.startSession = { type: "chip", info: result.chipSession };
     effects.suppressPrompt = true;
-    return effects;
+  } else if (result.piperSession) {
+    effects.startSession = { type: "piper", info: result.piperSession };
+    effects.suppressPrompt = true;
   }
 
   // Game actions
@@ -158,12 +162,14 @@ export function computeEffects(
   {
     const triggers = applyCtx.activeComputer === "home"
       ? getStoryFlagTriggers(applyCtx.username)
-      : getNexacorpStoryFlagTriggers(applyCtx.username);
+      : applyCtx.activeComputer === "devcontainer"
+        ? getDevcontainerStoryFlagTriggers(applyCtx.username)
+        : getNexacorpStoryFlagTriggers(applyCtx.username);
     let currentFlags = { ...applyCtx.storyFlags };
 
     for (const event of events) {
-      const flagResult = checkStoryFlagTriggers(event, triggers, currentFlags);
-      if (flagResult) {
+      const flagResults = checkStoryFlagTriggers(event, triggers, currentFlags);
+      for (const flagResult of flagResults) {
         effects.storyFlagUpdates.push(flagResult);
         currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
       }
@@ -188,6 +194,22 @@ export function computeEffects(
       effects.emailNotifications++;
     }
 
+  }
+
+  // Process piper deliveries
+  let piperIds = [...applyCtx.deliveredPiperIds];
+  for (const event of events) {
+    const newPiper = checkPiperDeliveries(event, piperIds, applyCtx.username);
+    if (newPiper.length > 0) {
+      piperIds = [...piperIds, ...newPiper];
+      effects.newDeliveredPiperIds.push(...newPiper);
+      effects.piperNotifications++;
+    }
+  }
+
+  // Pass through incremental lines
+  if (result.incrementalLines) {
+    effects.incrementalLines = result.incrementalLines;
   }
 
   return effects;

@@ -92,9 +92,17 @@ function createTestFS(): VirtualFS {
   return new VirtualFS(root, "/home/player", "/home/player");
 }
 
+const ALL_UNLOCKED = {
+  search_tools_unlocked: true,
+  inspection_tools_unlocked: true,
+  processing_tools_unlocked: true,
+  pipeline_tools_unlocked: true,
+  chip_unlocked: true,
+};
+
 function ctx(fs?: VirtualFS): CommandContext {
   const f = fs ?? createTestFS();
-  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp" };
+  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
 }
 
 describe("ls", () => {
@@ -432,7 +440,7 @@ describe("mail", () => {
 
   function mailCtx(fs?: VirtualFS): CommandContext {
     const f = fs ?? createMailFS();
-    return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp" };
+    return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
   }
 
   it("shows inbox listing with message count", () => {

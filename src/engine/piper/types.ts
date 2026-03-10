@@ -1,0 +1,44 @@
+import { GameEvent } from "../mail/delivery";
+import { StoryFlags } from "../../state/types";
+
+export interface PiperMessage {
+  id: string;
+  from: string;
+  timestamp: string;
+  body: string;
+  isPlayer?: boolean;
+}
+
+export interface PiperReplyOption {
+  label: string;
+  messageBody: string;
+  triggerEvents?: GameEvent[];
+}
+
+export interface PiperDelivery {
+  id: string;
+  channelId: string;
+  messages: PiperMessage[];
+  trigger: PiperTrigger | PiperTrigger[];
+  replyOptions?: PiperReplyOption[];
+}
+
+export type PiperTrigger =
+  | { type: "immediate" }
+  | { type: "after_file_read"; filePath: string; requireDelivered?: string }
+  | { type: "after_email_read"; emailId: string }
+  | { type: "after_piper_reply"; deliveryId: string }
+  | { type: "after_command"; command: string }
+  | { type: "after_objective"; objectiveId: string };
+
+export interface PiperChannel {
+  id: string;
+  name: string;
+  type: "channel" | "dm";
+  description?: string;
+}
+
+export interface PiperSessionInfo {
+  storyFlags: StoryFlags;
+  deliveredPiperIds: string[];
+}

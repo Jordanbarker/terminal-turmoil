@@ -107,8 +107,8 @@ async function main() {
 
   section("2. KEY FILES — onboarding, team-info");
 
-  cmd(runner, "cat Documents/onboarding.md");
-  cmd(runner, "cat Documents/team-info.md");
+  cmd(runner, "cat /srv/engineering/onboarding.md");
+  cmd(runner, "cat /srv/engineering/team-info.md");
 
   // ── 3. Jin Chen Handoff Files ───────────────────────────────────────
 

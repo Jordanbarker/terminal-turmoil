@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { serializeFS, deserializeFS, SerializedFS } from "../serialization";
 import { VirtualFS } from "../VirtualFS";
-import { createFilesystem } from "../initialFilesystem";
+import { createFilesystem } from "../../../story/filesystem/nexacorp";
 import { DirectoryNode } from "../types";
 
 function makeSimpleFS(): VirtualFS {

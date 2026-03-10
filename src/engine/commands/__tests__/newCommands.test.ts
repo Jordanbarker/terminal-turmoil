@@ -150,9 +150,17 @@ function createTestFS(): VirtualFS {
   return new VirtualFS(root, "/home/player", "/home/player");
 }
 
+const ALL_UNLOCKED = {
+  search_tools_unlocked: true,
+  inspection_tools_unlocked: true,
+  processing_tools_unlocked: true,
+  pipeline_tools_unlocked: true,
+  chip_unlocked: true,
+};
+
 function ctx(fs?: VirtualFS, overrides?: Partial<CommandContext>): CommandContext {
   const f = fs ?? createTestFS();
-  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", ...overrides };
+  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED, ...overrides };
 }
 
 // --- grep ---
@@ -1581,6 +1589,51 @@ describe("ls piped output", () => {
     const plain = stripAnsi(grepResult.output);
     expect(plain).toContain("docs");
     expect(plain).not.toContain("notes.txt");
+  });
+});
+
+// --- coder ---
+describe("coder", () => {
+  it("transitions to devcontainer with 'coder ssh ai' from nexacorp", () => {
+    const result = execute("coder", ["ssh", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.transitionTo).toBe("devcontainer");
+    expect(result.output).toBe("");
+  });
+
+  it("rejects unknown workspace", () => {
+    const result = execute("coder", ["ssh", "unknown"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.transitionTo).toBeUndefined();
+    expect(result.output).toContain("not found");
+  });
+
+  it("shows usage with no args", () => {
+    const result = execute("coder", [], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("usage");
+  });
+
+  it("rejects from non-nexacorp computer", () => {
+    const result = execute("coder", ["ssh", "ai"], {}, ctx(undefined, { activeComputer: "home" }));
+    expect(result.output).toContain("command not found");
+  });
+});
+
+// --- exit ---
+describe("exit", () => {
+  it("transitions to nexacorp from devcontainer", () => {
+    const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "devcontainer" }));
+    expect(result.transitionTo).toBe("nexacorp");
+    expect(result.output).toBe("");
+  });
+
+  it("shows error when not in remote session", () => {
+    const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "nexacorp" }));
+    expect(result.output).toContain("not in a remote session");
+    expect(result.transitionTo).toBeUndefined();
+  });
+
+  it("shows error on home computer", () => {
+    const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "home" }));
+    expect(result.output).toContain("command not found");
   });
 });
 

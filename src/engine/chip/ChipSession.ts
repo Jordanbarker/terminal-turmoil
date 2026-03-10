@@ -1,7 +1,7 @@
 import { Terminal } from "@xterm/xterm";
 import { ISession, SessionResult } from "../session/types";
 import { ChipSessionInfo, ChipMenuItem } from "./types";
-import { getMenuItems } from "./menuItems";
+import { getMenuItems } from "../../story/chip/menuItems";
 import {
   renderHeader,
   renderSeparator,
@@ -9,18 +9,23 @@ import {
   renderFooter,
   renderHintLine,
   renderUserMessage,
-  renderChipResponse,
+  renderChipResponseLines,
 } from "./render";
 import { CTRL_C } from "../terminal/keyCodes";
 import { GameEvent } from "../mail/delivery";
 import { colorize, ansi } from "../../lib/ansi";
+import {
+  CHIP_THINKING_DELAY_MS,
+  CHIP_CHAT_LINE_INTERVAL_MS,
+  CHIP_COMMAND_LINE_INTERVAL_MS,
+} from "../../lib/timing";
 
 export class ChipSession implements ISession {
   private terminal: Terminal;
   private info: ChipSessionInfo;
   private menuItems: ChipMenuItem[];
   private selectedIndex = 0;
-  private bypassOn = true;
+
   private collectedEvents: GameEvent[] = [];
   private escBuffer = "";
   private menuLineCount = 0;
@@ -29,10 +34,15 @@ export class ChipSession implements ISession {
   private expanded = false;
   private onUsedTopicsChange?: (topics: string[]) => void;
 
+  private isAnimating = false;
+  private animationTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingAnimationItem: ChipMenuItem | null = null;
+  private animationLinesWritten = 0;
+
   constructor(terminal: Terminal, info: ChipSessionInfo, onUsedTopicsChange?: (topics: string[]) => void) {
     this.terminal = terminal;
     this.info = info;
-    this.menuItems = getMenuItems(info.storyFlags);
+    this.menuItems = getMenuItems(info.storyFlags, info.currentComputer);
     this.onUsedTopicsChange = onUsedTopicsChange;
 
     const saved = info.storyFlags.used_chip_topics;
@@ -62,6 +72,14 @@ export class ChipSession implements ISession {
     for (let i = 0; i < data.length; i++) {
       const char = data[i];
       const code = char.charCodeAt(0);
+
+      // During animation, only Ctrl+C is accepted (skip to end)
+      if (this.isAnimating) {
+        if (code === CTRL_C) {
+          this.skipAnimation();
+        }
+        continue;
+      }
 
       // Handle escape sequences for arrow keys
       if (code === 0x1b) {
@@ -120,45 +138,44 @@ export class ChipSession implements ISession {
       // Number keys — jump to item
       if (char >= "1" && char <= "9") {
         const idx = parseInt(char, 10) - 1;
-        if (idx < this.getVisibleItems().length) {
+        const visibleItems = this.getVisibleItems();
+        if (idx < visibleItems.length) {
           this.selectedIndex = idx;
-          return this.selectCurrent();
+          if (visibleItems[idx].id === "exit") return this.exitSession();
+          this.selectCurrent();
         }
         continue;
       }
 
       // Enter — select current item
       if (char === "\r" || char === "\n") {
-        return this.selectCurrent();
+        const visibleItems = this.getVisibleItems();
+        if (visibleItems[this.selectedIndex].id === "exit") return this.exitSession();
+        this.selectCurrent();
       }
 
-      // b — toggle bypass
-      if (char === "b") {
-        this.bypassOn = !this.bypassOn;
-        this.redrawMenu();
-        continue;
-      }
     }
 
     return null;
   }
 
-  private selectCurrent(): SessionResult | null {
+  private exitSession(): SessionResult {
+    const clear = this.buildClearSequence();
+    this.terminal.write(clear + colorize("See you later!", ansi.cyan) + "\r\n\x1b[?25h");
+    return {
+      type: "exit",
+      triggerEvents:
+        this.collectedEvents.length > 0
+          ? this.collectedEvents
+          : undefined,
+    };
+  }
+
+  private selectCurrent(): void {
     const visibleItems = this.getVisibleItems();
     const item = visibleItems[this.selectedIndex];
 
-    // Exit option
-    if (item.id === "exit") {
-      return {
-        type: "exit",
-        triggerEvents:
-          this.collectedEvents.length > 0
-            ? this.collectedEvents
-            : undefined,
-      };
-    }
-
-    // Mark as used (never mark "exit")
+    // Mark as used
     this.usedItemIds.add(item.id);
     this.onUsedTopicsChange?.([...this.usedItemIds]);
 
@@ -167,23 +184,99 @@ export class ChipSession implements ISession {
       this.collectedEvents.push(...item.triggerEvents);
     }
 
-    // Refresh menu items (flags may have changed, e.g. git_access appears after clone_repo)
+    // Refresh menu items
     const usedStr = [...this.usedItemIds].join(",");
     this.info.storyFlags = { ...this.info.storyFlags, used_chip_topics: usedStr };
-    this.menuItems = getMenuItems(this.info.storyFlags);
+    this.menuItems = getMenuItems(this.info.storyFlags, this.info.currentComputer);
 
-    // Single write: clear menu + exchange + new menu
+    // Write clear + user message immediately
     const clear = this.buildClearSequence();
-    const width = this.getWidth();
     const userMsg = renderUserMessage(item.label);
-    const response = renderChipResponse(item.response, width);
+    this.terminal.write(`${clear}\r\n${userMsg}\r\n`);
+    this.animationLinesWritten = 2; // blank line + user message
+
+    // Start animated response
+    this.isAnimating = true;
+    this.pendingAnimationItem = item;
+
+    const width = this.getWidth();
+    const lines = renderChipResponseLines(item.response, width);
+
+    this.animationTimer = setTimeout(() => {
+      this.terminal.write("\r\n");
+      this.animationLinesWritten++;
+      this.writeLineByLine(lines, 0);
+    }, CHIP_THINKING_DELAY_MS);
+  }
+
+  private writeLineByLine(
+    lines: { line: string; isCommand: boolean }[],
+    index: number
+  ): void {
+    if (!this.isAnimating) return;
+
+    if (index >= lines.length) {
+      this.finishResponse();
+      return;
+    }
+
+    this.terminal.write(lines[index].line + "\r\n");
+    this.animationLinesWritten++;
+
+    const nextDelay =
+      index + 1 < lines.length && lines[index + 1].isCommand
+        ? CHIP_COMMAND_LINE_INTERVAL_MS
+        : CHIP_CHAT_LINE_INTERVAL_MS;
+
+    this.animationTimer = setTimeout(() => {
+      this.writeLineByLine(lines, index + 1);
+    }, nextDelay);
+  }
+
+  private skipAnimation(): void {
+    if (!this.isAnimating || !this.pendingAnimationItem) return;
+
+    if (this.animationTimer) {
+      clearTimeout(this.animationTimer);
+      this.animationTimer = null;
+    }
+
+    // Clear partially written lines
+    const up = this.animationLinesWritten - 1;
+    const clearSeq = up > 0 ? `\x1b[${up}A\r\x1b[J` : `\r\x1b[J`;
+
+    const width = this.getWidth();
+    const userMsg = renderUserMessage(this.pendingAnimationItem.label);
+    const lines = renderChipResponseLines(this.pendingAnimationItem.response, width);
+    const fullResponse = lines.map((l) => l.line).join("\r\n");
+
+    this.selectedIndex = 0;
+    this.expanded = false;
+    this.currentPrompt = "";
+    const separator = renderSeparator(width);
+    const menu = this.buildMenuOutput(this.currentPrompt);
+    this.terminal.write(
+      `${clearSeq}\r\n${userMsg}\r\n\r\n${fullResponse}\r\n\r\n${separator}\r\n${menu}`
+    );
+
+    this.isAnimating = false;
+    this.pendingAnimationItem = null;
+    this.animationLinesWritten = 0;
+  }
+
+  private finishResponse(): void {
+    const width = this.getWidth();
     const separator = renderSeparator(width);
     this.selectedIndex = 0;
     this.expanded = false;
     this.currentPrompt = "";
     const menu = this.buildMenuOutput(this.currentPrompt);
-    this.terminal.write(`${clear}\r\n${userMsg}\r\n\r\n${response}\r\n\r\n${separator}\r\n${menu}`);
-    return null;
+    this.terminal.write(`\r\n${separator}\r\n${menu}`);
+
+    this.isAnimating = false;
+    this.pendingAnimationItem = null;
+    this.animationTimer = null;
+    this.animationLinesWritten = 0;
   }
 
   private buildMenuOutput(prompt: string): string {
@@ -191,7 +284,7 @@ export class ChipSession implements ISession {
     const visibleItems = this.getVisibleItems();
     const usedIds = this.expanded ? this.usedItemIds : undefined;
     const menu = renderMenu(visibleItems, this.selectedIndex, prompt, usedIds);
-    const footer = renderFooter(width, this.bypassOn);
+    const footer = renderFooter(width);
     const hasHint = this.usedItemIds.size > 0;
     // Count lines to move up from last line to first for redraw:
     // items (n) + hint (0 or 1) + border (1) + bypass status (1)

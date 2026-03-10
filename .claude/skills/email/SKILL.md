@@ -1,31 +1,35 @@
 ---
 name: email
-description: "How the in-game email/mail system works — Maildir filesystem layout, delivery triggers, email definitions, and the mail CLI command. Use this skill whenever adding new emails, modifying email triggers, working on the mail command, touching any files under src/engine/mail/, or adding any kind of player notification or event-triggered message — even if it's triggered by another system like dbt."
+description: "How the in-game email/mail system works — Maildir filesystem layout, delivery triggers, email definitions, and the mail CLI command. Use this skill whenever adding new emails, modifying email triggers, working on the mail command, touching any files under src/engine/mail/ or src/story/emails/, or adding any kind of player notification or event-triggered message — even if it's triggered by another system like dbt."
 ---
 
 # Email System
 
-The email system is a core game mechanic that delivers messages triggered by player actions, using a Maildir-compatible virtual filesystem.
+The email system delivers formal/system messages triggered by player actions, using a Maildir-compatible virtual filesystem. **Casual team conversations use Piper (`piper` command) instead** — see the **piper skill** for details.
 
 ## Architecture
 
 ```
 src/engine/mail/
 ├── types.ts          # Email, EmailDelivery, EmailTrigger, ReplyOption types
-├── emails.ts         # Email routing: getEmailDefinitions(username, computer?), getNexacorpEmailDefinitions
-├── homeEmails.ts     # Home PC email definitions: getHomeEmailDefinitions
+├── emails.ts         # Email routing dispatcher: getEmailDefinitions(username, computer?), imports from story/emails/
 ├── mailUtils.ts      # Filesystem utilities: parse, format, deliver, mark read
 └── delivery.ts       # Event-based delivery (checkEmailDeliveries), GameEvent type
+
+src/story/emails/
+├── home.ts           # Home PC email definitions: getHomeEmailDefinitions
+└── nexacorp.ts       # NexaCorp email definitions: getNexacorpEmailDefinitions
 
 src/engine/prompt/
 ├── types.ts          # PromptOption, PromptSessionInfo, PromptResult
 └── PromptSession.ts  # Inline prompt session (renders, validates, resolves)
 
-src/engine/commands/builtins/mail.ts   # mail command handler (reply options → prompt)
-src/engine/filesystem/initialFilesystem.ts  # Maildir dir creation + immediate email seeding
-src/state/gameStore.ts                 # deliveredEmailIds state + addDeliveredEmails action
-src/hooks/useTerminal.ts               # Delivery trigger + prompt session integration
-src/hooks/useSessionRouter.ts          # Processes triggerEvents from prompt sessions (email delivery + story flags)
+src/engine/commands/builtins/mail.ts       # mail command handler (reply options → prompt)
+src/story/filesystem/nexacorp.ts           # Maildir dir creation + immediate email seeding (NexaCorp)
+src/story/filesystem/home.ts               # Maildir dir creation + immediate email seeding (Home PC)
+src/state/gameStore.ts                     # deliveredEmailIds state + addDeliveredEmails action
+src/hooks/useTerminal.ts                   # Delivery trigger + prompt session integration
+src/hooks/useSessionRouter.ts              # Processes triggerEvents from prompt sessions (email delivery + story flags)
 ```
 
 ## Data Model
@@ -144,8 +148,8 @@ Email body here...
 ## Adding a New Email
 
 1. **Define the email** in the appropriate file:
-   - **NexaCorp emails**: `emails.ts` inside `getNexacorpEmailDefinitions()`
-   - **Home PC emails**: `homeEmails.ts` inside `getHomeEmailDefinitions()`
+   - **NexaCorp emails**: `story/emails/nexacorp.ts` inside `getNexacorpEmailDefinitions()`
+   - **Home PC emails**: `story/emails/home.ts` inside `getHomeEmailDefinitions()`
    ```ts
    {
      email: {
@@ -160,7 +164,7 @@ Email body here...
    }
    ```
 2. Choose the appropriate trigger type based on when the email should arrive.
-3. Immediate emails are seeded via `buildInitialMailFiles()` in `initialFilesystem.ts` (NexaCorp) or `buildHomeMailFiles()` in `homeFilesystem.ts` (home).
+3. Immediate emails are seeded via `buildInitialMailFiles()` in `story/filesystem/nexacorp.ts` (NexaCorp) or `buildHomeMailFiles()` in `story/filesystem/home.ts` (home).
 
 ## Character Reference
 
@@ -226,22 +230,21 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 
 ## Narrative Email Reference
 
-### NexaCorp Emails (`emails.ts`)
+### NexaCorp Emails (`story/emails/nexacorp.ts`)
 
 | ID | From | Trigger | Narrative Purpose |
 |----|------|---------|-------------------|
-| `welcome_edward` | Edward Torres | immediate | Establish CTO, mention Jin Chen departure |
+| `welcome_edward` | Edward Torres | immediate | Establish CTO, mention Piper + Jin Chen |
 | `it_provisioned` | NexaCorp IT | immediate | Teach `mail` command usage |
-| `chip_intro` | Chip | immediate | Helpful chatbot onboarding, terminal tips |
+| `chip_intro` | Chip | immediate | Chatbot intro, unlocks `chip` + `piper` |
 | `maya_welcome` | Maya Johnson | after reading `it_provisioned` | HR welcome, team culture |
-| `sarah_intro` | Sarah Knight | after reading `chip_intro` | Engineering intro, offer to pair |
-| `auri_hello` | Auri Park | after reading `team-info.md` | Welcome, points to handoff notes |
-| `edward_handoff_suggestion` | Edward Torres | after reading `auri_hello` | Connects dots, suggests handoff docs |
-| `auri_pipeline_help` | Auri Park | after reading handoff notes | Asks player to run dbt pipeline |
+| `edward_handoff_suggestion` | Edward Torres | after reading `team-info.md` | Suggests handoff docs |
 | `edward_paranoid` | Edward Torres | after reading handoff notes | Casual check-in, supportive |
 | `edward_end_of_day` | Edward Torres | after dbt command | End-of-day debrief, hooks Chapter 3 |
 
-### Home PC Emails (`homeEmails.ts`)
+*Casual colleague interactions (Sarah, Oscar, Dana, Auri, Jordan) have moved to Piper messages — see the piper skill.*
+
+### Home PC Emails (`story/emails/home.ts`)
 
 | ID | From | Trigger | Narrative Purpose |
 |----|------|---------|-------------------|

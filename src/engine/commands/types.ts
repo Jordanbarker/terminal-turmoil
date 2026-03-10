@@ -1,7 +1,8 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { PromptSessionInfo } from "../prompt/types";
 import { ChipSessionInfo } from "../chip/types";
-import { ComputerId, StoryFlags } from "../../state/types";
+import { PiperSessionInfo } from "../piper/types";
+import type { ComputerId, StoryFlags } from "../../state/types";
 import { GameEvent } from "../mail/delivery";
 import { SnowflakeState } from "../snowflake/state";
 import { SessionContext } from "../snowflake/session/context";
@@ -37,6 +38,7 @@ export interface EditorSessionInfo {
   isNewFile: boolean;
   triggerRow?: number;
   triggerEvents?: GameEvent[];
+  requireSave?: boolean;
 }
 
 export type GameAction =
@@ -71,7 +73,10 @@ export interface CommandResult {
   promptSession?: PromptSessionInfo;
   sshSession?: SshSessionInfo;
   chipSession?: ChipSessionInfo;
+  piperSession?: PiperSessionInfo;
   triggerEvents?: GameEvent[];
+  transitionTo?: ComputerId;
+  incrementalLines?: string[];
 }
 
 export type CommandHandler = (

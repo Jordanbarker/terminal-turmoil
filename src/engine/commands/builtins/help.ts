@@ -3,17 +3,13 @@ import { register, getAvailableCommands } from "../registry";
 import { colorize, ansi } from "../../../lib/ansi";
 
 const META_COMMANDS = new Set(["save", "load", "newgame"]);
+const HIDDEN_COMMANDS = new Set(["help"]);
 
 const help: CommandHandler = (_args, _flags, ctx) => {
   const commands = getAvailableCommands(ctx.activeComputer, ctx.storyFlags);
-  const gameCommands = commands.filter((c) => !META_COMMANDS.has(c.name));
+  const gameCommands = commands.filter((c) => !META_COMMANDS.has(c.name) && !HIDDEN_COMMANDS.has(c.name));
   const metaCommands = commands.filter((c) => META_COMMANDS.has(c.name));
   const maxLen = Math.max(...commands.map((c) => c.name.length));
-
-  const commandsUnlocked = ctx.activeComputer !== "home" || ctx.storyFlags?.commands_unlocked;
-  const footer = commandsUnlocked
-    ? `Use ${colorize("man <command>", ansi.green)} for detailed usage.`
-    : `Run ${colorize("nano terminal_notes.txt", ansi.green)} for more commands.`;
 
   const lines = [
     colorize("Available commands:", ansi.bold, ansi.yellow),
@@ -27,7 +23,7 @@ const help: CommandHandler = (_args, _flags, ctx) => {
         `  ${colorize(cmd.name.padEnd(maxLen + 2), ansi.cyan)}${cmd.description}`
     ),
     "",
-    footer,
+    `Use ${colorize("man <command>", ansi.green)} for detailed usage.`,
   ];
 
   return { output: lines.join("\n") };

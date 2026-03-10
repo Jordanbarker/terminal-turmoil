@@ -24,8 +24,8 @@ import "../src/engine/commands/builtins"; // side-effect: registers all commands
 import { computeEffects, AppliedEffects, SessionToStart } from "../src/engine/commands/applyResult";
 import { CommandResult } from "../src/engine/commands/types";
 import { VirtualFS } from "../src/engine/filesystem/VirtualFS";
-import { createHomeFilesystem } from "../src/engine/filesystem/homeFilesystem";
-import { createNexacorpFilesystem } from "../src/engine/filesystem/initialFilesystem";
+import { createHomeFilesystem } from "../src/story/filesystem/home";
+import { createNexacorpFilesystem } from "../src/story/filesystem/nexacorp";
 import { SnowflakeState } from "../src/engine/snowflake/state";
 import { createInitialSnowflakeState } from "../src/engine/snowflake/seed/initial_data";
 import { createDefaultContext, SessionContext } from "../src/engine/snowflake/session/context";
@@ -421,6 +421,7 @@ export class GameRunner {
       activeComputer: this.activeComputer,
       username: this.username,
       deliveredEmailIds: this.deliveredEmailIds,
+      deliveredPiperIds: [],
       storyFlags: this.storyFlags,
       fs: this.fs,
     });
@@ -456,7 +457,7 @@ export class GameRunner {
 
     // Email notifications
     if (effects.emailNotifications > 0) {
-      rawOutput += `\n\nYou have new mail in /var/mail/${this.username}`;
+      rawOutput += `\n\n${colorize(`You have new mail in /var/mail/${this.username}`, ansi.yellow, ansi.bold)}`;
     }
 
     return {
@@ -527,7 +528,7 @@ async function main() {
       console.log(result.rawOutput);
     }
     if (result.newEmails.length > 0) {
-      console.log(`\nYou have new mail in /var/mail/${runner.username}`);
+      console.log(colorize(`\nYou have new mail in /var/mail/${runner.username}`, ansi.yellow, ansi.bold));
     }
     if (result.promptPending && runner.pendingPrompt) {
       console.log("(Use :select N to choose an option)");

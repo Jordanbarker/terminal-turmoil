@@ -9,6 +9,7 @@ import { GameEvent } from "../mail/delivery";
 export interface EditorTrigger {
   triggerRow: number;
   triggerEvents: GameEvent[];
+  requireSave?: boolean;
 }
 
 export class EditorSession implements ISession {
@@ -19,6 +20,7 @@ export class EditorSession implements ISession {
   private onSave: (newFs: VirtualFS) => void;
   private trigger?: EditorTrigger;
   private maxRowReached = 0;
+  private hasSaved = false;
 
   constructor(
     terminal: Terminal,
@@ -788,6 +790,7 @@ export class EditorSession implements ISession {
       this.fs = result.fs;
       this.onSave(result.fs);
       this.state.modified = false;
+      this.hasSaved = true;
       this.state.message = `[ Wrote ${this.state.lines.length} lines ]`;
     } else if (result.error) {
       this.state.message = `[ Error: ${result.error} ]`;
@@ -806,9 +809,9 @@ export class EditorSession implements ISession {
 
   private exitEditor(): SessionResult {
     this.terminal.write("\x1b[?25h\x1b[?1049l"); // Show cursor + exit alt buffer
-    const triggerEvents = this.trigger && this.maxRowReached >= this.trigger.triggerRow
-      ? this.trigger.triggerEvents
-      : undefined;
+    const rowOk = !this.trigger || this.maxRowReached >= this.trigger.triggerRow;
+    const saveOk = !this.trigger?.requireSave || this.hasSaved;
+    const triggerEvents = this.trigger && rowOk && saveOk ? this.trigger.triggerEvents : undefined;
     return { type: "exit", newFs: this.fs, triggerEvents };
   }
 

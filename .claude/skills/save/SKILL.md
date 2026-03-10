@@ -31,14 +31,16 @@ src/hooks/useTerminal.ts                 # gameAction handler (save/load/listSav
 Full snapshot of all game state:
 ```ts
 {
-  version: number;        // SAVE_FORMAT_VERSION (currently 2) for migrations
+  version: number;        // SAVE_FORMAT_VERSION (currently 3) for migrations
   timestamp: number;      // Date.now() at save time
   label: string;          // Display label
   username, gamePhase, currentChapter, completedObjectives,
   deliveredEmailIds, commandHistory, cwd: string;
   fs: SerializedFS;       // Full filesystem tree
-  activeComputer: ComputerId;  // "home" | "nexacorp"
+  activeComputer: ComputerId;  // "home" | "nexacorp" | "devcontainer"
   storyFlags: StoryFlags;      // Record<string, string | boolean>
+  stashedFs?: SerializedFS;    // Stashed FS from other computer (v3+)
+  stashedCwd?: string;         // Stashed cwd from other computer (v3+)
 }
 ```
 

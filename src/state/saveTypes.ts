@@ -1,7 +1,7 @@
 import { SerializedFS } from "../engine/filesystem/serialization";
 import { GamePhase, ComputerId, StoryFlags } from "./types";
 
-export const SAVE_FORMAT_VERSION = 2;
+export const SAVE_FORMAT_VERSION = 4;
 
 export type SaveSlotId = "auto" | "slot-1" | "slot-2" | "slot-3";
 
@@ -14,11 +14,14 @@ export interface SaveData {
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   commandHistory: string[];
   cwd: string;
   fs: SerializedFS;
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
+  stashedFs?: SerializedFS;
+  stashedCwd?: string;
 }
 
 export interface SaveSlotMeta {

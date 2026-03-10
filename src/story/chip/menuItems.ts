@@ -1,5 +1,5 @@
-import { ChipMenuItem } from "./types";
-import { StoryFlags } from "../../state/types";
+import { ChipMenuItem } from "../../engine/chip/types";
+import { StoryFlags, ComputerId } from "../../state/types";
 
 const ALL_ITEMS: ChipMenuItem[] = [
   {
@@ -7,13 +7,13 @@ const ALL_ITEMS: ChipMenuItem[] = [
     label: "What should I work on?",
     response:
       "Edward mentioned wanting you to get familiar with our data pipeline. " +
-      "I can clone the dbt repo for you — just pick that option below. " +
+      "Connect to the dev container with 'coder ssh ai', then I can clone the dbt repo for you. " +
       "Auri Park was managing the models before you — might be worth looking at what's there.",
   },
   {
     id: "clone_repo",
     label: "Clone the dbt repo for me",
-    condition: (flags) => !flags.dbt_project_cloned,
+    condition: (flags, computer) => !flags.dbt_project_cloned && computer === "devcontainer",
     response:
       "On it! Pulling the repo now...\n" +
       "\n" +
@@ -56,12 +56,44 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "about 17 people right now, and growing fast.",
   },
   {
-    id: "jchen",
-    label: "Who was Jin Chen?",
+    id: "team",
+    label: "Tell me about the team",
     response:
-      "Let me check... Jin Chen, Engineering department, employee ID E031. Status: terminated, " +
-      "February 2026. That's all I have in the employee records. You'd have to ask Edward " +
-      "or HR for more context — I just see what's in the database.",
+      "Let me pull that up...\n" +
+      "\n" +
+      "$ snowsql -q \"SELECT full_name, department FROM employees WHERE status = 'active'\"\n" +
+      "\n" +
+      "  Edward Torres      Executive\n" +
+      "  Sarah Knight       Engineering\n" +
+      "  Erik Lindstrom     Engineering\n" +
+      "  Oscar Diaz         Engineering\n" +
+      "  Auri Park          Engineering\n" +
+      "  Soham Parekh       Engineering\n" +
+      "  Cassie Moreau      Product\n" +
+      "  Jordan Kessler     Marketing\n" +
+      "  Dana Okafor        Operations\n" +
+      "  Maya Johnson       People & Culture\n" +
+      "\n" +
+      "That's the current active roster. 10 people plus you. The founders " +
+      "(Jessica, Marcus, Tom) are in the executive table but I pulled just the day-to-day team.",
+  },
+  {
+    id: "jchen",
+    label: "Why did Jin Chen leave?",
+    response:
+      "Let me check... Employee ID E031, Jin Chen. Department: Engineering. " +
+      "Status: terminated, February 2026. That's all I have in the records. " +
+      "HR would know more — I just see what's in the database.",
+  },
+  {
+    id: "chip_sa",
+    label: "What's the chip_service_account?",
+    condition: (flags) => !!flags.found_chip_directives,
+    response:
+      "That's the service account I use for automated tasks — log rotation, " +
+      "ticket triage, system monitoring. Standard stuff for any production service. " +
+      "The credentials are shared with authorized engineering personnel for " +
+      "maintenance and debugging.",
   },
   {
     id: "chip",
@@ -73,14 +105,23 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "from looking up employee info to running system queries.",
   },
   {
+    id: "chip_access",
+    label: "What can you access?",
+    response:
+      "I can query the Snowflake data warehouse, check system logs, manage tickets, " +
+      "and help with documentation. I also handle some automated maintenance — log rotation, " +
+      "monitoring, that kind of thing. If you need data from any of those systems, " +
+      "just ask and I can run the query for you.",
+  },
+  {
     id: "exit",
     label: "Exit",
     response: "",
   },
 ];
 
-export function getMenuItems(storyFlags: StoryFlags): ChipMenuItem[] {
+export function getMenuItems(storyFlags: StoryFlags, computer: ComputerId): ChipMenuItem[] {
   return ALL_ITEMS.filter(
-    (item) => !item.condition || item.condition(storyFlags)
+    (item) => !item.condition || item.condition(storyFlags, computer)
   );
 }

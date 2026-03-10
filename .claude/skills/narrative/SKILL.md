@@ -1,32 +1,39 @@
 ---
 name: narrative
-description: "Story flags, triggers, chapter/objective system, investigation paths, Chip assistant, and the home→NexaCorp transition. Use this skill whenever modifying story progression, adding/changing story flags, working on investigation triggers, or touching files under src/engine/narrative/, src/engine/assistant/, or story-flag-related code in src/engine/commands/applyResult.ts."
+description: "Story flags, triggers, chapter/objective system, investigation paths, Chip assistant, and the home→NexaCorp transition. Use this skill whenever modifying story progression, adding/changing story flags, working on investigation triggers, or touching files under src/engine/narrative/, src/story/, src/engine/assistant/, or story-flag-related code in src/engine/commands/applyResult.ts."
 ---
 
 # Narrative System
 
-The narrative system tracks player discoveries via story flags, triggers email deliveries and story progression based on game events, and manages the home→NexaCorp computer transition.
+The narrative system tracks player discoveries via story flags, triggers email and Piper message deliveries and story progression based on game events, and manages the home→NexaCorp computer transition.
 
 ## Architecture
 
 ```
 src/engine/
 ├── narrative/
-│   ├── types.ts           # Chapter, Objective, Trigger types (legacy)
-│   ├── chapters.ts        # ChapterDefinition, ObjectiveDefinition, ObjectiveCompletionCheck, CHAPTERS
+│   ├── types.ts           # Chapter, Objective, Trigger types, ChapterDefinition, ObjectiveDefinition, ObjectiveCompletionCheck
+│   ├── chapters.ts        # Re-exports types from types.ts and CHAPTERS from story/chapters.ts
 │   ├── objectives.ts      # resolveObjectives(), ResolvedObjective
-│   └── storyFlags.ts      # StoryFlagTrigger, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), checkStoryFlagTriggers()
+│   └── storyFlags.ts      # StoryFlagTrigger interface, checkStoryFlagTriggers(); re-exports story data from story/storyFlags.ts
 ├── assistant/
 │   └── types.ts           # ChipMessage, AssistantState types
 ├── commands/
-│   └── applyResult.ts     # computeEffects() — processes events into story flag updates, email deliveries, transitions
+│   └── applyResult.ts     # computeEffects() — processes events into story flag updates, email + piper deliveries, transitions
+
+src/story/
+├── chapters.ts            # CHAPTERS array (chapter/objective definitions)
+├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers()
+├── player.ts              # PLAYER and COMPUTERS config
+├── piper/
+│   ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
+│   └── messages.ts        # getPiperDeliveries() — all Piper message definitions with triggers
+└── filesystem/
+    └── nexacorp.ts        # buildChipCacheFiles(storyFlags) — conditional surveillance files
 
 src/state/
-├── types.ts               # StoryFlags, ComputerId, GamePhase, COMPUTERS, GameState
-└── gameStore.ts            # Zustand store with storyFlags state + updateStoryFlags action
-
-src/engine/filesystem/
-└── initialFilesystem.ts   # buildChipCacheFiles(storyFlags) — conditional surveillance files
+├── types.ts               # StoryFlags, ComputerId, GamePhase, GameState
+└── gameStore.ts           # Zustand store with storyFlags state + updateStoryFlags action
 ```
 
 ## Data Model
@@ -35,16 +42,21 @@ src/engine/filesystem/
 
 ```ts
 type StoryFlags = Record<string, string | boolean>;
-type ComputerId = "home" | "nexacorp";
+type ComputerId = "home" | "nexacorp" | "devcontainer";
 type GamePhase = "login" | "booting" | "playing" | "transitioning";
+```
 
+### Player & Computers (`story/player.ts`)
+
+```ts
 const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: string }> = {
   home: { hostname: "maniac-iv", promptHostname: "maniac-iv" },
   nexacorp: { hostname: "nexacorp-ws01", promptHostname: "nexacorp-ws01" },
+  devcontainer: { hostname: "coder-ai", promptHostname: "coder-ai" },
 };
 ```
 
-### Triggers (`narrative/storyFlags.ts`)
+### Triggers (`engine/narrative/storyFlags.ts`)
 
 ```ts
 interface StoryFlagTrigger {
@@ -56,7 +68,7 @@ interface StoryFlagTrigger {
 }
 ```
 
-### Types (`narrative/types.ts`)
+### Types (`engine/narrative/types.ts`)
 
 ```ts
 interface Chapter { id: string; title: string; objectives: Objective[] }
@@ -73,7 +85,7 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 
 ## All Story Flag Triggers
 
-### Home PC Flags (`getStoryFlagTriggers(username)`)
+### Home PC Flags (`story/storyFlags.ts` — `getStoryFlagTriggers(username)`)
 
 | Flag | Event | Path | Value |
 |------|-------|------|-------|
@@ -86,7 +98,7 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `read_auto_apply` | `file_read` | `/home/{username}/auto_apply.py` | `true` |
 | `read_bashrc` | `file_read` | `/home/{username}/.bashrc` | `true` |
 
-### NexaCorp Investigation Flags (`getNexacorpStoryFlagTriggers()`)
+### NexaCorp Investigation Flags (`story/storyFlags.ts` — `getNexacorpStoryFlagTriggers()`)
 
 | Flag | Event | Path | Value |
 |------|-------|------|-------|
@@ -95,13 +107,18 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `found_chip_directives` | `file_read` | `/opt/chip/.internal/directives.txt` | `true` |
 | `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
 | `read_onboarding` | `file_read` | `/home/{username}/Documents/onboarding.md` | `true` |
+| `discovered_log_tampering` | — | — | `true` (special: detected when `diff` is run on `.bak` files) |
+
+### Dev Container Flags (`story/storyFlags.ts` — `getDevcontainerStoryFlagTriggers()`)
+
+| Flag | Event | Path | Value |
+|------|-------|------|-------|
 | `ran_dbt` | `command_executed` | detail: `dbt` | `true` |
 | `found_data_filtering` | `file_read` | `/home/{username}/nexacorp-analytics/models/marts/dim_employees.sql` | `true` |
-| `discovered_log_tampering` | — | — | `true` (special: detected when `diff` is run on `.bak` files) |
 
 ## Objectives System
 
-### Types (`chapters.ts`)
+### Types (`engine/narrative/types.ts`)
 
 ```ts
 type ObjectiveCompletionCheck =
@@ -134,9 +151,22 @@ function resolveObjectives(chapter, storyFlags, completedObjectives, deliveredEm
 
 Resolves each objective's completion state from story flags, completed objectives, or delivered emails. Hidden objectives become visible once their prerequisite is completed.
 
-### `commands_unlocked` Mechanism
+### Command Gating
 
-The `commands_unlocked` flag is set via the nano editor trigger (scrolling to the commands section of `terminal_notes.txt`), not via standard `StoryFlagTrigger`. It fires an `objective_completed` event with detail `"commands_unlocked"` which is handled in `useSessionRouter.ts`.
+Commands are gated differently per computer (see `engine/commands/availability.ts`, with gate data in `story/commandGates.ts`):
+
+**Home PC**: All `HOME_COMMANDS` are available from the start. Two commands have individual unlock conditions:
+- `pdftotext` — unlocked by `pdftotext_unlocked` flag (triggered by visiting `~/Downloads` directory)
+- `tree` — unlocked by `tree_installed` flag (triggered by running `apt install tree`)
+
+**NexaCorp**: Commands are introduced gradually via colleague emails. The `NEXACORP_GATED` map requires specific story flags:
+- `search_tools_unlocked` — unlocks grep, find, diff
+- `inspection_tools_unlocked` — unlocks head, tail, wc
+- `processing_tools_unlocked` — unlocks sort, uniq
+- `coder_unlocked` — unlocks coder (for connecting to dev container)
+- `chip_unlocked` — unlocks chip (triggered by reading the chip intro email)
+
+**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snowsql, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`.
 
 ## Event Chain
 
@@ -178,7 +208,7 @@ Full sequence:
 
 ## Chip Cache Files (`buildChipCacheFiles`)
 
-`buildChipCacheFiles(storyFlags)` in `initialFilesystem.ts` generates surveillance files based on what the player read on their home PC. These appear in `/opt/chip/cache/` on NexaCorp login.
+`buildChipCacheFiles(storyFlags)` in `story/filesystem/nexacorp.ts` generates surveillance files based on what the player read on their home PC. These appear in `/opt/chip/cache/` on NexaCorp login.
 
 | File | Condition | Content |
 |------|-----------|---------|
@@ -223,7 +253,7 @@ When designing story progression, email triggers, or investigation paths involvi
 
 ## Adding a New Story Flag
 
-1. **Define the trigger** in `storyFlags.ts` — add to `getStoryFlagTriggers()` (home) or `getNexacorpStoryFlagTriggers()` (NexaCorp)
-2. **Use the flag** in filesystem generation (`initialFilesystem.ts`), email definitions, or Chip behavior
-3. **Add tests** for the trigger in `storyFlags.ts` tests
-4. If the flag should affect NexaCorp content, check `buildChipCacheFiles()` or `createNexacorpFilesystem()` patterns
+1. **Define the trigger** in `story/storyFlags.ts` — add to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container)
+2. **Use the flag** in filesystem generation (`story/filesystem/nexacorp.ts`), email definitions (`story/emails/`), or Chip behavior
+3. **Add tests** for the trigger in `engine/narrative/__tests__/`
+4. If the flag should affect NexaCorp content, check `buildChipCacheFiles()` or `createNexacorpFilesystem()` patterns in `story/filesystem/nexacorp.ts`

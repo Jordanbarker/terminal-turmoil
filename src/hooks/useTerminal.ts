@@ -5,13 +5,16 @@ import { parseInput, parsePipeline } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getCoderConnectionSequence, coderBanner } from "../lib/ascii";
+import { VirtualFS } from "../engine/filesystem/VirtualFS";
+import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS } from "../state/types";
 import { computeEffects, AppliedEffects } from "../engine/commands/applyResult";
-import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
+import { seedImmediatePiper } from "../engine/piper/delivery";
+import { BOOT_LINE_INTERVAL_MS, DBT_LINE_INTERVAL_MS } from "../lib/timing";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 
@@ -29,6 +32,8 @@ export function useTerminal() {
     setCwd,
     deliveredEmailIds,
     addDeliveredEmails,
+    deliveredPiperIds,
+    addDeliveredPiperMessages,
     saveGame,
     loadGame,
     resetGame,
@@ -38,6 +43,10 @@ export function useTerminal() {
     setStoryFlag,
     setGamePhase,
     setCurrentChapter,
+    stashedFs,
+    stashedCwd,
+    setStashedFs,
+    setStashedCwd,
   } = useGameStore();
 
   // Keep refs for current values to avoid stale closures
@@ -45,16 +54,22 @@ export function useTerminal() {
   const cwdRef = useRef(cwd);
   const usernameRef = useRef(username);
   const deliveredIdsRef = useRef(deliveredEmailIds);
+  const deliveredPiperIdsRef = useRef(deliveredPiperIds);
   const activeComputerRef = useRef(activeComputer);
   const storyFlagsRef = useRef(storyFlags);
+  const stashedFsRef = useRef(stashedFs);
+  const stashedCwdRef = useRef(stashedCwd);
 
   useEffect(() => {
     fsRef.current = fs;
     cwdRef.current = cwd;
     usernameRef.current = username;
     deliveredIdsRef.current = deliveredEmailIds;
+    deliveredPiperIdsRef.current = deliveredPiperIds;
     activeComputerRef.current = activeComputer;
     storyFlagsRef.current = storyFlags;
+    stashedFsRef.current = stashedFs;
+    stashedCwdRef.current = stashedCwd;
   });
 
   const getPrompt = useCallback((currentCwd?: string) => {
@@ -103,6 +118,13 @@ export function useTerminal() {
           fsRef.current = state.fs;
           cwdRef.current = state.cwd;
 
+          // Seed immediate piper messages for NexaCorp
+          const piperIds = seedImmediatePiper(state.username);
+          if (piperIds.length > 0) {
+            addDeliveredPiperMessages(piperIds);
+            deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...piperIds];
+          }
+
           // Phase 2: Boot sequence
           setGamePhase("booting");
           const bootLines = getBootSequence(usernameRef.current);
@@ -123,15 +145,98 @@ export function useTerminal() {
     }, BOOT_LINE_INTERVAL_MS);
   }, [setGamePhase, setActiveComputer, setCurrentChapter]);
 
+  const runCoderTransition = useCallback((term: Terminal) => {
+    setGamePhase("transitioning");
+
+    // Capture old stash (previous devcontainer FS, or null on first visit) before overwriting
+    const previousDevcontainerFs = stashedFsRef.current;
+    const previousDevcontainerCwd = stashedCwdRef.current;
+
+    // Stash current NexaCorp FS so we can restore it on exit
+    setStashedFs(fsRef.current);
+    setStashedCwd(cwdRef.current);
+    stashedFsRef.current = fsRef.current;
+    stashedCwdRef.current = cwdRef.current;
+
+    // Show connection animation
+    const lines = getCoderConnectionSequence();
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < lines.length) {
+        term.writeln(lines[i]);
+        i++;
+      } else {
+        clearInterval(interval);
+
+        setActiveComputer("devcontainer");
+        activeComputerRef.current = "devcontainer";
+
+        // Restore previous devcontainer FS or build fresh on first visit
+        let newFs: VirtualFS;
+        let newCwd: string;
+        if (previousDevcontainerFs) {
+          newFs = previousDevcontainerFs;
+          newCwd = (previousDevcontainerCwd && previousDevcontainerFs.getNode(previousDevcontainerCwd))
+            ? previousDevcontainerCwd
+            : previousDevcontainerFs.cwd;
+        } else {
+          const username = usernameRef.current;
+          const root = createDevcontainerFilesystem(username);
+          newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+          newCwd = newFs.cwd;
+        }
+
+        setFs(newFs);
+        fsRef.current = newFs;
+        setCwd(newCwd);
+        cwdRef.current = newCwd;
+
+        term.writeln("");
+        coderBanner.forEach((line) => term.writeln(line));
+        setGamePhase("playing");
+        writePrompt(term);
+      }
+    }, BOOT_LINE_INTERVAL_MS);
+  }, [setGamePhase, setActiveComputer, setFs, setCwd, setStashedFs, setStashedCwd, writePrompt]);
+
+  const runExitToNexacorp = useCallback((term: Terminal) => {
+    // Capture the NexaCorp FS from stash before overwriting
+    const nexaFs = stashedFsRef.current;
+    const nexaCwd = stashedCwdRef.current;
+
+    // Stash current devcontainer FS for re-entry
+    setStashedFs(fsRef.current);
+    setStashedCwd(cwdRef.current);
+    stashedFsRef.current = fsRef.current;
+    stashedCwdRef.current = cwdRef.current;
+
+    // Restore NexaCorp FS
+    if (nexaFs) {
+      setFs(nexaFs);
+      fsRef.current = nexaFs;
+      const cwd = (nexaCwd && nexaFs.getNode(nexaCwd)) ? nexaCwd : nexaFs.cwd;
+      setCwd(cwd);
+      cwdRef.current = cwd;
+    }
+
+    setActiveComputer("nexacorp");
+    activeComputerRef.current = "nexacorp";
+
+    term.writeln(colorize("\r\nDisconnected from coder-ai.", ansi.dim));
+    writePrompt(term);
+  }, [setActiveComputer, setFs, setCwd, setStashedFs, setStashedCwd, writePrompt]);
+
   // Compose sub-hooks
   const sessionRouter = useSessionRouter({
     fsRef,
     usernameRef,
     deliveredIdsRef,
+    deliveredPiperIdsRef,
     activeComputerRef,
     storyFlagsRef,
     setFs,
     addDeliveredEmails,
+    addDeliveredPiperMessages,
     setStoryFlag,
     writePrompt,
     runSshTransition,
@@ -145,11 +250,74 @@ export function useTerminal() {
     writePrompt,
   });
 
+  /** Apply state-only effects (FS, cwd, story flags, email/piper deliveries). No terminal writes. */
+  const applyStateEffects = useCallback(
+    (effects: AppliedEffects) => {
+      if (effects.newFs) {
+        setFs(effects.newFs);
+        fsRef.current = effects.newFs;
+      }
+      if (effects.newCwd) {
+        setCwd(effects.newCwd);
+        cwdRef.current = effects.newCwd;
+      }
+      for (const update of effects.storyFlagUpdates) {
+        setStoryFlag(update.flag, update.value);
+        storyFlagsRef.current = { ...storyFlagsRef.current, [update.flag]: update.value };
+        if (update.toast) {
+          useGameStore.getState().addToast(update.toast);
+        }
+      }
+      if (effects.newDeliveredEmailIds.length > 0) {
+        addDeliveredEmails(effects.newDeliveredEmailIds);
+        deliveredIdsRef.current = [...deliveredIdsRef.current, ...effects.newDeliveredEmailIds];
+      }
+      if (effects.newDeliveredPiperIds.length > 0) {
+        addDeliveredPiperMessages(effects.newDeliveredPiperIds);
+        deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...effects.newDeliveredPiperIds];
+      }
+    },
+    [setFs, setCwd, setStoryFlag, addDeliveredEmails, addDeliveredPiperMessages]
+  );
+
+  /** Write email/piper notification lines to the terminal. */
+  const writeNotifications = useCallback(
+    (term: Terminal, effects: AppliedEffects) => {
+      if (effects.emailNotifications > 0) {
+        term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
+      }
+      if (effects.piperNotifications > 0) {
+        term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+      }
+    },
+    []
+  );
+
   /** Execute the computed effects from applyResult. Returns true if prompt should be suppressed. */
   const executeEffects = useCallback(
     (term: Terminal, effects: AppliedEffects) => {
       if (effects.clearScreen) {
         term.clear();
+      }
+
+      // Incremental line-by-line rendering (e.g. dbt output)
+      if (effects.incrementalLines) {
+        applyStateEffects(effects);
+        busyRef.current = true;
+        const lines = effects.incrementalLines;
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i < lines.length) {
+            term.writeln(lines[i].replace(/\n/g, "\r\n"));
+            i++;
+          } else {
+            clearInterval(interval);
+            writeNotifications(term, effects);
+            busyRef.current = false;
+            writePrompt(term);
+          }
+        }, DBT_LINE_INTERVAL_MS);
+        return true;
       }
 
       if (effects.output) {
@@ -164,6 +332,16 @@ export function useTerminal() {
       if (effects.newCwd) {
         setCwd(effects.newCwd);
         cwdRef.current = effects.newCwd;
+      }
+
+      // Computer transitions
+      if (effects.transitionTo === "devcontainer") {
+        runCoderTransition(term);
+        return true;
+      }
+      if (effects.transitionTo === "nexacorp" && activeComputerRef.current === "devcontainer") {
+        runExitToNexacorp(term);
+        return true;
       }
 
       // Start sessions
@@ -223,12 +401,22 @@ export function useTerminal() {
       }
 
       if (effects.emailNotifications > 0) {
-        term.write(`\r\n\nYou have new mail in /var/mail/${usernameRef.current}`);
+        term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
+      }
+
+      // Apply piper deliveries
+      if (effects.newDeliveredPiperIds.length > 0) {
+        addDeliveredPiperMessages(effects.newDeliveredPiperIds);
+        deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...effects.newDeliveredPiperIds];
+      }
+
+      if (effects.piperNotifications > 0) {
+        term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
       }
 
       return effects.suppressPrompt;
     },
-    [setFs, setCwd, sessionRouter, addDeliveredEmails, saveGame, loadGame, getPrompt, setStoryFlag]
+    [setFs, setCwd, sessionRouter, addDeliveredEmails, addDeliveredPiperMessages, saveGame, loadGame, getPrompt, setStoryFlag, runCoderTransition, runExitToNexacorp, applyStateEffects, writeNotifications, writePrompt]
   );
 
   const handleInput = useCallback(
@@ -316,6 +504,7 @@ export function useTerminal() {
             activeComputer: activeComputerRef.current,
             username: usernameRef.current,
             deliveredEmailIds: deliveredIdsRef.current,
+            deliveredPiperIds: deliveredPiperIdsRef.current,
             storyFlags: storyFlagsRef.current,
             fs: fsRef.current,
           });

@@ -1,14 +1,15 @@
 import { GameEvent } from "../mail/delivery";
-import { StoryFlags } from "../../state/types";
+import { StoryFlags, ComputerId } from "../../state/types";
 
 export interface ChipMenuItem {
   id: string;
   label: string;
   response: string;
   triggerEvents?: GameEvent[];
-  condition?: (flags: StoryFlags) => boolean;
+  condition?: (flags: StoryFlags, computer: ComputerId) => boolean;
 }
 
 export interface ChipSessionInfo {
   storyFlags: StoryFlags;
+  currentComputer: ComputerId;
 }

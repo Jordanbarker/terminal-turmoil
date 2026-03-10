@@ -86,6 +86,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
   return {
     output: lines.join("\n"),
     ...(hasChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
+    ...(!ctx.isPiped && { incrementalLines: lines }),
   };
 }
 
@@ -113,7 +114,10 @@ export function runTests(ctx: CommandContext): CommandResult {
   lines.push("");
   lines.push(formatSummary(summary));
 
-  return { output: lines.join("\n") };
+  return {
+    output: lines.join("\n"),
+    ...(!ctx.isPiped && { incrementalLines: lines }),
+  };
 }
 
 /**
@@ -125,7 +129,11 @@ export function runBuild(ctx: CommandContext): CommandResult {
 
   const testResult = runTests(ctx);
 
-  return { output: runResult.output + "\n\n" + testResult.output };
+  const combinedLines = [...(runResult.incrementalLines || []), "", ...(testResult.incrementalLines || [])];
+  return {
+    output: runResult.output + "\n\n" + testResult.output,
+    ...(!ctx.isPiped && { incrementalLines: combinedLines }),
+  };
 }
 
 /**

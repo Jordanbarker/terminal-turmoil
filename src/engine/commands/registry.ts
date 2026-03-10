@@ -20,8 +20,11 @@ export function execute(
   ctx: CommandContext
 ): CommandResult {
   if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
-    if (commandName === "tree" && ctx.storyFlags?.commands_unlocked) {
+    if (commandName === "tree" && ctx.activeComputer === "home") {
       return { output: "Command 'tree' not found, but can be installed with:\n  sudo apt install tree" };
+    }
+    if (ctx.activeComputer === "nexacorp") {
+      return { output: `${commandName}: not yet available. Read your mail and reply — your colleagues will help you get set up.`, exitCode: 127 };
     }
     return { output: `${commandName}: command not found. Type 'help' for available commands.`, exitCode: 127 };
   }

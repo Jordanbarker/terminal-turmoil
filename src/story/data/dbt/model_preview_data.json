@@ -788,5 +788,138 @@
         "0"
       ]
     ]
+  },
+  "stg_raw_nexacorp__campaign_metrics": {
+    "columns": [
+      "CAMPAIGN_ID",
+      "CAMPAIGN_NAME",
+      "CHANNEL",
+      "IMPRESSIONS",
+      "CLICKS",
+      "CONVERSIONS",
+      "SPEND",
+      "REPORT_DATE"
+    ],
+    "rows": [
+      [
+        "CM-001",
+        "chip_launch",
+        "social",
+        "245000",
+        "18200",
+        "3400",
+        "42000",
+        "2026-01-15"
+      ],
+      [
+        "CM-002",
+        "enterprise_webinar",
+        "email",
+        "89000",
+        "6700",
+        "890",
+        "15500",
+        "2026-01-15"
+      ],
+      [
+        "CM-003",
+        "blog_ai_series",
+        "content",
+        "156000",
+        "12400",
+        "2100",
+        "8900",
+        "2026-01-15"
+      ],
+      [
+        "CM-004",
+        "social_q1_push",
+        "social",
+        "312000",
+        "21000",
+        "4200",
+        "31000",
+        "2026-01-15"
+      ],
+      [
+        "CM-005",
+        "chip_launch",
+        "social",
+        "245000",
+        "18200",
+        "3400",
+        "42000",
+        "2026-01-15"
+      ]
+    ]
+  },
+  "rpt_campaign_performance": {
+    "columns": [
+      "CAMPAIGN_NAME",
+      "TOTAL_IMPRESSIONS",
+      "TOTAL_CLICKS",
+      "TOTAL_CONVERSIONS",
+      "TOTAL_SPEND",
+      "CLICK_RATE",
+      "CONVERSION_RATE"
+    ],
+    "rows": [
+      [
+        "chip_launch",
+        "735000",
+        "54600",
+        "10200",
+        "126000",
+        "7.43",
+        "18.68"
+      ],
+      [
+        "social_q1_push",
+        "312000",
+        "21000",
+        "4200",
+        "31000",
+        "6.73",
+        "20.00"
+      ],
+      [
+        "blog_ai_series",
+        "156000",
+        "12400",
+        "2100",
+        "8900",
+        "7.95",
+        "16.94"
+      ],
+      [
+        "enterprise_webinar",
+        "89000",
+        "6700",
+        "890",
+        "15500",
+        "7.53",
+        "13.28"
+      ]
+    ]
+  },
+  "chip_metric_inflation": {
+    "columns": [
+      "CAMPAIGN_NAME",
+      "ENTRY_COUNT",
+      "REPORTED_IMPRESSIONS",
+      "ACTUAL_IMPRESSIONS",
+      "INFLATED_BY",
+      "INFLATION_REASON"
+    ],
+    "rows": [
+      [
+        "chip_launch",
+        "3",
+        "735000",
+        "245000",
+        "490000",
+        "duplicate campaign entries"
+      ]
+    ]
   }
 }

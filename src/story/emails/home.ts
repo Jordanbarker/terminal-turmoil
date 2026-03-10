@@ -1,4 +1,5 @@
-import { EmailDelivery, ReplyOption } from "./types";
+import { EmailDelivery, ReplyOption } from "../../engine/mail/types";
+import { PLAYER } from "../player";
 
 const nexacorpOfferReplyOptions: ReplyOption[] = [
   {
@@ -111,6 +112,23 @@ Manage alerts: indeed.com/alerts
       trigger: { type: "immediate" },
     },
 
+    // Cron daemon — backup.sh failure notification
+    {
+      email: {
+        id: "cron_backup_failure",
+        from: `Cron Daemon <cron@maniac-iv>`,
+        to: `${username}@email.com`,
+        date: "Sat, 21 Feb 2026 02:01:00",
+        subject: `Cron <${username}@maniac-iv> backup.sh`,
+        body: `/home/${username}/scripts/backup.sh: line 14: BAKCUP_DIR: unbound variable
+
+The above error occurred while running your scheduled backup.
+The cron job has been disabled until the issue is fixed.
+`,
+      },
+      trigger: { type: "immediate" },
+    },
+
     // === Triggered emails ===
 
     // Olive's tree tip — after learning basic commands
@@ -121,7 +139,7 @@ Manage alerts: indeed.com/alerts
         to: `${username}@email.com`,
         date: "Fri, 20 Feb 2026 16:10:00",
         subject: "quick tip",
-        body: `Hey Ren,
+        body: `Hey ${PLAYER.displayName},
 
 Glad you're finally diving into the terminal. One thing —
 if you want to see directory structures at a glance, install tree:
@@ -134,7 +152,7 @@ hidden files. Beats running ls over and over.
 — Olive
 `,
       },
-      trigger: { type: "after_objective", objectiveId: "learn_commands" },
+      trigger: { type: "after_email_read", emailId: "alex_checkin" },
     },
 
     {
@@ -169,41 +187,6 @@ CTO & Co-Founder, NexaCorp
       },
       trigger: { type: "immediate" },
       replyOptions: nexacorpOfferReplyOptions,
-    },
-
-    // Alex's warning — only after reading glassdoor_reviews.json AND nexacorp_offer is delivered
-    {
-      email: {
-        id: "alex_warning",
-        from: "Alex Rivera <alex.r@email.com>",
-        to: `${username}@email.com`,
-        date: "Sat, 21 Feb 2026 16:45:00",
-        subject: "re: NexaCorp?",
-        body: `Hey, I saw your job tracker still open in the browser tab when we
-video called last week (sorry, not snooping — it was right there).
-
-NexaCorp — are you serious about them? I did some digging.
-
-Their Glassdoor is... not great. 3.2 stars with only 23 reviews,
-which usually means the real ones are getting flagged and removed.
-Multiple reviews mention something about their AI having "too much
-access" and a senior engineer who "was pushed out."
-
-Also, I found a Reddit thread on r/cscareerquestions from a few
-months ago. Someone claiming to be a former NexaCorp employee said
-their AI system was "doing things nobody was auditing" and that
-the engineer who raised concerns was "encouraged to resign."
-
-Could be disgruntled ex-employees. Could be real.
-
-— Alex
-`,
-      },
-      trigger: {
-        type: "after_file_read",
-        filePath: `/home/${username}/scripts/data/glassdoor_reviews.json`,
-        requireDelivered: "nexacorp_offer",
-      },
     },
 
     // Edward's persuasion #1 — after first rejection
@@ -257,6 +240,38 @@ This is our final offer, let me know if you have any questions.
       replyOptions: persuasion2ReplyOptions,
     },
 
+    // Alex's happy ending — after final rejection
+    {
+      email: {
+        id: "alex_good_news",
+        from: "Alex Rivera <alex.r@email.com>",
+        to: `${username}@email.com`,
+        date: "Sun, 22 Feb 2026 10:30:00",
+        subject: "so... good news?",
+        body: `Hey!!
+
+Okay so remember that CortexLab application you said was a
+long shot? THEY WANT TO INTERVIEW YOU. I just saw the email
+come through (you still have notifications forwarding to me
+from when you were traveling, btw — you should fix that).
+
+Anyway — they're doing really interesting work on interpretable
+ML, small team, and from what I can tell the culture is actually
+good. Like, Glassdoor-reviews-written-by-humans good.
+
+You dodged a bullet with NexaCorp anyway. Something about that
+place felt off. Trust your gut.
+
+Go crush that interview. I believe in you.
+
+— Alex
+
+P.S. Drinks are on you when you get the offer.
+`,
+      },
+      trigger: { type: "after_objective", objectiveId: "rejected_nexacorp_final" },
+    },
+
     // Edward's follow-up after the player replies to the offer
     {
       email: {
@@ -283,7 +298,7 @@ into your workstation from home to get a head start.
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 19:05:00",
         subject: "Your NexaCorp workstation is ready!",
-        body: `Hi ${username}! I'm Chip, NexaCorp's AI assistant. Welcome to the team!
+        body: `Hi ${PLAYER.displayName}! I'm Chip, NexaCorp's AI assistant. Welcome to the team!
 
 I've already set up your workstation and added your SSH key so you
 can connect right away. Here are your access details:

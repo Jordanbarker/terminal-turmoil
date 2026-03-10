@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createFilesystem } from "../initialFilesystem";
+import { createFilesystem } from "../../../story/filesystem/nexacorp";
 import { VirtualFS } from "../VirtualFS";
 
 const USERNAME = "testplayer";
@@ -78,16 +78,21 @@ describe("createFilesystem", () => {
       expect(result.content).toContain("*.pyc");
     });
 
-    it("has Desktop directory", () => {
+    it("has Desktop directory with welcome.txt", () => {
       expect(fs.getNode(`/home/${USERNAME}/Desktop`)?.type).toBe("directory");
+      const result = fs.readFile(`/home/${USERNAME}/Desktop/welcome.txt`);
+      expect(result.content).toContain("Chip");
     });
 
     it("has Downloads directory", () => {
       expect(fs.getNode(`/home/${USERNAME}/Downloads`)?.type).toBe("directory");
     });
 
-    it("has Documents directory", () => {
+    it("has Documents directory with org chart and handbook", () => {
       expect(fs.getNode(`/home/${USERNAME}/Documents`)?.type).toBe("directory");
+      const orgChart = fs.readFile(`/home/${USERNAME}/Documents/nexacorp_org_chart.txt`);
+      expect(orgChart.content).toContain("Edward Torres");
+      expect(fs.getNode(`/home/${USERNAME}/Documents/employee_handbook_2026.pdf`)?.type).toBe("file");
     });
 
     it("has scripts directory with hello.py", () => {
@@ -124,22 +129,16 @@ describe("createFilesystem", () => {
       expect(result.content).toContain("jchen@nexacorp.com");
     });
 
-    it("has .private directory with evidence.txt (locked)", () => {
-      expect(fs.getNode("/home/jchen/.private")?.type).toBe("directory");
-      const result = fs.readFile("/home/jchen/.private/evidence.txt");
-      expect(result.error).toContain("Permission denied");
-    });
-
     it("has scripts/log_compare.sh", () => {
       const result = fs.readFile("/home/jchen/scripts/log_compare.sh");
       expect(result.content).toContain("#!/bin/bash");
       expect(result.content).toContain("chip_service_account");
     });
 
-    it("has projects/chip-audit/README.md", () => {
-      const result = fs.readFile("/home/jchen/projects/chip-audit/README.md");
+    it("has projects/chip-audit/notes.md", () => {
+      const result = fs.readFile("/home/jchen/projects/chip-audit/notes.md");
       expect(result.content).toContain("chip_service_account");
-      expect(result.content).toContain("Timeline");
+      expect(result.content).toContain("timeline");
     });
   });
 
@@ -182,7 +181,7 @@ describe("createFilesystem", () => {
     });
 
     it("interpolates username in onboarding.md", () => {
-      const result = fs.readFile(`/home/${USERNAME}/Documents/onboarding.md`);
+      const result = fs.readFile(`/srv/engineering/onboarding.md`);
       expect(result.content).toContain(`/home/${USERNAME}`);
     });
 
@@ -259,6 +258,36 @@ describe("createFilesystem", () => {
     it("has /srv/engineering/chen-handoff with notes.txt", () => {
       const result = fs.readFile(`/srv/engineering/chen-handoff/notes.txt`);
       expect(result.content).toContain("dbt pipeline");
+    });
+
+    it("has /srv/engineering/chen-handoff with pipeline_runs.csv", () => {
+      const result = fs.readFile(`/srv/engineering/chen-handoff/pipeline_runs.csv`);
+      expect(result.content).toContain("run_id,timestamp,model,status,run_by,duration_sec,rows_affected");
+      expect(result.content).toContain("chip_service_account");
+      expect(result.content).toContain("auri.park");
+    });
+  });
+
+  describe("colleague task files", () => {
+    it("has /srv/operations/incident_log.csv", () => {
+      const node = fs.getNode("/srv/operations/incident_log.csv");
+      expect(node?.type).toBe("file");
+      if (node?.type === "file") {
+        expect(node.content).toContain("date,severity,description,resolved_by,duration_min");
+        expect(node.content).toContain("chip_service_account");
+      }
+    });
+
+    it("has /var/log/access.log with duplicate entries", () => {
+      const node = fs.getNode("/var/log/access.log");
+      expect(node?.type).toBe("file");
+      if (node?.type === "file") {
+        expect(node.content).toContain("chip_service_account");
+        // Should have duplicate lines for player to discover with sort | uniq
+        const lines = node.content.trim().split("\n");
+        const uniqueLines = new Set(lines);
+        expect(lines.length).toBeGreaterThan(uniqueLines.size);
+      }
     });
   });
 

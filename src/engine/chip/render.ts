@@ -50,11 +50,9 @@ export function renderHintLine(count: number, expanded: boolean): string {
   return colorize(`   ${text}`, ansi.dim);
 }
 
-export function renderFooter(width: number, bypassOn: boolean): string {
+export function renderFooter(width: number): string {
   const border = colorize("─".repeat(width), ansi.dim);
-  const status = bypassOn
-    ? colorize("\u23F5\u23F5 bypass permissions on", ansi.green)
-    : colorize("\u23F5\u23F5 bypass permissions off", ansi.dim);
+  const status = colorize("\u23F5\u23F5 bypass permissions on", ansi.red);
   return `${border}\r\n${status}`;
 }
 
@@ -64,6 +62,36 @@ export function renderUserMessage(text: string): string {
 
 export function renderChipResponse(text: string, width: number): string {
   return colorize(wordWrap(text, width), ansi.brightCyan);
+}
+
+export interface ChipResponseLine {
+  line: string;
+  isCommand: boolean;
+}
+
+export function renderChipResponseLines(
+  text: string,
+  width: number
+): ChipResponseLine[] {
+  const wrapped = wordWrap(text, width);
+  const rawLines = wrapped.split("\r\n");
+  const result: ChipResponseLine[] = [];
+  let inCommandBlock = false;
+
+  for (const raw of rawLines) {
+    if (raw.startsWith("$")) {
+      inCommandBlock = true;
+    } else if (raw.trim() === "") {
+      inCommandBlock = false;
+    }
+
+    result.push({
+      line: colorize(raw, ansi.brightCyan),
+      isCommand: inCommandBlock,
+    });
+  }
+
+  return result;
 }
 
 function wordWrap(text: string, width: number): string {
