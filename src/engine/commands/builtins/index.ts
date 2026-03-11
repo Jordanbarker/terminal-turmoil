@@ -11,7 +11,7 @@ import "./save";
 import "./load";
 import "./newgame";
 import "./python";
-import "./snowsql";
+import "./snow";
 import "./dbt";
 // Investigation toolkit (Tier 1)
 import "./grep";

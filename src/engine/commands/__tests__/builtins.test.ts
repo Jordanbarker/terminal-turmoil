@@ -18,7 +18,7 @@ import "../builtins/load";
 import "../builtins/newgame";
 import "../builtins/mail";
 import "../builtins/python";
-import "../builtins/snowsql";
+import "../builtins/snow";
 
 function createTestFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -622,9 +622,9 @@ describe("--help", () => {
     expect(result.output).toBe(HELP_TEXTS.python);
   });
 
-  it("snowsql --help returns help text", () => {
-    const result = execute("snowsql", [], { help: true }, ctx());
-    expect(result.output).toBe(HELP_TEXTS.snowsql);
+  it("snow --help returns help text", () => {
+    const result = execute("snow", [], { help: true }, ctx());
+    expect(result.output).toBe(HELP_TEXTS.snow);
   });
 
   const gameCommands = ["save", "load", "newgame", "help"] as const;

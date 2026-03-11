@@ -110,6 +110,11 @@ export function discoverResources(
     }
   }
 
+  // Generic tests (from YAML schema files)
+  for (const modelPath of config.modelPaths) {
+    discoverGenericTests(fs, projectRoot + "/" + modelPath, resources);
+  }
+
   // Sources (from _staging__sources.yml or _sources.yml)
   for (const modelPath of config.modelPaths) {
     for (const sourcesFile of ["_staging__sources.yml", "_sources.yml"]) {
@@ -144,6 +149,96 @@ export function discoverResources(
   }
 
   return resources;
+}
+
+/**
+ * Parse generic tests (unique/not_null) from a YAML schema file.
+ * Uses indent-level tracking — no YAML library needed.
+ */
+export function parseGenericTests(content: string): string[] {
+  const tests: string[] = [];
+  const lines = content.split("\n");
+  let currentModel = "";
+  let currentColumn = "";
+  let inColumns = false;
+  let inTests = false;
+
+  for (const line of lines) {
+    if (line.trim().length === 0) continue;
+    const indent = line.length - line.trimStart().length;
+    const trimmed = line.trimStart();
+
+    // Model-level "- name:" (indent 2)
+    if (indent <= 2 && trimmed.startsWith("- name:")) {
+      currentModel = trimmed.replace(/^- name:\s*/, "").trim();
+      currentColumn = "";
+      inColumns = false;
+      inTests = false;
+      continue;
+    }
+
+    // "columns:" keyword
+    if (trimmed === "columns:") {
+      inColumns = true;
+      inTests = false;
+      continue;
+    }
+
+    // Column-level "- name:" (deeper indent, inside columns)
+    if (inColumns && trimmed.startsWith("- name:") && indent > 4) {
+      currentColumn = trimmed.replace(/^- name:\s*/, "").trim();
+      inTests = false;
+      continue;
+    }
+
+    // "tests:" keyword under a column
+    if (inColumns && trimmed === "tests:") {
+      inTests = true;
+      continue;
+    }
+
+    // Test entries: "- unique" or "- not_null"
+    if (inTests && /^- (unique|not_null)$/.test(trimmed)) {
+      const testType = trimmed.replace(/^- /, "");
+      if (currentModel && currentColumn) {
+        tests.push(`${testType}_${currentModel}_${currentColumn}`);
+      }
+      continue;
+    }
+
+    // Reset states on non-matching lines at appropriate indent levels
+    if (inTests && !trimmed.startsWith("-")) {
+      inTests = false;
+    }
+  }
+
+  return tests;
+}
+
+/**
+ * Recursively discover generic tests from YAML schema files under a directory.
+ * Excludes *sources*.yml files (those define sources, not tests).
+ */
+function discoverGenericTests(
+  fs: VirtualFS,
+  dirPath: string,
+  resources: DbtResource[]
+): void {
+  const node = fs.getNode(dirPath);
+  if (!node || !isDirectory(node)) return;
+
+  const entries = Object.entries(node.children).sort(([a], [b]) => a.localeCompare(b));
+
+  for (const [name, child] of entries) {
+    if (isFile(child) && name.endsWith(".yml") && !name.includes("sources")) {
+      const tests = parseGenericTests(child.content);
+      for (const testName of tests) {
+        resources.push({ name: testName, type: "test" });
+      }
+    } else if (isDirectory(child)) {
+      discoverGenericTests(fs, dirPath + "/" + name, resources);
+    }
+  }
 }
 
 function walkForResources(

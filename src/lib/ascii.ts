@@ -66,7 +66,7 @@ export const coderBanner = [
   `  ${colorize("┌──────────────────────────────────────────┐", ansi.brightCyan)}`,
   `  ${colorize("│", ansi.brightCyan)}  ${colorize("Coder Dev Container", ansi.bold)}${" ".repeat(20)}${colorize("│", ansi.brightCyan)}`,
   `  ${colorize("│", ansi.brightCyan)}  ${colorize("Workspace: ai", ansi.dim)}${" ".repeat(26)}${colorize("│", ansi.brightCyan)}`,
-  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Tools: dbt, snowsql, python", ansi.dim)}${" ".repeat(12)}${colorize("│", ansi.brightCyan)}`,
+  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Tools: dbt, snow, python", ansi.dim)}${" ".repeat(15)}${colorize("│", ansi.brightCyan)}`,
   `  ${colorize("│", ansi.brightCyan)}  ${colorize("Type 'exit' to return to NexaCorp", ansi.dim)}${" ".repeat(6)}${colorize("│", ansi.brightCyan)}`,
   `  ${colorize("└──────────────────────────────────────────┘", ansi.brightCyan)}`,
   "",

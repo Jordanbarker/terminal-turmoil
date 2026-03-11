@@ -61,7 +61,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
     response:
       "Let me pull that up...\n" +
       "\n" +
-      "$ snowsql -q \"SELECT full_name, department FROM employees WHERE status = 'active'\"\n" +
+      "$ snow sql -q \"SELECT full_name, department FROM employees WHERE status = 'active'\"\n" +
       "\n" +
       "  Edward Torres      Executive\n" +
       "  Sarah Knight       Engineering\n" +

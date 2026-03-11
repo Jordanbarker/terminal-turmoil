@@ -7,7 +7,9 @@ const HIDDEN_COMMANDS = new Set(["help"]);
 
 const help: CommandHandler = (_args, _flags, ctx) => {
   const commands = getAvailableCommands(ctx.activeComputer, ctx.storyFlags);
-  const gameCommands = commands.filter((c) => !META_COMMANDS.has(c.name) && !HIDDEN_COMMANDS.has(c.name));
+  const gameCommands = commands
+    .filter((c) => !META_COMMANDS.has(c.name) && !HIDDEN_COMMANDS.has(c.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const metaCommands = commands.filter((c) => META_COMMANDS.has(c.name));
   const maxLen = Math.max(...commands.map((c) => c.name.length));
 

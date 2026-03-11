@@ -2,6 +2,7 @@ import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { colorizeCsv } from "../../../lib/ansi";
+import { highlightSql } from "../../../lib/sqlHighlight";
 import { HELP_TEXTS } from "./helpTexts";
 
 const cat: CommandHandler = (args, _flags, ctx) => {
@@ -29,7 +30,12 @@ const cat: CommandHandler = (args, _flags, ctx) => {
     if (result.error) {
       outputs.push(result.error);
     } else if (result.content !== undefined) {
-      outputs.push(arg.endsWith(".csv") ? colorizeCsv(result.content) : result.content);
+      const content = arg.endsWith(".csv")
+        ? colorizeCsv(result.content)
+        : arg.endsWith(".sql")
+          ? highlightSql(result.content)
+          : result.content;
+      outputs.push(content);
     }
   }
 

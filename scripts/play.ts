@@ -472,7 +472,7 @@ export class GameRunner {
     };
   }
 
-  /** Handle session start requests — store prompts, surface info for editor/snowsql/python. */
+  /** Handle session start requests — store prompts, surface info for editor/snow-sql/python. */
   private handleSessionStart(session: SessionToStart): { text: string; promptPending: boolean } {
     if (session.type === "prompt") {
       this.pendingPrompt = session.info;
@@ -488,8 +488,8 @@ export class GameRunner {
       return { text, promptPending: false };
     }
 
-    if (session.type === "snowsql") {
-      return { text: "\n[SnowSQL interactive session — use 'dbt' commands or runner.run('snowsql') for queries]", promptPending: false };
+    if (session.type === "snow-sql") {
+      return { text: "\n[Snowflake CLI interactive session — use 'dbt' commands or runner.run('snow sql') for queries]", promptPending: false };
     }
 
     if (session.type === "pythonRepl") {

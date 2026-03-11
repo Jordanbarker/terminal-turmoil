@@ -37,7 +37,7 @@ export const NEXACORP_GATED: Record<string, StoryFlagName> = {
 /** Commands available in the Coder dev container. */
 export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "ls", "cd", "cat", "pwd", "clear", "help", "nano", "python", "dbt",
-  "snowsql", "chip", "grep", "find", "diff", "head", "tail", "wc",
+  "snow", "chip", "grep", "find", "diff", "head", "tail", "wc",
   "sort", "uniq", "echo", "whoami", "hostname", "uname", "file", "tree",
   "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
   "history", "exit", "save", "load", "newgame",

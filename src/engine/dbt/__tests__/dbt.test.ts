@@ -30,6 +30,7 @@ import {
   COMPILED_SQL,
 } from "../data";
 import { findDbtProject, parseProjectConfig } from "../project";
+import { createInitialSnowflakeState } from "../../snowflake/seed/initial_data";
 
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
@@ -107,11 +108,11 @@ describe("dbt test", () => {
     expect(result.output).toContain(`WARN=${warnCount}`);
   });
 
-  it("shows PASS on assert_total_employees", () => {
+  it("shows WARN on assert_employee_count", () => {
     const ctx = makeCtx(projectDir);
     const result = runTests(ctx);
-    expect(result.output).toContain("assert_total_employees");
-    expect(result.output).toContain("PASS");
+    expect(result.output).toContain("assert_employee_count");
+    expect(result.output).toContain("WARN");
   });
 
   it("shows WARN on assert_all_tickets_in_directory", () => {
@@ -127,7 +128,7 @@ describe("dbt build", () => {
     const result = runBuild(ctx);
     // Should contain both model run output and test output
     expect(result.output).toContain("stg_raw_nexacorp__employees");
-    expect(result.output).toContain("assert_total_employees");
+    expect(result.output).toContain("assert_employee_count");
     const warnCount = TEST_RESULTS.filter((t) => t.status === "warn").length;
     expect(result.output).toContain(`WARN=${warnCount}`);
   });
@@ -154,7 +155,17 @@ describe("dbt ls", () => {
     const ctx = makeCtx(projectDir);
     const result = listResources(ctx, "test");
     expect(result.output).toContain("assert_employee_count");
-    expect(result.output).not.toContain("stg_raw_nexacorp__employees");
+    expect(result.output).toContain("assert_no_future_hire_dates");
+    expect(result.output).toContain("assert_no_negative_budgets");
+    expect(result.output).toContain("assert_valid_ticket_priorities");
+    // Generic tests from YAML should also appear
+    expect(result.output).toContain("unique_dim_employees_employee_id");
+    expect(result.output).toContain("not_null_stg_raw_nexacorp__employees_employee_id");
+    // No standalone model resources should appear (only test resources)
+    const lines = result.output.split("\n").filter((l: string) => l.length > 0);
+    for (const line of lines) {
+      expect(line).toMatch(/\.(assert_|unique_|not_null_)/);
+    }
   });
 
   it("lists seeds via --resource-type seed", () => {
@@ -185,9 +196,10 @@ describe("dbt compile", () => {
   it("shows compiled SQL with refs resolved", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx, "dim_employees");
-    expect(result.output).toContain("NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__EMPLOYEES");
-    expect(result.output).not.toContain("{{ ref(");
-    expect(result.output).toContain("status = 'active'");
+    const plain = result.output.replace(/\x1b\[[0-9;]*m/g, "");
+    expect(plain).toContain("NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__EMPLOYEES");
+    expect(plain).not.toContain("{{ ref(");
+    expect(plain).toContain("status = 'active'");
   });
 
   it("returns error for unknown model", () => {
@@ -296,6 +308,13 @@ describe("dbt command handler", () => {
     expect(result.output).toContain(`SELECT ${MODEL_RESULTS.dim_employees.rowsAffected}`);
   });
 
+  it("runs a single model via dbt run -s (short flag)", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["run", "dim_employees"], { s: true }, ctx);
+    expect(result.output).toContain("PASS=1");
+    expect(result.output).toContain(`SELECT ${MODEL_RESULTS.dim_employees.rowsAffected}`);
+  });
+
   it("runs tests via dbt test", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["test"], {}, ctx);
@@ -309,7 +328,23 @@ describe("dbt command handler", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["build"], {}, ctx);
     expect(result.output).toContain("stg_raw_nexacorp__employees");
-    expect(result.output).toContain("assert_total_employees");
+    expect(result.output).toContain("assert_employee_count");
+  });
+
+  it("runs build for a single model via dbt build --select", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["build", "chip_log_filter"], { select: true }, ctx);
+    expect(result.output).toContain("chip_log_filter");
+    expect(result.output).toContain("PASS=1");
+    // Should also include tests
+    expect(result.output).toContain("assert_employee_count");
+  });
+
+  it("runs build for a single model via dbt build -s (short flag)", () => {
+    const ctx = makeCtx(projectDir);
+    const result = execute("dbt", ["build", "chip_log_filter"], { s: true }, ctx);
+    expect(result.output).toContain("chip_log_filter");
+    expect(result.output).toContain("PASS=1");
   });
 
   it("lists resources via dbt ls", () => {
@@ -330,7 +365,8 @@ describe("dbt command handler", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["ls", "test"], { "resource-type": true }, ctx);
     expect(result.output).toContain("assert_employee_count");
-    expect(result.output).not.toContain("stg_raw_nexacorp__employees");
+    // Should contain generic tests, not standalone model resources
+    expect(result.output).toContain("unique_dim_employees_employee_id");
   });
 
   it("shows help text via dbt help", () => {
@@ -359,7 +395,7 @@ describe("dbt command handler", () => {
 // ---------------------------------------------------------------------------
 describe("output format fidelity", () => {
   it("formatRunHeader has timestamp on every non-empty line", () => {
-    const header = stripAnsi(formatRunHeader(15, 23, 6, 2));
+    const header = stripAnsi(formatRunHeader(15, TEST_RESULTS.length, 6, 2));
     const lines = header.split("\n").filter((l) => l.trim().length > 0);
     for (const line of lines) {
       expect(line).toMatch(/^21:35:48/);
@@ -367,36 +403,40 @@ describe("output format fidelity", () => {
   });
 
   it("formatRunHeader shows correct counts", () => {
-    const header = stripAnsi(formatRunHeader(15, 23, 6, 2));
-    expect(header).toContain("Found 15 models, 23 tests, 6 sources, 2 seeds");
+    const header = stripAnsi(formatRunHeader(15, TEST_RESULTS.length, 6, 2));
+    expect(header).toContain(`Found 15 models, ${TEST_RESULTS.length} tests, 6 sources, 2 seeds`);
   });
 
   it("formatModelRun formats view materialization", () => {
-    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", MODEL_RESULTS["stg_raw_nexacorp__employees"]));
+    const result = MODEL_RESULTS["stg_raw_nexacorp__employees"];
+    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", result, result.executionTime));
     expect(line).toContain("created view model");
     expect(line).toContain("CREATE VIEW in 0.15s");
   });
 
   it("formatModelRun formats table materialization", () => {
-    const line = stripAnsi(formatModelRun(10, 15, "dim_employees", MODEL_RESULTS.dim_employees));
+    const result = MODEL_RESULTS.dim_employees;
+    const line = stripAnsi(formatModelRun(10, 15, "dim_employees", result, result.executionTime));
     expect(line).toContain("created table model");
-    expect(line).toContain(`SELECT ${MODEL_RESULTS.dim_employees.rowsAffected} in 0.67s`);
+    expect(line).toContain(`SELECT ${result.rowsAffected} in 0.67s`);
   });
 
   it("formatModelRun formats ephemeral materialization", () => {
-    const line = stripAnsi(formatModelRun(7, 15, "int_employees_joined_to_events", MODEL_RESULTS["int_employees_joined_to_events"]));
+    const result = MODEL_RESULTS["int_employees_joined_to_events"];
+    const line = stripAnsi(formatModelRun(7, 15, "int_employees_joined_to_events", result, result.executionTime));
     expect(line).toContain("created ephemeral model");
     expect(line).toContain("[OK]");
   });
 
   it("formatModelRun includes dot padding", () => {
-    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", MODEL_RESULTS["stg_raw_nexacorp__employees"]));
+    const result = MODEL_RESULTS["stg_raw_nexacorp__employees"];
+    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", result, result.executionTime));
     expect(line).toContain("..");
   });
 
   it("formatTestRun formats PASS status", () => {
     const passResult = TEST_RESULTS[0];
-    const line = stripAnsi(formatTestRun(1, 23, passResult));
+    const line = stripAnsi(formatTestRun(1, TEST_RESULTS.length, passResult, passResult.time));
     expect(line).toContain("PASS");
     expect(line).toContain(`PASS in ${passResult.time.toFixed(2)}s`);
   });
@@ -404,7 +444,7 @@ describe("output format fidelity", () => {
   it("formatTestRun formats WARN status", () => {
     const warnResult = TEST_RESULTS.find((t) => t.status === "warn")!;
     const idx = TEST_RESULTS.indexOf(warnResult) + 1;
-    const line = stripAnsi(formatTestRun(idx, 23, warnResult));
+    const line = stripAnsi(formatTestRun(idx, TEST_RESULTS.length, warnResult, warnResult.time));
     expect(line).toContain("WARN");
     expect(line).toContain("WARN 1 in");
   });
@@ -487,7 +527,7 @@ describe("dbt build (additional)", () => {
     const result = runBuild(ctx);
     const plain = stripAnsi(result.output);
     const modelPos = plain.indexOf("created view model");
-    const testPos = plain.indexOf("assert_total_employees");
+    const testPos = plain.indexOf("assert_employee_count");
     expect(modelPos).toBeLessThan(testPos);
   });
 
@@ -625,11 +665,11 @@ describe("dbt show (additional)", () => {
 describe("narrative data integrity", () => {
   it("dim_employees returns correct active employee count", () => {
     const dimRows = MODEL_RESULTS.dim_employees.rowsAffected!;
-    expect(dimRows).toBe(77);
+    expect(dimRows).toBe(13);
   });
 
-  it("assert_total_employees warns (count mismatch reveals filtering)", () => {
-    const warnTest = TEST_RESULTS.find((t) => t.name === "assert_total_employees");
+  it("assert_employee_count warns (count mismatch reveals filtering)", () => {
+    const warnTest = TEST_RESULTS.find((t) => t.name === "assert_employee_count");
     expect(warnTest).toBeDefined();
     expect(warnTest!.status).toBe("warn");
   });
@@ -638,7 +678,7 @@ describe("narrative data integrity", () => {
     const warnTest = TEST_RESULTS.find((t) => t.name === "assert_all_tickets_in_directory");
     expect(warnTest).toBeDefined();
     expect(warnTest!.status).toBe("warn");
-    expect(warnTest!.message).toContain("E038");
+    expect(warnTest!.message).toContain("E005");
   });
 
   it("fct_system_events SQL filters chip-daemon and suspicious events", () => {
@@ -767,6 +807,13 @@ describe("incrementalLines", () => {
     const result = runModels(ctx);
     expect(result.incrementalLines).toBeDefined();
     expect(result.incrementalLines!.length).toBeGreaterThan(0);
+    // Each entry should be an IncrementalLine object
+    for (const line of result.incrementalLines!) {
+      expect(line).toHaveProperty("text");
+      expect(line).toHaveProperty("delayMs");
+      expect(typeof line.text).toBe("string");
+      expect(typeof line.delayMs).toBe("number");
+    }
   });
 
   it("runModels omits incrementalLines when piped", () => {
@@ -775,17 +822,51 @@ describe("incrementalLines", () => {
     expect(result.incrementalLines).toBeUndefined();
   });
 
+  it("model lines carry jittered executionTime * 1000 delay", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx, "dim_employees");
+    const modelLine = result.incrementalLines!.find((l) => l.text.includes("dim_employees"));
+    const base = MODEL_RESULTS.dim_employees.executionTime * 1000;
+    expect(modelLine).toBeDefined();
+    expect(modelLine!.delayMs).toBeGreaterThanOrEqual(base * 0.5);
+    expect(modelLine!.delayMs).toBeLessThanOrEqual(base * 1.5);
+  });
+
+  it("ephemeral model lines use default delay", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runModels(ctx);
+    const ephemeralLine = result.incrementalLines!.find((l) => l.text.includes("ephemeral"));
+    if (ephemeralLine) {
+      expect(ephemeralLine.delayMs).toBe(60);
+    }
+  });
+
   it("runTests includes incrementalLines when not piped", () => {
     const ctx = makeCtx(projectDir);
     const result = runTests(ctx);
     expect(result.incrementalLines).toBeDefined();
     expect(result.incrementalLines!.length).toBeGreaterThan(0);
+    for (const line of result.incrementalLines!) {
+      expect(line).toHaveProperty("text");
+      expect(line).toHaveProperty("delayMs");
+    }
   });
 
   it("runTests omits incrementalLines when piped", () => {
     const ctx = { ...makeCtx(projectDir), isPiped: true };
     const result = runTests(ctx);
     expect(result.incrementalLines).toBeUndefined();
+  });
+
+  it("test lines carry jittered time * 1000 delay", () => {
+    const ctx = makeCtx(projectDir);
+    const result = runTests(ctx);
+    // First test line (skip summary/blank lines)
+    const testLine = result.incrementalLines!.find((l) => l.text.includes(TEST_RESULTS[0].name));
+    const base = TEST_RESULTS[0].time * 1000;
+    expect(testLine).toBeDefined();
+    expect(testLine!.delayMs).toBeGreaterThanOrEqual(base * 0.5);
+    expect(testLine!.delayMs).toBeLessThanOrEqual(base * 1.5);
   });
 
   it("runBuild includes incrementalLines when not piped", () => {
@@ -846,5 +927,86 @@ describe("dbt argument validation", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["ls", "test"], { "resource-type": true }, ctx);
     expect(result.output).toContain("assert_employee_count");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. Snowflake Materialization
+// ---------------------------------------------------------------------------
+describe("dbt run materialization", () => {
+  function makeCtxWithSnowflake(cwd: string) {
+    const ctx = makeCtx(cwd);
+    const snowflakeState = createInitialSnowflakeState();
+    let currentState = snowflakeState;
+    return {
+      ...ctx,
+      snowflakeState,
+      setSnowflakeState: (s: import("../../snowflake/state").SnowflakeState) => {
+        currentState = s;
+      },
+      getSnowflakeState: () => currentState,
+    };
+  }
+
+  it("tables appear in NEXACORP_PROD.ANALYTICS after dbt run", () => {
+    const ctx = makeCtxWithSnowflake(projectDir);
+    runModels(ctx);
+    const state = ctx.getSnowflakeState();
+    const dimEmployees = state.getTable("NEXACORP_PROD", "ANALYTICS", "DIM_EMPLOYEES");
+    expect(dimEmployees).toBeDefined();
+    expect(dimEmployees!.rows.length).toBeGreaterThan(0);
+    expect(dimEmployees!.columns.length).toBeGreaterThan(0);
+  });
+
+  it("ephemeral models are not materialized", () => {
+    const ctx = makeCtxWithSnowflake(projectDir);
+    runModels(ctx);
+    const state = ctx.getSnowflakeState();
+    const ephemeral = state.getTable("NEXACORP_PROD", "ANALYTICS", "INT_EMPLOYEES_JOINED_TO_EVENTS");
+    expect(ephemeral).toBeUndefined();
+  });
+
+  it("--select materializes only the selected model", () => {
+    const ctx = makeCtxWithSnowflake(projectDir);
+    runModels(ctx, "dim_employees");
+    const state = ctx.getSnowflakeState();
+    const dimEmployees = state.getTable("NEXACORP_PROD", "ANALYTICS", "DIM_EMPLOYEES");
+    expect(dimEmployees).toBeDefined();
+    // Other models should not be materialized
+    const rpt = state.getTable("NEXACORP_PROD", "ANALYTICS", "RPT_EMPLOYEE_DIRECTORY");
+    expect(rpt).toBeUndefined();
+  });
+
+  it("chip internal models excluded from default run, included when selected", () => {
+    const ctx1 = makeCtxWithSnowflake(projectDir);
+    runModels(ctx1);
+    const state1 = ctx1.getSnowflakeState();
+    expect(state1.getTable("NEXACORP_PROD", "ANALYTICS", "CHIP_LOG_FILTER")).toBeUndefined();
+
+    const ctx2 = makeCtxWithSnowflake(projectDir);
+    runModels(ctx2, "chip_log_filter");
+    const state2 = ctx2.getSnowflakeState();
+    expect(state2.getTable("NEXACORP_PROD", "ANALYTICS", "CHIP_LOG_FILTER")).toBeDefined();
+  });
+
+  it("re-run is idempotent", () => {
+    const ctx = makeCtxWithSnowflake(projectDir);
+    runModels(ctx);
+    const state1 = ctx.getSnowflakeState();
+    const rows1 = state1.getTable("NEXACORP_PROD", "ANALYTICS", "DIM_EMPLOYEES")!.rows.length;
+
+    // Update snowflakeState for second run
+    ctx.snowflakeState = ctx.getSnowflakeState();
+    runModels(ctx);
+    const state2 = ctx.getSnowflakeState();
+    const rows2 = state2.getTable("NEXACORP_PROD", "ANALYTICS", "DIM_EMPLOYEES")!.rows.length;
+    expect(rows2).toBe(rows1);
+  });
+
+  it("graceful when snowflakeState is not in context", () => {
+    const ctx = makeCtx(projectDir);
+    // No snowflakeState — should not throw
+    const result = runModels(ctx);
+    expect(result.output).toContain(`PASS=${STANDARD_MODEL_ORDER.length}`);
   });
 });

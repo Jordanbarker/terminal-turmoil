@@ -157,8 +157,60 @@ export function useCommandLine(deps: CommandLineDeps) {
     [clearGhost, renderGhostText, rewriteFromCursor, pushHistory, setHistoryIndex, writePrompt]
   );
 
+  const findPrevWordBoundary = useCallback((buffer: string, pos: number): number => {
+    let p = pos;
+    // Skip non-word chars behind cursor
+    while (p > 0 && !/[a-zA-Z0-9_]/.test(buffer[p - 1])) p--;
+    // Skip word chars
+    while (p > 0 && /[a-zA-Z0-9_]/.test(buffer[p - 1])) p--;
+    return p;
+  }, []);
+
+  const findNextWordBoundary = useCallback((buffer: string, pos: number): number => {
+    let p = pos;
+    // Skip word chars ahead of cursor
+    while (p < buffer.length && /[a-zA-Z0-9_]/.test(buffer[p])) p++;
+    // Skip non-word chars
+    while (p < buffer.length && !/[a-zA-Z0-9_]/.test(buffer[p])) p++;
+    return p;
+  }, []);
+
+  const deleteWordBackward = useCallback(
+    (term: Terminal): void => {
+      clearGhost(term);
+      const pos = cursorPos.current;
+      if (pos > 0) {
+        const buf = lineBuffer.current;
+        const newPos = findPrevWordBoundary(buf, pos);
+        const delta = pos - newPos;
+        lineBuffer.current = buf.slice(0, newPos) + buf.slice(pos);
+        cursorPos.current = newPos;
+        if (delta > 0) term.write(`\x1b[${delta}D`);
+        rewriteFromCursor(term, lineBuffer.current, newPos);
+      }
+      renderGhostText(term);
+    },
+    [clearGhost, renderGhostText, rewriteFromCursor, findPrevWordBoundary]
+  );
+
+  const deleteWordForward = useCallback(
+    (term: Terminal): void => {
+      clearGhost(term);
+      const pos = cursorPos.current;
+      const buf = lineBuffer.current;
+      if (pos < buf.length) {
+        const endPos = findNextWordBoundary(buf, pos);
+        lineBuffer.current = buf.slice(0, pos) + buf.slice(endPos);
+        rewriteFromCursor(term, lineBuffer.current, pos);
+      }
+      renderGhostText(term);
+    },
+    [clearGhost, renderGhostText, rewriteFromCursor, findNextWordBoundary]
+  );
+
   const handleArrow = useCallback(
-    (term: Terminal, arrow: string): void => {
+    (term: Terminal, arrow: string, modifier: number = 0): void => {
+      const isWordSkip = modifier === 3 || modifier === 5;
       if (arrow === "A") {
         // Up arrow — navigate history
         clearGhost(term);
@@ -202,7 +254,16 @@ export function useCommandLine(deps: CommandLineDeps) {
       } else if (arrow === "C") {
         // Right arrow — move cursor or accept suggestion
         const pos = cursorPos.current;
-        if (pos < lineBuffer.current.length) {
+        if (isWordSkip && pos < lineBuffer.current.length) {
+          clearGhost(term);
+          const newPos = findNextWordBoundary(lineBuffer.current, pos);
+          const delta = newPos - pos;
+          if (delta > 0) {
+            cursorPos.current = newPos;
+            term.write(`\x1b[${delta}C`);
+          }
+          renderGhostText(term);
+        } else if (pos < lineBuffer.current.length) {
           cursorPos.current = pos + 1;
           term.write("\x1b[C");
         } else if (ghostLengthRef.current > 0) {
@@ -228,8 +289,17 @@ export function useCommandLine(deps: CommandLineDeps) {
         // Left arrow — move cursor left
         if (cursorPos.current > 0) {
           clearGhost(term);
-          cursorPos.current -= 1;
-          term.write("\x1b[D");
+          if (isWordSkip) {
+            const newPos = findPrevWordBoundary(lineBuffer.current, cursorPos.current);
+            const delta = cursorPos.current - newPos;
+            if (delta > 0) {
+              cursorPos.current = newPos;
+              term.write(`\x1b[${delta}D`);
+            }
+          } else {
+            cursorPos.current -= 1;
+            term.write("\x1b[D");
+          }
           renderGhostText(term);
         }
       } else if (arrow === "H") {
@@ -252,8 +322,8 @@ export function useCommandLine(deps: CommandLineDeps) {
         }
       }
     },
-    [clearGhost, clearAndRewriteLine, renderGhostText, setHistoryIndex, fsRef, cwdRef]
+    [clearGhost, clearAndRewriteLine, renderGhostText, setHistoryIndex, fsRef, cwdRef, findPrevWordBoundary, findNextWordBoundary]
   );
 
-  return { handleChar, handleArrow };
+  return { handleChar, handleArrow, deleteWordBackward, deleteWordForward };
 }

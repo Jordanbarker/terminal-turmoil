@@ -5,11 +5,44 @@ import { execute } from "../../snowflake/executor/executor";
 import { formatResultSet, formatStatusMessage, formatError } from "../../snowflake/formatter/table_formatter";
 
 register(
-  "snowsql",
+  "snow",
   (args: string[], flags: Record<string, boolean>, ctx: CommandContext): CommandResult => {
-    // Single-query mode: snowsql -q "SELECT 1"
-    if (flags["q"] && args.length > 0 && ctx.snowflakeState && ctx.snowflakeContext) {
-      const sql = args.join(" ");
+    // No args or --help → show top-level help
+    if (args.length === 0 || (flags["help"] && args.length === 0)) {
+      return { output: HELP_TEXTS.snow };
+    }
+
+    const subcommand = args[0];
+
+    if (subcommand !== "sql") {
+      return {
+        output: `snow: unknown command '${subcommand}'\n\nAvailable commands:\n  sql    Execute SQL queries\n\nRun 'snow --help' for usage.`,
+      };
+    }
+
+    // Shift args past the subcommand
+    const sqlArgs = args.slice(1);
+
+    // Reject unknown flags
+    const knownFlags = ["q", "help"];
+    const unknownFlags = Object.keys(flags).filter(f => !knownFlags.includes(f));
+    if (unknownFlags.length > 0) {
+      const flag = unknownFlags[0];
+      return {
+        output: `snow sql: unknown option '-${flag}'\n\nUsage:\n  snow sql             Start interactive SQL REPL\n  snow sql -q 'SQL'    Execute a single query inline`,
+      };
+    }
+
+    // -q requires a SQL argument
+    if (flags["q"] && sqlArgs.length === 0) {
+      return {
+        output: `snow sql: -q requires a SQL query argument\n\nUsage: snow sql -q 'SELECT ...'`,
+      };
+    }
+
+    // Single-query mode: snow sql -q "SELECT 1"
+    if (flags["q"] && sqlArgs.length > 0 && ctx.snowflakeState && ctx.snowflakeContext) {
+      const sql = sqlArgs.join(" ");
       const sfState = ctx.snowflakeState;
 
       const start = performance.now();
@@ -45,9 +78,9 @@ register(
     // Interactive mode — return session info
     return {
       output: "",
-      snowsqlSession: { startInteractive: true },
+      snowSqlSession: { startInteractive: true },
     };
   },
-  "Snowflake SQL client — query the NexaCorp data warehouse",
-  HELP_TEXTS.snowsql
+  "Snowflake CLI — query the NexaCorp data warehouse",
+  HELP_TEXTS.snow
 );

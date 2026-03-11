@@ -52,8 +52,8 @@ Created: 2026-02-03
 Columns:
 ${columnDefs}
 
-Use 'snowsql' to query this table:
-  snowsql -q "SELECT * FROM ${table} LIMIT 5"
+Use 'snow sql' to query this table:
+  snow sql -q "SELECT * FROM ${table} LIMIT 5"
 `;
 }
 

@@ -57,6 +57,12 @@ export function getSuggestion(
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
+    if (cmd === "snow") {
+      const partial = input.slice(spaceIdx + 1);
+      const subs = ["sql"];
+      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
+      if (match) return cmd + " " + match;
+    }
     if (cmd === "sudo") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["apt"];

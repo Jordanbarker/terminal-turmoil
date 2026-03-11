@@ -51,7 +51,7 @@ export interface InteractiveSessionInfo {
   type: "pythonRepl";
 }
 
-export interface SnowSQLSessionInfo {
+export interface SnowSqlSessionInfo {
   startInteractive: boolean;
 }
 
@@ -69,14 +69,19 @@ export interface CommandResult {
   editorSession?: EditorSessionInfo;
   gameAction?: GameAction;
   interactiveSession?: InteractiveSessionInfo;
-  snowsqlSession?: SnowSQLSessionInfo;
+  snowSqlSession?: SnowSqlSessionInfo;
   promptSession?: PromptSessionInfo;
   sshSession?: SshSessionInfo;
   chipSession?: ChipSessionInfo;
   piperSession?: PiperSessionInfo;
   triggerEvents?: GameEvent[];
   transitionTo?: ComputerId;
-  incrementalLines?: string[];
+  incrementalLines?: IncrementalLine[];
+}
+
+export interface IncrementalLine {
+  text: string;
+  delayMs: number;
 }
 
 export type CommandHandler = (

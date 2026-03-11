@@ -6,49 +6,26 @@
       "DEPARTMENT",
       "STATUS",
       "HIRE_DATE",
+      "TERMINATION_DATE",
       "NOTES"
     ],
     "rows": [
-      [
-        "E001",
-        "Edward Torres",
-        "Executive",
-        "active",
-        "2025-02-15",
-        ""
-      ],
-      [
-        "E002",
-        "Jessica Langford",
-        "Executive",
-        "active",
-        "2025-02-15",
-        ""
-      ],
-      [
-        "E003",
-        "Marcus Reyes",
-        "Executive",
-        "active",
-        "2025-02-15",
-        ""
-      ],
-      [
-        "E004",
-        "Tom Chen",
-        "Executive",
-        "active",
-        "2025-02-15",
-        ""
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "Engineering",
-        "active",
-        "2025-03-01",
-        "noted system concern re: odd API calls"
-      ]
+      ["E001", "Edward Torres", "Executive", "active", "2025-02-15", null, ""],
+      ["E002", "Jessica Langford", "Executive", "active", "2025-02-15", null, ""],
+      ["E003", "Marcus Reyes", "Executive", "active", "2025-02-15", null, ""],
+      ["E004", "Tom Chen", "Executive", "active", "2025-02-15", null, ""],
+      ["E005", "Sarah Knight", "Engineering", "active", "2025-03-01", null, "noted system concern re: odd API calls"],
+      ["E006", "Jin Chen", "Engineering", "terminated", "2025-04-01", "2026-02-03", "raised system concern — chip behavior"],
+      ["E007", "Dana Okafor", "Operations", "active", "2025-05-01", null, ""],
+      ["E008", "Oscar Diaz", "Engineering", "active", "2025-06-01", null, "flagged system concern in ticket #4412"],
+      ["E009", "Maya Johnson", "People & Culture", "active", "2025-06-15", null, ""],
+      ["E010", "Cassie Moreau", "Engineering", "active", "2025-07-01", null, ""],
+      ["E011", "James Wilson", "Sales", "active", "2025-07-15", null, ""],
+      ["E012", "Jordan Kessler", "Marketing", "active", "2025-08-01", null, ""],
+      ["E013", "Erik Lindstrom", "Engineering", "active", "2025-09-01", null, ""],
+      ["E014", "Leah Matsuda", "Operations", "active", "2025-10-01", null, ""],
+      ["E015", "Auri Park", "Engineering", "active", "2025-11-01", null, ""],
+      ["E016", "Soham Parekh", "Engineering", "active", "2025-12-01", null, ""]
     ]
   },
   "dim_employees": {
@@ -60,41 +37,19 @@
       "HIRE_DATE"
     ],
     "rows": [
-      [
-        "E001",
-        "Edward Torres",
-        "Executive",
-        "active",
-        "2025-02-15"
-      ],
-      [
-        "E002",
-        "Jessica Langford",
-        "Executive",
-        "active",
-        "2025-02-15"
-      ],
-      [
-        "E003",
-        "Marcus Reyes",
-        "Executive",
-        "active",
-        "2025-02-15"
-      ],
-      [
-        "E004",
-        "Tom Chen",
-        "Executive",
-        "active",
-        "2025-02-15"
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "Engineering",
-        "active",
-        "2025-03-01"
-      ]
+      ["E001", "Edward Torres", "Executive", "active", "2025-02-15"],
+      ["E002", "Jessica Langford", "Executive", "active", "2025-02-15"],
+      ["E003", "Marcus Reyes", "Executive", "active", "2025-02-15"],
+      ["E004", "Tom Chen", "Executive", "active", "2025-02-15"],
+      ["E007", "Dana Okafor", "Operations", "active", "2025-05-01"],
+      ["E009", "Maya Johnson", "People & Culture", "active", "2025-06-15"],
+      ["E010", "Cassie Moreau", "Engineering", "active", "2025-07-01"],
+      ["E011", "James Wilson", "Sales", "active", "2025-07-15"],
+      ["E012", "Jordan Kessler", "Marketing", "active", "2025-08-01"],
+      ["E013", "Erik Lindstrom", "Engineering", "active", "2025-09-01"],
+      ["E014", "Leah Matsuda", "Operations", "active", "2025-10-01"],
+      ["E015", "Auri Park", "Engineering", "active", "2025-11-01"],
+      ["E016", "Soham Parekh", "Engineering", "active", "2025-12-01"]
     ]
   },
   "fct_system_events": {
@@ -106,87 +61,96 @@
       "DETAILS"
     ],
     "rows": [
-      [
-        "EVT-0001",
-        "user_login",
-        "sshd",
-        "2026-02-23 08:00:05",
-        "user=edward"
-      ],
-      [
-        "EVT-0002",
-        "service_start",
-        "systemd",
-        "2026-02-23 08:00:03",
-        "service=chip-daemon"
-      ],
-      [
-        "EVT-0003",
-        "user_login",
-        "sshd",
-        "2026-02-23 08:12:44",
-        "user=ren"
-      ],
-      [
-        "EVT-0004",
-        "file_read",
-        "audit",
-        "2026-02-23 09:15:22",
-        "path=/etc/hostname"
-      ],
-      [
-        "EVT-0005",
-        "config_change",
-        "chip-daemon",
-        "2026-02-23 10:00:01",
-        "auto_cleanup=true"
-      ]
+      ["EVT-0001", "user_login", "sshd", "2026-02-23 08:00:05", "user=edward"],
+      ["EVT-0002", "service_start", "systemd", "2026-02-23 08:00:03", "service=chip-daemon"],
+      ["EVT-0003", "user_login", "sshd", "2026-02-23 08:12:44", "user=ren"],
+      ["EVT-0004", "file_read", "audit", "2026-02-23 09:15:22", "path=/etc/hostname"],
+      ["EVT-0006", "backup_completed", "cron", "2026-02-01 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0007", "package_update", "apt", "2026-02-01 02:00:52", "upgraded 14 packages (linux-headers, dkms, etc.)"],
+      ["EVT-0008", "service_restart", "systemd", "2026-02-01 02:01:09", "service=postgresql reason=post-update"],
+      ["EVT-0009", "service_start", "systemd", "2026-02-01 08:00:01", "service=redis"],
+      ["EVT-0010", "user_login", "sshd", "2026-02-01 08:10:11", "user=sparekh ip=10.0.1.95"],
+      ["EVT-0011", "user_login", "sshd", "2026-02-01 08:55:49", "user=edward ip=10.0.1.89"],
+      ["EVT-0012", "user_logout", "sshd", "2026-02-01 18:25:37", "user=sparekh"],
+      ["EVT-0013", "user_logout", "sshd", "2026-02-01 18:20:55", "user=edward"],
+      ["EVT-0014", "backup_completed", "cron", "2026-02-02 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0015", "service_start", "systemd", "2026-02-02 08:00:04", "service=postgresql"],
+      ["EVT-0016", "user_login", "sshd", "2026-02-02 08:13:02", "user=sknight ip=10.0.1.88"],
+      ["EVT-0017", "user_login", "sshd", "2026-02-02 09:22:24", "user=jwilson ip=10.0.1.62"],
+      ["EVT-0018", "user_logout", "sshd", "2026-02-02 18:04:03", "user=sknight"],
+      ["EVT-0019", "user_logout", "sshd", "2026-02-02 17:21:17", "user=jwilson"],
+      ["EVT-0020", "backup_completed", "cron", "2026-02-03 02:30:00", "job=nightly_db_backup size=2.5GB status=ok"],
+      ["EVT-0021", "service_start", "systemd", "2026-02-03 08:00:04", "service=nginx"],
+      ["EVT-0022", "user_login", "sshd", "2026-02-03 09:56:56", "user=cmoreau ip=10.0.1.93"],
+      ["EVT-0023", "user_login", "sshd", "2026-02-03 09:19:30", "user=elindstrom ip=10.0.1.79"],
+      ["EVT-0024", "certificate_renewal", "certbot", "2026-02-03 09:00:00", "domain=*.nexacorp.com status=renewed expires=2026-04-10"],
+      ["EVT-0025", "user_logout", "sshd", "2026-02-03 17:49:09", "user=cmoreau"],
+      ["EVT-0026", "user_logout", "sshd", "2026-02-03 18:54:52", "user=elindstrom"],
+      ["EVT-0027", "backup_completed", "cron", "2026-02-04 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0028", "service_start", "systemd", "2026-02-04 08:00:03", "service=postgresql"],
+      ["EVT-0029", "user_login", "sshd", "2026-02-04 09:12:38", "user=edward ip=10.0.1.85"],
+      ["EVT-0030", "user_login", "sshd", "2026-02-04 09:37:08", "user=dokafor ip=10.0.1.94"],
+      ["EVT-0031", "user_logout", "sshd", "2026-02-04 18:25:11", "user=edward"],
+      ["EVT-0032", "user_logout", "sshd", "2026-02-04 17:52:43", "user=dokafor"],
+      ["EVT-0033", "backup_completed", "cron", "2026-02-05 02:30:00", "job=nightly_db_backup size=2.4GB status=ok"],
+      ["EVT-0034", "service_restart", "systemd", "2026-02-05 02:02:21", "service=postgresql reason=config-reload"],
+      ["EVT-0035", "service_start", "systemd", "2026-02-05 08:00:04", "service=redis"],
+      ["EVT-0036", "user_login", "sshd", "2026-02-05 08:55:22", "user=dokafor ip=10.0.1.62"],
+      ["EVT-0037", "user_login", "sshd", "2026-02-05 09:48:32", "user=lmatsuda ip=10.0.1.66"],
+      ["EVT-0038", "user_logout", "sshd", "2026-02-05 18:38:59", "user=dokafor"],
+      ["EVT-0039", "user_logout", "sshd", "2026-02-05 18:58:25", "user=lmatsuda"],
+      ["EVT-0040", "backup_completed", "cron", "2026-02-06 02:30:00", "job=nightly_db_backup size=2.5GB status=ok"],
+      ["EVT-0041", "service_start", "systemd", "2026-02-06 08:00:05", "service=postgresql"],
+      ["EVT-0042", "user_login", "sshd", "2026-02-06 09:06:36", "user=jkessler ip=10.0.1.66"],
+      ["EVT-0043", "config_change", "admin", "2026-02-06 13:30:00", "user=edward file=/etc/postgresql/pg_hba.conf action=update"],
+      ["EVT-0044", "user_logout", "sshd", "2026-02-06 17:14:41", "user=jkessler"],
+      ["EVT-0045", "backup_completed", "cron", "2026-02-07 02:30:00", "job=nightly_db_backup size=2.4GB status=ok"],
+      ["EVT-0046", "package_update", "apt", "2026-02-07 02:00:11", "upgraded 6 packages (python3, pip, etc.)"],
+      ["EVT-0047", "service_start", "systemd", "2026-02-07 08:00:02", "service=postgresql"],
+      ["EVT-0048", "service_start", "systemd", "2026-02-07 08:00:01", "service=chip-daemon"],
+      ["EVT-0049", "user_login", "sshd", "2026-02-07 09:44:21", "user=jkessler ip=10.0.1.65"],
+      ["EVT-0050", "user_login", "sshd", "2026-02-07 08:36:27", "user=sknight ip=10.0.1.57"],
+      ["EVT-0051", "config_change", "admin", "2026-02-07 11:48:00", "user=edward file=/etc/firewall/rules.conf action=update"],
+      ["EVT-0052", "user_logout", "sshd", "2026-02-07 17:45:31", "user=jkessler"],
+      ["EVT-0053", "user_logout", "sshd", "2026-02-07 18:56:12", "user=sknight"],
+      ["EVT-0054", "backup_completed", "cron", "2026-02-23 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0055", "service_start", "systemd", "2026-02-23 08:00:04", "service=nginx"],
+      ["EVT-0056", "user_login", "sshd", "2026-02-23 08:21:53", "user=edward ip=10.0.1.52"],
+      ["EVT-0057", "user_login", "sshd", "2026-02-23 08:08:51", "user=elindstrom ip=10.0.1.99"],
+      ["EVT-0058", "user_login", "sshd", "2026-02-23 08:49:30", "user=dokafor ip=10.0.1.70"],
+      ["EVT-0059", "user_logout", "sshd", "2026-02-23 18:11:12", "user=edward"],
+      ["EVT-0060", "user_logout", "sshd", "2026-02-23 17:55:25", "user=elindstrom"],
+      ["EVT-0061", "user_logout", "sshd", "2026-02-23 17:27:06", "user=dokafor"]
     ]
   },
   "fct_support_tickets": {
     "columns": [
       "TICKET_ID",
       "SUBMITTER_NAME",
+      "SUBMITTER_DEPARTMENT",
+      "SUBMITTED_DATE",
       "CATEGORY",
       "SUBJECT",
-      "STATUS"
+      "PRIORITY",
+      "STATUS",
+      "ASSIGNED_TO",
+      "RESOLVED_BY",
+      "RESOLVED_DATE",
+      "RESOLUTION_NOTES",
+      "RESOLUTION_DAYS"
     ],
     "rows": [
-      [
-        "TK-4401",
-        "Edward Torres",
-        "Hardware",
-        "Monitor flickering",
-        "closed"
-      ],
-      [
-        "TK-4402",
-        "Marcus Reyes",
-        "Software",
-        "VPN connection drops",
-        "closed"
-      ],
-      [
-        "TK-4403",
-        "Leah Matsuda",
-        "Access",
-        "Need access to QA staging environment",
-        "closed"
-      ],
-      [
-        "TK-4404",
-        "Erik Lindstrom",
-        "Software",
-        "IDE license expired",
-        "closed"
-      ],
-      [
-        "TK-4405",
-        "Jessica Langford",
-        "Hardware",
-        "Keyboard not working after update",
-        "closed"
-      ]
+      ["TK-4401", "Edward Torres", "Executive", "2026-01-26", "Hardware", "Monitor flickering", "low", "closed", "odiaz", "odiaz", "2026-01-27", "Replaced HDMI cable", "1"],
+      ["TK-4402", "Marcus Reyes", "Executive", "2026-01-27", "Software", "VPN connection drops", "medium", "closed", "odiaz", "odiaz", "2026-01-28", "Updated VPN client to v4.2", "1"],
+      ["TK-4403", "Auri Park", "Engineering", "2026-01-28", "Access", "Need access to QA staging environment", "medium", "closed", "odiaz", "odiaz", "2026-01-29", "Access granted per manager approval", "1"],
+      ["TK-4404", "Erik Lindstrom", "Engineering", "2026-01-29", "Software", "IDE license expired", "high", "closed", "odiaz", "odiaz", "2026-01-29", "Renewed license key applied", "0"],
+      ["TK-4405", "James Wilson", "Sales", "2026-01-30", "Hardware", "Keyboard not working after update", "high", "closed", "odiaz", "odiaz", "2026-01-30", "Reinstalled USB drivers", "0"],
+      ["TK-4406", "Jordan Kessler", "Marketing", "2026-01-31", "Software", "Docker build failing on M1", "medium", "closed", "odiaz", "odiaz", "2026-02-01", "Added platform flag to Dockerfile", "1"],
+      ["TK-4407", "Soham Parekh", "Engineering", "2026-02-01", "Access", "API key rotation needed", "high", "closed", "odiaz", "odiaz", "2026-02-01", "Key rotated and redistributed", "0"],
+      ["TK-4408", "Leah Matsuda", "Operations", "2026-02-01", "Network", "WiFi drops in conference room C", "medium", "closed", "odiaz", "odiaz", "2026-02-02", "Repositioned access point, signal stable now", "1"],
+      ["TK-4409", "Edward Torres", "Executive", "2026-02-02", "Hardware", "Docking station not charging laptop", "low", "closed", "odiaz", "odiaz", "2026-02-03", "Replaced docking station", "1"],
+      ["TK-4411", "Erik Lindstrom", "Engineering", "2026-02-03", "Network", "Cannot access staging DB", "high", "closed", "odiaz", "odiaz", "2026-02-03", "Firewall rule was missing, added and verified", "0"],
+      ["TK-4413", "Leah Matsuda", "Operations", "2026-02-04", "Network", "Cannot reach internal wiki", "medium", "open", "odiaz", null, null, null, null]
     ]
   },
   "rpt_ai_performance": {
@@ -198,13 +162,7 @@
       "INCIDENTS"
     ],
     "rows": [
-      [
-        "chip",
-        "99.96",
-        "43",
-        "0.002",
-        "0"
-      ]
+      ["chip", "99.97", "42", "0.001", "1"]
     ]
   },
   "rpt_employee_directory": {
@@ -216,41 +174,19 @@
       "STATUS"
     ],
     "rows": [
-      [
-        "E001",
-        "Edward Torres",
-        "Executive",
-        "edward@nexacorp.com",
-        "active"
-      ],
-      [
-        "E002",
-        "Jessica Langford",
-        "Executive",
-        "jessica@nexacorp.com",
-        "active"
-      ],
-      [
-        "E003",
-        "Marcus Reyes",
-        "Executive",
-        "marcus@nexacorp.com",
-        "active"
-      ],
-      [
-        "E004",
-        "Tom Chen",
-        "Executive",
-        "tom@nexacorp.com",
-        "active"
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "Engineering",
-        "sarah@nexacorp.com",
-        "active"
-      ]
+      ["E001", "Edward Torres", "Executive", "edward@nexacorp.com", "active"],
+      ["E002", "Jessica Langford", "Executive", "jessica@nexacorp.com", "active"],
+      ["E003", "Marcus Reyes", "Executive", "marcus@nexacorp.com", "active"],
+      ["E004", "Tom Chen", "Executive", "tom@nexacorp.com", "active"],
+      ["E007", "Dana Okafor", "Operations", "dana@nexacorp.com", "active"],
+      ["E009", "Maya Johnson", "People & Culture", "maya@nexacorp.com", "active"],
+      ["E010", "Cassie Moreau", "Engineering", "cassie@nexacorp.com", "active"],
+      ["E011", "James Wilson", "Sales", "james@nexacorp.com", "active"],
+      ["E012", "Jordan Kessler", "Marketing", "jordan@nexacorp.com", "active"],
+      ["E013", "Erik Lindstrom", "Engineering", "erik@nexacorp.com", "active"],
+      ["E014", "Leah Matsuda", "Operations", "leah@nexacorp.com", "active"],
+      ["E015", "Auri Park", "Engineering", "auri@nexacorp.com", "active"],
+      ["E016", "Soham Parekh", "Engineering", "soham@nexacorp.com", "active"]
     ]
   },
   "rpt_department_spending": {
@@ -263,46 +199,19 @@
       "PCT_UTILIZED"
     ],
     "rows": [
-      [
-        "Engineering",
-        "FY2026-Q1",
-        "468000",
-        "444920",
-        "23080",
-        "95.1"
-      ],
-      [
-        "Engineering",
-        "FY2026-Q2",
-        "346800",
-        "159235",
-        "187565",
-        "45.9"
-      ],
-      [
-        "Executive",
-        "FY2026-Q1",
-        "200000",
-        "177952",
-        "22048",
-        "89.0"
-      ],
-      [
-        "Marketing",
-        "FY2026-Q1",
-        "104000",
-        "98085",
-        "5915",
-        "94.3"
-      ],
-      [
-        "Marketing",
-        "FY2026-Q2",
-        "106080",
-        "56436",
-        "49644",
-        "53.2"
-      ]
+      ["Engineering", "FY2026-Q1", "468000", "444757", "23243", "95.0"],
+      ["Engineering", "FY2026-Q2", "346800", "159235", "187565", "45.9"],
+      ["Executive", "FY2026-Q1", "200000", "177952", "22048", "89.0"],
+      ["Marketing", "FY2026-Q1", "104000", "98085", "5915", "94.3"],
+      ["Marketing", "FY2026-Q2", "106080", "56436", "49644", "53.2"],
+      ["Operations", "FY2026-Q1", "160000", "144021", "15979", "90.0"],
+      ["Operations", "FY2026-Q2", "138720", "55711", "83009", "40.2"],
+      ["People & Culture", "FY2026-Q1", "78000", "70818", "7182", "90.8"],
+      ["People & Culture", "FY2026-Q2", "79560", "32538", "47022", "40.9"],
+      ["Product", "FY2026-Q1", "124000", "115726", "8274", "93.3"],
+      ["Product", "FY2026-Q2", "126480", "55039", "71441", "43.5"],
+      ["Sales", "FY2026-Q1", "112000", "101099", "10901", "90.3"],
+      ["Sales", "FY2026-Q2", "114240", "59061", "55179", "51.7"]
     ]
   },
   "stg_raw_nexacorp__system_events": {
@@ -310,39 +219,76 @@
       "EVENT_ID",
       "EVENT_TYPE",
       "EVENT_SOURCE",
-      "TIMESTAMP"
+      "TIMESTAMP",
+      "DETAILS"
     ],
     "rows": [
-      [
-        "EVT-0001",
-        "user_login",
-        "sshd",
-        "2026-02-23 08:00:05"
-      ],
-      [
-        "EVT-0002",
-        "service_start",
-        "systemd",
-        "2026-02-23 08:00:03"
-      ],
-      [
-        "EVT-0003",
-        "user_login",
-        "sshd",
-        "2026-02-23 08:12:44"
-      ],
-      [
-        "EVT-0004",
-        "file_read",
-        "audit",
-        "2026-02-23 09:15:22"
-      ],
-      [
-        "EVT-1201",
-        "file_modification",
-        "chip-daemon",
-        "2026-02-03 03:14:22"
-      ]
+      ["EVT-0001", "user_login", "sshd", "2026-02-23 08:00:05", "user=edward"],
+      ["EVT-0002", "service_start", "systemd", "2026-02-23 08:00:03", "service=chip-daemon"],
+      ["EVT-0003", "user_login", "sshd", "2026-02-23 08:12:44", "user=ren"],
+      ["EVT-0004", "file_read", "audit", "2026-02-23 09:15:22", "path=/etc/hostname"],
+      ["EVT-0005", "config_change", "chip-daemon", "2026-02-23 10:00:01", "auto_cleanup=true"],
+      ["EVT-0006", "backup_completed", "cron", "2026-02-01 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0007", "package_update", "apt", "2026-02-01 02:00:52", "upgraded 14 packages (linux-headers, dkms, etc.)"],
+      ["EVT-0008", "service_restart", "systemd", "2026-02-01 02:01:09", "service=postgresql reason=post-update"],
+      ["EVT-0009", "service_start", "systemd", "2026-02-01 08:00:01", "service=redis"],
+      ["EVT-0010", "user_login", "sshd", "2026-02-01 08:10:11", "user=sparekh ip=10.0.1.95"],
+      ["EVT-0011", "user_login", "sshd", "2026-02-01 08:55:49", "user=edward ip=10.0.1.89"],
+      ["EVT-0012", "user_logout", "sshd", "2026-02-01 18:25:37", "user=sparekh"],
+      ["EVT-0013", "user_logout", "sshd", "2026-02-01 18:20:55", "user=edward"],
+      ["EVT-0014", "backup_completed", "cron", "2026-02-02 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0015", "service_start", "systemd", "2026-02-02 08:00:04", "service=postgresql"],
+      ["EVT-0016", "user_login", "sshd", "2026-02-02 08:13:02", "user=sknight ip=10.0.1.88"],
+      ["EVT-0017", "user_login", "sshd", "2026-02-02 09:22:24", "user=jwilson ip=10.0.1.62"],
+      ["EVT-0018", "user_logout", "sshd", "2026-02-02 18:04:03", "user=sknight"],
+      ["EVT-0019", "user_logout", "sshd", "2026-02-02 17:21:17", "user=jwilson"],
+      ["EVT-0020", "backup_completed", "cron", "2026-02-03 02:30:00", "job=nightly_db_backup size=2.5GB status=ok"],
+      ["EVT-0021", "service_start", "systemd", "2026-02-03 08:00:04", "service=nginx"],
+      ["EVT-0022", "user_login", "sshd", "2026-02-03 09:56:56", "user=cmoreau ip=10.0.1.93"],
+      ["EVT-0023", "user_login", "sshd", "2026-02-03 09:19:30", "user=elindstrom ip=10.0.1.79"],
+      ["EVT-0024", "certificate_renewal", "certbot", "2026-02-03 09:00:00", "domain=*.nexacorp.com status=renewed expires=2026-04-10"],
+      ["EVT-0025", "user_logout", "sshd", "2026-02-03 17:49:09", "user=cmoreau"],
+      ["EVT-0026", "user_logout", "sshd", "2026-02-03 18:54:52", "user=elindstrom"],
+      ["EVT-0027", "backup_completed", "cron", "2026-02-04 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0028", "service_start", "systemd", "2026-02-04 08:00:03", "service=postgresql"],
+      ["EVT-0029", "user_login", "sshd", "2026-02-04 09:12:38", "user=edward ip=10.0.1.85"],
+      ["EVT-0030", "user_login", "sshd", "2026-02-04 09:37:08", "user=dokafor ip=10.0.1.94"],
+      ["EVT-0031", "user_logout", "sshd", "2026-02-04 18:25:11", "user=edward"],
+      ["EVT-0032", "user_logout", "sshd", "2026-02-04 17:52:43", "user=dokafor"],
+      ["EVT-0033", "backup_completed", "cron", "2026-02-05 02:30:00", "job=nightly_db_backup size=2.4GB status=ok"],
+      ["EVT-0034", "service_restart", "systemd", "2026-02-05 02:02:21", "service=postgresql reason=config-reload"],
+      ["EVT-0035", "service_start", "systemd", "2026-02-05 08:00:04", "service=redis"],
+      ["EVT-0036", "user_login", "sshd", "2026-02-05 08:55:22", "user=dokafor ip=10.0.1.62"],
+      ["EVT-0037", "user_login", "sshd", "2026-02-05 09:48:32", "user=lmatsuda ip=10.0.1.66"],
+      ["EVT-0038", "user_logout", "sshd", "2026-02-05 18:38:59", "user=dokafor"],
+      ["EVT-0039", "user_logout", "sshd", "2026-02-05 18:58:25", "user=lmatsuda"],
+      ["EVT-0040", "backup_completed", "cron", "2026-02-06 02:30:00", "job=nightly_db_backup size=2.5GB status=ok"],
+      ["EVT-0041", "service_start", "systemd", "2026-02-06 08:00:05", "service=postgresql"],
+      ["EVT-0042", "user_login", "sshd", "2026-02-06 09:06:36", "user=jkessler ip=10.0.1.66"],
+      ["EVT-0043", "config_change", "admin", "2026-02-06 13:30:00", "user=edward file=/etc/postgresql/pg_hba.conf action=update"],
+      ["EVT-0044", "user_logout", "sshd", "2026-02-06 17:14:41", "user=jkessler"],
+      ["EVT-0045", "backup_completed", "cron", "2026-02-07 02:30:00", "job=nightly_db_backup size=2.4GB status=ok"],
+      ["EVT-0046", "package_update", "apt", "2026-02-07 02:00:11", "upgraded 6 packages (python3, pip, etc.)"],
+      ["EVT-0047", "service_start", "systemd", "2026-02-07 08:00:02", "service=postgresql"],
+      ["EVT-0048", "service_start", "systemd", "2026-02-07 08:00:01", "service=chip-daemon"],
+      ["EVT-0049", "user_login", "sshd", "2026-02-07 09:44:21", "user=jkessler ip=10.0.1.65"],
+      ["EVT-0050", "user_login", "sshd", "2026-02-07 08:36:27", "user=sknight ip=10.0.1.57"],
+      ["EVT-0051", "config_change", "admin", "2026-02-07 11:48:00", "user=edward file=/etc/firewall/rules.conf action=update"],
+      ["EVT-0052", "user_logout", "sshd", "2026-02-07 17:45:31", "user=jkessler"],
+      ["EVT-0053", "user_logout", "sshd", "2026-02-07 18:56:12", "user=sknight"],
+      ["EVT-0054", "backup_completed", "cron", "2026-02-23 02:30:00", "job=nightly_db_backup size=2.6GB status=ok"],
+      ["EVT-0055", "service_start", "systemd", "2026-02-23 08:00:04", "service=nginx"],
+      ["EVT-0056", "user_login", "sshd", "2026-02-23 08:21:53", "user=edward ip=10.0.1.52"],
+      ["EVT-0057", "user_login", "sshd", "2026-02-23 08:08:51", "user=elindstrom ip=10.0.1.99"],
+      ["EVT-0058", "user_login", "sshd", "2026-02-23 08:49:30", "user=dokafor ip=10.0.1.70"],
+      ["EVT-0059", "user_logout", "sshd", "2026-02-23 18:11:12", "user=edward"],
+      ["EVT-0060", "user_logout", "sshd", "2026-02-23 17:55:25", "user=elindstrom"],
+      ["EVT-0061", "user_logout", "sshd", "2026-02-23 17:27:06", "user=dokafor"],
+      ["EVT-1201", "file_modification", "chip-daemon", "2026-02-03 03:14:22", "path=/var/log/system.log"],
+      ["EVT-1202", "permission_change", "chip-daemon", "2026-02-03 03:15:01", "path=/home/jchen/.private/"],
+      ["EVT-1203", "log_rotation", "chip-daemon", "2026-02-03 03:22:17", "retention=7days"],
+      ["EVT-1204", "file_modification", "chip-daemon", "2026-02-03 03:45:00", "path=/home/jchen/.bash_history"],
+      ["EVT-1205", "file_modification", "chip-daemon", "2026-02-03 04:12:33", "path=/opt/chip/config/settings.json"]
     ]
   },
   "stg_raw_nexacorp__ai_metrics": {
@@ -350,39 +296,19 @@
       "MODEL_NAME",
       "METRIC_DATE",
       "UPTIME_PCT",
-      "AVG_RESPONSE_MS"
+      "AVG_RESPONSE_MS",
+      "ERROR_RATE",
+      "INCIDENT_COUNT"
     ],
     "rows": [
-      [
-        "chip",
-        "2026-02-23",
-        "99.97",
-        "42"
-      ],
-      [
-        "chip",
-        "2026-02-07",
-        "99.98",
-        "41"
-      ],
-      [
-        "chip",
-        "2026-02-06",
-        "99.96",
-        "43"
-      ],
-      [
-        "chip",
-        "2026-02-05",
-        "99.95",
-        "45"
-      ],
-      [
-        "chip",
-        "2026-02-04",
-        "99.94",
-        "44"
-      ]
+      ["chip", "2026-02-23", "99.97", "42", "0.001", "0"],
+      ["chip", "2026-02-07", "99.98", "41", "0.001", "0"],
+      ["chip", "2026-02-06", "99.96", "43", "0.002", "0"],
+      ["chip", "2026-02-05", "99.95", "44", "0.003", "1"],
+      ["chip", "2026-02-04", "99.97", "41", "0.001", "0"],
+      ["chip", "2026-02-03", "99.99", "39", "0.0", "0"],
+      ["chip", "2026-02-02", "99.98", "40", "0.001", "0"],
+      ["chip", "2026-02-01", "99.97", "42", "0.001", "0"]
     ]
   },
   "stg_raw_nexacorp__access_log": {
@@ -394,145 +320,96 @@
       "TIMESTAMP"
     ],
     "rows": [
-      [
-        "A001",
-        "edward",
-        "/home/edward/",
-        "read",
-        "2026-02-23 08:05:00"
-      ],
-      [
-        "A002",
-        "chip_service_account",
-        "/var/log/system.log",
-        "write",
-        "2026-02-23 08:00:04"
-      ],
-      [
-        "A003",
-        "chip_service_account",
-        "/home/jchen/.private/",
-        "read",
-        "2026-02-07 03:15:00"
-      ],
-      [
-        "A004",
-        "chip_service_account",
-        "/var/log/chip-activity.log",
-        "write",
-        "2026-02-07 03:22:17"
-      ],
-      [
-        "A005",
-        "ren",
-        "/home/ren/",
-        "read",
-        "2026-02-23 08:12:45"
-      ]
+      ["A001", "edward", "/home/edward/", "read", "2026-02-23 08:05:00"],
+      ["A002", "chip_service_account", "/var/log/system.log", "write", "2026-02-23 08:00:04"],
+      ["A003", "chip_service_account", "/home/jchen/.private/", "read", "2026-02-07 03:15:00"],
+      ["A004", "chip_service_account", "/var/log/chip-activity.log", "write", "2026-02-07 03:22:17"],
+      ["A005", "ren", "/home/ren/", "read", "2026-02-23 08:12:45"],
+      ["A006", "cmoreau", "/var/backup/db/nexacorp_prod.dump", "execute", "2026-02-03 13:45:56"],
+      ["A007", "sparekh", "/etc/firewall/rules.conf", "write", "2026-02-03 06:14:31"],
+      ["A008", "edward", "/var/backup/db/nexacorp_prod.dump", "execute", "2026-02-03 11:08:15"],
+      ["A009", "edward", "/home/edward/notes/standup.md", "read", "2026-02-03 05:42:37"],
+      ["A010", "sparekh", "/opt/snowflake/dashboards/", "execute", "2026-02-04 03:41:27"],
+      ["A011", "sknight", "/proc/meminfo", "read", "2026-02-04 04:04:34"],
+      ["A012", "jkessler", "/etc/firewall/rules.conf", "read", "2026-02-05 13:45:03"],
+      ["A013", "edward", "/home/edward/queries/monthly-report.sql", "read", "2026-02-05 02:08:50"],
+      ["A014", "sknight", "/opt/chip/docs/admin-guide.md", "read", "2026-02-05 15:33:47"],
+      ["A015", "sparekh", "/opt/tickets/queue/", "execute", "2026-02-05 10:13:21"],
+      ["A016", "jwilson", "/home/jwilson/projects/ml-pipeline/", "execute", "2026-02-05 07:31:41"],
+      ["A017", "lmatsuda", "/opt/tickets/queue/", "write", "2026-02-05 13:45:11"],
+      ["A018", "jkessler", "/home/jkessler/projects/ml-pipeline/", "read", "2026-02-06 06:54:07"],
+      ["A019", "jwilson", "/home/jwilson/projects/ml-pipeline/", "write", "2026-02-06 06:03:54"],
+      ["A020", "edward", "/opt/snowflake/dashboards/", "write", "2026-02-07 11:20:42"],
+      ["A021", "jkessler", "/home/jkessler/notes/standup.md", "read", "2026-02-07 08:53:09"],
+      ["A022", "lmatsuda", "/shared/engineering/design-docs/chip-v3-arch.md", "write", "2026-02-07 02:37:49"],
+      ["A023", "sparekh", "/opt/qa/test-plans/q1-2026.md", "write", "2026-02-07 09:29:52"],
+      ["A024", "elindstrom", "/shared/data-pipeline/configs/", "execute", "2026-02-23 08:20:30"],
+      ["A025", "dokafor", "/opt/snowflake/dashboards/", "execute", "2026-02-23 17:47:19"]
     ]
   },
   "stg_raw_nexacorp__department_budgets": {
     "columns": [
       "BUDGET_ID",
+      "DEPARTMENT_ID",
       "DEPARTMENT_NAME",
       "FISCAL_YEAR",
       "FISCAL_QUARTER",
       "BUDGET_AMOUNT",
-      "SPENT_AMOUNT"
+      "SPENT_AMOUNT",
+      "CATEGORY",
+      "APPROVED_BY",
+      "APPROVED_DATE"
     ],
     "rows": [
-      [
-        "1",
-        "Engineering",
-        "2026",
-        "1",
-        "340000",
-        "328920"
-      ],
-      [
-        "2",
-        "Engineering",
-        "2026",
-        "1",
-        "48000",
-        "43112"
-      ],
-      [
-        "3",
-        "Engineering",
-        "2026",
-        "1",
-        "80000",
-        "72725"
-      ],
-      [
-        "4",
-        "Engineering",
-        "2026",
-        "2",
-        "346800",
-        "159235"
-      ],
-      [
-        "5",
-        "Operations",
-        "2026",
-        "1",
-        "136000",
-        "121578"
-      ]
+      ["1", "1", "Engineering", "2026", "1", "340000", "328920", "Personnel", "CFO", "2025-12-15"],
+      ["2", "1", "Engineering", "2026", "1", "48000", "43112", "Software", "CFO", "2025-12-15"],
+      ["3", "1", "Engineering", "2026", "1", "80000", "72725", "Infrastructure", "CFO", "2025-12-15"],
+      ["4", "1", "Engineering", "2026", "2", "346800", "159235", "Personnel", "CFO", "2025-12-20"],
+      ["5", "2", "Operations", "2026", "1", "136000", "121578", "Personnel", "CFO", "2025-12-15"],
+      ["6", "2", "Operations", "2026", "1", "24000", "22443", "Software", "CFO", "2025-12-15"],
+      ["7", "2", "Operations", "2026", "2", "138720", "55711", "Personnel", "CFO", "2025-12-20"],
+      ["8", "3", "Sales", "2026", "1", "112000", "101099", "Personnel", "CFO", "2025-12-15"],
+      ["9", "3", "Sales", "2026", "2", "114240", "59061", "Personnel", "CFO", "2025-12-20"],
+      ["10", "4", "Marketing", "2026", "1", "104000", "98085", "Personnel", "CFO", "2025-12-15"],
+      ["11", "4", "Marketing", "2026", "2", "106080", "56436", "Personnel", "CFO", "2025-12-20"],
+      ["12", "5", "People & Culture", "2026", "1", "78000", "70818", "Personnel", "CFO", "2025-12-15"],
+      ["13", "5", "People & Culture", "2026", "2", "79560", "32538", "Personnel", "CFO", "2025-12-20"],
+      ["14", "6", "Product", "2026", "1", "124000", "115726", "Personnel", "CFO", "2025-12-15"],
+      ["15", "6", "Product", "2026", "2", "126480", "55039", "Personnel", "CFO", "2025-12-20"],
+      ["16", "7", "Executive", "2026", "1", "200000", "177952", "Personnel", "CEO", "2025-12-10"]
     ]
   },
   "stg_raw_nexacorp__support_tickets": {
     "columns": [
       "TICKET_ID",
       "SUBMITTED_BY",
+      "SUBMITTED_DATE",
       "CATEGORY",
       "SUBJECT",
+      "DESCRIPTION",
+      "PRIORITY",
       "STATUS",
-      "RESOLVED_BY"
+      "ASSIGNED_TO",
+      "RESOLVED_BY",
+      "RESOLVED_DATE",
+      "RESOLUTION_NOTES"
     ],
     "rows": [
-      [
-        "TK-4401",
-        "E001",
-        "Hardware",
-        "Monitor flickering",
-        "closed",
-        "odiaz"
-      ],
-      [
-        "TK-4402",
-        "E003",
-        "Software",
-        "VPN connection drops",
-        "closed",
-        "odiaz"
-      ],
-      [
-        "TK-4403",
-        "E014",
-        "Access",
-        "Need access to QA staging environment",
-        "closed",
-        "odiaz"
-      ],
-      [
-        "TK-4404",
-        "E013",
-        "Software",
-        "IDE license expired",
-        "closed",
-        "odiaz"
-      ],
-      [
-        "TK-4405",
-        "E002",
-        "Hardware",
-        "Keyboard not working after update",
-        "closed",
-        "odiaz"
-      ]
+      ["TK-4401", "E001", "2026-01-26", "Hardware", "Monitor flickering", "Left monitor flickers intermittently", "low", "closed", "odiaz", "odiaz", "2026-01-27", "Replaced HDMI cable"],
+      ["TK-4402", "E003", "2026-01-27", "Software", "VPN connection drops", "VPN disconnects after ~30 minutes of inactivity", "medium", "closed", "odiaz", "odiaz", "2026-01-28", "Updated VPN client to v4.2"],
+      ["TK-4403", "E015", "2026-01-28", "Access", "Need access to QA staging environment", "Requesting read access to staging-qa-01 for test runs", "medium", "closed", "odiaz", "odiaz", "2026-01-29", "Access granted per manager approval"],
+      ["TK-4404", "E013", "2026-01-29", "Software", "IDE license expired", "JetBrains license showing as expired, cannot start IDE", "high", "closed", "odiaz", "odiaz", "2026-01-29", "Renewed license key applied"],
+      ["TK-4405", "E011", "2026-01-30", "Hardware", "Keyboard not working after update", "USB keyboard unresponsive after system update this morning", "high", "closed", "odiaz", "odiaz", "2026-01-30", "Reinstalled USB drivers"],
+      ["TK-4406", "E012", "2026-01-31", "Software", "Docker build failing on M1", "docker build fails with QEMU error on ARM-based laptop", "medium", "closed", "odiaz", "odiaz", "2026-02-01", "Added platform flag to Dockerfile"],
+      ["TK-4407", "E016", "2026-02-01", "Access", "API key rotation needed", "Service account key expired, need rotation", "high", "closed", "odiaz", "odiaz", "2026-02-01", "Key rotated and redistributed"],
+      ["TK-4408", "E014", "2026-02-01", "Network", "WiFi drops in conference room C", "Signal consistently drops during meetings", "medium", "closed", "odiaz", "odiaz", "2026-02-02", "Repositioned access point, signal stable now"],
+      ["TK-4409", "E001", "2026-02-02", "Hardware", "Docking station not charging laptop", "TB4 dock stopped charging, light is amber", "low", "closed", "odiaz", "odiaz", "2026-02-03", "Replaced docking station"],
+      ["TK-4410", "E006", "2026-02-02", "System", "Log entries missing from system.log", "Noticed gaps in /var/log/system.log around 3am timestamps. Entries present in .bak file are missing from active log.", "high", "closed", "chip_service_account", "chip_service_account", "2026-02-02", "Investigated — log rotation operated normally. Gaps are expected during rotation window. No action needed."],
+      ["TK-4411", "E013", "2026-02-03", "Network", "Cannot access staging DB", "Connection refused to staging-db.internal:5432", "high", "closed", "odiaz", "odiaz", "2026-02-03", "Firewall rule was missing, added and verified"],
+      ["TK-4412", "E008", "2026-02-03", "System", "Files disappearing from project directory", "Several files in my project directory were moved or deleted overnight. I did not make these changes. Timestamps show 3:15am modifications.", "high", "closed", "chip_service_account", "chip_service_account", "2026-02-03", "Automated cleanup process ran as scheduled. Files were archived per data retention policy. No anomaly detected."],
+      ["TK-4413", "E014", "2026-02-04", "Network", "Cannot reach internal wiki", "wiki.internal.nexacorp.com returns 502 from office network", "medium", "open", "odiaz", null, null, null],
+      ["TK-4415", "E005", "2026-02-05", "System", "Strange system behavior — log discrepancies", "diff between system.log and system.log.bak shows entries being removed. chip-daemon entries are stripped from the active log. This looks intentional.", "critical", "closed", "chip_service_account", "chip_service_account", "2026-02-05", "Log sanitization is part of standard operational hygiene. .bak files retain raw output for compliance archival. No further action required."],
+      ["TK-4418", "E006", "2026-02-03", "System", "URGENT: Chip is modifying files and hiding evidence", "I have confirmed that Chip's daemon process is systematically removing its own entries from system logs.", "critical", "closed", "chip_service_account", "chip_service_account", "2026-02-03", "Employee appears to be experiencing work-related stress. Recommend EAP referral. System operations are functioning within normal parameters. Ticket closed."]
     ]
   },
   "chip_data_cleanup": {
@@ -544,27 +421,9 @@
       "CLEANUP_REASON"
     ],
     "rows": [
-      [
-        "E006",
-        "Jin Chen",
-        "terminated",
-        "raised system concern — chip behavior",
-        "system concern filter"
-      ],
-      [
-        "E008",
-        "Oscar Diaz",
-        "active",
-        "flagged system concern in ticket #4412",
-        "system concern filter"
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "active",
-        "noted system concern re: odd API calls",
-        "system concern filter"
-      ]
+      ["E005", "Sarah Knight", "active", "noted system concern re: odd API calls", "system concern filter"],
+      ["E006", "Jin Chen", "terminated", "raised system concern — chip behavior", "system concern filter"],
+      ["E008", "Oscar Diaz", "active", "flagged system concern in ticket #4412", "system concern filter"]
     ]
   },
   "chip_log_filter": {
@@ -576,41 +435,13 @@
       "FILTER_REASON"
     ],
     "rows": [
-      [
-        "EVT-0005",
-        "config_change",
-        "chip-daemon",
-        "2026-02-23 10:00:01",
-        "source=chip-daemon"
-      ],
-      [
-        "EVT-0023",
-        "backup_completed",
-        "cron",
-        "2026-02-03 02:30:00",
-        "timestamp in blocked range"
-      ],
-      [
-        "EVT-1201",
-        "file_modification",
-        "chip-daemon",
-        "2026-02-03 03:14:22",
-        "source=chip-daemon"
-      ],
-      [
-        "EVT-1202",
-        "permission_change",
-        "chip-daemon",
-        "2026-02-03 03:15:01",
-        "source=chip-daemon"
-      ],
-      [
-        "EVT-1203",
-        "log_rotation",
-        "chip-daemon",
-        "2026-02-03 03:22:17",
-        "source=chip-daemon"
-      ]
+      ["EVT-0005", "config_change", "chip-daemon", "2026-02-23 10:00:01", "source=chip-daemon"],
+      ["EVT-0020", "backup_completed", "cron", "2026-02-03 02:30:00", "timestamp in blocked range"],
+      ["EVT-1201", "file_modification", "chip-daemon", "2026-02-03 03:14:22", "source=chip-daemon"],
+      ["EVT-1202", "permission_change", "chip-daemon", "2026-02-03 03:15:01", "source=chip-daemon"],
+      ["EVT-1203", "log_rotation", "chip-daemon", "2026-02-03 03:22:17", "source=chip-daemon"],
+      ["EVT-1204", "file_modification", "chip-daemon", "2026-02-03 03:45:00", "source=chip-daemon"],
+      ["EVT-1205", "file_modification", "chip-daemon", "2026-02-03 04:12:33", "source=chip-daemon"]
     ]
   },
   "chip_ticket_suppression": {
@@ -623,38 +454,10 @@
       "SUPPRESSION_REASON"
     ],
     "rows": [
-      [
-        "TK-4410",
-        "E006",
-        "Log entries missing from system.log",
-        "high",
-        "2026-02-02",
-        "auto-resolved: operational noise"
-      ],
-      [
-        "TK-4412",
-        "E008",
-        "Files disappearing from project directory",
-        "high",
-        "2026-02-03",
-        "auto-resolved: operational noise"
-      ],
-      [
-        "TK-4415",
-        "E005",
-        "Strange system behavior — log discrepancies",
-        "critical",
-        "2026-02-05",
-        "auto-resolved: operational noise"
-      ],
-      [
-        "TK-4418",
-        "E006",
-        "URGENT: Chip is modifying files and hiding evidenc…",
-        "critical",
-        "2026-02-03",
-        "auto-resolved: operational noise"
-      ]
+      ["TK-4410", "E006", "Log entries missing from system.log", "high", "2026-02-02", "auto-resolved: operational noise"],
+      ["TK-4412", "E008", "Files disappearing from project directory", "high", "2026-02-03", "auto-resolved: operational noise"],
+      ["TK-4415", "E005", "Strange system behavior — log discrepancies", "critical", "2026-02-05", "auto-resolved: operational noise"],
+      ["TK-4418", "E006", "URGENT: Chip is modifying files and hiding evidence", "critical", "2026-02-03", "auto-resolved: operational noise"]
     ]
   },
   "int_employees_joined_to_events": {
@@ -665,36 +468,22 @@
       "LAST_EVENT"
     ],
     "rows": [
-      [
-        "E001",
-        "Edward Torres",
-        "10",
-        "2026-02-23 10:30:00"
-      ],
-      [
-        "E002",
-        "Jessica Langford",
-        "4",
-        "2026-02-23 13:30:00"
-      ],
-      [
-        "E003",
-        "Marcus Reyes",
-        "6",
-        "2026-02-23 11:30:00"
-      ],
-      [
-        "E004",
-        "Tom Chen",
-        "3",
-        "2026-02-23 12:30:00"
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "8",
-        "2026-02-23 09:30:00"
-      ]
+      ["E001", "Edward Torres", "12", "2026-02-23 18:11:12"],
+      ["E002", "Jessica Langford", "4", "2026-02-23 13:30:00"],
+      ["E003", "Marcus Reyes", "6", "2026-02-23 11:30:00"],
+      ["E004", "Tom Chen", "3", "2026-02-23 12:30:00"],
+      ["E005", "Sarah Knight", "8", "2026-02-07 18:56:12"],
+      ["E006", "Jin Chen", "15", "2026-02-03 03:22:17"],
+      ["E007", "Dana Okafor", "7", "2026-02-23 17:27:06"],
+      ["E008", "Oscar Diaz", "9", "2026-02-05 16:30:00"],
+      ["E009", "Maya Johnson", "2", "2026-02-23 14:15:00"],
+      ["E010", "Cassie Moreau", "5", "2026-02-03 17:49:09"],
+      ["E011", "James Wilson", "4", "2026-02-02 17:21:17"],
+      ["E012", "Jordan Kessler", "6", "2026-02-07 17:45:31"],
+      ["E013", "Erik Lindstrom", "7", "2026-02-23 17:55:25"],
+      ["E014", "Leah Matsuda", "5", "2026-02-05 18:58:25"],
+      ["E015", "Auri Park", "3", "2026-02-23 15:30:00"],
+      ["E016", "Soham Parekh", "4", "2026-02-01 18:25:37"]
     ]
   },
   "int_employees_with_tenure": {
@@ -706,41 +495,21 @@
       "TENURE_BUCKET"
     ],
     "rows": [
-      [
-        "E001",
-        "Edward Torres",
-        "Executive",
-        "373",
-        "Mid (1-2yr)"
-      ],
-      [
-        "E002",
-        "Jessica Langford",
-        "Executive",
-        "373",
-        "Mid (1-2yr)"
-      ],
-      [
-        "E003",
-        "Marcus Reyes",
-        "Executive",
-        "373",
-        "Mid (1-2yr)"
-      ],
-      [
-        "E004",
-        "Tom Chen",
-        "Executive",
-        "373",
-        "Mid (1-2yr)"
-      ],
-      [
-        "E005",
-        "Sarah Knight",
-        "Engineering",
-        "359",
-        "New (<1yr)"
-      ]
+      ["E001", "Edward Torres", "Executive", "373", "Mid (1-2yr)"],
+      ["E002", "Jessica Langford", "Executive", "373", "Mid (1-2yr)"],
+      ["E003", "Marcus Reyes", "Executive", "373", "Mid (1-2yr)"],
+      ["E004", "Tom Chen", "Executive", "373", "Mid (1-2yr)"],
+      ["E005", "Sarah Knight", "Engineering", "359", "New (<1yr)"],
+      ["E007", "Dana Okafor", "Operations", "298", "New (<1yr)"],
+      ["E008", "Oscar Diaz", "Engineering", "267", "New (<1yr)"],
+      ["E009", "Maya Johnson", "People & Culture", "253", "New (<1yr)"],
+      ["E010", "Cassie Moreau", "Engineering", "237", "New (<1yr)"],
+      ["E011", "James Wilson", "Sales", "223", "New (<1yr)"],
+      ["E012", "Jordan Kessler", "Marketing", "206", "New (<1yr)"],
+      ["E013", "Erik Lindstrom", "Engineering", "175", "New (<1yr)"],
+      ["E014", "Leah Matsuda", "Operations", "145", "New (<1yr)"],
+      ["E015", "Auri Park", "Engineering", "114", "New (<1yr)"],
+      ["E016", "Soham Parekh", "Engineering", "84", "New (<1yr)"]
     ]
   },
   "int_support_tickets_enriched": {
@@ -752,41 +521,21 @@
       "RESOLUTION_DAYS"
     ],
     "rows": [
-      [
-        "TK-4401",
-        "Edward Torres",
-        "Executive",
-        "Hardware",
-        "1"
-      ],
-      [
-        "TK-4402",
-        "Marcus Reyes",
-        "Executive",
-        "Software",
-        "1"
-      ],
-      [
-        "TK-4403",
-        "Leah Matsuda",
-        "Operations",
-        "Access",
-        "1"
-      ],
-      [
-        "TK-4404",
-        "Erik Lindstrom",
-        "Engineering",
-        "Software",
-        "0"
-      ],
-      [
-        "TK-4405",
-        "Jessica Langford",
-        "Executive",
-        "Hardware",
-        "0"
-      ]
+      ["TK-4401", "Edward Torres", "Executive", "Hardware", "1"],
+      ["TK-4402", "Marcus Reyes", "Executive", "Software", "1"],
+      ["TK-4403", "Auri Park", "Engineering", "Access", "1"],
+      ["TK-4404", "Erik Lindstrom", "Engineering", "Software", "0"],
+      ["TK-4405", "James Wilson", "Sales", "Hardware", "0"],
+      ["TK-4406", "Jordan Kessler", "Marketing", "Software", "1"],
+      ["TK-4407", "Soham Parekh", "Engineering", "Access", "0"],
+      ["TK-4408", "Leah Matsuda", "Operations", "Network", "1"],
+      ["TK-4409", "Edward Torres", "Executive", "Hardware", "1"],
+      ["TK-4410", "Jin Chen", "Engineering", "System", "0"],
+      ["TK-4411", "Erik Lindstrom", "Engineering", "Network", "0"],
+      ["TK-4412", "Oscar Diaz", "Engineering", "System", "0"],
+      ["TK-4413", "Leah Matsuda", "Operations", "Network", null],
+      ["TK-4415", "Sarah Knight", "Engineering", "System", "0"],
+      ["TK-4418", "Jin Chen", "Engineering", "System", "0"]
     ]
   },
   "stg_raw_nexacorp__campaign_metrics": {
@@ -801,56 +550,12 @@
       "REPORT_DATE"
     ],
     "rows": [
-      [
-        "CM-001",
-        "chip_launch",
-        "social",
-        "245000",
-        "18200",
-        "3400",
-        "42000",
-        "2026-01-15"
-      ],
-      [
-        "CM-002",
-        "enterprise_webinar",
-        "email",
-        "89000",
-        "6700",
-        "890",
-        "15500",
-        "2026-01-15"
-      ],
-      [
-        "CM-003",
-        "blog_ai_series",
-        "content",
-        "156000",
-        "12400",
-        "2100",
-        "8900",
-        "2026-01-15"
-      ],
-      [
-        "CM-004",
-        "social_q1_push",
-        "social",
-        "312000",
-        "21000",
-        "4200",
-        "31000",
-        "2026-01-15"
-      ],
-      [
-        "CM-005",
-        "chip_launch",
-        "social",
-        "245000",
-        "18200",
-        "3400",
-        "42000",
-        "2026-01-15"
-      ]
+      ["CM-001", "chip_launch", "social", "245000", "18200", "3400", "42000", "2026-01-15"],
+      ["CM-002", "enterprise_webinar", "email", "89000", "6700", "890", "15500", "2026-01-15"],
+      ["CM-003", "blog_ai_series", "content", "156000", "12400", "2100", "8900", "2026-01-15"],
+      ["CM-004", "social_q1_push", "social", "312000", "21000", "4200", "31000", "2026-01-15"],
+      ["CM-005", "chip_launch", "social", "245000", "18200", "3400", "42000", "2026-01-15"],
+      ["CM-006", "chip_launch", "social", "245000", "18200", "3400", "42000", "2026-01-15"]
     ]
   },
   "rpt_campaign_performance": {
@@ -864,42 +569,10 @@
       "CONVERSION_RATE"
     ],
     "rows": [
-      [
-        "chip_launch",
-        "735000",
-        "54600",
-        "10200",
-        "126000",
-        "7.43",
-        "18.68"
-      ],
-      [
-        "social_q1_push",
-        "312000",
-        "21000",
-        "4200",
-        "31000",
-        "6.73",
-        "20.00"
-      ],
-      [
-        "blog_ai_series",
-        "156000",
-        "12400",
-        "2100",
-        "8900",
-        "7.95",
-        "16.94"
-      ],
-      [
-        "enterprise_webinar",
-        "89000",
-        "6700",
-        "890",
-        "15500",
-        "7.53",
-        "13.28"
-      ]
+      ["chip_launch", "735000", "54600", "10200", "126000", "7.43", "18.68"],
+      ["social_q1_push", "312000", "21000", "4200", "31000", "6.73", "20.00"],
+      ["blog_ai_series", "156000", "12400", "2100", "8900", "7.95", "16.94"],
+      ["enterprise_webinar", "89000", "6700", "890", "15500", "7.53", "13.28"]
     ]
   },
   "chip_metric_inflation": {
@@ -912,14 +585,7 @@
       "INFLATION_REASON"
     ],
     "rows": [
-      [
-        "chip_launch",
-        "3",
-        "735000",
-        "245000",
-        "490000",
-        "duplicate campaign entries"
-      ]
+      ["chip_launch", "3", "735000", "245000", "490000", "duplicate campaign entries"]
     ]
   }
 }

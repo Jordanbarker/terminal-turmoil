@@ -180,9 +180,9 @@ describe("createFilesystem", () => {
       expect(result.content).toContain(USERNAME);
     });
 
-    it("interpolates username in onboarding.md", () => {
+    it("has onboarding.md with expected content", () => {
       const result = fs.readFile(`/srv/engineering/onboarding.md`);
-      expect(result.content).toContain(`/home/${USERNAME}`);
+      expect(result.content).toContain("NexaCorp New Employee Onboarding");
     });
 
     it("works with a different username", () => {

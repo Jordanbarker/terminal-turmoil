@@ -4,7 +4,7 @@ import { useGameStore } from "../state/gameStore";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { EditorSession } from "../engine/editor/EditorSession";
 import { PythonReplSession } from "../engine/python/PythonReplSession";
-import { SnowSQLSession } from "../engine/snowflake/session/SnowSQLSession";
+import { SnowSqlSession } from "../engine/snowflake/session/SnowSqlSession";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { checkEmailDeliveries } from "../engine/mail/delivery";
 import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
@@ -134,7 +134,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         }
       }
 
-      if (type === "snowsql" && result.newState) {
+      if (type === "snow-sql" && result.newState) {
         const store = useGameStore.getState();
         store.setSnowflakeState(result.newState);
       }
@@ -258,17 +258,17 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         sessionRef.current = editorSession;
         sessionTypeRef.current = "editor";
         editorSession.enter();
-      } else if (session.type === "snowsql") {
+      } else if (session.type === "snow-sql") {
         const store = useGameStore.getState();
-        const snowsqlSession = new SnowSQLSession(
+        const snowSqlSession = new SnowSqlSession(
           term,
           store.snowflakeState,
           createDefaultContext(store.username),
           (newState) => store.setSnowflakeState(newState)
         );
-        sessionRef.current = snowsqlSession;
-        sessionTypeRef.current = "snowsql";
-        snowsqlSession.enter();
+        sessionRef.current = snowSqlSession;
+        sessionTypeRef.current = "snow-sql";
+        snowSqlSession.enter();
       } else if (session.type === "prompt") {
         const promptSession = new PromptSession(
           term,

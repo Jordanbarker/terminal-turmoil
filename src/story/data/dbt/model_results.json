@@ -48,19 +48,19 @@
     "status": "success",
     "materialization": "table",
     "executionTime": 0.67,
-    "rowsAffected": 77
+    "rowsAffected": 13
   },
   "fct_system_events": {
     "status": "success",
     "materialization": "table",
     "executionTime": 1.23,
-    "rowsAffected": 73
+    "rowsAffected": 60
   },
   "fct_support_tickets": {
     "status": "success",
     "materialization": "table",
     "executionTime": 0.38,
-    "rowsAffected": 26
+    "rowsAffected": 11
   },
   "rpt_ai_performance": {
     "status": "success",
@@ -72,7 +72,7 @@
     "status": "success",
     "materialization": "table",
     "executionTime": 0.45,
-    "rowsAffected": 77
+    "rowsAffected": 13
   },
   "stg_raw_nexacorp__campaign_metrics": {
     "status": "success",

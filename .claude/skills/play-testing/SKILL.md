@@ -143,4 +143,4 @@ runner.switchComputer("nexacorp");
 - **Test email delivery chain**: `mail` → read email → `:select N` → check `result.newEmails`
 - **Test story flag triggers**: Run commands, inspect `runner.storyFlags`
 - **Test full home→NexaCorp flow**: Read emails → accept offer → read followup → check `transitionTriggered` → `:switch nexacorp`
-- **Test dbt/SQL**: `:switch nexacorp` → `await runner.runAsync("dbt run")` → `runner.run("snowsql")`
+- **Test dbt/SQL**: `:switch nexacorp` → `await runner.runAsync("dbt run")` → `runner.run("snow sql")`

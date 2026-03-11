@@ -1,4 +1,4 @@
-import { CommandResult, EditorSessionInfo, GameAction, SshSessionInfo } from "./types";
+import { CommandResult, EditorSessionInfo, GameAction, IncrementalLine, SshSessionInfo } from "./types";
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { checkEmailDeliveries, GameEvent } from "../mail/delivery";
 import { checkPiperDeliveries } from "../piper/delivery";
@@ -13,7 +13,7 @@ import { listSaveSlots, formatSlotName } from "../../state/saveManager";
 
 export type SessionToStart =
   | { type: "editor"; info: EditorSessionInfo }
-  | { type: "snowsql" }
+  | { type: "snow-sql" }
   | { type: "pythonRepl" }
   | { type: "prompt"; info: PromptSessionInfo }
   | { type: "ssh"; info: SshSessionInfo }
@@ -41,7 +41,7 @@ export interface AppliedEffects {
   piperNotifications: number;
   suppressPrompt: boolean;
   transitionTo?: ComputerId;
-  incrementalLines?: string[];
+  incrementalLines?: IncrementalLine[];
 }
 
 export interface ApplyContext {
@@ -102,8 +102,8 @@ export function computeEffects(
   if (result.editorSession) {
     effects.startSession = { type: "editor", info: result.editorSession };
     effects.suppressPrompt = true;
-  } else if (result.snowsqlSession?.startInteractive) {
-    effects.startSession = { type: "snowsql" };
+  } else if (result.snowSqlSession?.startInteractive) {
+    effects.startSession = { type: "snow-sql" };
     effects.suppressPrompt = true;
   } else if (result.promptSession) {
     effects.startSession = { type: "prompt", info: result.promptSession };

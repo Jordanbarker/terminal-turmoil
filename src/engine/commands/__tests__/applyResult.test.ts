@@ -104,13 +104,13 @@ describe("computeEffects", () => {
       expect(effects.suppressPrompt).toBe(true);
     });
 
-    it("detects snowsql session", () => {
+    it("detects snow-sql session", () => {
       const result: CommandResult = {
         output: "",
-        snowsqlSession: { startInteractive: true },
+        snowSqlSession: { startInteractive: true },
       };
       const effects = computeEffects(result, createApplyCtx());
-      expect(effects.startSession).toEqual({ type: "snowsql" });
+      expect(effects.startSession).toEqual({ type: "snow-sql" });
       expect(effects.suppressPrompt).toBe(true);
     });
 
@@ -286,7 +286,11 @@ describe("computeEffects", () => {
 
   describe("incrementalLines", () => {
     it("passes through incrementalLines from CommandResult", () => {
-      const lines = ["line 1", "line 2", "line 3"];
+      const lines = [
+        { text: "line 1", delayMs: 60 },
+        { text: "line 2", delayMs: 120 },
+        { text: "line 3", delayMs: 60 },
+      ];
       const result: CommandResult = { output: "full output", incrementalLines: lines };
       const effects = computeEffects(result, createApplyCtx());
       expect(effects.incrementalLines).toEqual(lines);

@@ -120,15 +120,30 @@
     "time": 0.06
   },
   {
-    "name": "assert_total_employees",
+    "name": "assert_employee_count",
     "status": "warn",
     "time": 0.23,
-    "message": "Got 77 results, expected 79"
+    "message": "Got 13 results, expected 15"
+  },
+  {
+    "name": "assert_no_future_hire_dates",
+    "status": "pass",
+    "time": 0.11
+  },
+  {
+    "name": "assert_no_negative_budgets",
+    "status": "pass",
+    "time": 0.08
+  },
+  {
+    "name": "assert_valid_ticket_priorities",
+    "status": "pass",
+    "time": 0.09
   },
   {
     "name": "assert_all_tickets_in_directory",
     "status": "warn",
     "time": 0.18,
-    "message": "Got 2 results, expected 0 — ticket submitters E031, E038, E042 not in dim_employees"
+    "message": "Got 3 results, expected 0 — ticket submitters E005, E006, E008 not in dim_employees"
   }
 ]

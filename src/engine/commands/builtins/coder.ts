@@ -7,7 +7,7 @@ const coder: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (args.length === 0 || args[0] !== "ssh") {
-    return { output: "usage: coder ssh <workspace>\n\nConnect to a Coder dev container.\n\nAvailable workspaces:\n  ai    Data engineering environment (dbt, snowsql, python)" };
+    return { output: "usage: coder ssh <workspace>\n\nConnect to a Coder dev container.\n\nAvailable workspaces:\n  ai    Data engineering environment (dbt, snow, python)" };
   }
 
   if (args.length < 2) {

@@ -54,4 +54,4 @@ Chip is NexaCorp's flagship chatbot product — but it has more system access th
 
 **Key ambiguity:** Is Chip acting autonomously? Is someone using the service account? Are the founders aware? The early game presents hints, not answers.
 
-For detailed email definitions, see the **email skill**. For warehouse data and dbt investigation, see the **dbt skill**.
+For detailed email definitions, see the **email skill**. For Piper messaging, see the **piper skill**. For warehouse data and dbt investigation, see the **dbt skill**.

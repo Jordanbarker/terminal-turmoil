@@ -1,11 +1,11 @@
 ---
 name: snowflake
-description: "How the in-browser Snowflake SQL query engine works — lexer, parser, executor, SnowflakeState, SnowSQL REPL, and the VirtualFS bridge. Use this skill whenever modifying SQL parsing/execution, adding SQL functions, working on the snowsql command, or touching files under src/engine/snowflake/."
+description: "How the in-browser Snowflake SQL query engine works — lexer, parser, executor, SnowflakeState, Snowflake CLI REPL, and the VirtualFS bridge. Use this skill whenever modifying SQL parsing/execution, adding SQL functions, working on the snow sql command, or touching files under src/engine/snowflake/."
 ---
 
 # Snowflake SQL Query Engine
 
-A full client-side Snowflake SQL engine that lets players explore NexaCorp's data warehouse via `snowsql`. Custom recursive descent parser — no external SQL library. ~50-60KB minified.
+A full client-side Snowflake SQL engine that lets players explore NexaCorp's data warehouse via `snow sql`. Custom recursive descent parser — no external SQL library. ~50-60KB minified.
 
 ## Architecture
 
@@ -50,16 +50,16 @@ src/engine/snowflake/
 │       └── system.ts              # CURRENT_USER, CURRENT_ROLE, CURRENT_WAREHOUSE, etc.
 ├── formatter/
 │   ├── result_types.ts            # ResultSet, StatusMessage, QueryResult
-│   └── table_formatter.ts         # ASCII table with ANSI colors (SnowSQL-style)
+│   └── table_formatter.ts         # ASCII table with ANSI colors (Snowflake CLI-style)
 ├── session/
 │   ├── context.ts                 # SessionContext: current database/schema/warehouse/role
-│   └── SnowSQLSession.ts          # Interactive REPL (inline, not alt buffer)
+│   └── SnowSqlSession.ts          # Interactive REPL (inline, not alt buffer)
 ├── seed/
 │   └── initial_data.ts            # Seed databases + tables
 └── bridge/
     └── fs_bridge.ts               # SnowflakeState → VirtualFS sync under /opt/snowflake/
 
-src/engine/commands/builtins/snowsql.ts  # Register `snowsql` command
+src/engine/commands/builtins/snow.ts     # Register `snow` command (with `sql` subcommand)
 ```
 
 ## Data Model
@@ -86,21 +86,25 @@ Immutable class (same pattern as `VirtualFS`). All mutations return new instance
 
 ```ts
 class SnowflakeState {
-  readonly databases: Record<string, Database>;
-  readonly warehouses: Record<string, Warehouse>;
-  readonly history: Row[][];  // Time Travel snapshots (last N versions per table)
+  constructor(public readonly data: SnowflakeData) {}
+  // Access via: state.data.databases, state.data.warehouses
 
   getTable(db, schema, table): Table | undefined;
-  resolveTable(name, context): Table | undefined;  // handles unqualified names
+  resolveTable(name, currentDb, currentSchema): Table | undefined;  // handles 1/2/3-part names
+  resolveView(name, currentDb, currentSchema): ViewDef | undefined;
   createDatabase(name): SnowflakeState;
   dropDatabase(name): SnowflakeState;
   createSchema(db, name): SnowflakeState;
-  createTable(db, schema, table): SnowflakeState;
+  createTable(db, schema, name, columns): SnowflakeState;
   insertRows(db, schema, table, rows): SnowflakeState;
   updateRows(db, schema, table, predicate, updates): SnowflakeState;
   deleteRows(db, schema, table, predicate): SnowflakeState;
-  cloneTable(source, target): SnowflakeState;
+  cloneTable(srcDb, srcSchema, srcTable, dstDb, dstSchema, dstTable): SnowflakeState;
   truncateTable(db, schema, table): SnowflakeState;
+  createView(db, schema, view): SnowflakeState;
+  createSequence(db, schema, seq): SnowflakeState;
+  createStage(db, schema, stage): SnowflakeState;
+  createWarehouse(wh): SnowflakeState;
 }
 ```
 
@@ -150,17 +154,19 @@ QUALIFY, VARIANT dot/bracket notation, FLATTEN, LATERAL, PIVOT/UNPIVOT, ILIKE, S
 ### Data Types
 NUMBER, FLOAT, VARCHAR, BOOLEAN, DATE, TIMESTAMP, TIME, VARIANT, OBJECT, ARRAY
 
-### Functions (~60 total)
+### Functions (~60+ total)
+
+Scalar functions are registered in `functions/registry.ts`. Aggregate functions (in `aggregation.ts`) and window functions (in `window_exec.ts`) bypass the scalar registry and are handled by their own executors.
 
 | Category | Functions |
 |----------|-----------|
-| Aggregate | COUNT, SUM, AVG, MIN, MAX |
+| Aggregate (special) | COUNT, SUM, AVG, MIN, MAX |
 | String | UPPER, LOWER, TRIM, SUBSTR, CONCAT, LENGTH, REPLACE, SPLIT, LPAD, RPAD, REVERSE, INITCAP |
 | Numeric | ABS, CEIL, FLOOR, ROUND, MOD, POWER, SQRT, SIGN, TRUNC |
 | Date | CURRENT_DATE, CURRENT_TIMESTAMP, DATEADD, DATEDIFF, DATE_TRUNC, EXTRACT, TO_DATE, TO_TIMESTAMP, YEAR, MONTH, DAY |
 | Conversion | CAST, TRY_CAST, TO_NUMBER, TO_VARCHAR, TO_BOOLEAN, TO_DATE, TO_TIMESTAMP |
 | Semi-structured | PARSE_JSON, FLATTEN, GET_PATH, OBJECT_CONSTRUCT, ARRAY_CONSTRUCT, ARRAY_SIZE, TYPEOF |
-| Window | ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, FIRST_VALUE, LAST_VALUE, NTILE |
+| Window (special) | ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, FIRST_VALUE, LAST_VALUE, NTILE |
 | Conditional | CASE, IFF, COALESCE, NULLIF, NVL, NVL2, DECODE, ZEROIFNULL, IFNULL |
 | System | CURRENT_USER, CURRENT_ROLE, CURRENT_WAREHOUSE, CURRENT_DATABASE, CURRENT_SCHEMA |
 
@@ -205,7 +211,7 @@ NUMBER, FLOAT, VARCHAR, BOOLEAN, DATE, TIMESTAMP, TIME, VARIANT, OBJECT, ARRAY
 | `formatResultSet(resultSet)` | Renders ASCII table with column headers, separator, aligned values, row count footer. Uses ANSI colors. |
 | `formatStatusMessage(status)` | Renders "Statement executed successfully." or "N Row(s) produced." |
 
-### `session/SnowSQLSession.ts`
+### `session/SnowSqlSession.ts`
 
 | Function | Purpose |
 |----------|---------|
@@ -218,12 +224,12 @@ NUMBER, FLOAT, VARCHAR, BOOLEAN, DATE, TIMESTAMP, TIME, VARIANT, OBJECT, ARRAY
 |----------|---------|
 | `syncToVirtualFS(state, fs)` | Creates `/opt/snowflake/{DB}/{SCHEMA}/_tables/{TABLE}.meta` files in VirtualFS |
 
-## snowsql Command
+## snow sql Command
 
 | Usage | Action |
 |-------|--------|
-| `snowsql` | Enter interactive REPL with `NEXACORP_DB.PUBLIC>` prompt |
-| `snowsql -q "SELECT 1"` | Execute single query inline, return result |
+| `snow sql` | Enter interactive REPL with `NEXACORP_DB.PUBLIC>` prompt |
+| `snow sql -q "SELECT 1"` | Execute single query inline, return result |
 | Inside REPL: SQL ending with `;` | Execute query, show result |
 | Inside REPL: `!quit` or `!exit` | Exit REPL |
 | Inside REPL: `!set` | Show current session settings |
@@ -243,9 +249,9 @@ NEXACORP_DB.PUBLIC> SELECT id, name, created_at FROM projects LIMIT 3;
 
 ## Execution Flow
 
-1. Player types `snowsql` (or `snowsql -q "..."`)
-2. Command handler returns `{ snowsqlSession: SnowSQLSessionInfo }` on CommandResult
-3. `useTerminal.ts` creates `SnowSQLSession` instance (inline, not alt buffer)
+1. Player types `snow sql` (or `snow sql -q "..."`)
+2. Command handler returns `{ snowSqlSession: SnowSqlSessionInfo }` on CommandResult
+3. `useTerminal.ts` creates `SnowSqlSession` instance (inline, not alt buffer)
 4. In REPL mode: session accumulates input until `;`, then:
    a. `tokenize(sql)` → Token[]
    b. `parse(tokens)` → AST
@@ -294,8 +300,8 @@ NEXACORP_DB.PUBLIC> SELECT id, name, created_at FROM projects LIMIT 3;
 - **Immutable state**: SnowflakeState mutations return new instances (same as VirtualFS)
 - **Pure pipeline**: SQL string → tokens → AST → plan → result, no side effects
 - **Custom parser**: Recursive descent, no external deps, clear error messages with position
-- **Session pattern**: SnowSQLSession follows EditorSession inline routing in useTerminal
+- **Session pattern**: SnowSqlSession follows EditorSession inline routing in useTerminal
 - **Function registry**: Name → implementation map, easy to add new functions
 - **Bridge pattern**: Structured data synced to VirtualFS as human-readable metadata files
 - **ANSI colors**: All output uses `colorize()` and `ansi` from `src/lib/ansi.ts`
-- **Registration pattern**: `register("snowsql", handler, "description", HELP_TEXTS.snowsql)` at module bottom
+- **Registration pattern**: `register("snow", handler, "description", HELP_TEXTS.snow)` at module bottom

@@ -1,4 +1,5 @@
 import { colorize, ansi } from "../../lib/ansi";
+import { highlightSql } from "../../lib/sqlHighlight";
 import { ModelRunResult, DbtTestResult, DbtRunSummary, DbtDebugInfo } from "./types";
 
 const TIMESTAMP = "21:35:48";
@@ -27,7 +28,8 @@ export function formatModelRun(
   index: number,
   total: number,
   modelName: string,
-  result: ModelRunResult
+  result: ModelRunResult,
+  executionTime: number
 ): string {
   const num = `${index} of ${total}`;
   const statusColor = result.status === "success" ? ansi.green : ansi.red;
@@ -46,11 +48,11 @@ export function formatModelRun(
 
   let timing: string;
   if (result.materialization === "view") {
-    timing = `CREATE VIEW in ${result.executionTime.toFixed(2)}s`;
+    timing = `CREATE VIEW in ${executionTime.toFixed(2)}s`;
   } else if (result.materialization === "ephemeral") {
     timing = `OK`;
   } else {
-    timing = `SELECT ${result.rowsAffected} in ${result.executionTime.toFixed(2)}s`;
+    timing = `SELECT ${result.rowsAffected} in ${executionTime.toFixed(2)}s`;
   }
 
   // Pad the model line with dots
@@ -68,7 +70,8 @@ export function formatModelRun(
 export function formatTestRun(
   index: number,
   total: number,
-  result: DbtTestResult
+  result: DbtTestResult,
+  time: number
 ): string {
   const num = `${index} of ${total}`;
 
@@ -80,17 +83,17 @@ export function formatTestRun(
     case "pass":
       statusText = "PASS";
       statusColor = ansi.green;
-      detail = `PASS in ${result.time.toFixed(2)}s`;
+      detail = `PASS in ${time.toFixed(2)}s`;
       break;
     case "warn":
       statusText = "WARN";
       statusColor = ansi.yellow;
-      detail = `WARN 1 in ${result.time.toFixed(2)}s`;
+      detail = `WARN 1 in ${time.toFixed(2)}s`;
       break;
     case "fail":
       statusText = "FAIL";
       statusColor = ansi.red;
-      detail = `FAIL in ${result.time.toFixed(2)}s`;
+      detail = `FAIL in ${time.toFixed(2)}s`;
       break;
   }
 
@@ -188,7 +191,7 @@ export function formatCompiledSql(modelName: string, sql: string): string {
   const lines = [
     `${ts()}  Compiled model ${colorize(modelName, ansi.cyan)}:`,
     "",
-    sql,
+    highlightSql(sql),
   ];
   return lines.join("\n");
 }

@@ -43,7 +43,7 @@ describe("isCommandAvailable", () => {
     });
 
     it("blocks commands not in the home set and not unlocked via NexaCorp", () => {
-      const blocked = ["grep", "find", "dbt", "snowsql", "diff", "wc", "echo", "chmod", "mkdir", "rm", "mv", "cp", "touch"];
+      const blocked = ["grep", "find", "dbt", "snow", "diff", "wc", "echo", "chmod", "mkdir", "rm", "mv", "cp", "touch"];
       for (const cmd of blocked) {
         expect(isCommandAvailable(cmd, "home")).toBe(false);
       }
@@ -123,9 +123,9 @@ describe("isCommandAvailable", () => {
   });
 
   describe("devcontainer", () => {
-    it("allows dbt, snowsql, python, and chip in devcontainer", () => {
+    it("allows dbt, snow, python, and chip in devcontainer", () => {
       expect(isCommandAvailable("dbt", "devcontainer")).toBe(true);
-      expect(isCommandAvailable("snowsql", "devcontainer")).toBe(true);
+      expect(isCommandAvailable("snow", "devcontainer")).toBe(true);
       expect(isCommandAvailable("python", "devcontainer")).toBe(true);
       expect(isCommandAvailable("chip", "devcontainer")).toBe(true);
     });

@@ -14,7 +14,7 @@ import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS } from "../state/types";
 import { computeEffects, AppliedEffects } from "../engine/commands/applyResult";
 import { seedImmediatePiper } from "../engine/piper/delivery";
-import { BOOT_LINE_INTERVAL_MS, DBT_LINE_INTERVAL_MS } from "../lib/timing";
+import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 
@@ -306,17 +306,20 @@ export function useTerminal() {
         busyRef.current = true;
         const lines = effects.incrementalLines;
         let i = 0;
-        const interval = setInterval(() => {
+        const writeNext = () => {
           if (i < lines.length) {
-            term.writeln(lines[i].replace(/\n/g, "\r\n"));
+            const line = lines[i];
+            term.writeln(line.text.replace(/\n/g, "\r\n"));
             i++;
+            setTimeout(writeNext, i < lines.length ? lines[i].delayMs : 0);
           } else {
-            clearInterval(interval);
             writeNotifications(term, effects);
             busyRef.current = false;
             writePrompt(term);
           }
-        }, DBT_LINE_INTERVAL_MS);
+        };
+        // Write first line immediately, then delay before each subsequent line
+        writeNext();
         return true;
       }
 
@@ -449,11 +452,42 @@ export function useTerminal() {
         const char = data[i];
         const code = char.charCodeAt(0);
 
-        // Arrow key escape sequences
+        // CSI escape sequences (arrows, modifiers like Option+Arrow)
         if (char === "\x1b" && data[i + 1] === "[") {
-          const arrow = data[i + 2];
-          i += 2;
-          commandLine.handleArrow(term, arrow);
+          // Parse full CSI sequence: ESC [ <params> <final>
+          let j = i + 2;
+          while (j < data.length && data[j] >= "0" && data[j] <= "?") j++;
+          const params = data.slice(i + 2, j);
+          const final = data[j] ?? "";
+          i = j;
+
+          // Extract modifier from params like "1;3" → modifier 3 (Alt/Option)
+          const parts = params.split(";");
+          const modifier = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+
+          // Delete key sequences (e.g., \x1b[3;3~ for Option+Forward Delete)
+          if (final === "~") {
+            const keyCode = parts.length > 0 ? parseInt(parts[0], 10) : 0;
+            if (keyCode === 3 && (modifier === 3 || modifier === 5)) {
+              commandLine.deleteWordForward(term);
+            }
+            continue;
+          }
+
+          commandLine.handleArrow(term, final, modifier);
+          continue;
+        }
+
+        // Option+Backspace: ESC + DEL → delete word backward
+        if (char === "\x1b" && i + 1 < data.length && data[i + 1].charCodeAt(0) === 127) {
+          i += 1;
+          commandLine.deleteWordBackward(term);
+          continue;
+        }
+
+        // Ctrl+W → delete word backward
+        if (code === 23) {
+          commandLine.deleteWordBackward(term);
           continue;
         }
 

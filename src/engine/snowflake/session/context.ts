@@ -8,8 +8,8 @@ export interface SessionContext {
 
 export function createDefaultContext(username?: string): SessionContext {
   return {
-    currentDatabase: "NEXACORP_DB",
-    currentSchema: "PUBLIC",
+    currentDatabase: "NEXACORP_PROD",
+    currentSchema: "ANALYTICS",
     currentWarehouse: "NEXACORP_WH",
     currentRole: "TRANSFORMER",
     currentUser: (username ?? "PLAYER").toUpperCase(),

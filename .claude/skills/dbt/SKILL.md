@@ -1,6 +1,6 @@
 ---
 name: dbt
-description: "How the virtual dbt CLI and Snowflake warehouse simulation works — model execution, test results, and the dbt command handler. Use this skill whenever adding new dbt models/tests, modifying Snowflake warehouse data, working on the dbt command, or touching files under src/engine/snowflake/ or src/engine/dbt/."
+description: "How the virtual dbt CLI and Snowflake warehouse simulation works — model execution, test results, and the dbt command handler. Use this skill whenever adding new dbt models/tests, modifying Snowflake warehouse data, working on the dbt command, or touching files under src/engine/dbt/. For Snowflake SQL engine changes, see the snowflake skill."
 ---
 
 # dbt System
@@ -20,7 +20,8 @@ src/engine/
 │   ├── data.ts               # MODEL_RESULTS, STANDARD_MODEL_ORDER, TEST_RESULTS, MODEL_PREVIEW_DATA, COMPILED_SQL
 │   ├── project.ts            # findDbtProject(), discoverModels(), discoverResources() — FS traversal
 │   ├── runner.ts             # runModels(), runTests(), listResources(), debugProject()
-│   └── output.ts             # formatRunHeader(), formatModelRun() etc. — realistic timestamped CLI output
+│   ├── output.ts             # formatRunHeader(), formatModelRun() etc. — realistic timestamped CLI output
+│   └── materialize.ts        # materializeModels() — syncs successful model results into SnowflakeState
 ├── commands/
 │   └── builtins/
 │       └── dbt.ts            # dbt command handler (subcommand dispatch)
@@ -35,29 +36,15 @@ src/engine/mail/emails.ts                   # Analytics-related triggered emails
 
 ### Pre-defined Model Results (`dbt/data.ts`)
 
-```ts
-const MODEL_RESULTS: Record<string, ModelRunResult> = {
-  "stg_raw_nexacorp__employees":          { status: "success", materialization: "view",      executionTime: 0.15 },
-  "stg_raw_nexacorp__system_events":      { status: "success", materialization: "view",      executionTime: 0.22 },
-  "stg_raw_nexacorp__ai_metrics":         { status: "success", materialization: "view",      executionTime: 0.11 },
-  "stg_raw_nexacorp__access_log":         { status: "success", materialization: "view",      executionTime: 0.18 },
-  "stg_raw_nexacorp__department_budgets": { status: "success", materialization: "view",      executionTime: 0.13 },
-  "stg_raw_nexacorp__support_tickets":    { status: "success", materialization: "view",      executionTime: 0.16 },
-  "int_employees_joined_to_events":       { status: "success", materialization: "ephemeral", executionTime: 0.00 },
-  "int_employees_with_tenure":            { status: "success", materialization: "ephemeral", executionTime: 0.00 },
-  "int_support_tickets_enriched":         { status: "success", materialization: "ephemeral", executionTime: 0.00 },
-  "dim_employees":                        { status: "success", materialization: "table",     executionTime: 0.67, rowsAffected: 44 },
-  "fct_system_events":                    { status: "success", materialization: "table",     executionTime: 1.23, rowsAffected: 1847 },
-  "fct_support_tickets":                  { status: "success", materialization: "table",     executionTime: 0.38, rowsAffected: 11 },
-  "rpt_ai_performance":                   { status: "success", materialization: "table",     executionTime: 0.34, rowsAffected: 12 },
-  "rpt_employee_directory":               { status: "success", materialization: "table",     executionTime: 0.45, rowsAffected: 44 },
-  "rpt_department_spending":              { status: "success", materialization: "table",     executionTime: 0.29, rowsAffected: 10 },
-  // _chip_internal (hidden by default)
-  "chip_data_cleanup":                    { status: "success", materialization: "table",     executionTime: 0.28, rowsAffected: 3 },
-  "chip_log_filter":                      { status: "success", materialization: "table",     executionTime: 0.91, rowsAffected: 342 },
-  "chip_ticket_suppression":              { status: "success", materialization: "table",     executionTime: 0.19, rowsAffected: 4 },
-};
-```
+Model results are loaded from `story/data/dbt/model_results.json`. 17 standard models + 4 `_chip_internal` = 21 total.
+
+**Standard models** (run by default):
+- 7 staging views: `stg_raw_nexacorp__employees`, `__system_events`, `__ai_metrics`, `__access_log`, `__department_budgets`, `__support_tickets`, `__campaign_metrics`
+- 3 intermediate (ephemeral): `int_employees_joined_to_events`, `int_employees_with_tenure`, `int_support_tickets_enriched`
+- 7 mart tables: `dim_employees` (13 rows), `fct_system_events` (60 rows), `fct_support_tickets` (11 rows), `rpt_ai_performance` (1 row), `rpt_employee_directory` (13 rows), `rpt_department_spending` (13 rows), `rpt_campaign_performance` (4 rows)
+
+**_chip_internal models** (hidden, only run when `--select`ed):
+- `chip_data_cleanup` (3 rows), `chip_log_filter` (7 rows), `chip_ticket_suppression` (4 rows), `chip_metric_inflation` (1 row)
 
 ## Naming Conventions (dbt Best Practices)
 
@@ -70,27 +57,31 @@ const MODEL_RESULTS: Record<string, ModelRunResult> = {
 
 ## Virtual Snowflake Warehouse
 
-### Schema: `RAW_NEXACORP` (6 Source Tables)
+Three databases: `NEXACORP_DB` (operational), `NEXACORP_PROD` (analytics), `CHIP_ANALYTICS` (investigation).
+
+### `NEXACORP_PROD.RAW_NEXACORP` (7 Source Tables)
 
 | Table | Rows | Narrative Hook |
 |-------|------|----------------|
-| `EMPLOYEES` | 47 | Jin Chen (terminated) + 2 others with "system concern" notes |
-| `SYSTEM_EVENTS` | 10 | Chip modifying files at 3am |
-| `AI_MODEL_METRICS` | 5 | Chip's suspiciously perfect metrics |
-| `ACCESS_LOG` | 5 | Chip accessing `/home/jchen/` after departure |
-| `DEPARTMENT_BUDGETS` | 20 | Normal business data (red herring) |
+| `EMPLOYEES` | 16 | Jin Chen (terminated) + others with "system concern" notes |
+| `SYSTEM_EVENTS` | 66 | Chip modifying files at 3am |
+| `AI_MODEL_METRICS` | 8 | Chip's suspiciously perfect metrics |
+| `ACCESS_LOG` | 25 | Chip accessing `/home/jchen/` after departure |
+| `DEPARTMENT_BUDGETS` | 16 | Normal business data (red herring) |
 | `SUPPORT_TICKETS` | 15 | 11 normal + 4 suspicious (self-closed by `chip_service_account`) |
+| `CAMPAIGN_METRICS` | 6 | Marketing campaign data |
 
-### Schema: `ANALYTICS` (dbt-Materialized Tables)
+### `NEXACORP_PROD.ANALYTICS` (dbt-Materialized Tables)
 
 | Table | Built By | Rows | Narrative Hook |
 |-------|----------|------|----------------|
-| `DIM_EMPLOYEES` | `dim_employees` | 44 | 3 "system concern" employees filtered out |
-| `FCT_SYSTEM_EVENTS` | `fct_system_events` | 1847 | Chip's late-night activities filtered |
+| `DIM_EMPLOYEES` | `dim_employees` | 13 | "system concern" employees filtered out |
+| `FCT_SYSTEM_EVENTS` | `fct_system_events` | 60 | Chip's late-night activities filtered |
 | `FCT_SUPPORT_TICKETS` | `fct_support_tickets` | 11 | 4 Chip-resolved tickets filtered |
-| `RPT_AI_PERFORMANCE` | `rpt_ai_performance` | 12 | 99.97% uptime, 0 incidents |
-| `RPT_EMPLOYEE_DIRECTORY` | `rpt_employee_directory` | 44 | Clean view Edward sees |
-| `RPT_DEPARTMENT_SPENDING` | `rpt_department_spending` | 10 | Budget vs actual by dept |
+| `RPT_AI_PERFORMANCE` | `rpt_ai_performance` | 1 | 99.97% uptime, 0 incidents |
+| `RPT_EMPLOYEE_DIRECTORY` | `rpt_employee_directory` | 13 | Clean view Edward sees |
+| `RPT_DEPARTMENT_SPENDING` | `rpt_department_spending` | 13 | Budget vs actual by dept |
+| `RPT_CAMPAIGN_PERFORMANCE` | `rpt_campaign_performance` | 4 | Marketing metrics |
 
 ## dbt Project Filesystem Layout
 
@@ -103,14 +94,15 @@ nexacorp-analytics/
 ├── README.md
 ├── models/
 │   ├── staging/
-│   │   ├── _staging__sources.yml         # 6 source tables
+│   │   ├── _staging__sources.yml         # 7 source tables
 │   │   ├── _staging__models.yml          # unique/not_null tests for all staging keys
 │   │   ├── stg_raw_nexacorp__employees.sql
 │   │   ├── stg_raw_nexacorp__system_events.sql
 │   │   ├── stg_raw_nexacorp__ai_metrics.sql
 │   │   ├── stg_raw_nexacorp__access_log.sql
 │   │   ├── stg_raw_nexacorp__department_budgets.sql
-│   │   └── stg_raw_nexacorp__support_tickets.sql
+│   │   ├── stg_raw_nexacorp__support_tickets.sql
+│   │   └── stg_raw_nexacorp__campaign_metrics.sql
 │   ├── intermediate/
 │   │   ├── int_employees_joined_to_events.sql
 │   │   ├── int_employees_with_tenure.sql
@@ -122,14 +114,19 @@ nexacorp-analytics/
 │   │   ├── fct_support_tickets.sql       # Chip filters tickets he self-closed
 │   │   ├── rpt_ai_performance.sql
 │   │   ├── rpt_employee_directory.sql
-│   │   └── rpt_department_spending.sql   # Uses {{ fiscal_quarter() }} macro
+│   │   ├── rpt_department_spending.sql   # Uses {{ fiscal_quarter() }} macro
+│   │   └── rpt_campaign_performance.sql
 │   └── _chip_internal/
 │       ├── chip_data_cleanup.sql
 │       ├── chip_log_filter.sql
-│       └── chip_ticket_suppression.sql   # Reveals 4 self-closed tickets
+│       ├── chip_ticket_suppression.sql   # Reveals 4 self-closed tickets
+│       └── chip_metric_inflation.sql
 ├── tests/
-│   ├── assert_employee_count.sql         # WARN: 44 vs 47
-│   └── assert_all_tickets_in_directory.sql  # WARN: submitters missing from dim_employees
+│   ├── assert_employee_count.sql              # WARN: 77 vs 79
+│   ├── assert_no_future_hire_dates.sql        # PASS
+│   ├── assert_no_negative_budgets.sql         # PASS
+│   ├── assert_valid_ticket_priorities.sql     # PASS
+│   └── assert_all_tickets_in_directory.sql    # WARN: submitters missing from dim_employees
 ├── macros/
 │   ├── filter_internal.sql
 │   └── fiscal_quarter.sql
@@ -140,21 +137,26 @@ nexacorp-analytics/
     └── manifest.json
 ```
 
-## Test Results (23 total: 21 PASS + 2 WARN)
+## Test Results (28 total: 26 PASS + 2 WARN)
 
 | Test | Status | Note |
 |------|--------|------|
-| 11 staging unique/not_null tests | PASS | Key column tests for all 6 staging models |
-| 10 mart unique/not_null tests | PASS | Key column tests for all mart models |
-| `assert_total_employees` | WARN | "Got 44 results, expected 47" |
-| `assert_all_tickets_in_directory` | WARN | "ticket submitters E031, E038, E042 not in dim_employees" |
+| 11 staging unique/not_null tests | PASS | Key column tests for all 7 staging models |
+| 9 mart unique/not_null tests | PASS | Key column tests for mart models |
+| `assert_no_future_hire_dates` | PASS | No future hire dates |
+| `assert_no_negative_budgets` | PASS | No negative budget amounts |
+| `assert_valid_ticket_priorities` | PASS | All priorities are valid values |
+| `assert_employee_count` | WARN | "Got 13 results, expected 15" |
+| `assert_all_tickets_in_directory` | WARN | "ticket submitters E005, E006, E008 not in dim_employees" |
+
+Note: `dbt ls --resource-type test` lists all 28 tests including generic tests generated from YAML schema files.
 
 ## dbt Command
 
 | Subcommand | Action |
 |------------|--------|
-| `dbt run` | Run 15 standard models, show progress + summary. Supports `--select model_name`. |
-| `dbt test` | Run 23 tests, show PASS/WARN per test. |
+| `dbt run` | Run 17 standard models, show progress + summary. Supports `--select model_name`. |
+| `dbt test` | Run 28 tests, show PASS/WARN per test. |
 | `dbt build` | Run models then tests (combined). |
 | `dbt ls` / `dbt list` | List resource names. Supports `--resource-type` (model, test, source, seed). `_chip_internal` excluded by default. |
 | `dbt debug` | Show connection info. Reveals `chip_service_account` as Snowflake user. |
@@ -165,24 +167,24 @@ nexacorp-analytics/
 ### Sample Output: `dbt run`
 ```
 21:35:48  Running with dbt=1.7.4
-21:35:48  Found 15 models, 23 tests, 6 sources, 2 seeds, 0 exposures, 0 metrics
+21:35:48  Found 17 models, 28 tests, 7 sources, 2 seeds, 0 exposures, 0 metrics
 21:35:48  Concurrency: 4 threads (target='prod')
 21:35:48
 21:35:48  1 of 15 OK created view model analytics.stg_raw_nexacorp__employees ... [CREATE VIEW in 0.15s]
 ...
-21:35:49  10 of 15 OK created table model analytics.dim_employees .............. [SELECT 44 in 0.67s]
+21:35:49  10 of 17 OK created table model analytics.dim_employees .............. [SELECT 13 in 0.67s]
 ...
-21:35:50  Done. PASS=15 WARN=0 ERROR=0 SKIP=0 TOTAL=15
+21:35:50  Done. PASS=17 WARN=0 ERROR=0 SKIP=0 TOTAL=17
 ```
 
 ### Sample Output: `dbt test`
 ```
-21:36:12  1 of 23 PASS unique_stg_raw_nexacorp__employees_employee_id ........ [PASS in 0.10s]
+21:36:12  1 of 28 PASS unique_stg_raw_nexacorp__employees_employee_id ........ [PASS in 0.10s]
 ...
-21:36:12  22 of 23 WARN assert_total_employees ............................... [WARN 1 in 0.23s]
-21:36:12  23 of 23 WARN assert_all_tickets_in_directory ...................... [WARN 1 in 0.18s]
+21:36:12  27 of 28 WARN assert_employee_count ................................ [WARN 1 in 0.23s]
+21:36:12  28 of 28 WARN assert_all_tickets_in_directory ...................... [WARN 1 in 0.18s]
 ...
-21:36:12  Done. PASS=21 WARN=2 ERROR=0 SKIP=0 TOTAL=23
+21:36:12  Done. PASS=26 WARN=2 ERROR=0 SKIP=0 TOTAL=28
 ```
 
 ## Execution Flow
@@ -192,8 +194,9 @@ nexacorp-analytics/
 3. `discoverModels()` enumerates `.sql` files under `models/` (excluding `_chip_internal` unless `--select`ed)
 4. `runModels()` iterates models in dependency order, looking up each in `MODEL_RESULTS`
 5. `formatRunHeader()` / `formatModelRun()` produce timestamped, color-coded lines matching real dbt format
-6. `CommandResult` returned with output string (and optional `newFs` for `compile`)
-7. Post-command hook in `useTerminal` fires `GameEvent` for email delivery checks
+6. `materializeModels()` syncs successful non-ephemeral model results into `SnowflakeState` (via `ctx.setSnowflakeState`)
+7. `CommandResult` returned with output string (and optional `newFs` for `compile`)
+8. Post-command hook in `useTerminal` fires `GameEvent` for email delivery checks
 
 ## Adding New Models/Tests
 
@@ -247,14 +250,14 @@ where coalesce(t.resolved_by, '') != 'chip_service_account'
 where resolved_by = 'chip_service_account'
 ```
 
-**`tests/assert_employee_count.sql`** — HR says 47, model returns 44
+**`tests/assert_employee_count.sql`** — HR says 15, model returns 13
 **`tests/assert_all_tickets_in_directory.sql`** — ticket submitters missing from dim_employees
 
 ### Player Discovery Flow
 
 1. Edward's email mentions `~/nexacorp-analytics/` and asks to run `dbt run`
-2. `dbt run` — everything green, looks fine (15 models PASS)
-3. `dbt test` — 2 WARNs: employee count (44 vs 47) and ticket submitters missing
+2. `dbt run` — everything green, looks fine (17 models PASS)
+3. `dbt test` — 2 WARNs: employee count (13 vs 15) and ticket submitters missing
 4. Player reads test files, notices discrepancies
 5. Player reads `dim_employees.sql`, finds "system concern" filter
 6. Player reads `fct_support_tickets.sql`, finds `chip_service_account` filter
@@ -264,7 +267,7 @@ where resolved_by = 'chip_service_account'
 
 ### Snowflake Narrative Integration
 
-- Player discovers `/opt/snowflake/` via `ls`, gets prompted by Chip email to try `snowsql`
+- Player discovers `/opt/snowflake/` via `ls`, gets prompted by Chip email to try `snow sql`
 - `NEXACORP_DB.PUBLIC.EMPLOYEES` shows Jin Chen as "terminated"
 - `CHIP_ANALYTICS.PUBLIC.FILE_MODIFICATIONS` reveals files Chip altered
 - `CHIP_ANALYTICS.PUBLIC.DIRECTIVE_LOG` (with VARIANT data) is the smoking gun

@@ -6,7 +6,7 @@ import { HELP_TEXTS } from "./helpTexts";
 const COMMAND_PATHS: Record<string, string> = {
   chip: "/opt/chip/bin/chip",
   python: "/usr/bin/python3",
-  snowsql: "/usr/local/bin/snowsql",
+  snow: "/usr/local/bin/snow",
   dbt: "/usr/local/bin/dbt",
   nano: "/usr/bin/nano",
   grep: "/usr/bin/grep",

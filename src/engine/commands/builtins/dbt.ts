@@ -28,29 +28,31 @@ const dbt: CommandHandler = (args, flags, ctx) => {
     return { output: formatUsage() };
   }
 
-  // --select: parser makes it a boolean flag, model name goes into args
+  // --select / -s: parser makes it a boolean flag, model name goes into args
   // e.g. "dbt run --select dim_employees" → args=["run","dim_employees"], flags={select:true}
-  const selectedModel = flags["select"] ? args[1] : undefined;
+  // e.g. "dbt run -s dim_employees" → args=["run","dim_employees"], flags={s:true}
+  const hasSelect = flags["select"] || flags["s"];
+  const selectedModel = hasSelect ? args[1] : undefined;
 
   switch (subcommand) {
     case "run":
     case "compile":
-    case "show": {
-      const maxArgs = flags["select"] ? 2 : 1;
+    case "show":
+    case "build": {
+      const maxArgs = hasSelect ? 2 : 1;
       const err = unexpectedArg(args, maxArgs);
       if (err) return { output: err };
       if (subcommand === "run") return runModels(ctx, selectedModel);
       if (subcommand === "compile") return compileModel(ctx, selectedModel);
-      return showModel(ctx, selectedModel);
+      if (subcommand === "show") return showModel(ctx, selectedModel);
+      return runBuild(ctx, selectedModel);
     }
 
     case "test":
-    case "build":
     case "debug": {
       const err = unexpectedArg(args, 1);
       if (err) return { output: err };
       if (subcommand === "test") return runTests(ctx);
-      if (subcommand === "build") return runBuild(ctx);
       return debugProject(ctx);
     }
 

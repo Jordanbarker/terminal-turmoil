@@ -1,6 +1,6 @@
 ---
 name: commands
-description: "Command parser, registry, pipeline execution, and how to add new commands. Use this skill whenever adding a new terminal command, modifying the command parser or pipeline, working on applyResult.ts/computeEffects(), or touching files under src/engine/commands/ (except dbt.ts, mail.ts, snowsql.ts which have their own skills)."
+description: "Command parser, registry, pipeline execution, and how to add new commands. Use this skill whenever adding a new terminal command, modifying the command parser or pipeline, working on applyResult.ts/computeEffects(), or touching files under src/engine/commands/ (except dbt.ts, mail.ts, snow.ts which have their own skills)."
 ---
 
 # Command System
@@ -20,7 +20,7 @@ src/engine/commands/
 │   ├── cat.ts, ls.ts, cd.ts, grep.ts, find.ts, diff.ts, ...  # Individual commands
 │   ├── dbt.ts             # (see dbt skill)
 │   ├── mail.ts            # (see email skill)
-│   └── snowsql.ts         # (see snowflake skill)
+│   └── snow.ts            # (see snowflake skill)
 └── helpTexts.ts           # HELP_TEXTS lookup for --help output
 
 src/engine/session/
@@ -65,7 +65,7 @@ interface CommandResult {
   clearScreen?: boolean;        // clear command
   editorSession?: { ... };      // Enter nano editor
   interactiveSession?: { ... }; // Enter Python REPL
-  snowsqlSession?: { ... };     // Enter SnowSQL
+  snowSqlSession?: { ... };     // Enter Snowflake CLI SQL session
   promptSession?: { ... };      // Enter inline prompt
   sshSession?: { ... };         // Enter SSH session
   chipSession?: { ... };        // Enter Chip assistant
@@ -142,7 +142,7 @@ interface AppliedEffects {
   output: string;
   newFs?: VirtualFS;
   newCwd?: string;
-  startSession?: SessionToStart;  // "editor" | "snowsql" | "pythonRepl" | "prompt" | "ssh" | "chip"
+  startSession?: SessionToStart;  // "editor" | "snow-sql" | "pythonRepl" | "prompt" | "ssh" | "chip"
   gameAction?: GameAction;
   events: GameEvent[];
   storyFlagUpdates: StoryFlagUpdate[];
@@ -178,18 +178,11 @@ interface SessionResult {
 }
 ```
 
-Session types: editor (nano), snowsql (SnowSQL REPL), pythonRepl (Pyodide), prompt (inline choices), ssh (SSH connection), chip (Chip assistant).
+Session types: editor (nano), snow-sql (Snowflake CLI REPL), pythonRepl (Pyodide), prompt (inline choices), ssh (SSH connection), chip (Chip assistant).
 
 ## Command Availability (`availability.ts`)
 
-`isCommandAvailable(commandName, computer, storyFlags)` gates which commands are accessible. The gate data (`HOME_COMMANDS`, `NEXACORP_GATED`, `HOME_GATED`) is defined in `story/commandGates.ts` and imported by `availability.ts`:
-- **Home PC**: `HOME_COMMANDS` set available from the start (ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, ssh, pdftotext, tree, sudo, apt). Two exceptions: `pdftotext` requires `pdftotext_unlocked` flag (visiting `~/Downloads`), `tree` requires `tree_installed` flag (`apt install tree`)
-- **NexaCorp**: All commands available by default, except those in `NEXACORP_GATED` which require story flags from colleague emails:
-  - Search tools (grep, find, diff) — gated by `search_tools_unlocked`
-  - Inspection tools (head, tail, wc) — gated by `inspection_tools_unlocked`
-  - Processing tools (sort, uniq) — gated by `processing_tools_unlocked`
-  - Pipeline tools (dbt, snowsql, python) — gated by `pipeline_tools_unlocked`
-  - Chip assistant (chip) — gated by `chip_unlocked`
+`isCommandAvailable(commandName, computer, storyFlags)` gates which commands are accessible. Gate data is defined in `story/commandGates.ts`. See the **narrative skill** for full gating details per computer.
 
 ## Adding a New Command
 
@@ -257,7 +250,7 @@ const cmd: CommandHandler = (args, flags, ctx) => {
 ### Interactive session
 ```ts
 const cmd: CommandHandler = (args, _flags, ctx) => {
-  return { output: "", snowsqlSession: { state, context } };
+  return { output: "", snowSqlSession: { state, context } };
 };
 ```
 
@@ -275,7 +268,7 @@ const cmd: CommandHandler = (args, _flags, ctx) => {
 
 - **Pure functions**: `(args, flags, ctx) => CommandResult` — no side effects, no store access
 - **Immutable FS**: Mutations return new `VirtualFS` instances via `newFs`
-- **No engine→state imports**: Engine layer never imports from `state/` (Zustand). Dependencies flow via `CommandContext`
+- **Minimal engine→state coupling**: Engine files import type definitions from `state/types.ts` but never Zustand stores. Runtime dependencies flow via `CommandContext`
 - **stdin for pipes**: Commands check `ctx.stdin` for piped input, falling back to file args
 - **Path resolution**: Always use `resolvePath(arg, ctx.cwd, ctx.homeDir)` for absolute paths
 - **ANSI colors**: Use `colorize()` and `ansi` constants from `src/lib/ansi.ts`

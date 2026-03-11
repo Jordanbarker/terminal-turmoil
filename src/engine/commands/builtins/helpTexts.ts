@@ -69,13 +69,16 @@ export const HELP_TEXTS: Record<string, string> = {
     "  python -c 'code'    Execute Python code inline",
   ].join("\n"),
 
-  snowsql: [
-    "Usage: snowsql [-q QUERY]",
+  snow: [
+    "Usage: snow COMMAND [OPTIONS]",
     "",
-    "Snowflake SQL client — query the NexaCorp data warehouse.",
+    "Snowflake CLI — query the NexaCorp data warehouse.",
     "",
-    "  snowsql             Start interactive SQL REPL",
-    "  snowsql -q 'SQL'    Execute a single query inline",
+    "Commands:",
+    "  sql    Execute SQL queries",
+    "",
+    "  snow sql             Start interactive SQL REPL",
+    "  snow sql -q 'SQL'    Execute a single query inline",
   ].join("\n"),
 
   dbt: [

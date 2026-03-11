@@ -109,13 +109,13 @@ describe("syncToVirtualFS", () => {
     expect(meta.content).toContain("NULL");
   });
 
-  it("includes snowsql usage hint in .meta file", () => {
+  it("includes snow sql usage hint in .meta file", () => {
     const fs = makeEmptyFS();
     const sfState = makeSnowflakeState();
     const result = syncToVirtualFS(sfState, fs);
 
     const meta = result.readFile("/opt/snowflake/ANALYTICS/PUBLIC/_tables/USERS.meta");
-    expect(meta.content).toContain("snowsql");
+    expect(meta.content).toContain("snow sql");
     expect(meta.content).toContain("SELECT * FROM USERS LIMIT 5");
   });
 

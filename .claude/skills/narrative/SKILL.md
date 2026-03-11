@@ -87,34 +87,56 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 
 ### Home PC Flags (`story/storyFlags.ts` — `getStoryFlagTriggers(username)`)
 
-| Flag | Event | Path | Value |
-|------|-------|------|-------|
-| `read_resume` | `file_read` | `/home/{username}/resume.txt` | `true` |
-| `read_cover_letter` | `file_read` | `/home/{username}/cover_letter.txt` | `true` |
-| `read_diary` | `file_read` | `/home/{username}/diary.txt` | `true` |
-| `read_job_notes` | `file_read` | `/home/{username}/job_notes.txt` | `true` |
-| `read_glassdoor` | `file_read` | `/home/{username}/glassdoor_reviews.json` | `true` |
-| `research_depth` | `file_read` | `/home/{username}/glassdoor_reviews.json` | `"deep"` |
-| `read_auto_apply` | `file_read` | `/home/{username}/auto_apply.py` | `true` |
+| Flag | Event | Path / Detail | Value |
+|------|-------|---------------|-------|
+| `read_resume` | `file_read` | `/home/{username}/Downloads/resume_final_v3.pdf` | `true` |
+| `read_cover_letter` | `file_read` | `/home/{username}/Documents/cover_letter_nexacorp.txt` | `true` |
+| `read_diary` | `file_read` | `/home/{username}/.private/diary.txt` | `true` |
+| `read_job_notes` | `file_read` | `/home/{username}/Desktop/job_search_notes.txt` | `true` |
+| `read_glassdoor` | `file_read` | `/home/{username}/scripts/data/glassdoor_reviews.json` | `true` |
+| `research_depth` | `file_read` | `/home/{username}/scripts/data/glassdoor_reviews.json` | `"deep"` |
+| `read_auto_apply` | `file_read` | `/home/{username}/scripts/auto_apply.py` | `true` |
 | `read_bashrc` | `file_read` | `/home/{username}/.bashrc` | `true` |
+| `pdftotext_unlocked` | `directory_visit` | `/home/{username}/Downloads` | `true` |
+| `pdftotext_unlocked` | `file_read` | (any PDF in `~/Downloads`) | `true` |
+| `tree_installed` | `command_executed` | detail: `apt_install_tree` | `true` |
+| `read_nexacorp_offer` | `file_read` | detail: `nexacorp_offer` | `true` |
+| `ssh_unlocked` | `file_read` | detail: `chip_ssh_setup` | `true` |
+| `apt_unlocked` | `file_read` | detail: `olive_tree_tip` | `true` |
+| `read_cron_backup` | `file_read` | detail: `cron_backup_failure` | `true` |
+| `fixed_backup_script` | `file_read` | detail: `fixed_backup_script` | `true` |
+| `ran_auto_apply` | `command_executed` | detail: `ran_auto_apply` | `true` |
 
 ### NexaCorp Investigation Flags (`story/storyFlags.ts` — `getNexacorpStoryFlagTriggers()`)
 
-| Flag | Event | Path | Value |
-|------|-------|------|-------|
+| Flag | Event | Path / Detail | Value |
+|------|-------|---------------|-------|
+| `oscar_searched_logs` | `file_read` | `/var/log/system.log` | `true` |
+| `oscar_checked_backups` | `file_read` | `/var/log/system.log.bak` | `true` |
+| `oscar_diffed_logs` | `command_executed` | detail: `diff` | `true` |
+| `auri_used_head` | `command_executed` | detail: `head` | `true` |
+| `auri_used_tail` | `command_executed` | detail: `tail` | `true` |
+| `auri_used_wc` | `command_executed` | detail: `wc` | `true` |
 | `found_backup_files` | `file_read` | `/var/log/system.log.bak` | `true` |
 | `found_auth_backup` | `file_read` | `/var/log/auth.log.bak` | `true` |
 | `found_chip_directives` | `file_read` | `/opt/chip/.internal/directives.txt` | `true` |
 | `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
-| `read_onboarding` | `file_read` | `/home/{username}/Documents/onboarding.md` | `true` |
-| `discovered_log_tampering` | — | — | `true` (special: detected when `diff` is run on `.bak` files) |
+| `read_onboarding` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
+| `coder_unlocked` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
+| `read_team_info` | `file_read` | `/srv/engineering/team-info.md` | `true` |
+| `read_handoff_notes` | `file_read` | `/srv/engineering/chen-handoff/notes.txt` | `true` |
+| `chip_unlocked` | `file_read` | detail: `chip_intro` | `true` |
+| `piper_unlocked` | `file_read` | detail: `welcome_edward` | `true` |
+| `discovered_log_tampering` | `file_read` | detail: `discovered_log_tampering` | `true` |
+| `found_data_filtering` | `file_read` | detail: `found_data_filtering` | `true` |
 
 ### Dev Container Flags (`story/storyFlags.ts` — `getDevcontainerStoryFlagTriggers()`)
 
-| Flag | Event | Path | Value |
-|------|-------|------|-------|
+| Flag | Event | Path / Detail | Value |
+|------|-------|---------------|-------|
 | `ran_dbt` | `command_executed` | detail: `dbt` | `true` |
-| `found_data_filtering` | `file_read` | `/home/{username}/nexacorp-analytics/models/marts/dim_employees.sql` | `true` |
+| `found_data_filtering` | `file_read` | multiple model SQL files under `models/` | `true` |
+| `found_data_filtering` | `file_read` | detail: `found_data_filtering` | `true` |
 
 ## Objectives System
 
@@ -130,8 +152,11 @@ interface ObjectiveDefinition {
   id: string;
   description: string;
   check: ObjectiveCompletionCheck;
-  hidden?: boolean;         // Not shown until prerequisite met
-  prerequisite?: string;    // Objective ID that must complete first
+  failCheck?: ObjectiveCompletionCheck;  // Marks objective as failed (e.g. rejected_nexacorp_final)
+  hidden?: boolean;                      // Not shown until prerequisite/visibleWhen met
+  prerequisite?: string;                 // Objective ID that must complete first (shows objective)
+  visibleWhen?: ObjectiveCompletionCheck; // Alternative to prerequisite — show when check passes
+  optional?: boolean;                    // Non-blocking objective
 }
 
 interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDefinition[] }
@@ -139,8 +164,8 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
 
 ### CHAPTERS
 
-- **chapter-1** ("New Beginnings"): 4 objectives — learn_commands, explore_home, check_email, accept_offer
-- **chapter-2** ("First Day"): 6 objectives — read_onboarding, explore_jchen, run_dbt, discover_tampering (hidden), find_directives (hidden), find_filtering (hidden)
+- **chapter-1** ("New Beginnings"): 5 objectives — explore_home (optional), fix_backup (hidden/optional), run_auto_apply (optional), check_email, accept_offer (with failCheck)
+- **chapter-2** ("First Day"): 15 objectives — read_welcome_email, read_onboarding, meet_the_team, review_handoff, run_dbt, oscar_search/check/diff_logs (hidden/optional, visibleWhen), auri_use_head/tail/wc (hidden/optional, visibleWhen), explore_jchen (hidden/optional), discover_tampering (hidden/optional), find_directives (hidden/optional), find_filtering (hidden/optional)
 
 ### Objective Resolution (`objectives.ts`)
 
@@ -155,18 +180,21 @@ Resolves each objective's completion state from story flags, completed objective
 
 Commands are gated differently per computer (see `engine/commands/availability.ts`, with gate data in `story/commandGates.ts`):
 
-**Home PC**: All `HOME_COMMANDS` are available from the start. Two commands have individual unlock conditions:
-- `pdftotext` — unlocked by `pdftotext_unlocked` flag (triggered by visiting `~/Downloads` directory)
-- `tree` — unlocked by `tree_installed` flag (triggered by running `apt install tree`)
+**Home PC**: `HOME_COMMANDS` set available from the start (ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, python, pdftotext, tree). `HOME_GATED` commands require story flags:
+- `ssh` — unlocked by `ssh_unlocked` (reading chip_ssh_setup email)
+- `sudo`, `apt` — unlocked by `apt_unlocked` (reading olive_tree_tip email)
+- `pdftotext` — also unlocked by `pdftotext_unlocked` (visiting `~/Downloads` or reading a PDF there)
+- `tree` — unlocked by `tree_installed` (running `apt install tree`)
 
-**NexaCorp**: Commands are introduced gradually via colleague emails. The `NEXACORP_GATED` map requires specific story flags:
+**NexaCorp**: Most commands available by default (including dbt, snow, python). `NEXACORP_GATED` commands require specific story flags from colleague emails:
 - `search_tools_unlocked` — unlocks grep, find, diff
 - `inspection_tools_unlocked` — unlocks head, tail, wc
 - `processing_tools_unlocked` — unlocks sort, uniq
-- `coder_unlocked` — unlocks coder (for connecting to dev container)
+- `coder_unlocked` — unlocks coder (triggered by reading onboarding docs)
 - `chip_unlocked` — unlocks chip (triggered by reading the chip intro email)
+- `piper_unlocked` — unlocks piper (triggered by reading Edward's welcome email)
 
-**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snowsql, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`.
+**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snow, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`.
 
 ## Event Chain
 
@@ -184,7 +212,7 @@ Command execution
 
 ### File-Read Event Generation
 
-`computeEffects()` auto-generates `file_read` events for commands that read files: `cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`. Each file argument produces a `{ type: "file_read", detail: absolutePath }` event.
+`computeEffects()` auto-generates `file_read` events for commands that read files: `cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`, `pdftotext`. Each file argument produces a `{ type: "file_read", detail: absolutePath }` event.
 
 ### Special Cases in `computeEffects()`
 

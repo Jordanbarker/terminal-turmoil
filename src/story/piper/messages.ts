@@ -184,7 +184,7 @@ Good luck with the logs!`,
 
   coder ssh ai
 
-It's got dbt, snowsql, and python pre-installed. Auri can walk you through the analytics pipeline when you're ready.`,
+It's got dbt, snow (Snowflake CLI), and python pre-installed. Auri can walk you through the analytics pipeline when you're ready.`,
         },
         {
           id: "oscar_dev_3",
@@ -501,9 +501,9 @@ dbt — data build tool
           id: "auri_ptips_3",
           from: "Auri Park",
           timestamp: "10:39 AM",
-          body: `snowsql — Snowflake SQL console
-  snowsql                Start interactive SQL shell
-  snowsql -q "SELECT.."  Run a single query
+          body: `snow sql — Snowflake SQL console
+  snow sql               Start interactive SQL shell
+  snow sql -q "SELECT.." Run a single query
 
 python — Python REPL
   python                 Start Python interpreter`,
@@ -558,7 +558,7 @@ python — Python REPL
           id: "jordan_data_4",
           from: "Jordan Kessler",
           timestamp: "11:01 AM",
-          body: "I'm guessing there are duplicate rows or something, but I don't have snowsql access. Would really appreciate a second pair of eyes on this!",
+          body: "I'm guessing there are duplicate rows or something, but I don't have Snowflake access. Would really appreciate a second pair of eyes on this!",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "pipeline_tools_accepted" },
@@ -568,14 +568,14 @@ python — Python REPL
           messageBody: "I'll pull up the data in Snowflake and see what's going on. Should be a quick check.",
         },
         {
-          label: "Sure — any tips on using snowsql?",
-          messageBody: "Happy to help! I haven't used snowsql much yet though — any quick tips on connecting?",
+          label: "Sure — any tips on using snow sql?",
+          messageBody: "Happy to help! I haven't used snow sql much yet though — any quick tips on connecting?",
           triggerEvents: [{ type: "objective_completed", detail: "jordan_snowsql_tips_requested" }],
         },
       ],
     },
 
-    // Jordan snowsql tips (after tips requested)
+    // Jordan snow sql tips (after tips requested)
     {
       id: "jordan_snowsql_tips",
       channelId: "dm_jordan",
@@ -590,8 +590,8 @@ python — Python REPL
           id: "jordan_tips_2",
           from: "Jordan Kessler",
           timestamp: "11:08 AM",
-          body: `  snowsql                        Start the SQL console
-  snowsql -q "SELECT ..."        Run a single query
+          body: `  snow sql                        Start the SQL console
+  snow sql -q "SELECT ..."        Run a single query
 
 Once you're in the console you can run any SQL query. The marketing data is in:
 

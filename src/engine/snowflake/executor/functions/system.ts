@@ -12,7 +12,7 @@ export const systemFunctions: Record<string, ScalarFn> = {
   CURRENT_ACCOUNT: () => "nexacorp",
   CURRENT_REGION: () => "us-east-1",
   CURRENT_VERSION: () => "8.0.0",
-  CURRENT_CLIENT: () => "SnowSQL 1.2.32",
+  CURRENT_CLIENT: () => "Snowflake CLI 3.4.0",
   CURRENT_AVAILABLE_ROLES: () => "PUBLIC,SYSADMIN,TRANSFORMER",
   SYSTEM$TYPEOF: ([v]) => {
     if (v === null) return "NULL";

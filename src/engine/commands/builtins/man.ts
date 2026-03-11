@@ -78,6 +78,7 @@ function getCommandDescription(cmd: string): string {
     sudo: "execute a command as another user",
     apt: "package manager",
     ssh: "remote login program",
+    snow: "Snowflake command-line client",
     chip: "NexaCorp AI assistant",
   };
   return descriptions[cmd] ?? cmd;

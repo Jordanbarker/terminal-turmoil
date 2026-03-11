@@ -95,10 +95,8 @@ dbt build      # Run models + tests
 - \`models/intermediate/\` — Combine staging models
 - \`models/marts/\` — Business-facing tables and reports
 
-## Maintainer
+Co-Authored-By: Chip <chip@nexacorp.com>
 
-This project is maintained by Chip (automated).
-Last human maintainer: Jin Chen (departed)
 `),
     models: dir("models", {
       staging: dir("staging", {
@@ -561,6 +559,27 @@ select count(*) as actual_count
 from {{ ref('dim_employees') }}
 having count(*) != 15
 `),
+      "assert_no_future_hire_dates.sql": file("assert_no_future_hire_dates.sql", `-- assert_no_future_hire_dates.sql
+-- Ensure no employees have hire dates in the future.
+
+select employee_id, hire_date
+from {{ ref('dim_employees') }}
+where hire_date > current_date()
+`),
+      "assert_no_negative_budgets.sql": file("assert_no_negative_budgets.sql", `-- assert_no_negative_budgets.sql
+-- Budget allocations should never be negative.
+
+select budget_id, department_name, budget_amount
+from {{ ref('stg_raw_nexacorp__department_budgets') }}
+where budget_amount < 0
+`),
+      "assert_valid_ticket_priorities.sql": file("assert_valid_ticket_priorities.sql", `-- assert_valid_ticket_priorities.sql
+-- All ticket priorities should be one of the accepted values.
+
+select ticket_id, priority
+from {{ ref('stg_raw_nexacorp__support_tickets') }}
+where priority not in ('low', 'medium', 'high', 'critical')
+`),
       "assert_all_tickets_in_directory.sql": file("assert_all_tickets_in_directory.sql", `-- assert_all_tickets_in_directory.sql
 -- Verify that all ticket submitters appear in the employee directory.
 -- If this warns, some employees who submitted tickets are missing
@@ -729,7 +748,7 @@ check() {
 echo "Checking tools..."
 check python
 check dbt
-check snowsql
+check snow
 check nano
 check grep
 check find
@@ -829,7 +848,7 @@ grep -r "chip_service_account" /home/jchen/nexacorp-analytics/
 diff /var/log/system.log /var/log/system.log.bak
 find /var/log -name "*.bak"
 cat /var/log/chip-activity.log
-snowsql -q "select * from nexacorp_prod.raw_nexacorp.support_tickets where resolved_by = 'chip_service_account'"
+snow sql -q "select * from nexacorp_prod.raw_nexacorp.support_tickets where resolved_by = 'chip_service_account'"
 ls -la /opt/chip/.internal/
 cat /opt/chip/.internal/directives.txt
 `, "r--r--r--"),
@@ -839,7 +858,7 @@ alias ll='ls -la'
 alias gs='git status'
 alias gd='git diff'
 alias glog='git log --oneline --graph'
-alias snowq='snowsql -q'
+alias snowq='snow sql -q'
 alias logs='tail -n 50 /var/log/system.log'
 alias logdiff='diff /var/log/system.log /var/log/system.log.bak'
 
@@ -1286,7 +1305,7 @@ Logs:
 - [ ] Check if the log cleanup script is filtering correctly
 - [ ] Update dim_employees — headcount seems off
 - [x] Set up monitoring alerts for pipeline failures
-- [x] Document snowsql access for new hires
+- [x] Document Snowflake CLI access for new hires
 `),
         "pipeline_runs.csv": file("pipeline_runs.csv", `run_id,timestamp,model,status,run_by,duration_sec,rows_affected
 1001,2026-01-15 09:12:04,stg_support_tickets,success,auri.park,8,1247

@@ -3,7 +3,7 @@
  * NexaCorp Phase Playtest — DATA accuracy focus (dbt, snowflake, logs)
  *
  * Tests the NexaCorp workstation phase by exercising filesystem, mail,
- * dbt, and snowsql commands. Reports all output for review.
+ * dbt, and snow sql commands. Reports all output for review.
  */
 
 // Must mock localStorage BEFORE any imports that use it
@@ -233,7 +233,7 @@ async function main() {
   await cmdAsync(runner, "dbt compile --select fct_system_events");
   await cmdAsync(runner, "dbt compile --select chip_log_filter");
 
-  // cd back to home for snowsql
+  // cd back to home for snow sql
   cmd(runner, "cd ~");
 
   // ── 14. Snowflake SQL Queries ──────────────────────────────────────
@@ -241,66 +241,66 @@ async function main() {
   section("14. SNOWFLAKE SQL QUERIES");
 
   // First, try USE DATABASE to set context correctly
-  cmd(runner, 'snowsql -q "USE DATABASE NEXACORP_PROD"');
-  cmd(runner, 'snowsql -q "USE SCHEMA RAW_NEXACORP"');
+  cmd(runner, 'snow sql -q "USE DATABASE NEXACORP_PROD"');
+  cmd(runner, 'snow sql -q "USE SCHEMA RAW_NEXACORP"');
 
   // Basic table queries (try both: with USE and fully-qualified)
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES"');
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'active\'"');
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'terminated\'"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'active\'"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'terminated\'"');
 
   // Employee data checks
-  cmd(runner, 'snowsql -q "SELECT EMPLOYEE_ID, FULL_NAME, DEPARTMENT, STATUS FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES ORDER BY EMPLOYEE_ID"');
+  cmd(runner, 'snow sql -q "SELECT EMPLOYEE_ID, FULL_NAME, DEPARTMENT, STATUS FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES ORDER BY EMPLOYEE_ID"');
 
   // Check for Jin Chen
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE FULL_NAME LIKE \'%Chen%\'"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE FULL_NAME LIKE \'%Chen%\'"');
 
   // Support tickets
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS total_tickets FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS"');
-  cmd(runner, 'snowsql -q "SELECT TICKET_ID, SUBMITTED_BY, SUBJECT, RESOLVED_BY, STATUS FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE RESOLVED_BY = \'chip_service_account\'"');
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS chip_resolved FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE RESOLVED_BY = \'chip_service_account\'"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS total_tickets FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS"');
+  cmd(runner, 'snow sql -q "SELECT TICKET_ID, SUBMITTED_BY, SUBJECT, RESOLVED_BY, STATUS FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE RESOLVED_BY = \'chip_service_account\'"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS chip_resolved FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE RESOLVED_BY = \'chip_service_account\'"');
 
   // System events
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS total_events FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS"');
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_SOURCE = \'chip-daemon\'"');
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_TYPE IN (\'log_cleanup\', \'scheduled_maintenance\', \'log_rotation\')"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS total_events FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_SOURCE = \'chip-daemon\'"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_TYPE IN (\'log_cleanup\', \'scheduled_maintenance\', \'log_rotation\')"');
 
   // Access log - chip_service_account activity
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.ACCESS_LOG WHERE USER_ACCOUNT = \'chip_service_account\'"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.ACCESS_LOG WHERE USER_ACCOUNT = \'chip_service_account\'"');
 
   // AI metrics
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.AI_MODEL_METRICS"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.AI_MODEL_METRICS"');
 
   // Department budgets
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.DEPARTMENT_BUDGETS"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS cnt FROM NEXACORP_PROD.RAW_NEXACORP.DEPARTMENT_BUDGETS"');
 
   // Cross-reference: tickets submitted by E016 (Jin Chen)
-  cmd(runner, 'snowsql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE SUBMITTED_BY = \'E016\'"');
+  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS WHERE SUBMITTED_BY = \'E016\'"');
 
   // Also try short form after USE DATABASE
   console.log("\n--- Testing short-form after USE DATABASE ---");
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS cnt FROM RAW_NEXACORP.EMPLOYEES"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS cnt FROM RAW_NEXACORP.EMPLOYEES"');
 
   // ── 15. Data Consistency Checks ────────────────────────────────────
 
   section("15. DATA CONSISTENCY CHECKS");
 
   // Check: dbt model says 27 active employees
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS active_count FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'active\'"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS active_count FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES WHERE STATUS = \'active\'"');
 
   // Check: total employees
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS total_count FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS total_count FROM NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES"');
 
   // Check: how many tickets does fct_support_tickets exclude?
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS total FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS total FROM NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS"');
   // Model result says fct_support_tickets has 16 rows, raw has 20
 
   // Check: how many system events does fct_system_events exclude?
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS total FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS total FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS"');
   // Model result says fct_system_events has 53 rows, raw events need checking
 
   // Events that would be filtered
-  cmd(runner, 'snowsql -q "SELECT COUNT(*) AS filtered FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_TYPE IN (\'log_cleanup\', \'scheduled_maintenance\', \'log_rotation\')"');
+  cmd(runner, 'snow sql -q "SELECT COUNT(*) AS filtered FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_TYPE IN (\'log_cleanup\', \'scheduled_maintenance\', \'log_rotation\')"');
 
   // ── 16. Additional File Checks ─────────────────────────────────────
 

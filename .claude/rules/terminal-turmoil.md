@@ -26,7 +26,7 @@ npm run check     # Combined typecheck + test + build
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snowsql`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `uname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`
 
 Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
 
@@ -86,14 +86,14 @@ src/
 ## Key Architectural Decisions
 
 - **Immutable filesystem**: VirtualFS mutations return new instances (enables React re-renders, future undo/redo)
-- **No engine→state imports**: Engine layer never imports from `state/` (Zustand). Dependencies flow via `CommandContext`
+- **Minimal engine→state coupling**: Engine files may import type definitions from `state/types.ts` (e.g. `ComputerId`, `StoryFlags`), but never import Zustand stores or actions. Runtime dependencies flow via `CommandContext`
 - **Decomposed terminal hooks**: `useTerminal` (orchestrator) → `useSessionRouter` (session lifecycle) + `useCommandLine` (input/history/suggestions)
 - **Single-page app**: Chapter transitions are state changes, not route changes
 - **Dynamic xterm import**: `ssr: false` required because xterm.js needs `window`
 - **Static export**: `output: 'export'` in next.config.ts, deployed to GitHub Pages
 - **Three computers**: Home PC (`"home"`), NexaCorp workstation (`"nexacorp"`), and Coder dev container (`"devcontainer"`) with separate filesystems. `ComputerId` type in `state/types.ts`; `PLAYER` and `COMPUTERS` config in `story/player.ts`. The dev container is accessed from NexaCorp via `coder ssh ai` and exited with `exit`. Filesystem state is preserved across transitions using a stashed FS swap pattern in `useTerminal.ts`
-- **Command availability**: Home PC has all commands available from the start, with only `pdftotext` (gated by visiting `~/Downloads`) and `tree` (gated by `apt install tree`) requiring unlock. NexaCorp introduces commands gradually via colleague messages — search tools (grep/find/diff), inspection tools (head/tail/wc), processing tools (sort/uniq), coder (gated by `coder_unlocked`), chip, and piper (gated by `piper_unlocked`) are each gated by story flags. The dev container has a fixed whitelist (`DEVCONTAINER_COMMANDS`) with dbt/snowsql/python/chip always available. `availability.ts` gates command access by computer + flags; gate data lives in `story/commandGates.ts`
+- **Command availability**: Home PC has `HOME_COMMANDS` available from the start; `HOME_GATED` commands (ssh, sudo, apt, pdftotext, tree) require story flags to unlock. NexaCorp has most commands available by default (including dbt, snow, python); `NEXACORP_GATED` commands are introduced gradually via colleague messages — search tools (grep/find/diff), inspection tools (head/tail/wc), processing tools (sort/uniq), coder, chip, and piper are each gated by story flags. The dev container has a fixed whitelist (`DEVCONTAINER_COMMANDS`) with dbt/snow/python/chip always available. `availability.ts` gates command access by computer + flags; gate data lives in `story/commandGates.ts`. See the **narrative skill** for full gating details
 - **Story/engine separation**: Story content (email definitions, Piper message definitions, filesystem builders, chapters, story flags, Chip menu items, seed data) lives in `src/story/`. Engine modules (`engine/narrative/`, `engine/mail/`, `engine/piper/`, `engine/commands/availability.ts`) re-export or import from `story/` for runtime logic
 - **Game phases**: `login → booting → playing` (also `transitioning` during home→work switch) — persisted in Zustand; login screen runs inside xterm.js for seamless UX
 
-For command system details (parser, registry, pipeline, effects), see the **commands skill**. For email delivery, see the **email skill**. For Piper messaging, see the **piper skill**. For story flags and triggers, see the **narrative skill**. For save system, see the **save skill**. For SQL engine, see the **snowflake skill**.
+For command system details (parser, registry, pipeline, effects), see the **commands skill**. For email delivery, see the **email skill**. For Piper messaging, see the **piper skill**. For story flags and triggers, see the **narrative skill**. For save system, see the **save skill**. For SQL engine, see the **snowflake skill**. For dbt models/tests, see the **dbt skill**. For headless play-testing, see the **play-testing skill**.
