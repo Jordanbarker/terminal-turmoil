@@ -2,6 +2,7 @@ import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { isBinaryFile } from "../../filesystem/VirtualFS";
+import { colorizeCsv } from "../../../lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
 const head: CommandHandler = (args, _flags, ctx) => {
@@ -58,7 +59,8 @@ const head: CommandHandler = (args, _flags, ctx) => {
     }
 
     const lines = (result.content ?? "").split("\n");
-    outputs.push(lines.slice(0, numLines).join("\n"));
+    const sliced = lines.slice(0, numLines).join("\n");
+    outputs.push(fileArg.endsWith(".csv") ? colorizeCsv(sliced) : sliced);
   }
 
   return { output: outputs.join("\n") };
