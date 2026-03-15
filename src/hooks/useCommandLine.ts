@@ -103,14 +103,15 @@ export function useCommandLine(deps: CommandLineDeps) {
         const input = lineBuffer.current;
         lineBuffer.current = "";
         cursorPos.current = 0;
-        term.write("\r\n");
 
         if (input.trim()) {
+          term.write("\r\n");
           pushHistory(input);
           setHistoryIndex(-1);
           return { type: "submit", input };
         }
 
+        // writePrompt already includes a leading \r\n
         writePrompt(term);
         return null;
       }

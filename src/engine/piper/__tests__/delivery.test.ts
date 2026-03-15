@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkPiperDeliveries, seedImmediatePiper, getConversationHistory, getPendingReply, getVisibleChannels } from "../delivery";
+import { checkPiperDeliveries, seedImmediatePiper, getConversationHistory, getDeliveryInfo, getPendingReply, getVisibleChannels } from "../delivery";
 import { GameEvent } from "../../mail/delivery";
 
 const USERNAME = "testplayer";
@@ -7,7 +7,7 @@ const USERNAME = "testplayer";
 describe("checkPiperDeliveries", () => {
   it("does not deliver immediate messages via checkPiperDeliveries", () => {
     const event: GameEvent = { type: "command_executed", detail: "ls" };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
     expect(result).not.toContain("general_edward_welcome");
   });
 
@@ -16,7 +16,7 @@ describe("checkPiperDeliveries", () => {
       type: "file_read",
       detail: "/srv/engineering/onboarding.md",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
     expect(result).toContain("oscar_log_check");
     expect(result).toContain("dana_welcome");
   });
@@ -26,17 +26,26 @@ describe("checkPiperDeliveries", () => {
       type: "file_read",
       detail: "chip_intro",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
     expect(result).toContain("eng_sarah_welcome");
   });
 
-  it("delivers messages on matching after_objective trigger", () => {
+  it("delivers oscar_access_review after reading system.log (with oscar_log_check already delivered)", () => {
     const event: GameEvent = {
-      type: "objective_completed",
-      detail: "search_tools_accepted",
+      type: "file_read",
+      detail: "/var/log/system.log",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, ["oscar_log_check"], USERNAME, "nexacorp");
     expect(result).toContain("oscar_access_review");
+  });
+
+  it("does not deliver oscar_access_review if oscar_log_check has not been delivered yet", () => {
+    const event: GameEvent = {
+      type: "file_read",
+      detail: "/var/log/system.log",
+    };
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
+    expect(result).not.toContain("oscar_access_review");
   });
 
   it("skips already-delivered messages", () => {
@@ -44,7 +53,7 @@ describe("checkPiperDeliveries", () => {
       type: "file_read",
       detail: "/srv/engineering/onboarding.md",
     };
-    const result = checkPiperDeliveries(event, ["oscar_log_check"], USERNAME);
+    const result = checkPiperDeliveries(event, ["oscar_log_check"], USERNAME, "nexacorp");
     expect(result).not.toContain("oscar_log_check");
     expect(result).toContain("dana_welcome");
   });
@@ -54,7 +63,7 @@ describe("checkPiperDeliveries", () => {
       type: "file_read",
       detail: "/srv/engineering/team-info.md",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
     const unique = new Set(result);
     expect(unique.size).toBe(result.length);
   });
@@ -64,15 +73,54 @@ describe("checkPiperDeliveries", () => {
       type: "file_read",
       detail: "/some/unrelated/path",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME);
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
     expect(result).toHaveLength(0);
+  });
+
+  it("filters deliveries by computer — home messages not shown on nexacorp", () => {
+    const event: GameEvent = { type: "command_executed", detail: "ls" };
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
+    expect(result).not.toContain("alex_checkin");
+  });
+
+  it("delivers olive_tree_tip after replying to olive_linux_basics", () => {
+    const event: GameEvent = {
+      type: "objective_completed",
+      detail: "piper_reply:olive_linux_basics",
+    };
+    const result = checkPiperDeliveries(event, ["olive_linux_basics"], USERNAME, "home");
+    expect(result).toContain("olive_tree_tip");
+  });
+
+  it("delivers after_story_flag trigger when flag is set", () => {
+    const event: GameEvent = { type: "command_executed", detail: "ls" };
+    const storyFlags = { returned_home_day1: true } as Record<string, string | boolean>;
+    const result = checkPiperDeliveries(event, [], USERNAME, "home", storyFlags as never);
+    expect(result).toContain("alex_day1_checkin");
+  });
+
+  it("does not deliver after_story_flag when flag is not set", () => {
+    const event: GameEvent = { type: "command_executed", detail: "ls" };
+    const result = checkPiperDeliveries(event, [], USERNAME, "home", {});
+    expect(result).not.toContain("alex_day1_checkin");
   });
 });
 
 describe("seedImmediatePiper", () => {
-  it("returns IDs of all immediate deliveries", () => {
-    const ids = seedImmediatePiper(USERNAME);
+  it("returns NexaCorp immediate delivery IDs for nexacorp computer", () => {
+    const ids = seedImmediatePiper(USERNAME, "nexacorp");
     expect(ids).toContain("general_edward_welcome");
+    expect(ids).not.toContain("alex_checkin");
+  });
+
+  it("returns home immediate delivery IDs for home computer", () => {
+    const ids = seedImmediatePiper(USERNAME, "home");
+    expect(ids).toContain("alex_checkin");
+    expect(ids).not.toContain("general_edward_welcome");
+  });
+
+  it("returns all immediate IDs when no computerId provided", () => {
+    const ids = seedImmediatePiper(USERNAME);
     expect(ids.length).toBeGreaterThan(0);
   });
 });
@@ -94,6 +142,18 @@ describe("getConversationHistory", () => {
     const messages = getConversationHistory("general", delivered, USERNAME);
     const playerMsg = messages.find((m) => m.isPlayer);
     expect(playerMsg).toBeDefined();
+  });
+
+  it("places player reply after all messages visible at reply time", () => {
+    const delivered = [
+      "general_edward_welcome",
+      "general_tom_wins",
+      "reply:general_edward_welcome:0",
+    ];
+    const messages = getConversationHistory("general", delivered, USERNAME);
+    const playerIdx = messages.findIndex((m) => m.isPlayer);
+    // Reply should be at the end — after all NPC messages
+    expect(playerIdx).toBe(messages.length - 1);
   });
 });
 
@@ -117,29 +177,56 @@ describe("getPendingReply", () => {
   });
 });
 
+describe("getDeliveryInfo", () => {
+  it("returns channel and sender for a known delivery", () => {
+    const info = getDeliveryInfo("oscar_log_check", USERNAME);
+    expect(info).not.toBeNull();
+    expect(info!.channelId).toBe("dm_oscar");
+    expect(info!.senderName).toBe("Oscar Diaz");
+  });
+
+  it("returns null for an unknown delivery ID", () => {
+    expect(getDeliveryInfo("nonexistent_id", USERNAME)).toBeNull();
+  });
+});
+
 describe("getVisibleChannels", () => {
-  it("shows channels even when empty", () => {
-    const channels = getVisibleChannels([], USERNAME);
+  it("shows nexacorp channels even when empty", () => {
+    const channels = getVisibleChannels([], USERNAME, "nexacorp");
     const general = channels.find((c) => c.channel.id === "general");
     expect(general).toBeDefined();
   });
 
   it("hides DMs with no delivered messages", () => {
-    const channels = getVisibleChannels([], USERNAME);
+    const channels = getVisibleChannels([], USERNAME, "nexacorp");
     const oscar = channels.find((c) => c.channel.id === "dm_oscar");
     expect(oscar).toBeUndefined();
   });
 
   it("shows DMs when messages have been delivered", () => {
-    const channels = getVisibleChannels(["oscar_log_check"], USERNAME);
+    const channels = getVisibleChannels(["oscar_log_check"], USERNAME, "nexacorp");
     const oscar = channels.find((c) => c.channel.id === "dm_oscar");
     expect(oscar).toBeDefined();
   });
 
   it("calculates unread count", () => {
-    const channels = getVisibleChannels(["general_edward_welcome"], USERNAME);
+    const channels = getVisibleChannels(["general_edward_welcome"], USERNAME, "nexacorp");
     const general = channels.find((c) => c.channel.id === "general");
     expect(general).toBeDefined();
     expect(general!.unread).toBeGreaterThan(0);
+  });
+
+  it("filters to home channels on home computer", () => {
+    const channels = getVisibleChannels(["alex_checkin"], USERNAME, "home");
+    const alex = channels.find((c) => c.channel.id === "dm_alex");
+    expect(alex).toBeDefined();
+    const general = channels.find((c) => c.channel.id === "general");
+    expect(general).toBeUndefined();
+  });
+
+  it("does not show home DMs when viewing nexacorp", () => {
+    const channels = getVisibleChannels(["alex_checkin"], USERNAME, "nexacorp");
+    const alex = channels.find((c) => c.channel.id === "dm_alex");
+    expect(alex).toBeUndefined();
   });
 });

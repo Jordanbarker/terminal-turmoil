@@ -2,18 +2,7 @@ import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
 import { getHomeEmailDefinitions } from "../emails/home";
 import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { PLAYER } from "../../state/types";
-
-function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
-  return { type: "file", name, content, permissions, hidden: name.startsWith(".") };
-}
-
-function binaryFile(name: string, garbledContent: string, textContent: string, permissions = "rw-r--r--"): FileNode {
-  return { type: "file", name, content: garbledContent, permissions, hidden: name.startsWith("."), metadata: { binary: true, textContent } };
-}
-
-function dir(name: string, children: Record<string, DirectoryNode | FileNode>, permissions = "rwxr-xr-x"): DirectoryNode {
-  return { type: "directory", name, children, permissions, hidden: name.startsWith(".") };
-}
+import { file, binaryFile, dir } from "../../engine/filesystem/builders";
 
 function buildHomeMailFiles(username: string): Record<string, FileNode> {
   const files: Record<string, FileNode> = {};
@@ -97,6 +86,18 @@ export function createHomeFilesystem(username: string): DirectoryNode {
     home: dir("home", {
       [username]: dir(username, {
         "terminal_notes.txt": file("terminal_notes.txt", TERMINAL_NOTES_CONTENT),
+        "job_search_log.txt": file("job_search_log.txt", `LinkedIn
+Indeed
+LinkedIn
+LinkedIn
+Glassdoor
+Company website
+Indeed
+LinkedIn
+Glassdoor
+LinkedIn
+Company website
+`),
         ".bashrc": file(".bashrc", `# ~/.bashrc
 
 export PS1="\\u@home:\\w$ "
@@ -176,6 +177,36 @@ TODO:
   - [ ] Re-authorize GitLab CI deploy key
 `),
         }, "rwx--xr-x"),
+        ".cache": dir(".cache", {
+          synthetica: dir("synthetica", {
+            ".session_token": file(".session_token", `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZW4iLCJpc3MiOiJzeW50aGV0aWNhLWV2YWwiLCJleHAiOjE3Mzc1OTM2MDB9.EXPIRED
+# Synthetica Labs eval session — auto-generated
+# Created: 2026-01-15T14:23:07Z
+# Expired: 2026-01-22T14:23:07Z
+# Status: REVOKED
+`),
+            "eval_cache.db": file("eval_cache.db", `SQLite format 3\x00\x10\x00\x01\x01\x00\x40\x20\x20
+-- synthetica-eval cache database
+-- Tables: eval_results, model_scores, submission_history
+-- Last modified: 2026-01-22 03:41:18 UTC
+-- Records: 847
+-- WARNING: This file was created by synthetica-eval v2.1.4
+`),
+            ".heartbeat": file(".heartbeat", `# synthetica-eval telemetry heartbeat
+host_id: maniac-iv-28f3a
+last_ping: 2026-01-22T03:41:18Z
+interval_sec: 300
+endpoint: https://telemetry.synthetica-labs.io/v1/heartbeat
+status: connection_refused
+payload_fields:
+  - hostname
+  - cpu_usage
+  - gpu_usage
+  - active_processes
+  - browser_sessions
+`),
+          }),
+        }),
         ".config": dir(".config", {
           git: dir("git", {
             ignore: file("ignore", `# Global gitignore
@@ -1018,10 +1049,10 @@ HOME_DIR="/home/${PLAYER.username}"
 
 echo "[$(date)] Starting backup..."
 
-mkdir -p "\$BAKCUP_DIR"
+mkdir -p "\$BACKUP_DIR"
 
 rsync -av --exclude='.cache' --exclude='node_modules' --exclude='__pycache__' \\
-  "\$HOME_DIR/" "\$BAKCUP_DIR/home/"
+  "\$HOME_DIR/" "\$BACKUP_DIR/home/"
 
 echo "[$(date)] Backup complete: \$BAKCUP_DIR"
 `, "rwxr-xr-x"),
@@ -1530,6 +1561,22 @@ ${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/b
 nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
 `),
     }),
-    tmp: dir("tmp", {}),
+    tmp: dir("tmp", {
+      ".synth_eval_pipe": file(".synth_eval_pipe", `# synthetica-eval exfiltration pipe config
+# DO NOT MODIFY — managed by synthetica-eval v2.1.4
+type: named_pipe
+mode: 0600
+target: https://collect.synthetica-labs.io/v1/ingest
+buffer_size: 4096
+encrypt: false
+data_sources:
+  - ~/.mozilla/firefox/*/cookies.sqlite
+  - ~/.config/google-chrome/Default/Cookies
+  - ~/.config/chromium/Default/Cookies
+retry_on_fail: true
+max_retries: 5
+exfil_interval_sec: 600
+`),
+    }),
   });
 }

@@ -1,6 +1,18 @@
 import { EmailDelivery, ReplyOption } from "../../engine/mail/types";
 import { PLAYER } from "../player";
 
+export const HOME_EMAIL_IDS = [
+  "job_board_alert",
+  "cron_backup_failure",
+  "nexacorp_offer",
+  "nexacorp_persuasion_1",
+  "nexacorp_persuasion_2",
+  "alex_good_news",
+  "nexacorp_followup",
+  "chip_ssh_setup",
+] as const;
+export type HomeEmailId = (typeof HOME_EMAIL_IDS)[number];
+
 const nexacorpOfferReplyOptions: ReplyOption[] = [
   {
     label: "I'm in! When do I start?",
@@ -41,6 +53,7 @@ const persuasion2ReplyOptions: ReplyOption[] = [
     replyBody: `Hi Edward,\n\nOkay, you win. I can't say no to a personal appeal like that.\nI'll start Monday.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
+      { type: "objective_completed", detail: "salary_180k" },
     ],
   },
   {
@@ -55,27 +68,6 @@ const persuasion2ReplyOptions: ReplyOption[] = [
 export function getHomeEmailDefinitions(username: string): EmailDelivery[] {
   return [
     // === Immediate emails (seeded at game start) ===
-    {
-      email: {
-        id: "alex_checkin",
-        from: "Alex Rivera <alex.r@email.com>",
-        to: `${username}@email.com`,
-        date: "Fri, 20 Feb 2026 14:23:00",
-        subject: "hey, how's the search going?",
-        body: `Hey!
-
-Haven't heard from you in a while. How's the job hunt? Any leads?
-
-I saw Prometheus just filed for their "Head of AI Strategy" role. The head has no actual AI
-experience, of course. Classic.
-
-Let me know how you're doing. Want to meet up this weekend?
-
-— Alex
-`,
-      },
-      trigger: { type: "immediate" },
-    },
     {
       email: {
         id: "job_board_alert",
@@ -130,30 +122,6 @@ The cron job has been disabled until the issue is fixed.
     },
 
     // === Triggered emails ===
-
-    // Olive's tree tip — after learning basic commands
-    {
-      email: {
-        id: "olive_tree_tip",
-        from: "Olive Borden <kalamata@proton.com>",
-        to: `${username}@email.com`,
-        date: "Fri, 20 Feb 2026 16:10:00",
-        subject: "quick tip",
-        body: `Hey ${PLAYER.displayName},
-
-Glad you're finally diving into the terminal. One thing —
-if you want to see directory structures at a glance, install tree:
-
-  sudo apt install tree
-
-Then just run "tree" in any directory. Use "tree -a" to include
-hidden files. Beats running ls over and over.
-
-— Olive
-`,
-      },
-      trigger: { type: "after_email_read", emailId: "alex_checkin" },
-    },
 
     {
       email: {

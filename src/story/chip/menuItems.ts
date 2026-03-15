@@ -3,14 +3,6 @@ import { StoryFlags, ComputerId } from "../../state/types";
 
 const ALL_ITEMS: ChipMenuItem[] = [
   {
-    id: "work",
-    label: "What should I work on?",
-    response:
-      "Edward mentioned wanting you to get familiar with our data pipeline. " +
-      "Connect to the dev container with 'coder ssh ai', then I can clone the dbt repo for you. " +
-      "Auri Park was managing the models before you — might be worth looking at what's there.",
-  },
-  {
     id: "clone_repo",
     label: "Clone the dbt repo for me",
     condition: (flags, computer) => !flags.dbt_project_cloned && computer === "devcontainer",

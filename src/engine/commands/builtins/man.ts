@@ -64,7 +64,6 @@ function getCommandDescription(cmd: string): string {
     pdftotext: "convert PDF files to plain text",
     date: "print or set the system date and time",
     which: "locate a command",
-    uname: "print system information",
     hostname: "show or set the system's host name",
     whoami: "print effective userid",
     history: "display command history",

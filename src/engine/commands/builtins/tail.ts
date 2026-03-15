@@ -1,6 +1,7 @@
 import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
+import { isBinaryFile } from "../../filesystem/VirtualFS";
 import { HELP_TEXTS } from "./helpTexts";
 
 const tail: CommandHandler = (args, _flags, ctx) => {
@@ -26,7 +27,8 @@ const tail: CommandHandler = (args, _flags, ctx) => {
   if (fileArgs.length === 0 && ctx.stdin !== undefined) {
     if (numLines === 0) return { output: "" };
     const lines = ctx.stdin.split("\n");
-    return { output: lines.slice(-numLines).join("\n") };
+    const cleanLines = lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
+    return { output: cleanLines.slice(-numLines).join("\n") };
   }
 
   if (fileArgs.length === 0) {
@@ -40,7 +42,7 @@ const tail: CommandHandler = (args, _flags, ctx) => {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
     const node = ctx.fs.getNode(absPath);
 
-    if (node && node.type === "file" && node.metadata?.binary) {
+    if (isBinaryFile(node)) {
       const hint = fileArg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
       outputs.push(`tail: ${fileArg}: binary file${hint}`);
       continue;
@@ -62,10 +64,11 @@ const tail: CommandHandler = (args, _flags, ctx) => {
       continue;
     }
     const lines = (result.content ?? "").split("\n");
-    outputs.push(lines.slice(-numLines).join("\n"));
+    const cleanLines = lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
+    outputs.push(cleanLines.slice(-numLines).join("\n"));
   }
 
   return { output: outputs.join("\n") };
 };
 
-register("tail", tail, "Display last lines of a file", HELP_TEXTS.tail);
+register("tail", tail, "Display last lines of a file", HELP_TEXTS.tail, true);

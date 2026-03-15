@@ -1,0 +1,98 @@
+import { PiperDelivery } from "../../../engine/piper/types";
+import { PLAYER } from "../../player";
+
+export function getMayaDeliveries(_username: string): PiperDelivery[] {
+  return [
+    // === DM Maya: Welcome DM (after reading it_provisioned email) ===
+    {
+      id: "maya_dm_welcome",
+      channelId: "dm_maya",
+      messages: [
+        {
+          id: "maya_dm_1",
+          from: "Maya Johnson",
+          timestamp: "9:20 AM",
+          body: `Hey ${PLAYER.displayName}! Maya here. Just wanted to reach out directly — I know the onboarding checklist is a lot, but seriously don't stress about it.`,
+        },
+        {
+          id: "maya_dm_2",
+          from: "Maya Johnson",
+          timestamp: "9:20 AM",
+          body: "I'm here if you need anything. And I mean anything — questions about the team, the company, where to find things, or just want to vent about first-day overwhelm. My door is always open!",
+        },
+      ],
+      trigger: { type: "after_email_read", emailId: "it_provisioned" },
+    },
+
+    // === DM Maya: Handoff check-in (after reading chen handoff notes) ===
+    {
+      id: "maya_dm_handoff",
+      channelId: "dm_maya",
+      messages: [
+        {
+          id: "maya_handoff_1",
+          from: "Maya Johnson",
+          timestamp: "10:45 AM",
+          body: "Hey — how are the handoff materials? I know it's a lot to absorb when you're stepping into someone else's work.",
+        },
+        {
+          id: "maya_handoff_2",
+          from: "Maya Johnson",
+          timestamp: "10:46 AM",
+          body: "Jin was really good at his job. I just wish we'd had more time for a proper transition. It all happened kind of fast.",
+        },
+      ],
+      trigger: { type: "after_file_read", filePath: "/srv/engineering/chen-handoff/notes.txt" },
+      replyOptions: [
+        {
+          label: "What happened with Jin?",
+          messageBody: "The handoff docs are helpful but they feel kind of rushed. What happened — did he leave suddenly?",
+        },
+        {
+          label: "It's a lot but I'm managing. Thanks!",
+          messageBody: "It's a lot to take in but I'm getting there. Thanks for checking in!",
+        },
+      ],
+    },
+
+    // === DM Maya: Reply about Jin (after player asks) ===
+    {
+      id: "maya_dm_jin_reply",
+      channelId: "dm_maya",
+      messages: [
+        {
+          id: "maya_jin_1",
+          from: "Maya Johnson",
+          timestamp: "10:50 AM",
+          body: "I probably shouldn't say too much. Just... if anything in the handoff feels incomplete, it's not because he didn't care. He cared a lot.",
+        },
+      ],
+      trigger: { type: "after_piper_reply", deliveryId: "maya_dm_handoff" },
+    },
+
+    // === DM Maya: Safe harbor check-in (after pipeline_tools_accepted) ===
+    {
+      id: "maya_dm_checkin",
+      channelId: "dm_maya",
+      messages: [
+        {
+          id: "maya_checkin_1",
+          from: "Maya Johnson",
+          timestamp: "11:30 AM",
+          body: "Hey, just wanted to see how you're doing. First days can be a lot — especially jumping into someone else's work. No agenda, just checking in.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "pipeline_tools_accepted" },
+      replyOptions: [
+        {
+          label: "It's been a lot honestly. But good.",
+          messageBody: "It's been a lot honestly. Everyone's been really nice though, and the work is interesting. Just a lot of context to absorb.",
+        },
+        {
+          label: "All good! Keeping busy.",
+          messageBody: "All good! Lots to learn but I'm enjoying it. Thanks for checking in.",
+        },
+      ],
+    },
+  ];
+}

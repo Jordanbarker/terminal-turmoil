@@ -27,6 +27,33 @@ describe("parseEditorInput", () => {
     it("skips unknown escape sequences", () => {
       expect(parseEditorInput("\x1b[Z")).toEqual([]);
     });
+
+    it("handles modified arrow keys (Option/Alt+Arrow)", () => {
+      // \x1b[1;3A = Alt+Up, \x1b[1;3B = Alt+Down, etc.
+      expect(parseEditorInput("\x1b[1;3A")).toEqual([{ type: "arrowUp" }]);
+      expect(parseEditorInput("\x1b[1;3B")).toEqual([{ type: "arrowDown" }]);
+      expect(parseEditorInput("\x1b[1;3C")).toEqual([{ type: "arrowRight" }]);
+      expect(parseEditorInput("\x1b[1;3D")).toEqual([{ type: "arrowLeft" }]);
+    });
+
+    it("handles Shift+Arrow and Ctrl+Arrow keys", () => {
+      // ;2 = Shift, ;5 = Ctrl
+      expect(parseEditorInput("\x1b[1;2C")).toEqual([{ type: "arrowRight" }]);
+      expect(parseEditorInput("\x1b[1;5A")).toEqual([{ type: "arrowUp" }]);
+    });
+
+    it("handles modified tilde sequences", () => {
+      // \x1b[3;3~ = Alt+Delete, \x1b[5;5~ = Ctrl+PageUp
+      expect(parseEditorInput("\x1b[3;3~")).toEqual([{ type: "delete" }]);
+      expect(parseEditorInput("\x1b[5;5~")).toEqual([{ type: "pageUp" }]);
+    });
+
+    it("does not leak modifier params as text", () => {
+      // Previously, \x1b[1;3C would insert ";3C" as text
+      const actions = parseEditorInput("\x1b[1;3C");
+      const inserts = actions.filter((a) => a.type === "insert");
+      expect(inserts).toEqual([]);
+    });
   });
 
   describe("Ctrl combinations", () => {

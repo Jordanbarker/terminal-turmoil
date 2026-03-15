@@ -2,7 +2,9 @@ import { Terminal } from "@xterm/xterm";
 import { ISession, SessionResult } from "../session/types";
 import { PiperSessionInfo, PiperReplyOption } from "./types";
 import {
+  checkPiperDeliveries,
   getConversationHistory,
+  getDeliveryInfo,
   getVisibleChannels,
   getPendingReply,
 } from "./delivery";
@@ -15,11 +17,11 @@ import {
   renderSeparator,
   renderChannelListFooter,
   renderConversationFooter,
+  renderScrollIndicator,
 } from "./render";
 import { CTRL_C } from "../terminal/keyCodes";
 import { GameEvent } from "../mail/delivery";
-import { colorize, ansi } from "../../lib/ansi";
-import { CHIP_THINKING_DELAY_MS, CHIP_CHAT_LINE_INTERVAL_MS } from "../../lib/timing";
+import { PIPER_TYPING_DELAY_MS } from "../../lib/timing";
 
 type View = "channels" | "conversation";
 
@@ -30,7 +32,7 @@ export class PiperSession implements ISession {
 
   private view: View = "channels";
   private selectedIndex = 0;
-  private collectedEvents: GameEvent[] = [];
+  private pendingEvents: GameEvent[] = [];
   private escBuffer = "";
 
   // Channel list state
@@ -43,10 +45,14 @@ export class PiperSession implements ISession {
   private replyOptions: PiperReplyOption[] = [];
   private replyDeliveryId = "";
 
+  // Scroll state
+  private scrollOffset = 0;
+
   // Animation state
   private isAnimating = false;
   private animationTimer: ReturnType<typeof setTimeout> | null = null;
-  private animationLinesWritten = 0;
+  private hiddenMessageCount = 0;
+  private animationSenderName = "";
 
   constructor(terminal: Terminal, info: PiperSessionInfo, username: string) {
     this.terminal = terminal;
@@ -54,10 +60,13 @@ export class PiperSession implements ISession {
     this.username = username;
   }
 
+  private get computerId() {
+    return this.info.computerId ?? "nexacorp";
+  }
+
   enter(): void {
-    this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username);
-    this.terminal.write(`\x1b[?1049h\x1b[H\x1b[J\x1b[?25l`);
-    this.renderChannelListView();
+    this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
+    this.terminal.write(`\x1b[?1049h\x1b[H\x1b[J\x1b[?25l${this.buildChannelListView()}`);
   }
 
   handleInput(data: string): SessionResult | null {
@@ -65,9 +74,20 @@ export class PiperSession implements ISession {
       const char = data[i];
       const code = char.charCodeAt(0);
 
-      // During animation, only Ctrl+C skips
+      // During animation, only Ctrl+C (skip) and q (quit/back) work
       if (this.isAnimating) {
         if (code === CTRL_C) this.skipAnimation();
+        if (char === "q") {
+          this.skipAnimation();
+          if (this.view === "channels") {
+            return this.exitSession();
+          } else {
+            this.view = "channels";
+            this.selectedIndex = 0;
+            this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
+            this.terminal.write(`\x1b[H\x1b[J${this.buildChannelListView()}`);
+          }
+        }
         continue;
       }
 
@@ -108,7 +128,15 @@ export class PiperSession implements ISession {
       }
     }
 
-    return null;
+    return this.flushContinue();
+  }
+
+  /** Return a continue result, attaching any pendingEvents. */
+  private flushContinue(): SessionResult | null {
+    if (this.pendingEvents.length === 0) return null;
+    const events = [...this.pendingEvents];
+    this.pendingEvents = [];
+    return { type: "continue", triggerEvents: events };
   }
 
   private handleChannelListInput(char: string): SessionResult | null {
@@ -123,13 +151,13 @@ export class PiperSession implements ISession {
         this.selectedIndex = idx;
         this.openChannel(idx);
       }
-      return null;
+      return this.flushContinue();
     }
 
     // Enter — open selected channel
     if (char === "\r" || char === "\n") {
       this.openChannel(this.selectedIndex);
-      return null;
+      return this.flushContinue();
     }
 
     return null;
@@ -140,11 +168,9 @@ export class PiperSession implements ISession {
       // Go back to channel list
       this.view = "channels";
       this.selectedIndex = 0;
-      this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username);
-      const clear = this.buildClearSequence();
-      this.terminal.write(clear);
-      this.renderChannelListView();
-      return null;
+      this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
+      this.terminal.write(`\x1b[H\x1b[J${this.buildChannelListView()}`);
+      return this.flushContinue();
     }
 
     // Number keys — select reply
@@ -154,19 +180,31 @@ export class PiperSession implements ISession {
         this.selectedIndex = idx;
         this.selectReply(idx);
       }
-      return null;
+      return this.flushContinue();
     }
 
     // Enter — select reply
     if ((char === "\r" || char === "\n") && this.replyOptions.length > 0) {
       this.selectReply(this.selectedIndex);
-      return null;
+      return this.flushContinue();
     }
 
     return null;
   }
 
   private moveSelection(delta: number): void {
+    // In conversation view with no reply options, scroll instead
+    if (this.view === "conversation" && this.replyOptions.length === 0) {
+      // Up arrow (delta -1) scrolls up (increases offset), down arrow scrolls down
+      const newOffset = this.scrollOffset - delta;
+      const clamped = Math.max(0, newOffset);
+      if (clamped !== this.scrollOffset) {
+        this.scrollOffset = clamped;
+        this.redraw();
+      }
+      return;
+    }
+
     const maxIdx = this.view === "channels"
       ? this.channelItems.length - 1
       : this.replyOptions.length - 1;
@@ -189,6 +227,12 @@ export class PiperSession implements ISession {
     this.activeChannelDesc = item.channel.description;
     this.view = "conversation";
     this.selectedIndex = 0;
+    this.scrollOffset = 0;
+
+    // Emit piper_checked when viewing a channel with unread messages
+    if (item.unread) {
+      this.pendingEvents.push({ type: "objective_completed", detail: "piper_checked" });
+    }
 
     // Mark as seen
     this.markChannelSeen();
@@ -198,31 +242,153 @@ export class PiperSession implements ISession {
     this.replyOptions = pending?.options ?? [];
     this.replyDeliveryId = pending?.deliveryId ?? "";
 
-    const clear = this.buildClearSequence();
-    this.terminal.write(clear);
-    this.renderConversationView();
+    this.terminal.write(`\x1b[H\x1b[J${this.buildConversationView()}`);
   }
 
   private selectReply(idx: number): void {
     if (idx >= this.replyOptions.length) return;
     const option = this.replyOptions[idx];
+    this.scrollOffset = 0;
 
     // Track the reply
     const replyId = `reply:${this.replyDeliveryId}:${idx}`;
     this.info.deliveredPiperIds = [...this.info.deliveredPiperIds, replyId];
 
-    // Collect trigger events
+    // Count messages before delivering follow-ups
+    const messagesBefore = getConversationHistory(
+      this.activeChannelId, this.info.deliveredPiperIds, this.username
+    ).length;
+
+    // Collect trigger events and deliver follow-up Piper messages
+    const allNewIds: string[] = [];
+
+    // Auto-generate piper_reply event so after_piper_reply triggers fire
+    const piperReplyEvent = {
+      type: "objective_completed" as const,
+      detail: `piper_reply:${this.replyDeliveryId}`,
+    };
+    const replyTriggered = checkPiperDeliveries(
+      piperReplyEvent,
+      [...this.info.deliveredPiperIds, ...allNewIds],
+      this.username,
+      this.computerId,
+      this.info.storyFlags
+    );
+    allNewIds.push(...replyTriggered);
+    this.pendingEvents.push(piperReplyEvent);
+
     if (option.triggerEvents) {
-      this.collectedEvents.push(...option.triggerEvents);
+      this.pendingEvents.push(...option.triggerEvents);
+
+      for (const event of option.triggerEvents) {
+        const newIds = checkPiperDeliveries(
+          event,
+          [...this.info.deliveredPiperIds, ...allNewIds],
+          this.username,
+          this.computerId,
+          this.info.storyFlags
+        );
+        allNewIds.push(...newIds);
+      }
     }
 
-    // Clear reply options — already replied
-    this.replyOptions = [];
+    // Flush new IDs immediately so getConversationHistory can see them
+    if (allNewIds.length > 0) {
+      this.info.deliveredPiperIds = [...this.info.deliveredPiperIds, ...allNewIds];
+    }
 
-    // Re-render with the reply shown
-    const clear = this.buildClearSequence();
-    this.terminal.write(clear);
-    this.renderConversationView();
+    // Count new same-channel messages
+    const messagesAfter = getConversationHistory(
+      this.activeChannelId, this.info.deliveredPiperIds, this.username
+    ).length;
+    const newMessageCount = messagesAfter - messagesBefore;
+
+    // Find sender name for typing indicator
+    const sameChannelSender = allNewIds.reduce<string | null>((found, id) => {
+      if (found) return found;
+      const info = getDeliveryInfo(id, this.username);
+      return info && info.channelId === this.activeChannelId ? info.senderName : null;
+    }, null);
+
+    if (sameChannelSender && newMessageCount > 0) {
+      // Animate messages appearing one at a time
+      this.replyOptions = [];
+      this.replyDeliveryId = "";
+      this.hiddenMessageCount = newMessageCount;
+      this.animationSenderName = sameChannelSender;
+      this.isAnimating = true;
+
+      // Brief pause before typing indicator appears (just show the reply first)
+      this.terminal.write(`\x1b[H\x1b[J${this.buildConversationView()}`);
+      this.animationTimer = setTimeout(() => this.showNextMessage(), 500);
+    } else {
+      // No same-channel follow-ups — just redraw
+      const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+      this.replyOptions = pending?.options ?? [];
+      this.replyDeliveryId = pending?.deliveryId ?? "";
+      this.selectedIndex = 0;
+
+      this.terminal.write(`\x1b[H\x1b[J${this.buildConversationView()}`);
+    }
+  }
+
+  private showNextMessage(): void {
+    this.isAnimating = true;
+
+    // Render conversation with hidden messages omitted, plus typing indicator
+    const width = this.getWidth();
+    const header = renderPiperHeader(this.activeChannelName, width, this.activeChannelDesc);
+    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const visible = allMessages.slice(0, allMessages.length - this.hiddenMessageCount);
+    const conversation = renderConversation(visible, width);
+    const typing = renderTypingIndicator(this.animationSenderName);
+    const footer = renderConversationFooter(width, false);
+
+    // Apply windowing so conversation doesn't overflow the terminal
+    const termRows = this.terminal.rows;
+    const headerLines = this.activeChannelDesc ? 3 : 2;
+    const footerLines = 2; // border + hints
+    const typingLines = 3; // blank + typing indicator + blank
+    const availableRows = termRows - headerLines - footerLines - typingLines;
+
+    const convLines = conversation ? conversation.split("\r\n") : [];
+    let visibleConv: string;
+    if (convLines.length > availableRows && availableRows > 0) {
+      const sliced = convLines.slice(convLines.length - availableRows);
+      sliced[0] = renderScrollIndicator(width);
+      visibleConv = sliced.join("\r\n");
+    } else {
+      visibleConv = conversation;
+    }
+
+    this.terminal.write(`\x1b[H\x1b[J${header}${visibleConv}\r\n\r\n${typing}\r\n\r\n${footer}`);
+
+    // Scale delay by upcoming message length: base + 8ms per character, clamped to [1s, 4s]
+    const nextMessage = allMessages[allMessages.length - this.hiddenMessageCount];
+    const charCount = nextMessage?.body.length ?? 0;
+    const delay = Math.max(1000, Math.min(4000, PIPER_TYPING_DELAY_MS + charCount * 8));
+    this.animationTimer = setTimeout(() => this.revealOneMessage(), delay);
+  }
+
+  private revealOneMessage(): void {
+    this.hiddenMessageCount--;
+
+    if (this.hiddenMessageCount > 0) {
+      // More messages to reveal — show next typing cycle
+      this.showNextMessage();
+    } else {
+      // All messages revealed — finish animation
+      this.isAnimating = false;
+      this.animationTimer = null;
+      this.markChannelSeen();
+
+      const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+      this.replyOptions = pending?.options ?? [];
+      this.replyDeliveryId = pending?.deliveryId ?? "";
+      this.selectedIndex = 0;
+
+      this.redraw();
+    }
   }
 
   private markChannelSeen(): void {
@@ -239,9 +405,9 @@ export class PiperSession implements ISession {
     this.info.deliveredPiperIds.push(`${seenPrefix}${npcMessages.length}`);
   }
 
-  private renderChannelListView(): void {
+  private buildChannelListView(): string {
     const width = this.getWidth();
-    const header = renderPiperHeader("Piper", width, "NexaCorp Messaging");
+    const header = renderPiperHeader("Piper", width);
     const list = renderChannelList(
       this.channelItems.map((item) => ({
         name: item.channel.name,
@@ -253,51 +419,87 @@ export class PiperSession implements ISession {
     );
     const footer = renderChannelListFooter(width);
 
-    const output = `${header}\r\n\r\n${list}\r\n\r\n${footer}`;
-    this.terminal.write(output);
+    return `${header}\r\n\r\n${list}\r\n\r\n${footer}`;
   }
 
-  private renderConversationView(): void {
+  private buildConversationView(): string {
     const width = this.getWidth();
     const header = renderPiperHeader(this.activeChannelName, width, this.activeChannelDesc);
-    const messages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const messages = this.hiddenMessageCount > 0
+      ? allMessages.slice(0, allMessages.length - this.hiddenMessageCount)
+      : allMessages;
     const conversation = renderConversation(messages, width);
     const hasReply = this.replyOptions.length > 0;
-    const sep = renderSeparator(width);
-    const footer = renderConversationFooter(width, hasReply);
 
-    let output: string;
+    // Calculate available rows for conversation content
+    const termRows = this.terminal.rows;
+    const headerLines = this.activeChannelDesc ? 3 : 2; // top border, optional description, bottom border
+    const footerLines = 2; // border + hints
+    const blankLines = 2;  // blank lines around conversation
+
+    let replyLines = 0;
+    let replyMenu = "";
+    const sep = renderSeparator(width);
     if (hasReply) {
-      const replyMenu = renderReplyMenu(this.replyOptions, this.selectedIndex);
-      output = `${header}${conversation}\r\n\r\n${sep}\r\n${replyMenu}\r\n${footer}`;
-    } else {
-      output = `${header}${conversation}\r\n\r\n${footer}`;
+      replyMenu = renderReplyMenu(this.replyOptions, this.selectedIndex);
+      // separator + reply options + blank line before footer
+      replyLines = 1 + this.replyOptions.length + 1;
     }
 
-    this.terminal.write(output);
+    const availableRows = termRows - headerLines - footerLines - blankLines - replyLines;
+
+    // Split conversation into lines and apply windowing
+    const convLines = conversation ? conversation.split("\r\n") : [];
+    const totalLines = convLines.length;
+    const canScroll = totalLines > availableRows && availableRows > 0;
+
+    // Clamp scrollOffset
+    if (canScroll) {
+      const maxOffset = totalLines - availableRows;
+      this.scrollOffset = Math.min(this.scrollOffset, maxOffset);
+    } else {
+      this.scrollOffset = 0;
+    }
+
+    let visibleConv: string;
+    let hasMoreAbove = false;
+    if (canScroll) {
+      const end = totalLines - this.scrollOffset;
+      const start = end - availableRows;
+      hasMoreAbove = start > 0;
+      const sliced = convLines.slice(Math.max(0, start), end);
+      if (hasMoreAbove) {
+        sliced[0] = renderScrollIndicator(width);
+      }
+      visibleConv = sliced.join("\r\n");
+    } else {
+      visibleConv = conversation;
+    }
+
+    const footer = renderConversationFooter(width, hasReply, canScroll);
+
+    if (hasReply) {
+      return `${header}${visibleConv}\r\n\r\n${sep}\r\n${replyMenu}\r\n${footer}`;
+    } else {
+      return `${header}${visibleConv}\r\n\r\n${footer}`;
+    }
   }
 
   private redraw(): void {
-    const clear = this.buildClearSequence();
-    this.terminal.write(clear);
-    if (this.view === "channels") {
-      this.renderChannelListView();
-    } else {
-      this.renderConversationView();
-    }
+    const content = this.view === "channels"
+      ? this.buildChannelListView()
+      : this.buildConversationView();
+    // Single atomic write: clear screen + content (no flicker)
+    this.terminal.write(`\x1b[H\x1b[J${content}`);
   }
 
   private exitSession(): SessionResult {
-    const clear = this.buildClearSequence();
-    this.terminal.write(clear + "\x1b[?25h\x1b[?1049l");
+    this.terminal.write("\x1b[H\x1b[J\x1b[?25h\x1b[?1049l");
     return {
       type: "exit",
-      triggerEvents: this.collectedEvents.length > 0 ? this.collectedEvents : undefined,
+      triggerEvents: this.pendingEvents.length > 0 ? [...this.pendingEvents] : undefined,
     };
-  }
-
-  private buildClearSequence(): string {
-    return "\x1b[H\x1b[J";
   }
 
   private skipAnimation(): void {
@@ -306,9 +508,14 @@ export class PiperSession implements ISession {
       this.animationTimer = null;
     }
     this.isAnimating = false;
-    this.animationLinesWritten = 0;
+    this.hiddenMessageCount = 0;
+    this.markChannelSeen();
 
-    // Full redraw
+    const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    this.replyOptions = pending?.options ?? [];
+    this.replyDeliveryId = pending?.deliveryId ?? "";
+    this.selectedIndex = 0;
+
     this.redraw();
   }
 

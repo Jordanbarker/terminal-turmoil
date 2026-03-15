@@ -2,6 +2,8 @@ import { GameEvent } from "../mail/delivery";
 import { PiperDelivery, PiperMessage, PiperTrigger } from "./types";
 import { getPiperDeliveries } from "../../story/piper/messages";
 import { PIPER_CHANNELS } from "../../story/piper/channels";
+import { ComputerId, StoryFlags } from "../../state/types";
+import { matchesCommonTrigger } from "../narrative/triggerMatcher";
 
 /**
  * Check if any piper deliveries should fire for the given event.
@@ -10,11 +12,17 @@ import { PIPER_CHANNELS } from "../../story/piper/channels";
 export function checkPiperDeliveries(
   event: GameEvent,
   deliveredIds: string[],
-  username: string
+  username: string,
+  computerId?: ComputerId,
+  storyFlags?: StoryFlags
 ): string[] {
   const newDeliveries: string[] = [];
+  const allDeliveries = getPiperDeliveries(username);
+  const deliveries = computerId
+    ? allDeliveries.filter((d) => (d.computer ?? "nexacorp") === computerId)
+    : allDeliveries;
 
-  for (const def of getPiperDeliveries(username)) {
+  for (const def of deliveries) {
     const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
     if (triggers.every((t) => t.type === "immediate")) continue;
     if (deliveredIds.includes(def.id)) continue;
@@ -23,7 +31,7 @@ export function checkPiperDeliveries(
     let matches = false;
     for (const trigger of triggers) {
       if (trigger.type === "immediate") continue;
-      matches = matchesTrigger(trigger, event, deliveredIds, newDeliveries);
+      matches = matchesTrigger(trigger, event, deliveredIds, newDeliveries, storyFlags);
       if (matches) break;
     }
 
@@ -39,36 +47,31 @@ function matchesTrigger(
   trigger: PiperTrigger,
   event: GameEvent,
   deliveredIds: string[],
-  newDeliveries: string[]
+  newDeliveries: string[],
+  storyFlags?: StoryFlags
 ): boolean {
   switch (trigger.type) {
-    case "immediate":
-      return false;
-    case "after_file_read":
-      if (event.type !== "file_read" || event.detail !== trigger.filePath) return false;
-      if (trigger.requireDelivered) {
-        return deliveredIds.includes(trigger.requireDelivered)
-          || newDeliveries.includes(trigger.requireDelivered);
-      }
-      return true;
-    case "after_email_read":
-      return event.type === "file_read" && event.detail === trigger.emailId;
     case "after_piper_reply":
       return event.type === "objective_completed" && event.detail === `piper_reply:${trigger.deliveryId}`;
-    case "after_command":
-      return event.type === "command_executed" && event.detail === trigger.command;
-    case "after_objective":
-      return event.type === "objective_completed" && event.detail === trigger.objectiveId;
+    case "after_story_flag":
+      return !!(storyFlags && storyFlags[trigger.flag]);
+    default:
+      return matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries);
   }
 }
 
 /**
- * Get delivery IDs for all "immediate" piper messages.
- * Called once at NexaCorp game start to seed initial messages.
+ * Get delivery IDs for all "immediate" piper messages for the given computer.
+ * Called once at game start to seed initial messages.
  */
-export function seedImmediatePiper(username: string): string[] {
+export function seedImmediatePiper(username: string, computerId?: ComputerId): string[] {
+  const allDeliveries = getPiperDeliveries(username);
+  const deliveries = computerId
+    ? allDeliveries.filter((d) => (d.computer ?? "nexacorp") === computerId)
+    : allDeliveries;
+
   const ids: string[] = [];
-  for (const def of getPiperDeliveries(username)) {
+  for (const def of deliveries) {
     const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
     if (triggers.some((t) => t.type === "immediate")) {
       ids.push(def.id);
@@ -79,7 +82,7 @@ export function seedImmediatePiper(username: string): string[] {
 
 /**
  * Build the conversation history for a channel, including player replies.
- * Returns messages in chronological order.
+ * Returns messages in delivery order (the order IDs appear in deliveredIds).
  */
 export function getConversationHistory(
   channelId: string,
@@ -87,28 +90,28 @@ export function getConversationHistory(
   username: string
 ): PiperMessage[] {
   const messages: PiperMessage[] = [];
+  const defMap = new Map(getPiperDeliveries(username).map((d) => [d.id, d]));
 
-  for (const def of getPiperDeliveries(username)) {
-    if (def.channelId !== channelId) continue;
-    if (!deliveredIds.includes(def.id)) continue;
-
-    messages.push(...def.messages);
-
-    // Check for player reply
-    if (def.replyOptions) {
-      for (let i = 0; i < def.replyOptions.length; i++) {
-        const replyId = `reply:${def.id}:${i}`;
-        if (deliveredIds.includes(replyId)) {
-          messages.push({
-            id: replyId,
-            from: username,
-            timestamp: "",
-            body: def.replyOptions[i].messageBody,
-            isPlayer: true,
-          });
-          break;
-        }
+  for (const id of deliveredIds) {
+    if (defMap.has(id)) {
+      const def = defMap.get(id)!;
+      if (def.channelId !== channelId) continue;
+      for (const msg of def.messages) {
+        messages.push(msg);
       }
+    } else if (id.startsWith("reply:")) {
+      const parts = id.split(":");
+      const deliveryId = parts[1];
+      const optionIdx = parseInt(parts[2], 10);
+      const def = defMap.get(deliveryId);
+      if (!def || def.channelId !== channelId || !def.replyOptions) continue;
+      messages.push({
+        id,
+        from: username,
+        timestamp: "",
+        body: def.replyOptions[optionIdx].messageBody,
+        isPlayer: true,
+      });
     }
   }
 
@@ -147,17 +150,34 @@ export function getPendingReply(
 }
 
 /**
- * Get channels that have at least one delivered message.
+ * Look up the channel and sender for a delivery by ID.
+ */
+export function getDeliveryInfo(
+  deliveryId: string,
+  username: string
+): { channelId: string; senderName: string } | null {
+  const def = getPiperDeliveries(username).find((d) => d.id === deliveryId);
+  if (!def || def.messages.length === 0) return null;
+  return { channelId: def.channelId, senderName: def.messages[0].from };
+}
+
+/**
+ * Get channels that have at least one delivered message, filtered by computer.
  * DM channels only show up when they have content.
  */
 export function getVisibleChannels(
   deliveredIds: string[],
-  username: string
+  username: string,
+  computerId?: ComputerId
 ): { channel: typeof PIPER_CHANNELS[number]; unread: number }[] {
   const defs = getPiperDeliveries(username);
   const result: { channel: typeof PIPER_CHANNELS[number]; unread: number }[] = [];
 
-  for (const channel of PIPER_CHANNELS) {
+  const channels = computerId
+    ? PIPER_CHANNELS.filter((c) => (c.computer ?? "nexacorp") === computerId)
+    : PIPER_CHANNELS;
+
+  for (const channel of channels) {
     const channelDefs = defs.filter(
       (d) => d.channelId === channel.id && deliveredIds.includes(d.id)
     );
@@ -169,10 +189,8 @@ export function getVisibleChannels(
       continue;
     }
 
-    // Count unread: messages in deliveries that haven't been "seen"
-    // A delivery is considered read if there's a `seen:channelId` entry
-    // or the player has replied to it
-    const totalMessages = channelDefs.reduce((sum, d) => sum + d.messages.length, 0);
+    // Count unread: NPC messages only (player messages are never "unseen")
+    const totalMessages = channelDefs.reduce((sum, d) => sum + d.messages.filter((m) => !m.isPlayer).length, 0);
     const seenKey = `seen:${channel.id}`;
     const seenCountStr = deliveredIds.find((id) => id.startsWith(seenKey));
     const seenCount = seenCountStr ? parseInt(seenCountStr.split(":")[2] || "0", 10) : 0;

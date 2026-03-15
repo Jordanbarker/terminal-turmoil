@@ -1,18 +1,10 @@
 import { GameEvent } from "../mail/delivery";
 import { StoryFlags } from "../../state/types";
+import type { StoryFlagTrigger } from "../../story/storyFlags";
 
 // Re-export story data for convenience
-export type { StoryFlagName } from "../../story/storyFlags";
-export { STORY_FLAG_NAMES, getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers } from "../../story/storyFlags";
-
-export interface StoryFlagTrigger {
-  event: "file_read" | "command_executed" | "directory_visit";
-  path?: string;
-  detail?: string;
-  flag: string;
-  value: string | boolean;
-  toast?: string;
-}
+export type { StoryFlagName, StoryFlagTrigger } from "../../story/storyFlags";
+export { STORY_FLAG_NAMES, getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, getTriggersForComputer } from "../../story/storyFlags";
 
 export function checkStoryFlagTriggers(
   event: GameEvent,
@@ -34,3 +26,4 @@ export function checkStoryFlagTriggers(
 
   return results;
 }
+

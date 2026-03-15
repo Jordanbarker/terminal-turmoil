@@ -156,6 +156,8 @@ const ALL_UNLOCKED = {
   processing_tools_unlocked: true,
   pipeline_tools_unlocked: true,
   chip_unlocked: true,
+  chmod_unlocked: true,
+  devcontainer_visited: true,
 };
 
 function ctx(fs?: VirtualFS, overrides?: Partial<CommandContext>): CommandContext {
@@ -380,9 +382,9 @@ describe("echo", () => {
     expect(result.output).toBe("hello world");
   });
 
-  it("prints empty string with no args", () => {
+  it("prints blank line with no args", () => {
     const result = execute("echo", [], {}, ctx());
-    expect(result.output).toBe("");
+    expect(result.output).toBe("\n");
   });
 });
 
@@ -532,21 +534,6 @@ describe("hostname", () => {
   it("is blocked on home computer", () => {
     const result = execute("hostname", [], {}, ctx(undefined, { activeComputer: "home" }));
     expect(result.output).toContain("command not found");
-  });
-});
-
-// --- uname ---
-describe("uname", () => {
-  it("returns Linux by default", () => {
-    const result = execute("uname", [], {}, ctx());
-    expect(result.output).toBe("Linux");
-  });
-
-  it("returns full info with -a", () => {
-    const result = execute("uname", [], { a: true }, ctx());
-    expect(result.output).toContain("Linux");
-    expect(result.output).toContain("nexacorp-ws01");
-    expect(result.output).toContain("GNU/Linux");
   });
 });
 
@@ -1121,7 +1108,7 @@ describe("mv (additional)", () => {
 
   it("returns error when moving directory", () => {
     const result = execute("mv", ["docs", "docs2"], {}, ctx());
-    expect(result.output).toContain("Operation not supported for directories");
+    expect(result.output).toContain("directory moves are not supported");
   });
 
   it("overwrites existing file at destination", () => {
@@ -1206,20 +1193,6 @@ describe("whoami (additional)", () => {
   it("returns ren for home computer homeDir", () => {
     const result = execute("whoami", [], {}, ctx(undefined, { homeDir: "/home/ren" }));
     expect(result.output).toBe("ren");
-  });
-});
-
-// --- uname (additional) ---
-describe("uname (additional)", () => {
-  it("-a on nexacorp uses nexacorp hostname", () => {
-    const result = execute("uname", [], { a: true }, ctx());
-    expect(result.output).toContain("nexacorp-ws01");
-    expect(result.output).toContain("Linux");
-  });
-
-  it("is blocked on home computer", () => {
-    const result = execute("uname", [], {}, ctx(undefined, { activeComputer: "home" }));
-    expect(result.output).toContain("command not found");
   });
 });
 
@@ -1637,11 +1610,60 @@ describe("exit", () => {
   });
 });
 
+// --- Quest trigger events ---
+describe("which python trigger", () => {
+  it("emits which_python event for python", () => {
+    const result = execute("which", ["python"], {}, ctx());
+    expect(result.triggerEvents).toBeDefined();
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "which_python" });
+  });
+
+  it("emits which_python event for python3", () => {
+    const result = execute("which", ["python3"], {}, ctx());
+    expect(result.triggerEvents).toBeDefined();
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "which_python" });
+  });
+
+  it("does not emit which_python for other commands", () => {
+    const result = execute("which", ["grep"], {}, ctx());
+    expect(result.triggerEvents).toBeUndefined();
+  });
+});
+
+describe("echo pipe trigger", () => {
+  it("emits echo_pipe event when isPiped", () => {
+    const result = execute("echo", ["hello"], {}, ctx(undefined, { isPiped: true }));
+    expect(result.triggerEvents).toBeDefined();
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "echo_pipe" });
+  });
+
+  it("does not emit echo_pipe when not piped", () => {
+    const result = execute("echo", ["hello"], {}, ctx());
+    expect(result.triggerEvents).toBeUndefined();
+  });
+});
+
+describe("file .deb and .db detection", () => {
+  it("identifies .deb files as Debian binary package", () => {
+    const fs = createTestFS();
+    const { fs: newFs } = fs.writeFile("/home/player/test.deb", "debian-binary");
+    const result = execute("file", ["test.deb"], {}, ctx(newFs!));
+    expect(result.output).toContain("Debian binary package (format 2.0)");
+  });
+
+  it("identifies .db files as SQLite database", () => {
+    const fs = createTestFS();
+    const { fs: newFs } = fs.writeFile("/home/player/cache.db", "SQLite format 3");
+    const result = execute("file", ["cache.db"], {}, ctx(newFs!));
+    expect(result.output).toContain("SQLite 3.x database");
+  });
+});
+
 describe("--help for new commands", () => {
   const commands = [
     "grep", "find", "head", "tail", "diff", "wc", "echo",
     "chmod", "mkdir", "rm", "mv", "cp", "touch", "history",
-    "whoami", "hostname", "uname", "file", "tree", "sort",
+    "whoami", "hostname", "file", "tree", "sort",
     "uniq", "date", "which", "man",
   ] as const;
 

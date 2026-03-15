@@ -155,9 +155,8 @@ export class GameRunner {
       };
 
       if (isAsyncCommand(p.command)) {
-        // Run async commands synchronously — they return Promises but we'll
-        // handle them via runAsync() for the REPL. For the sync API, skip.
-        lastResult = execute(p.command, p.args, p.flags, ctx);
+        // Async commands (python, dbt, snow) require runAsync() — warn if called synchronously
+        lastResult = { output: `${p.command}: use runAsync() for async commands`, exitCode: 1, triggerEvents: [] };
       } else {
         lastResult = execute(p.command, p.args, p.flags, ctx);
       }

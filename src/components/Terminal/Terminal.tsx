@@ -7,6 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useGameStore } from "../../state/gameStore";
 import { nexacorpLogo, homeWelcome, UNLOCK_BOX } from "../../lib/ascii";
+import { seedImmediatePiper } from "../../engine/piper/delivery";
 
 export default function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,7 +62,7 @@ export default function Terminal() {
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       fontSize: 14,
       lineHeight: 1.2,
-      cursorBlink: true,
+      cursorBlink: false,
       cursorStyle: "block",
       allowProposedApi: true,
     });
@@ -80,8 +81,18 @@ export default function Terminal() {
       const splash = activeComputerRef.current === "home" ? homeWelcome : nexacorpLogo;
       splash.forEach((line) => term.writeln(line));
 
-      // Auto-open nano on first game start (home PC only)
       const store = useGameStore.getState();
+
+      // Seed immediate home piper messages
+      if (activeComputerRef.current === "home") {
+        const homePiperIds = seedImmediatePiper(store.username, "home");
+        const newHomeIds = homePiperIds.filter((id) => !store.deliveredPiperIds.includes(id));
+        if (newHomeIds.length > 0) {
+          store.addDeliveredPiperMessages(newHomeIds);
+        }
+      }
+
+      // Auto-open nano on first game start (home PC only)
       if (!store.hasSeenIntro && activeComputerRef.current === "home") {
         const filePath = `${store.fs.homeDir}/terminal_notes.txt`;
         const readResult = store.fs.readFile(filePath);

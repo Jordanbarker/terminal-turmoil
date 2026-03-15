@@ -53,4 +53,4 @@ const uniq: CommandHandler = (args, flags, ctx) => {
   return { output: outputLines.join("\n") };
 };
 
-register("uniq", uniq, "Filter adjacent duplicate lines", HELP_TEXTS.uniq);
+register("uniq", uniq, "Filter adjacent duplicate lines", HELP_TEXTS.uniq, true);

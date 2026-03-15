@@ -1,6 +1,7 @@
 import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
+import { isBinaryFile } from "../../filesystem/VirtualFS";
 import { HELP_TEXTS } from "./helpTexts";
 
 const head: CommandHandler = (args, _flags, ctx) => {
@@ -39,7 +40,7 @@ const head: CommandHandler = (args, _flags, ctx) => {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
     const node = ctx.fs.getNode(absPath);
 
-    if (node && node.type === "file" && node.metadata?.binary) {
+    if (isBinaryFile(node)) {
       const hint = fileArg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
       outputs.push(`head: ${fileArg}: binary file${hint}`);
       continue;
@@ -63,4 +64,4 @@ const head: CommandHandler = (args, _flags, ctx) => {
   return { output: outputs.join("\n") };
 };
 
-register("head", head, "Display first lines of a file", HELP_TEXTS.head);
+register("head", head, "Display first lines of a file", HELP_TEXTS.head, true);

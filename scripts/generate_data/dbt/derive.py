@@ -7,7 +7,6 @@ directly from the raw Snowflake tables, guaranteeing consistency.
 
 from narrative import (
     SYSTEM_CONCERN_EMPLOYEE_IDS,
-    NARRATIVE_CHIP_DAEMON_EVENTS,
     STANDARD_MODEL_ORDER,
     CHIP_INTERNAL_MODELS,
     MODEL_MATERIALIZATIONS,
@@ -121,8 +120,6 @@ def derive_test_results(
     model_results: dict,
 ) -> list[dict]:
     """Compute test results from data."""
-    # Total raw employees
-    total_raw = len(raw_employees)
     # Active employees (including system concern)
     total_active = len([e for e in raw_employees if e["STATUS"] == "active"])
     # dim_employees count (active minus system concern)

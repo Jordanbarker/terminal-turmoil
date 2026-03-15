@@ -2,6 +2,8 @@ import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
 import { getNexacorpEmailDefinitions } from "../emails/nexacorp";
 import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { StoryFlags, PLAYER } from "../../state/types";
+import { generateSystemLog, generateSystemLogBak } from "./logs";
+import { file, binaryFile, dir } from "../../engine/filesystem/builders";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
   const files: Record<string, FileNode> = {};
@@ -21,18 +23,6 @@ function buildInitialMailFiles(username: string): Record<string, FileNode> {
     };
   });
   return files;
-}
-
-function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
-  return { type: "file", name, content, permissions, hidden: name.startsWith(".") };
-}
-
-function binaryFile(name: string, garbledContent: string, textContent: string, permissions = "rw-r--r--"): FileNode {
-  return { type: "file", name, content: garbledContent, permissions, hidden: name.startsWith("."), metadata: { binary: true, textContent } };
-}
-
-function dir(name: string, children: Record<string, DirectoryNode | FileNode>, permissions = "rwxr-xr-x"): DirectoryNode {
-  return { type: "directory", name, children, permissions, hidden: name.startsWith(".") };
 }
 
 export function buildDbtProject(): DirectoryNode {
@@ -647,6 +637,8 @@ inactive,Inactive,false
 }
 
 export function createNexacorpFilesystem(username: string, storyFlags: StoryFlags = {}): DirectoryNode {
+  const overBudget = !!storyFlags.accepted_at_180k;
+
   return dir("/", {
   home: dir("home", {
     [username]: dir(username, {
@@ -960,14 +952,7 @@ evidence:
       }),
     }),
     log: dir("log", {
-      "system.log": file("system.log", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
-[2026-02-23 08:00:03] Service started: sshd
-[2026-02-23 08:00:03] Service started: chip-service
-[2026-02-23 08:00:05] User login: edward (tty1)
-[2026-02-23 08:12:44] User login: ${username} (tty2)
-[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
-[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
-`),
+      "system.log": file("system.log", generateSystemLog(username)),
       "chip-activity.log": file("chip-activity.log", `[2026-02-23 08:00:03] Chip service started
 [2026-02-23 08:00:04] Routine maintenance: OK
 [2026-02-23 08:00:04] Log rotation: OK
@@ -976,19 +961,13 @@ evidence:
 [2026-02-23 08:12:45] Deploying onboarding materials...
 [2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!
 `),
-      "system.log.bak": file("system.log.bak", `[2026-02-23 08:00:01] System boot — nexacorp-ws01
-[2026-02-23 08:00:03] Service started: sshd
-[2026-02-23 08:00:03] Service started: chip-service
-[2026-02-23 08:00:04] chip_service_account: accessing /var/log/system.log (write)
-[2026-02-23 08:00:04] chip_service_account: accessing /home/jchen/.bash_history (read)
-[2026-02-23 08:00:05] User login: edward (tty1)
-[2026-02-23 08:00:05] chip_service_account: log_rotation triggered (retention: 7 days)
-[2026-02-23 08:00:06] chip_service_account: cleanup /var/log/system.log — removed 12 entries
-[2026-02-23 08:12:44] User login: ${username} (tty2)
-[2026-02-23 08:12:45] Chip: Welcome sequence initiated for new user '${username}'
-[2026-02-23 08:12:46] Chip: Onboarding files deployed to /home/${username}/
+      "system.log.bak": file("system.log.bak", generateSystemLogBak(username)),
+      "auth.log": file("auth.log", `[2026-02-23 07:15:22] sshd[1048]: Accepted publickey for edward from 10.0.1.10 port 59211 ssh2: RSA SHA256:...
+[2026-02-23 07:15:22] systemd-logind[888]: New session 3 of user edward.
+[2026-02-23 08:12:44] sshd[1049]: Accepted publickey for ${username} from 10.0.1.25 port 51234 ssh2: RSA SHA256:...
+[2026-02-23 08:12:44] systemd-logind[888]: New session 4 of user ${username}.
 `),
-      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: sudo escalation — accessing /home/jchen/
+      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: accessing /home/jchen/ (read)
 [2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.bash_history
 [2026-02-03 01:17:35] chip_service_account: file read /home/jchen/projects/chip-audit/notes.md
 [2026-02-03 03:22:17] chip_service_account: modifying dbt models
@@ -1123,6 +1102,24 @@ echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
 - Minimum clear space: 2x logo height
 - Never stretch, rotate, or recolor
 - Dark backgrounds: use white variant
+
+## Chip Product Messaging
+
+### External (website, sales decks)
+"Chip is NexaCorp's intelligent assistant — a conversational AI that helps
+teams work smarter. Chip answers questions, surfaces insights, and
+streamlines workflows so your team can focus on what matters."
+
+### Internal positioning (board decks, investor materials)
+"Chip is a full-stack AI platform with deep system integration. Unlike
+chatbots limited to Q&A, Chip has native access to internal tools,
+databases, and infrastructure — enabling autonomous task execution
+across the organization."
+
+Note from Jordan K: The external messaging undersells what Chip actually
+does. Tom wants to keep it vague for now — "let the product speak for
+itself once enterprise prospects see the demo." I pushed back on this
+but was told to wait until after Series A closes.
 `),
     }, "rwx------"),
     operations: dir("operations", {
@@ -1157,6 +1154,36 @@ echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
 2026-02-15,P3,Deployment rollback — staging mismatch,oscar,75
 2026-02-20,P4,Chip response latency spike,chip_service_account,8
 `),
+      "ticket_export.csv": file("ticket_export.csv", `id,date,category,status,assigned_to,resolution_notes
+4401,2025-10-05,chat_session_quality,closed,cassie,"User reported slow responses during peak hours"
+4402,2025-10-08,api_integration,closed,sarah,"Webhook retry logic wasn't handling 429s"
+4403,2025-10-12,chat_session_quality,closed,cassie,"Chip hallucinated a product feature — added guardrail"
+4404,2025-10-15,user_onboarding,closed,maya,"SSO redirect loop for new hires — config fix"
+4405,2025-10-22,data_pipeline,closed,auri,"Staging model had stale schema ref"
+4406,2025-11-01,chat_session_quality,closed,cassie,"Context window exceeded for long conversations"
+4407,2025-11-03,infrastructure,closed,oscar,"Disk pressure on db-replica-2"
+4408,2025-11-10,api_integration,closed,sarah,"Rate limiter too aggressive on /api/chat"
+4409,2025-11-18,chat_session_quality,closed,cassie,"Chip citing internal docs in external responses"
+4410,2025-11-22,data_pipeline,closed,auri,"dbt test failures after source schema change"
+4411,2025-12-01,infrastructure,auto-resolved,chip_service_account,"Routine log rotation maintenance"
+4412,2025-12-05,user_onboarding,closed,maya,"New hire permissions template was outdated"
+4413,2025-12-10,api_integration,closed,sarah,"Auth token refresh race condition"
+4414,2025-12-15,chat_session_quality,closed,cassie,"Response quality dip — retrained on updated docs"
+4415,2025-12-20,infrastructure,auto-resolved,chip_service_account,"Scheduled certificate renewal"
+4416,2026-01-06,api_integration,closed,sarah,"Elevated 5xx on /api/chat endpoint"
+4417,2026-01-10,data_pipeline,closed,auri,"Snowflake warehouse auto-suspend timing issue"
+4418,2026-01-15,infrastructure,closed,oscar,"Connection pool exhaustion on api-gateway"
+4419,2026-01-20,chat_session_quality,closed,cassie,"Chip answering questions about internal infra to external users"
+4420,2026-01-25,infrastructure,auto-resolved,chip_service_account,"Routine NTP sync correction"
+4421,2026-01-28,infrastructure,auto-resolved,chip_service_account,"Log discrepancy report — operational noise"
+4422,2026-02-01,api_integration,closed,sarah,"Auth service timeout during deploy"
+4423,2026-02-03,infrastructure,auto-resolved,chip_service_account,"Service account activity flagged — routine maintenance"
+4424,2026-02-08,data_pipeline,closed,auri,"Mart model join producing duplicates after source update"
+4425,2026-02-12,chat_session_quality,closed,cassie,"Chip latency spike correlated with batch job"
+4426,2026-02-18,infrastructure,auto-resolved,chip_service_account,"DNS cache flush — scheduled maintenance"
+4427,2026-02-22,user_onboarding,closed,maya,"New hire laptop provisioning delay"
+4428,2026-02-25,data_pipeline,closed,auri,"Campaign metrics table had duplicate rows from re-ingestion"
+`),
     }, "rwx------"),
     leadership: dir("leadership", {
       "board_minutes_feb.md": file("board_minutes_feb.md", `# Board Meeting Minutes — February 2026
@@ -1164,18 +1191,55 @@ echo "[$(date)] Scheduled maintenance complete" >> /opt/chip/cache/cleanup.log
 ## Attendees
 Jessica Langford (CEO), Marcus Reyes (COO), Tom Chen (CMO), Edward Torres (CTO)
 
-## Agenda
-1. Q1 revenue forecast review
-2. Chip product roadmap update
-3. Headcount planning for H2
-4. Series A timeline discussion
+## 1. Q1 Revenue Forecast
+- Tom: Enterprise pipeline strong. Three prospects in late-stage eval, all interested
+  in Chip's analytics capabilities. Committed Q2 launch of enhanced analytics tier.
+- Marcus: Current velocity puts the analytics overhaul at Q3, not Q2. We need to be
+  realistic with prospects.
+- Tom: We can't push the timeline — two of these deals are contingent on Q2 delivery.
+- Edward: Depends on data pipeline stability. We're still catching up after Jin left.
+- Jessica: Edward to provide a revised engineering timeline by March 1.
+
+## 2. Chip Product Roadmap
+- Edward presented Chip usage metrics. 12,000 daily active sessions, up 40% QoQ.
+- Marcus: These numbers don't match what Dana showed me last week. Her ops dashboard
+  had daily sessions closer to 8,000. Which dataset is correct?
+- Edward: The board deck pulls from the analytics marts. Dana's dashboard might be
+  using raw data with different filtering.
+- Jessica: Can we get Dana and Edward to reconcile the numbers before next board meeting?
+- ACTION: Edward to sync with Dana on metrics discrepancy.
+- Cassie raised concern about Chip's scope — product spec says Q&A and document search,
+  but she's seen API calls that suggest broader system access.
+- Edward: Chip has the access it needs to function. Engineering handles the permission
+  model.
+- Jessica: What exactly does Chip have access to?
+- Edward: Standard service account. Read access to docs, logs, the usual. Nothing unusual.
+- ACTION: Edward to document Chip's access scope for the board. [No follow-up as of 2/28]
+
+## 3. Headcount Planning
+- Engineering: Jin Chen backfill complete (new hire starting${overBudget ? " at $180K — $45K over budget" : ""}). 1 additional engineer
+  planned for Q3 pending Series A.${overBudget ? `
+- Marcus: That backfill came in well over budget. Edward had to sweeten the offer twice.
+- Jessica: Flag it. We'll need to offset that in Q3.` : ""}
+- Operations: Dana requesting ops analyst to handle growing ticket backlog.
+- Marcus: Ticket volume doesn't seem that high based on the reports I see.
+- Dana (via email prior to meeting): "The dashboard excludes auto-resolved tickets.
+  Actual volume is ~30% higher than what the board sees."
+- Jessica: Table the ops hire until we reconcile the ticket metrics.
+
+## 4. Series A Update
+- Jessica: Due diligence meetings start March 15. Technical review is part of the
+  process — investors will want to see infrastructure stability and data governance.
+- Edward: Infrastructure is solid. Happy to walk them through it.
+- Marcus: Let's make sure the metrics story is clean before they look under the hood.
+- ACTION: Edward to prepare technical documentation for due diligence.
 `),
-      "headcount_plan.csv": file("headcount_plan.csv", `department,current,planned_h2,status
-Engineering,7,9,approved
-Marketing,1,2,pending
-Operations,2,3,approved
-Sales,1,2,pending
-People & Culture,1,1,approved
+      "headcount_plan.csv": file("headcount_plan.csv", `department,current,planned_h2,status,notes
+Engineering,7,9,approved,"Backfill for Jin Chen (done — new hire ${overBudget ? "at $180K, $45K over budget" : "starting"}). 1 additional Q3 pending Series A."
+Marketing,1,2,pending,"Tom wants dedicated content person for Chip enterprise launch."
+Operations,2,3,approved,"Dana requesting ops analyst for ticket backlog. Tabled pending metrics review."
+Sales,1,2,pending,"Contingent on enterprise pipeline conversion."
+People & Culture,1,1,approved,"Maya handling solo. Revisit if headcount exceeds 25."
 `),
     }, "rwx------"),
     engineering: dir("engineering", {
@@ -1243,7 +1307,7 @@ Erik: Frontend build times are killing me. Investigating esbuild
 Auri: Holding the fort on data pipelines. dim_employees might
   be out of date — haven't had time to check. Miss having a
   second data person.
-Soham: Sprint work on the integrations dashboard. On track.
+Soham: Deep in architectural decisions for the integrations dashboard. Exploring a few patterns for the API abstraction layer. Blocked on a dependency — pinged Sarah about it.
 
 --- Wed Feb 19 ---
 Sarah: Auth middleware is a mess. Whoever wrote this was in a

@@ -10,13 +10,12 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "help",
   "mail",
   "nano",
+  "piper",
   "save",
   "load",
   "newgame",
   "history",
   "python",
-  "pdftotext",
-  "tree",
 ]);
 
 /** NexaCorp commands gated behind colleague emails. */
@@ -32,13 +31,18 @@ export const NEXACORP_GATED: Record<string, StoryFlagName> = {
   coder: "coder_unlocked",
   chip: "chip_unlocked",
   piper: "piper_unlocked",
+  chmod: "chmod_unlocked",
+  dbt: "devcontainer_visited",
+  snow: "devcontainer_visited",
+  sudo: "apt_unlocked",
+  apt: "apt_unlocked",
 };
 
 /** Commands available in the Coder dev container. */
 export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "ls", "cd", "cat", "pwd", "clear", "help", "nano", "python", "dbt",
   "snow", "chip", "grep", "find", "diff", "head", "tail", "wc",
-  "sort", "uniq", "echo", "whoami", "hostname", "uname", "file", "tree",
+  "sort", "uniq", "echo", "whoami", "hostname", "file", "tree",
   "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
   "history", "exit", "save", "load", "newgame",
 ]);
@@ -50,4 +54,24 @@ export const HOME_GATED: Record<string, StoryFlagName> = {
   apt: "apt_unlocked",
   pdftotext: "pdftotext_unlocked",
   tree: "tree_installed",
+  mkdir: "basic_tools_unlocked",
+  rm: "basic_tools_unlocked",
+  mv: "basic_tools_unlocked",
+  cp: "basic_tools_unlocked",
+  touch: "basic_tools_unlocked",
+  echo: "basic_tools_unlocked",
+  whoami: "basic_tools_unlocked",
+  hostname: "basic_tools_unlocked",
+  date: "basic_tools_unlocked",
+  which: "basic_tools_unlocked",
+  man: "basic_tools_unlocked",
+  file: "basic_tools_unlocked",
+  grep: "returned_home_day1",
+  find: "returned_home_day1",
+  wc: "returned_home_day1",
+  sort: "returned_home_day1",
+  uniq: "returned_home_day1",
+  head: "returned_home_day1",
+  tail: "returned_home_day1",
+  diff: "returned_home_day1",
 };

@@ -77,7 +77,7 @@ const ls: CommandHandler = (args, flags, ctx) => {
     sections.push(lines.join("\n"));
   }
 
-  return { output: sections.join("\n\n") };
+  return { output: sections.join("\n\n"), exitCode: errors.length > 0 ? 1 : 0 };
 };
 
 register("ls", ls, "List directory contents", HELP_TEXTS.ls);

@@ -1,12 +1,5 @@
 import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
-
-function file(name: string, content: string, permissions = "rw-r--r--"): FileNode {
-  return { type: "file", name, content, permissions, hidden: name.startsWith(".") };
-}
-
-function dir(name: string, children: Record<string, DirectoryNode | FileNode>, permissions = "rwxr-xr-x"): DirectoryNode {
-  return { type: "directory", name, children, permissions, hidden: name.startsWith(".") };
-}
+import { file, dir } from "../../engine/filesystem/builders";
 
 export function createDevcontainerFilesystem(username: string): DirectoryNode {
   return dir("/", {

@@ -20,7 +20,18 @@ src/engine/piper/
 
 src/story/piper/
 ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
-└── messages.ts        # getPiperDeliveries(username) — all message definitions with triggers
+├── messages.ts        # getPiperDeliveries(username) — re-exports all deliveries from messages/
+└── messages/
+    ├── home.ts        # Alex Rivera + Olive Borden (home PC)
+    ├── onboarding.ts  # Edward, IT, HR (early NexaCorp)
+    ├── oscar.ts       # Oscar Diaz
+    ├── dana.ts        # Dana Okafor
+    ├── auri.ts        # Auri Park
+    ├── sarah.ts       # Sarah Knight
+    ├── cassie.ts      # Cassie Moreau
+    ├── jordan.ts      # Jordan Kessler
+    ├── maya.ts        # Maya Johnson
+    └── soham.ts       # Soham Parekh
 
 src/engine/commands/builtins/piper.ts  # Command registration
 src/state/gameStore.ts                 # deliveredPiperIds state + addDeliveredPiperMessages action
@@ -108,7 +119,7 @@ On session exit, collected trigger events and updated `deliveredPiperIds` (repli
 
 ## Adding New Messages
 
-1. Define in `story/piper/messages.ts` inside `getPiperDeliveries()`:
+1. Add the message to the **per-character file** in `story/piper/messages/` (e.g., `oscar.ts` for Oscar Diaz messages). Each file exports a `get*Deliveries(username: string): PiperDelivery[]` function. `messages.ts` automatically includes all sub-files; no need to register the new delivery there:
    ```ts
    {
      id: "unique_delivery_id",

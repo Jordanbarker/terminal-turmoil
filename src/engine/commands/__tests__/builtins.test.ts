@@ -98,6 +98,7 @@ const ALL_UNLOCKED = {
   processing_tools_unlocked: true,
   pipeline_tools_unlocked: true,
   chip_unlocked: true,
+  devcontainer_visited: true,
 };
 
 function ctx(fs?: VirtualFS): CommandContext {

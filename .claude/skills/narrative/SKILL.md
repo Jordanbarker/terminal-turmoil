@@ -15,7 +15,8 @@ src/engine/
 │   ├── types.ts           # Chapter, Objective, Trigger types, ChapterDefinition, ObjectiveDefinition, ObjectiveCompletionCheck
 │   ├── chapters.ts        # Re-exports types from types.ts and CHAPTERS from story/chapters.ts
 │   ├── objectives.ts      # resolveObjectives(), ResolvedObjective
-│   └── storyFlags.ts      # StoryFlagTrigger interface, checkStoryFlagTriggers(); re-exports story data from story/storyFlags.ts
+│   ├── storyFlags.ts      # checkStoryFlagTriggers(); re-exports story data from story/storyFlags.ts
+│   └── triggerMatcher.ts  # matchesCommonTrigger() — shared trigger matching logic used by email and piper delivery
 ├── assistant/
 │   └── types.ts           # ChipMessage, AssistantState types
 ├── commands/
@@ -23,12 +24,13 @@ src/engine/
 
 src/story/
 ├── chapters.ts            # CHAPTERS array (chapter/objective definitions)
-├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers()
+├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, StoryFlagTrigger interface, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers(), getTriggersForComputer(computer, username)
 ├── player.ts              # PLAYER and COMPUTERS config
 ├── piper/
 │   ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
 │   └── messages.ts        # getPiperDeliveries() — all Piper message definitions with triggers
 └── filesystem/
+    ├── paths.ts           # HOME_PATHS and NEXACORP_PATHS constants for story flag trigger paths
     └── nexacorp.ts        # buildChipCacheFiles(storyFlags) — conditional surveillance files
 
 src/state/
@@ -56,15 +58,17 @@ const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: string }
 };
 ```
 
-### Triggers (`engine/narrative/storyFlags.ts`)
+### Triggers (`story/storyFlags.ts`)
 
 ```ts
+// Defined in story/storyFlags.ts
 interface StoryFlagTrigger {
-  event: "file_read" | "command_executed";
-  path?: string;       // File path to match (for file_read events)
-  detail?: string;     // Alternative condition detail
-  flag: string;        // Flag name to set
-  value: string | boolean;  // Value to set
+  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "piper_delivered" | "objective_completed";
+  path?: string;
+  detail?: string;
+  flag: StoryFlagName;   // must be a valid STORY_FLAG_NAMES entry
+  value: string | boolean;
+  toast?: string;
 }
 ```
 
@@ -281,7 +285,9 @@ When designing story progression, email triggers, or investigation paths involvi
 
 ## Adding a New Story Flag
 
-1. **Define the trigger** in `story/storyFlags.ts` — add to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container)
-2. **Use the flag** in filesystem generation (`story/filesystem/nexacorp.ts`), email definitions (`story/emails/`), or Chip behavior
-3. **Add tests** for the trigger in `engine/narrative/__tests__/`
-4. If the flag should affect NexaCorp content, check `buildChipCacheFiles()` or `createNexacorpFilesystem()` patterns in `story/filesystem/nexacorp.ts`
+1. **Add the flag name** to `STORY_FLAG_NAMES` in `story/storyFlags.ts` — `flag` must be a valid `StoryFlagName` entry (the integrity test at `story/__tests__/storyIntegrity.test.ts` will catch invalid references)
+2. **Define the trigger** in `story/storyFlags.ts` — add to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container). Use `getTriggersForComputer(computer, username)` to look up triggers at runtime — this replaces any manual ternary over computer IDs
+3. **Use path constants** — story flag trigger paths use constants from `story/filesystem/paths.ts` (`HOME_PATHS`, `NEXACORP_PATHS`) — use these instead of inline strings when adding new path-based triggers
+4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp.ts`), email definitions (`story/emails/`), or Chip behavior
+5. **Add tests** for the trigger in `engine/narrative/__tests__/`
+6. If the flag should affect NexaCorp content, check `buildChipCacheFiles()` or `createNexacorpFilesystem()` patterns in `story/filesystem/nexacorp.ts`

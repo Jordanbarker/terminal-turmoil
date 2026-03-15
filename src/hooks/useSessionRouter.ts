@@ -7,7 +7,7 @@ import { PythonReplSession } from "../engine/python/PythonReplSession";
 import { SnowSqlSession } from "../engine/snowflake/session/SnowSqlSession";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { checkEmailDeliveries } from "../engine/mail/delivery";
-import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
+import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
 import { colorize, ansi } from "../lib/ansi";
 import { PromptSession } from "../engine/prompt/PromptSession";
 import { SshSession } from "../engine/ssh/SshSession";
@@ -57,6 +57,15 @@ const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResu
     ctx.setStoryFlag("coder_unlocked", true);
     ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, coder_unlocked: true };
     useGameStore.getState().addToast("coder command is now available! Try: coder ssh ai");
+    return {};
+  },
+  dana_ops_accepted: (ctx) => {
+    ctx.setStoryFlag("chmod_unlocked", true);
+    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, chmod_unlocked: true };
+    useGameStore.getState().addToast("chmod command unlocked!");
+    return {};
+  },
+  dana_ops_no_access: () => {
     return {};
   },
   dbt_project_cloned: (ctx) => {
@@ -112,6 +121,109 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     return sessionRef.current !== null;
   }, []);
 
+  /** Sync piper IDs from the live session back to game state. */
+  const syncPiperIds = useCallback(() => {
+    if (!piperInfoRef.current) return;
+    const newIds = piperInfoRef.current.deliveredPiperIds.filter(
+      (id) => !deliveredPiperIdsRef.current.includes(id)
+    );
+    if (newIds.length > 0) {
+      addDeliveredPiperMessages(newIds);
+      deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...newIds];
+
+      // Fire piper_delivered story flag triggers for newly delivered messages
+      const piperTriggers = getTriggersForComputer(activeComputerRef.current, usernameRef.current);
+      for (const id of newIds) {
+        if (id.startsWith("reply:") || id.startsWith("seen:")) continue;
+        const pdEvent = { type: "piper_delivered" as const, detail: id };
+        const flagResults = checkStoryFlagTriggers(pdEvent, piperTriggers, storyFlagsRef.current);
+        for (const flagResult of flagResults) {
+          setStoryFlag(flagResult.flag, flagResult.value);
+          storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
+          if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+        }
+      }
+    }
+  }, [addDeliveredPiperMessages, setStoryFlag, deliveredPiperIdsRef, activeComputerRef, usernameRef, storyFlagsRef]);
+
+  /**
+   * Process trigger events from a session result. Returns true if SSH transition triggered.
+   * When notify is false (mid-session), skip terminal notifications since the session owns the screen.
+   */
+  const processTriggerEvents = useCallback(
+    (term: Terminal, events: import("../engine/mail/delivery").GameEvent[], notify: boolean): boolean => {
+      let shouldTransition = false;
+      const actionCtx: EventActionContext = { term, setStoryFlag, storyFlagsRef, fsRef, setFs };
+
+      for (const event of events) {
+        // Check for registered event actions
+        if (event.type === "objective_completed" && EVENT_ACTIONS[event.detail]) {
+          const actionResult = EVENT_ACTIONS[event.detail](actionCtx);
+          if (actionResult.shouldTransition) shouldTransition = true;
+          if (actionResult.skipDefault) continue;
+        }
+
+        const delivery = checkEmailDeliveries(
+          fsRef.current,
+          event,
+          deliveredIdsRef.current,
+          activeComputerRef.current
+        );
+        if (delivery.newDeliveries.length > 0) {
+          setFs(delivery.fs);
+          fsRef.current = delivery.fs;
+          addDeliveredEmails(delivery.newDeliveries);
+          deliveredIdsRef.current = [
+            ...deliveredIdsRef.current,
+            ...delivery.newDeliveries,
+          ];
+          if (notify) {
+            term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
+          }
+        }
+
+        // Check piper deliveries
+        const piperNew = checkPiperDeliveries(
+          event,
+          deliveredPiperIdsRef.current,
+          usernameRef.current,
+          activeComputerRef.current,
+          storyFlagsRef.current
+        );
+        if (piperNew.length > 0) {
+          addDeliveredPiperMessages(piperNew);
+          deliveredPiperIdsRef.current = [
+            ...deliveredPiperIdsRef.current,
+            ...piperNew,
+          ];
+          if (notify) {
+            term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+          }
+        }
+
+        // Wire objective_completed events to store
+        if (event.type === "objective_completed") {
+          const store = useGameStore.getState();
+          store.completeObjective(event.detail);
+        }
+      }
+
+      // Process story flag triggers from session events
+      const triggers = getTriggersForComputer(activeComputerRef.current, usernameRef.current);
+      for (const event of events) {
+        const flagResults = checkStoryFlagTriggers(event, triggers, storyFlagsRef.current);
+        for (const flagResult of flagResults) {
+          setStoryFlag(flagResult.flag, flagResult.value);
+          storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
+          if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+        }
+      }
+
+      return shouldTransition;
+    },
+    [setFs, addDeliveredEmails, addDeliveredPiperMessages, setStoryFlag, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef]
+  );
+
   /** Route input to the active session. Returns true if input was consumed. */
   const routeInput = useCallback(
     (term: Terminal, data: string): boolean => {
@@ -119,6 +231,22 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
       const result = sessionRef.current.handleInput(data);
       if (!result) return true; // still waiting (prompt session)
+
+      // Apply session FS changes FIRST so trigger event deliveries build on top
+      if (result.newFs) {
+        fsRef.current = result.newFs;
+      }
+
+      // Process mid-session events without terminal notifications (session owns the screen)
+      if (result.triggerEvents?.length && result.type !== "exit") {
+        processTriggerEvents(term, result.triggerEvents, false);
+      }
+
+      // Sync piper IDs mid-session (replies + seen markers)
+      if (sessionTypeRef.current === "piper") {
+        syncPiperIds();
+      }
+
       if (result.type !== "exit") return true; // continue
 
       // Session exited — clean up
@@ -139,100 +267,34 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         store.setSnowflakeState(result.newState);
       }
 
-      // Sync piper IDs back from session (replies + seen markers)
-      if (type === "piper" && piperInfoRef.current) {
-        const newIds = piperInfoRef.current.deliveredPiperIds.filter(
-          (id) => !deliveredPiperIdsRef.current.includes(id)
-        );
-        if (newIds.length > 0) {
-          addDeliveredPiperMessages(newIds);
-          deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...newIds];
-        }
+      // Final piper ID sync on exit
+      if (type === "piper") {
+        syncPiperIds();
         piperInfoRef.current = null;
-      }
-
-      if (result.newFs) {
-        setFs(result.newFs);
-        fsRef.current = result.newFs;
       }
 
       if (result.output) {
         term.write(result.output.replace(/\n/g, "\r\n"));
       }
 
-      // Fire trigger events from sessions
-      if (result.triggerEvents) {
-        let shouldTransition = false;
-        const actionCtx: EventActionContext = { term, setStoryFlag, storyFlagsRef, fsRef, setFs };
-
-        for (const event of result.triggerEvents) {
-          // Check for registered event actions
-          if (event.type === "objective_completed" && EVENT_ACTIONS[event.detail]) {
-            const actionResult = EVENT_ACTIONS[event.detail](actionCtx);
-            if (actionResult.shouldTransition) shouldTransition = true;
-            if (actionResult.skipDefault) continue;
-          }
-
-          const delivery = checkEmailDeliveries(
-            fsRef.current,
-            event,
-            deliveredIdsRef.current,
-            activeComputerRef.current
-          );
-          if (delivery.newDeliveries.length > 0) {
-            setFs(delivery.fs);
-            fsRef.current = delivery.fs;
-            addDeliveredEmails(delivery.newDeliveries);
-            deliveredIdsRef.current = [
-              ...deliveredIdsRef.current,
-              ...delivery.newDeliveries,
-            ];
-            term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
-          }
-
-          // Check piper deliveries
-          const piperNew = checkPiperDeliveries(event, deliveredPiperIdsRef.current, usernameRef.current);
-          if (piperNew.length > 0) {
-            addDeliveredPiperMessages(piperNew);
-            deliveredPiperIdsRef.current = [
-              ...deliveredPiperIdsRef.current,
-              ...piperNew,
-            ];
-            term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
-          }
-
-          // Wire objective_completed events to store
-          if (event.type === "objective_completed") {
-            const store = useGameStore.getState();
-            store.completeObjective(event.detail);
-          }
-        }
-
-        // Process story flag triggers from session events
-        const triggers = activeComputerRef.current === "home"
-          ? getStoryFlagTriggers(usernameRef.current)
-          : activeComputerRef.current === "devcontainer"
-            ? getDevcontainerStoryFlagTriggers(usernameRef.current)
-            : getNexacorpStoryFlagTriggers(usernameRef.current);
-        for (const event of result.triggerEvents) {
-          const flagResults = checkStoryFlagTriggers(event, triggers, storyFlagsRef.current);
-          for (const flagResult of flagResults) {
-            setStoryFlag(flagResult.flag, flagResult.value);
-            storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
-            if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
-          }
-        }
-
+      // Process exit trigger events AFTER output, with notification
+      if (result.triggerEvents?.length) {
+        const shouldTransition = processTriggerEvents(term, result.triggerEvents, true);
         if (shouldTransition) {
           runSshTransition(term);
           return true;
         }
       }
 
+      // Sync store with fsRef (which may have been updated by trigger event deliveries)
+      if (result.newFs) {
+        setFs(fsRef.current);
+      }
+
       writePrompt(term);
       return true;
     },
-    [setFs, addDeliveredEmails, addDeliveredPiperMessages, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef]
+    [setFs, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef, processTriggerEvents, syncPiperIds]
   );
 
   /** Start a new session from an AppliedEffects startSession descriptor. */

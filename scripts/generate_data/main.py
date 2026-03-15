@@ -147,7 +147,7 @@ def main():
         write_json(path, data)
 
     # ── Summary ─────────────────────────────────────────────────────
-    print(f"\nData summary:")
+    print("\nData summary:")
     print(f"  Raw employees: {len(raw_employees)}")
     print(f"  System events: {len(system_events)}")
     print(f"  Access log entries: {len(access_log)}")

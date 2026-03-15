@@ -14,7 +14,7 @@ const mv: CommandHandler = (args, _flags, ctx) => {
 
   const srcNode = ctx.fs.getNode(srcPath);
   if (!srcNode) {
-    return { output: `mv: cannot stat '${args[0]}': No such file or directory` };
+    return { output: `mv: cannot stat '${args[0]}': No such file or directory`, exitCode: 1 };
   }
 
   // If dest is a directory, move source into it
@@ -27,16 +27,16 @@ const mv: CommandHandler = (args, _flags, ctx) => {
   if (isFile(srcNode)) {
     const writeResult = ctx.fs.writeFile(destPath, srcNode.content);
     if (writeResult.error) {
-      return { output: writeResult.error };
+      return { output: writeResult.error, exitCode: 1 };
     }
     const removeResult = writeResult.fs!.removeNode(srcPath);
     if (removeResult.error) {
-      return { output: removeResult.error };
+      return { output: removeResult.error, exitCode: 1 };
     }
     return { output: "", newFs: removeResult.fs };
   }
 
-  return { output: `mv: cannot move '${args[0]}': Operation not supported for directories` };
+  return { output: `mv: cannot move '${args[0]}' to '${args[1]}': directory moves are not supported` };
 };
 
 register("mv", mv, "Move (rename) files", HELP_TEXTS.mv);

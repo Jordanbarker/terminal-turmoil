@@ -3,6 +3,8 @@ import { computeEffects, ApplyContext } from "../applyResult";
 import { CommandResult } from "../types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { DirectoryNode } from "../../filesystem/types";
+// Ensure builtins are registered so commandReadsFiles() returns correct values
+import "../builtins";
 
 function createMinimalFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -212,6 +214,7 @@ describe("computeEffects", () => {
 
     it("generates file_read events for cat command", () => {
       const result: CommandResult = { output: "content" };
+      const fsWithFile = createMinimalFS().writeFile("/home/player/test.txt", "content").fs!;
       const effects = computeEffects(
         result,
         createApplyCtx({
@@ -219,6 +222,7 @@ describe("computeEffects", () => {
           parsedArgs: ["test.txt"],
           cwd: "/home/player",
           homeDir: "/home/player",
+          fs: fsWithFile,
         })
       );
       expect(effects.events).toContainEqual({

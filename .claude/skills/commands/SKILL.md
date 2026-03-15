@@ -28,7 +28,8 @@ src/engine/session/
 
 src/hooks/
 ├── useTerminal.ts         # Pipeline orchestrator: chains commands, handles redirection, applies effects
-└── useCommandLine.ts      # Input buffer, history navigation, autosuggestions
+├── useCommandLine.ts      # Input buffer, history navigation, autosuggestions
+└── useComputerTransitions.ts  # SSH/Coder/exit transition flows extracted from useTerminal
 ```
 
 ## Core Types (`commands/types.ts`)

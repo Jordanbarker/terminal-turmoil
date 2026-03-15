@@ -145,9 +145,18 @@ export const useGameStore = create<GameStore>()(
           deliveredEmailIds: [...state.deliveredEmailIds, ...ids],
         })),
       addDeliveredPiperMessages: (ids) =>
-        set((state) => ({
-          deliveredPiperIds: [...state.deliveredPiperIds, ...ids],
-        })),
+        set((state) => {
+          const seenPrefixes = ids
+            .filter((id) => id.startsWith("seen:"))
+            .map((id) => id.slice(0, id.lastIndexOf(":") + 1));
+          const filtered =
+            seenPrefixes.length > 0
+              ? state.deliveredPiperIds.filter(
+                  (id) => !seenPrefixes.some((prefix) => id.startsWith(prefix))
+                )
+              : state.deliveredPiperIds;
+          return { deliveredPiperIds: [...filtered, ...ids] };
+        }),
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
       setActiveComputer: (id) => set({ activeComputer: id }),
       setStashedFs: (fs) => set({ stashedFs: fs }),

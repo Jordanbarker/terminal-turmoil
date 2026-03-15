@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGameStore } from "../../state/gameStore";
 import { CHAPTERS } from "../../engine/narrative/chapters";
 import { resolveObjectives } from "../../engine/narrative/objectives";
@@ -21,6 +21,20 @@ export default function ObjectiveTracker() {
     completedObjectives,
     deliveredEmailIds
   );
+
+  // Auto-sync objectives that resolved as completed (via story flags, etc.)
+  // into the completedObjectives store so downstream visibleWhen: completedObjective works.
+  useEffect(() => {
+    const newlyCompleted = objectives.filter(
+      (o) => o.completed && !completedObjectives.includes(o.id)
+    );
+    if (newlyCompleted.length > 0) {
+      const store = useGameStore.getState();
+      for (const obj of newlyCompleted) {
+        store.completeObjective(obj.id);
+      }
+    }
+  }, [objectives, completedObjectives]);
 
   const visible = objectives.filter((o) => o.visible);
   const done = visible.filter((o) => o.completed).length;

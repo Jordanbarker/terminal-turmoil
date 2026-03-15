@@ -33,4 +33,4 @@ const pdftotext: CommandHandler = (args, _flags, ctx) => {
   return { output: textContent };
 };
 
-register("pdftotext", pdftotext, "Convert PDF to text", HELP_TEXTS.pdftotext);
+register("pdftotext", pdftotext, "Convert PDF to text", HELP_TEXTS.pdftotext, true);

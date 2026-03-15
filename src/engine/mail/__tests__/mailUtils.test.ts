@@ -188,7 +188,7 @@ describe("formatEmailContent", () => {
 });
 
 describe("getMailEntries", () => {
-  it("returns entries from new/ and cur/ sorted by seq", () => {
+  it("returns entries from new/ and cur/ sorted by date", () => {
     const fs = createMailFS();
     const entries = getMailEntries(fs);
     expect(entries).toHaveLength(2);
@@ -196,6 +196,24 @@ describe("getMailEntries", () => {
     expect(entries[0].dir).toBe("new");
     expect(entries[1].seq).toBe(2);
     expect(entries[1].dir).toBe("cur");
+  });
+
+  it("sorts by date rather than seq when they disagree", () => {
+    const fs = createMailFS();
+    // Deliver seq=3 with an earlier date than seq=1
+    const early: Email = {
+      id: "early",
+      from: "a@b.com",
+      to: "player@nexacorp.com",
+      date: "Sat, 22 Feb 2026 08:00:00",
+      subject: "Early",
+      body: "",
+    };
+    const updated = deliverEmail(fs, early, 3);
+    const entries = getMailEntries(updated.fs);
+    expect(entries).toHaveLength(3);
+    expect(entries[0].parsed.subject).toBe("Early");
+    expect(entries[0].seq).toBe(3);
   });
 
   it("parses email content for each entry", () => {

@@ -2,12 +2,15 @@ import { VirtualFS } from "../filesystem/VirtualFS";
 import { getEmailDefinitions } from "./emails";
 import { deliverEmail, getMailEntries } from "./mailUtils";
 import { ComputerId, PLAYER } from "../../state/types";
+import { matchesCommonTrigger } from "../narrative/triggerMatcher";
 
 export type GameEvent =
   | { type: "command_executed"; detail: string }
   | { type: "file_read"; detail: string }
   | { type: "objective_completed"; detail: string }
-  | { type: "directory_visit"; detail: string };
+  | { type: "directory_visit"; detail: string }
+  | { type: "directory_created"; detail: string }
+  | { type: "piper_delivered"; detail: string };
 
 export function checkEmailDeliveries(
   fs: VirtualFS,
@@ -32,24 +35,7 @@ export function checkEmailDeliveries(
     let matches = false;
     for (const trigger of triggers) {
       if (trigger.type === "immediate") continue;
-      switch (trigger.type) {
-        case "after_file_read":
-          matches = event.type === "file_read" && event.detail === trigger.filePath;
-          if (matches && trigger.requireDelivered) {
-            matches = deliveredIds.includes(trigger.requireDelivered)
-              || newDeliveries.includes(trigger.requireDelivered);
-          }
-          break;
-        case "after_email_read":
-          matches = event.type === "file_read" && event.detail === trigger.emailId;
-          break;
-        case "after_command":
-          matches = event.type === "command_executed" && event.detail === trigger.command;
-          break;
-        case "after_objective":
-          matches = event.type === "objective_completed" && event.detail === trigger.objectiveId;
-          break;
-      }
+      matches = matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries);
       if (matches) break;
     }
 

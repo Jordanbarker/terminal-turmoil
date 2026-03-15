@@ -1,4 +1,19 @@
 import { EmailDelivery } from "../../engine/mail/types";
+import { PLAYER } from "../player";
+
+export const NEXACORP_EMAIL_IDS = [
+  "welcome_edward",
+  "it_provisioned",
+  "chip_intro",
+  "oscar_coder_setup",
+  "edward_paranoid",
+  "maya_welcome",
+  "edward_handoff_suggestion",
+  "edward_end_of_day",
+  "jessica_welcome",
+  "tom_welcome",
+] as const;
+export type NexacorpEmailId = (typeof NEXACORP_EMAIL_IDS)[number];
 
 export function getNexacorpEmailDefinitions(username: string): EmailDelivery[] {
   return [
@@ -117,6 +132,31 @@ Chip
   // === Triggered emails ===
   {
     email: {
+      id: "oscar_coder_setup",
+      from: "Oscar Diaz <oscar@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 09:15:00",
+      subject: "Your Coder workspace is ready",
+      body: `Hey! I set up your Coder workspace as part of onboarding.
+
+When you need it for data work, just connect with:
+
+  coder ssh ai
+
+It's got dbt, snow (Snowflake CLI), and python pre-installed.
+Auri can walk you through the analytics pipeline when you're
+ready.
+
+Type 'exit' to disconnect and get back to your workstation.
+Let me know if you hit any issues!
+
+- Oscar
+`,
+    },
+    trigger: { type: "after_file_read", filePath: "/srv/engineering/onboarding.md" },
+  },
+  {
+    email: {
       id: "edward_paranoid",
       from: "Edward Torres <edward@nexacorp.com>",
       to: `${username}@nexacorp.com`,
@@ -208,19 +248,55 @@ Thanks!
 Great first day! Heard from Auri that you got the pipeline
 running — really appreciate you jumping on that.
 
-One more thing — Chip has been acting a little off lately.
-Nothing major, but some odd outputs that don't match what
-the team expects. Since you're the AI expert now, could you
-poke around /opt/chip/ when you get a chance? No rush.
+P.S. Chen's home directory (/home/jchen/) still hasn't been
+cleaned up. Might be useful context for understanding the
+codebase, might just be clutter. IT will get to it eventually.
 
 - Edward
-
-P.S. Chen's home directory (/home/jchen/) still hasn't been
-cleaned up. Might be useful context, might just be clutter.
-IT will get to it eventually.
 `,
     },
     trigger: { type: "after_command", command: "dbt" },
+  },
+
+  // === Light-tier founder emails (after reading Edward's welcome) ===
+  {
+    email: {
+      id: "jessica_welcome",
+      from: "Jessica Langford <jessica@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 08:45:00",
+      subject: "Welcome",
+      body: `${PLAYER.displayName},
+
+Edward speaks highly of you. Welcome to the team.
+
+Jessica
+`,
+    },
+    trigger: { type: "after_email_read", emailId: "welcome_edward" },
+  },
+  {
+    email: {
+      id: "tom_welcome",
+      from: "Tom Chen <tom@nexacorp.com>",
+      to: `${username}@nexacorp.com`,
+      date: "Mon, 23 Feb 2026 08:50:00",
+      subject: "Welcome to NexaCorp!",
+      body: `Hey ${PLAYER.displayName}!
+
+Tom here — CMO and co-founder. Just wanted to personally
+welcome you aboard. Edward's been singing your praises and
+we're thrilled to have you.
+
+We're building something really special here and I think
+you're going to love it. If you ever want to grab virtual
+coffee and hear the origin story, my door is always open!
+
+Happy first day!
+- Tom
+`,
+    },
+    trigger: { type: "after_email_read", emailId: "welcome_edward" },
   },
 ];
 }

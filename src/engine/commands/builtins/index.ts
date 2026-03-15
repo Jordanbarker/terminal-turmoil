@@ -31,7 +31,6 @@ import "./touch";
 import "./history";
 import "./whoami";
 import "./hostname";
-import "./uname";
 // Polish & depth (Tier 3)
 import "./file";
 import "./pdftotext";

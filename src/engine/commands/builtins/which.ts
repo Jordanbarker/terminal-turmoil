@@ -30,7 +30,6 @@ const COMMAND_PATHS: Record<string, string> = {
   pdftotext: "/usr/bin/pdftotext",
   tree: "/usr/bin/tree",
   date: "/usr/bin/date",
-  uname: "/usr/bin/uname",
   hostname: "/usr/bin/hostname",
   whoami: "/usr/bin/whoami",
   man: "/usr/bin/man",
@@ -56,7 +55,11 @@ const which: CommandHandler = (args, _flags, ctx) => {
     }
   }
 
-  return { output: outputs.join("\n") };
+  const notFound = outputs.some((o) => o.endsWith("not found"));
+  const triggerEvents = args.some((a) => a === "python" || a === "python3")
+    ? [{ type: "command_executed" as const, detail: "which_python" }]
+    : undefined;
+  return { output: outputs.join("\n"), exitCode: notFound ? 1 : 0, triggerEvents };
 };
 
 register("which", which, "Show command path", HELP_TEXTS.which);

@@ -138,4 +138,4 @@ const grep: CommandHandler = (args, flags, ctx) => {
   };
 };
 
-register("grep", grep, "Search file contents for patterns", HELP_TEXTS.grep);
+register("grep", grep, "Search file contents for patterns", HELP_TEXTS.grep, true);

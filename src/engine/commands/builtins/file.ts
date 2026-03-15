@@ -20,6 +20,8 @@ function guessFileType(name: string, content: string): string {
   if (name.endsWith(".html")) return "HTML document, ASCII text";
   if (name.endsWith(".txt")) return "ASCII text";
   if (name.endsWith(".log")) return "ASCII text (log file)";
+  if (name.endsWith(".deb")) return "Debian binary package (format 2.0)";
+  if (name.endsWith(".db")) return "SQLite 3.x database";
   if (name.endsWith(".tar.gz") || name.endsWith(".tgz")) return "gzip compressed data";
   if (name.endsWith(".gz")) return "gzip compressed data";
   if (content.startsWith("[ENCRYPTED]") || content.includes("encrypted")) return "encrypted data";
@@ -54,4 +56,4 @@ const file: CommandHandler = (args, _flags, ctx) => {
   return { output: outputs.join("\n") };
 };
 
-register("file", file, "Determine file type", HELP_TEXTS.file);
+register("file", file, "Determine file type", HELP_TEXTS.file, true);

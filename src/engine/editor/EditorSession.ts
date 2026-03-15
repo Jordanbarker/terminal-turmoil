@@ -161,6 +161,11 @@ export class EditorSession implements ISession {
       this.submitPrompt(prompt);
       return;
     }
+    // Ctrl+W again while search is open: submit immediately (repeats last search if input is empty)
+    if (action.type === "search" && prompt.type === "search") {
+      this.submitPrompt(prompt);
+      return;
+    }
   }
 
   private handleReplaceConfirmPrompt(

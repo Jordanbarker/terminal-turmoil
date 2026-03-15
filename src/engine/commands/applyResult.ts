@@ -3,13 +3,14 @@ import { VirtualFS } from "../filesystem/VirtualFS";
 import { checkEmailDeliveries, GameEvent } from "../mail/delivery";
 import { checkPiperDeliveries } from "../piper/delivery";
 import { resolvePath } from "../../lib/pathUtils";
-import { getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers, checkStoryFlagTriggers } from "../narrative/storyFlags";
+import { getTriggersForComputer, checkStoryFlagTriggers } from "../narrative/storyFlags";
 import { PromptSessionInfo } from "../prompt/types";
 import { ChipSessionInfo } from "../chip/types";
 import { PiperSessionInfo } from "../piper/types";
 import { ComputerId, StoryFlags } from "../../state/types";
 import { colorize, ansi } from "../../lib/ansi";
 import { listSaveSlots, formatSlotName } from "../../state/saveManager";
+import { commandReadsFiles } from "./registry";
 
 export type SessionToStart =
   | { type: "editor"; info: EditorSessionInfo }
@@ -144,13 +145,14 @@ export function computeEffects(
       events.push(...result.triggerEvents);
     }
 
-    // Commands that read files trigger file_read events
-    const fileReadCommands = ["cat", "head", "tail", "grep", "diff", "wc", "sort", "uniq", "file", "pdftotext"];
-    if (fileReadCommands.includes(applyCtx.parsedCommand)) {
+    // Commands that read files trigger file_read events — only when the read succeeds
+    if (commandReadsFiles(applyCtx.parsedCommand)) {
       for (const arg of applyCtx.parsedArgs) {
         if (!arg.startsWith("-")) {
           const absPath = resolvePath(arg, applyCtx.cwd, applyCtx.homeDir);
-          events.push({ type: "file_read", detail: absPath });
+          if (!applyCtx.fs.readFile(absPath).error) {
+            events.push({ type: "file_read", detail: absPath });
+          }
         }
       }
     }
@@ -158,23 +160,16 @@ export function computeEffects(
 
   effects.events = events;
 
-  // Process story flag triggers
-  {
-    const triggers = applyCtx.activeComputer === "home"
-      ? getStoryFlagTriggers(applyCtx.username)
-      : applyCtx.activeComputer === "devcontainer"
-        ? getDevcontainerStoryFlagTriggers(applyCtx.username)
-        : getNexacorpStoryFlagTriggers(applyCtx.username);
-    let currentFlags = { ...applyCtx.storyFlags };
+  // Process story flag triggers (first pass — command/file/directory events)
+  const storyFlagTriggers = getTriggersForComputer(applyCtx.activeComputer, applyCtx.username);
+  let currentFlags = { ...applyCtx.storyFlags };
 
-    for (const event of events) {
-      const flagResults = checkStoryFlagTriggers(event, triggers, currentFlags);
-      for (const flagResult of flagResults) {
-        effects.storyFlagUpdates.push(flagResult);
-        currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
-      }
+  for (const event of events) {
+    const flagResults = checkStoryFlagTriggers(event, storyFlagTriggers, currentFlags);
+    for (const flagResult of flagResults) {
+      effects.storyFlagUpdates.push(flagResult);
+      currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
     }
-
   }
 
   // Process email deliveries
@@ -193,17 +188,32 @@ export function computeEffects(
       effects.newDeliveredEmailIds.push(...delivery.newDeliveries);
       effects.emailNotifications++;
     }
-
   }
 
   // Process piper deliveries
   let piperIds = [...applyCtx.deliveredPiperIds];
   for (const event of events) {
-    const newPiper = checkPiperDeliveries(event, piperIds, applyCtx.username);
+    const newPiper = checkPiperDeliveries(
+      event,
+      piperIds,
+      applyCtx.username,
+      applyCtx.activeComputer,
+      currentFlags
+    );
     if (newPiper.length > 0) {
       piperIds = [...piperIds, ...newPiper];
       effects.newDeliveredPiperIds.push(...newPiper);
       effects.piperNotifications++;
+    }
+  }
+
+  // Second pass: process piper_delivered events through story flag triggers
+  for (const id of effects.newDeliveredPiperIds) {
+    const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+    const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, currentFlags);
+    for (const flagResult of flagResults) {
+      effects.storyFlagUpdates.push(flagResult);
+      currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
     }
   }
 

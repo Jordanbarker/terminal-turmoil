@@ -2,15 +2,25 @@ import { CommandHandler, AsyncCommandHandler, CommandResult, CommandContext } fr
 import { isCommandAvailable } from "./availability";
 import { ComputerId, StoryFlags } from "../../state/types";
 
-const commands = new Map<string, { handler: CommandHandler; description: string; helpText?: string }>();
-const asyncCommands = new Map<string, { handler: AsyncCommandHandler; description: string; helpText?: string }>();
+const NEXACORP_GATE_HINTS: Record<string, string> = {
+  coder: "Read your welcome email and check /srv/engineering/onboarding.md to get set up.",
+  piper: "Read your welcome email — it has instructions for getting started.",
+};
 
-export function register(name: string, handler: CommandHandler, description: string, helpText?: string): void {
-  commands.set(name, { handler, description, helpText });
+const commands = new Map<string, { handler: CommandHandler; description: string; helpText?: string; readsFiles?: boolean }>();
+const asyncCommands = new Map<string, { handler: AsyncCommandHandler; description: string; helpText?: string; readsFiles?: boolean }>();
+
+export function register(name: string, handler: CommandHandler, description: string, helpText?: string, readsFiles?: boolean): void {
+  commands.set(name, { handler, description, helpText, readsFiles });
 }
 
-export function registerAsync(name: string, handler: AsyncCommandHandler, description: string, helpText?: string): void {
-  asyncCommands.set(name, { handler, description, helpText });
+export function registerAsync(name: string, handler: AsyncCommandHandler, description: string, helpText?: string, readsFiles?: boolean): void {
+  asyncCommands.set(name, { handler, description, helpText, readsFiles });
+}
+
+/** Returns true if the command reads files (triggers file_read events in applyResult). */
+export function commandReadsFiles(name: string): boolean {
+  return !!(commands.get(name)?.readsFiles ?? asyncCommands.get(name)?.readsFiles);
 }
 
 export function execute(
@@ -20,11 +30,9 @@ export function execute(
   ctx: CommandContext
 ): CommandResult {
   if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
-    if (commandName === "tree" && ctx.activeComputer === "home") {
-      return { output: "Command 'tree' not found, but can be installed with:\n  sudo apt install tree" };
-    }
     if (ctx.activeComputer === "nexacorp") {
-      return { output: `${commandName}: not yet available. Read your mail and reply — your colleagues will help you get set up.`, exitCode: 127 };
+      const hint = NEXACORP_GATE_HINTS[commandName] ?? "Check your mail and Piper messages — your colleagues will help you get set up.";
+      return { output: `${commandName}: not yet available. ${hint}`, exitCode: 127 };
     }
     return { output: `${commandName}: command not found. Type 'help' for available commands.`, exitCode: 127 };
   }

@@ -108,4 +108,4 @@ const diff: CommandHandler = (args, _flags, ctx) => {
   return result;
 };
 
-register("diff", diff, "Compare two files line by line", HELP_TEXTS.diff);
+register("diff", diff, "Compare two files line by line", HELP_TEXTS.diff, true);

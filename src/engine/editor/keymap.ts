@@ -39,40 +39,41 @@ export function parseEditorInput(data: string): EditorAction[] {
   while (i < data.length) {
     const code = data.charCodeAt(i);
 
-    // Escape sequences
+    // Escape sequences (CSI: \x1b[ params final)
     if (data[i] === "\x1b" && data[i + 1] === "[") {
-      const seq = data[i + 2];
-      if (seq === "A") {
+      // Consume full CSI sequence: \x1b[ followed by parameter bytes (0-9;) then a final byte (A-Z, a-z, ~)
+      let j = i + 2;
+      while (j < data.length && data[j] >= "0" && data[j] <= "?") j++;
+      const params = data.slice(i + 2, j);
+      const final = j < data.length ? data[j] : "";
+      i = j + 1;
+
+      // Map final byte to action, treating modified keys (e.g. \x1b[1;3C) the same as plain keys
+      if (final === "A") {
         actions.push({ type: "arrowUp" });
-        i += 3;
-      } else if (seq === "B") {
+      } else if (final === "B") {
         actions.push({ type: "arrowDown" });
-        i += 3;
-      } else if (seq === "C") {
+      } else if (final === "C") {
         actions.push({ type: "arrowRight" });
-        i += 3;
-      } else if (seq === "D") {
+      } else if (final === "D") {
         actions.push({ type: "arrowLeft" });
-        i += 3;
-      } else if (seq === "H") {
+      } else if (final === "H") {
         actions.push({ type: "home" });
-        i += 3;
-      } else if (seq === "F") {
+      } else if (final === "F") {
         actions.push({ type: "end" });
-        i += 3;
-      } else if (seq === "3" && data[i + 3] === "~") {
-        actions.push({ type: "delete" });
-        i += 4;
-      } else if (seq === "5" && data[i + 3] === "~") {
-        actions.push({ type: "pageUp" });
-        i += 4;
-      } else if (seq === "6" && data[i + 3] === "~") {
-        actions.push({ type: "pageDown" });
-        i += 4;
-      } else {
-        // Unknown escape sequence — skip it
-        i += 3;
+      } else if (final === "~") {
+        // Tilde sequences: extract the key number (before any ;modifier)
+        const keyNum = params.split(";")[0];
+        if (keyNum === "3") {
+          actions.push({ type: "delete" });
+        } else if (keyNum === "5") {
+          actions.push({ type: "pageUp" });
+        } else if (keyNum === "6") {
+          actions.push({ type: "pageDown" });
+        }
+        // else: unknown tilde sequence — ignore
       }
+      // else: unknown CSI final — ignore
     } else if (code === 1) {
       // Ctrl+A → home
       actions.push({ type: "home" });

@@ -3,11 +3,12 @@ import { PiperMessage, PiperReplyOption } from "./types";
 
 export function renderPiperHeader(title: string, width: number, description?: string): string {
   const top = colorize(`\u256D\u2500\u2500\u2500 ${title} ${"─".repeat(Math.max(0, width - title.length - 7))}\u256E`, ansi.magenta);
-  const descLine = description
-    ? colorize(`\u2502`, ansi.magenta) + colorize(`  ${description}`, ansi.dim) + " ".repeat(Math.max(0, width - description.length - 4)) + colorize(`\u2502`, ansi.magenta)
-    : colorize(`\u2502`, ansi.magenta) + " ".repeat(Math.max(0, width - 2)) + colorize(`\u2502`, ansi.magenta);
   const bot = colorize(`\u2570${"─".repeat(Math.max(0, width - 2))}\u256F`, ansi.magenta);
-  return [top, descLine, bot].join("\r\n");
+  if (description) {
+    const descLine = colorize(`\u2502`, ansi.magenta) + colorize(`  ${description}`, ansi.dim) + " ".repeat(Math.max(0, width - description.length - 4)) + colorize(`\u2502`, ansi.magenta);
+    return [top, descLine, bot].join("\r\n");
+  }
+  return [top, bot].join("\r\n");
 }
 
 export function renderChannelList(
@@ -111,12 +112,20 @@ export function renderChannelListFooter(width: number): string {
   return `${border}\r\n${hints}`;
 }
 
-export function renderConversationFooter(width: number, hasReply: boolean): string {
+export function renderConversationFooter(width: number, hasReply: boolean, canScroll = false): string {
   const border = colorize("─".repeat(width), ansi.dim);
   const hints = hasReply
     ? colorize(" \u2191/\u2193 navigate  Enter reply  q back", ansi.dim)
-    : colorize(" q back", ansi.dim);
+    : canScroll
+      ? colorize(" \u2191/\u2193 scroll  q back", ansi.dim)
+      : colorize(" q back", ansi.dim);
   return `${border}\r\n${hints}`;
+}
+
+export function renderScrollIndicator(width: number): string {
+  const text = " ↑ more messages";
+  const padding = Math.max(0, width - text.length);
+  return colorize(text + " ".repeat(padding), ansi.dim);
 }
 
 function wordWrap(text: string, width: number): string {

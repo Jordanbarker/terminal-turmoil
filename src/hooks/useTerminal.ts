@@ -5,18 +5,79 @@ import { parseInput, parsePipeline } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getCoderConnectionSequence, coderBanner } from "../lib/ascii";
+import { nexacorpLogo } from "../lib/ascii";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
-import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createDefaultContext } from "../engine/snowflake/session/context";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
-import { COMPUTERS } from "../state/types";
+import { COMPUTERS, ComputerId, StoryFlags } from "../state/types";
 import { computeEffects, AppliedEffects } from "../engine/commands/applyResult";
-import { seedImmediatePiper } from "../engine/piper/delivery";
-import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
+import { useComputerTransitions } from "./useComputerTransitions";
+import { CommandContext } from "../engine/commands/types";
+
+// ---------------------------------------------------------------------------
+// Module-scope helpers (no React dependencies)
+// ---------------------------------------------------------------------------
+
+interface CommandContextRefs {
+  fsRef: { current: VirtualFS };
+  cwdRef: { current: string };
+  activeComputerRef: { current: ComputerId };
+  storyFlagsRef: { current: StoryFlags };
+}
+
+/** Build a CommandContext from the current refs + store state. */
+function buildCommandContext(
+  refs: CommandContextRefs,
+  homeDir: string,
+  stdin: string | undefined,
+  rawArgs: string[],
+  isPiped: boolean,
+  store: ReturnType<typeof useGameStore.getState>
+): CommandContext {
+  return {
+    fs: refs.fsRef.current,
+    cwd: refs.cwdRef.current,
+    homeDir,
+    activeComputer: refs.activeComputerRef.current,
+    storyFlags: refs.storyFlagsRef.current,
+    stdin,
+    rawArgs,
+    isPiped,
+    commandHistory: store.commandHistory,
+    snowflakeState: store.snowflakeState,
+    snowflakeContext: createDefaultContext(store.username),
+    setSnowflakeState: store.setSnowflakeState,
+  };
+}
+
+/** Apply output redirection: write command output to a file and return updated state. */
+function applyRedirection(
+  redirectFile: string,
+  redirectAppend: boolean,
+  lastResult: import("../engine/commands/types").CommandResult,
+  currentCwd: string,
+  homeDir: string,
+  fsRef: { current: VirtualFS },
+  setFs: (fs: VirtualFS) => void
+): import("../engine/commands/types").CommandResult {
+  const absPath = resolvePath(redirectFile, currentCwd, homeDir);
+  let content = lastResult.output;
+  if (redirectAppend) {
+    const existing = fsRef.current.readFile(absPath);
+    if (existing.content !== undefined) {
+      content = existing.content + "\n" + content;
+    }
+  }
+  const writeResult = fsRef.current.writeFile(absPath, content);
+  if (writeResult.fs) {
+    setFs(writeResult.fs);
+    fsRef.current = writeResult.fs;
+  }
+  return { ...lastResult, output: "" };
+}
 
 // Ensure all builtins are registered
 import "../engine/commands/builtins";
@@ -89,142 +150,33 @@ export function useTerminal() {
     [getPrompt]
   );
 
-  const runSshTransition = useCallback((term: Terminal) => {
-    setGamePhase("transitioning");
-
-    // Phase 1: SSH connection lines
-    const sshLines = getSshConnectionSequence(usernameRef.current);
-    let i = 0;
-    const sshInterval = setInterval(() => {
-      if (i < sshLines.length) {
-        term.writeln(sshLines[i]);
-        i++;
-      } else {
-        clearInterval(sshInterval);
-
-        // Switch computer and rebuild filesystem
-        setTimeout(() => {
-          term.clear();
-          setActiveComputer("nexacorp");
-          activeComputerRef.current = "nexacorp";
-          setCurrentChapter("chapter-2");
-
-          // setUsername rebuilds NexaCorp filesystem
-          const store = useGameStore.getState();
-          store.setUsername(store.username);
-
-          // Sync refs from rebuilt state
-          const state = useGameStore.getState();
-          fsRef.current = state.fs;
-          cwdRef.current = state.cwd;
-
-          // Seed immediate piper messages for NexaCorp
-          const piperIds = seedImmediatePiper(state.username);
-          if (piperIds.length > 0) {
-            addDeliveredPiperMessages(piperIds);
-            deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...piperIds];
-          }
-
-          // Phase 2: Boot sequence
-          setGamePhase("booting");
-          const bootLines = getBootSequence(usernameRef.current);
-          let j = 0;
-          const bootInterval = setInterval(() => {
-            if (j < bootLines.length) {
-              term.writeln(bootLines[j]);
-              j++;
-            } else {
-              clearInterval(bootInterval);
-              term.writeln("");
-              nexacorpLogo.forEach((line) => term.writeln(line));
-              setGamePhase("playing");
-            }
-          }, BOOT_LINE_INTERVAL_MS);
-        }, BOOT_LINE_INTERVAL_MS);
-      }
-    }, BOOT_LINE_INTERVAL_MS);
-  }, [setGamePhase, setActiveComputer, setCurrentChapter]);
-
-  const runCoderTransition = useCallback((term: Terminal) => {
-    setGamePhase("transitioning");
-
-    // Capture old stash (previous devcontainer FS, or null on first visit) before overwriting
-    const previousDevcontainerFs = stashedFsRef.current;
-    const previousDevcontainerCwd = stashedCwdRef.current;
-
-    // Stash current NexaCorp FS so we can restore it on exit
-    setStashedFs(fsRef.current);
-    setStashedCwd(cwdRef.current);
-    stashedFsRef.current = fsRef.current;
-    stashedCwdRef.current = cwdRef.current;
-
-    // Show connection animation
-    const lines = getCoderConnectionSequence();
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < lines.length) {
-        term.writeln(lines[i]);
-        i++;
-      } else {
-        clearInterval(interval);
-
-        setActiveComputer("devcontainer");
-        activeComputerRef.current = "devcontainer";
-
-        // Restore previous devcontainer FS or build fresh on first visit
-        let newFs: VirtualFS;
-        let newCwd: string;
-        if (previousDevcontainerFs) {
-          newFs = previousDevcontainerFs;
-          newCwd = (previousDevcontainerCwd && previousDevcontainerFs.getNode(previousDevcontainerCwd))
-            ? previousDevcontainerCwd
-            : previousDevcontainerFs.cwd;
-        } else {
-          const username = usernameRef.current;
-          const root = createDevcontainerFilesystem(username);
-          newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-          newCwd = newFs.cwd;
-        }
-
-        setFs(newFs);
-        fsRef.current = newFs;
-        setCwd(newCwd);
-        cwdRef.current = newCwd;
-
-        term.writeln("");
-        coderBanner.forEach((line) => term.writeln(line));
-        setGamePhase("playing");
-        writePrompt(term);
-      }
-    }, BOOT_LINE_INTERVAL_MS);
-  }, [setGamePhase, setActiveComputer, setFs, setCwd, setStashedFs, setStashedCwd, writePrompt]);
-
-  const runExitToNexacorp = useCallback((term: Terminal) => {
-    // Capture the NexaCorp FS from stash before overwriting
-    const nexaFs = stashedFsRef.current;
-    const nexaCwd = stashedCwdRef.current;
-
-    // Stash current devcontainer FS for re-entry
-    setStashedFs(fsRef.current);
-    setStashedCwd(cwdRef.current);
-    stashedFsRef.current = fsRef.current;
-    stashedCwdRef.current = cwdRef.current;
-
-    // Restore NexaCorp FS
-    if (nexaFs) {
-      setFs(nexaFs);
-      fsRef.current = nexaFs;
-      const cwd = (nexaCwd && nexaFs.getNode(nexaCwd)) ? nexaCwd : nexaFs.cwd;
-      setCwd(cwd);
-      cwdRef.current = cwd;
+  // Compose transition functions
+  const { runSshTransition, runCoderTransition, runExitToNexacorp, runExitToHome } = useComputerTransitions(
+    {
+      fsRef,
+      cwdRef,
+      usernameRef,
+      deliveredIdsRef,
+      deliveredPiperIdsRef,
+      activeComputerRef,
+      storyFlagsRef,
+      stashedFsRef,
+      stashedCwdRef,
+    },
+    {
+      setFs,
+      setCwd,
+      setActiveComputer,
+      setGamePhase,
+      setCurrentChapter,
+      setStashedFs,
+      setStashedCwd,
+      setStoryFlag,
+      addDeliveredEmails,
+      addDeliveredPiperMessages,
+      writePrompt,
     }
-
-    setActiveComputer("nexacorp");
-    activeComputerRef.current = "nexacorp";
-
-    term.writeln(colorize("\r\nDisconnected from coder-ai.", ansi.dim));
-    writePrompt(term);
-  }, [setActiveComputer, setFs, setCwd, setStashedFs, setStashedCwd, writePrompt]);
+  );
 
   // Compose sub-hooks
   const sessionRouter = useSessionRouter({
@@ -327,15 +279,8 @@ export function useTerminal() {
         term.write(effects.output.replace(/\n/g, "\r\n"));
       }
 
-      if (effects.newFs) {
-        setFs(effects.newFs);
-        fsRef.current = effects.newFs;
-      }
-
-      if (effects.newCwd) {
-        setCwd(effects.newCwd);
-        cwdRef.current = effects.newCwd;
-      }
+      // Apply all state effects (FS, cwd, story flags, deliveries) before any early returns
+      applyStateEffects(effects);
 
       // Computer transitions
       if (effects.transitionTo === "devcontainer") {
@@ -346,9 +291,14 @@ export function useTerminal() {
         runExitToNexacorp(term);
         return true;
       }
+      if (effects.transitionTo === "home" && activeComputerRef.current === "nexacorp") {
+        runExitToHome(term);
+        return true;
+      }
 
       // Start sessions
       if (effects.startSession) {
+        writeNotifications(term, effects);
         sessionRouter.startSession(term, effects.startSession);
         return true;
       }
@@ -388,38 +338,12 @@ export function useTerminal() {
         }
       }
 
-      // Apply story flag updates
-      for (const update of effects.storyFlagUpdates) {
-        setStoryFlag(update.flag, update.value);
-        storyFlagsRef.current = { ...storyFlagsRef.current, [update.flag]: update.value };
-        if (update.toast) {
-          useGameStore.getState().addToast(update.toast);
-        }
-      }
-
-      // Apply email deliveries
-      if (effects.newDeliveredEmailIds.length > 0) {
-        addDeliveredEmails(effects.newDeliveredEmailIds);
-        deliveredIdsRef.current = [...deliveredIdsRef.current, ...effects.newDeliveredEmailIds];
-      }
-
-      if (effects.emailNotifications > 0) {
-        term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
-      }
-
-      // Apply piper deliveries
-      if (effects.newDeliveredPiperIds.length > 0) {
-        addDeliveredPiperMessages(effects.newDeliveredPiperIds);
-        deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...effects.newDeliveredPiperIds];
-      }
-
-      if (effects.piperNotifications > 0) {
-        term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
-      }
+      // Write notifications (state already applied by applyStateEffects above)
+      writeNotifications(term, effects);
 
       return effects.suppressPrompt;
     },
-    [setFs, setCwd, sessionRouter, addDeliveredEmails, addDeliveredPiperMessages, saveGame, loadGame, getPrompt, setStoryFlag, runCoderTransition, runExitToNexacorp, applyStateEffects, writeNotifications, writePrompt]
+    [sessionRouter, saveGame, loadGame, getPrompt, runCoderTransition, runExitToNexacorp, runExitToHome, applyStateEffects, writeNotifications, writePrompt]
   );
 
   const handleInput = useCallback(
@@ -549,6 +473,8 @@ export function useTerminal() {
         // Check if any command in the pipeline is async
         const hasAsyncCmd = pipeline.some((p) => isAsyncCommand(p.command));
 
+        const ctxRefs: CommandContextRefs = { fsRef, cwdRef, activeComputerRef, storyFlagsRef };
+
         if (hasAsyncCmd) {
           busyRef.current = true;
           term.write(colorize("Loading...", ansi.dim));
@@ -556,50 +482,48 @@ export function useTerminal() {
           (async () => {
             let stdin: string | undefined;
             let lastResult: import("../engine/commands/types").CommandResult = { output: "" };
+            const allTriggerEvents: import("../engine/mail/delivery").GameEvent[] = [];
 
             for (let pi = 0; pi < pipeline.length; pi++) {
               const p = pipeline[pi];
               if (!p.command) continue;
 
-              const ctx = {
-                fs: fsRef.current,
-                cwd: cwdRef.current,
-                homeDir: currentFs.homeDir,
-                activeComputer: activeComputerRef.current,
-                storyFlags: storyFlagsRef.current,
+              const ctx = buildCommandContext(
+                ctxRefs,
+                currentFs.homeDir,
                 stdin,
-                rawArgs: p.rawArgs,
-                isPiped: pi < pipeline.length - 1 || !!redirectFile,
-                commandHistory: store.commandHistory,
-                snowflakeState: store.snowflakeState,
-                snowflakeContext: createDefaultContext(store.username),
-                setSnowflakeState: store.setSnowflakeState,
-              };
+                p.rawArgs,
+                pi < pipeline.length - 1 || !!redirectFile,
+                store
+              );
 
               if (isAsyncCommand(p.command)) {
                 lastResult = await executeAsync(p.command, p.args, p.flags, ctx);
               } else {
                 lastResult = execute(p.command, p.args, p.flags, ctx);
               }
+
+              // Accumulate trigger events from all pipeline steps
+              if (lastResult.triggerEvents) {
+                allTriggerEvents.push(...lastResult.triggerEvents);
+              }
+
+              // Apply FS changes mid-pipeline
+              if (lastResult.newFs) {
+                setFs(lastResult.newFs);
+                fsRef.current = lastResult.newFs;
+              }
+
               stdin = lastResult.output;
+            }
+
+            if (allTriggerEvents.length > 0) {
+              lastResult = { ...lastResult, triggerEvents: allTriggerEvents };
             }
 
             // Handle redirection
             if (redirectFile && lastResult) {
-              const absPath = resolvePath(redirectFile, currentCwd, currentFs.homeDir);
-              let content = lastResult.output;
-              if (redirectAppend) {
-                const existing = fsRef.current.readFile(absPath);
-                if (existing.content !== undefined) {
-                  content = existing.content + "\n" + content;
-                }
-              }
-              const writeResult = fsRef.current.writeFile(absPath, content);
-              if (writeResult.fs) {
-                setFs(writeResult.fs);
-                fsRef.current = writeResult.fs;
-              }
-              lastResult = { ...lastResult, output: "" };
+              lastResult = applyRedirection(redirectFile, redirectAppend, lastResult, currentCwd, currentFs.homeDir, fsRef, setFs);
             }
 
             term.write("\r\x1b[K");
@@ -615,27 +539,27 @@ export function useTerminal() {
         // Synchronous pipeline execution
         let stdin: string | undefined;
         let lastResult: import("../engine/commands/types").CommandResult = { output: "" };
+        const allTriggerEvents: import("../engine/mail/delivery").GameEvent[] = [];
 
         for (let pi = 0; pi < pipeline.length; pi++) {
           const p = pipeline[pi];
           if (!p.command) continue;
 
-          const ctx = {
-            fs: fsRef.current,
-            cwd: cwdRef.current,
-            homeDir: currentFs.homeDir,
-            activeComputer: activeComputerRef.current,
-            storyFlags: storyFlagsRef.current,
+          const ctx = buildCommandContext(
+            ctxRefs,
+            currentFs.homeDir,
             stdin,
-            rawArgs: p.rawArgs,
-            isPiped: pi < pipeline.length - 1 || !!redirectFile,
-            commandHistory: store.commandHistory,
-            snowflakeState: store.snowflakeState,
-            snowflakeContext: createDefaultContext(store.username),
-            setSnowflakeState: store.setSnowflakeState,
-          };
+            p.rawArgs,
+            pi < pipeline.length - 1 || !!redirectFile,
+            store
+          );
 
           lastResult = execute(p.command, p.args, p.flags, ctx);
+
+          // Accumulate trigger events from all pipeline steps
+          if (lastResult.triggerEvents) {
+            allTriggerEvents.push(...lastResult.triggerEvents);
+          }
 
           // Apply FS changes mid-pipeline
           if (lastResult.newFs) {
@@ -646,22 +570,13 @@ export function useTerminal() {
           stdin = lastResult.output;
         }
 
+        if (allTriggerEvents.length > 0) {
+          lastResult = { ...lastResult, triggerEvents: allTriggerEvents };
+        }
+
         // Handle redirection
         if (redirectFile && lastResult) {
-          const absPath = resolvePath(redirectFile, currentCwd, currentFs.homeDir);
-          let content = lastResult.output;
-          if (redirectAppend) {
-            const existing = fsRef.current.readFile(absPath);
-            if (existing.content !== undefined) {
-              content = existing.content + "\n" + content;
-            }
-          }
-          const writeResult = fsRef.current.writeFile(absPath, content);
-          if (writeResult.fs) {
-            setFs(writeResult.fs);
-            fsRef.current = writeResult.fs;
-          }
-          lastResult = { ...lastResult, output: "" };
+          lastResult = applyRedirection(redirectFile, redirectAppend, lastResult, currentCwd, currentFs.homeDir, fsRef, setFs);
         }
 
         const earlyReturn = applyCommandResult(lastResult, pipeline[pipeline.length - 1]);

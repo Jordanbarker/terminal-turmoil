@@ -106,7 +106,12 @@ export function getMailEntries(fs: VirtualFS): MailEntry[] {
     }
   }
 
-  entries.sort((a, b) => a.seq - b.seq);
+  entries.sort((a, b) => {
+    const da = new Date(a.parsed.date).getTime();
+    const db = new Date(b.parsed.date).getTime();
+    if (da !== db) return da - db;
+    return a.seq - b.seq;
+  });
   return entries;
 }
 

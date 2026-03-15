@@ -54,4 +54,4 @@ const sort: CommandHandler = (args, flags, ctx) => {
   return { output: lines.join("\n") };
 };
 
-register("sort", sort, "Sort lines of text", HELP_TEXTS.sort);
+register("sort", sort, "Sort lines of text", HELP_TEXTS.sort, true);

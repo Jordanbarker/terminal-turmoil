@@ -2,17 +2,6 @@
 
 PLAYER_USERNAME = "ren"
 
-# Departments used across NexaCorp
-DEPARTMENTS = [
-    "Engineering",
-    "Operations",
-    "Sales",
-    "Marketing",
-    "People & Culture",
-    "Product",
-    "Executive",
-]
-
 # Date range for events, access logs, etc.
 DATA_START_DATE = "2026-02-01"
 DATA_END_DATE = "2026-02-23"

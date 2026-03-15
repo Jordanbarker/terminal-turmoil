@@ -9,7 +9,7 @@ const cd: CommandHandler = (args, _flags, ctx) => {
   const result = ctx.fs.changeCwd(absolutePath);
 
   if (result.error) {
-    return { output: result.error };
+    return { output: result.error, exitCode: 1 };
   }
 
   return {

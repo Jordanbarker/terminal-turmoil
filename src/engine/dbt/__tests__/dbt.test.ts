@@ -39,7 +39,7 @@ const username = "player";
 function makeCtx(cwd: string): CommandContext {
   const root = createFilesystem(username, { dbt_project_cloned: true });
   const fs = new VirtualFS(root, cwd, `/home/${username}`);
-  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const, storyFlags: { pipeline_tools_unlocked: true } };
+  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const, storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true } };
 }
 
 const projectDir = `/home/${username}/nexacorp-analytics`;

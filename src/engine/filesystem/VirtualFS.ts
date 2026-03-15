@@ -1,6 +1,13 @@
 import { FSNode, DirectoryNode, FileNode, isDirectory, isFile } from "./types";
 import { normalizePath, resolvePath, parentPath, basename } from "../../lib/pathUtils";
 
+/**
+ * Returns true if the given FSNode is a binary file.
+ */
+export function isBinaryFile(node: FSNode | null | undefined): boolean {
+  return !!(node && node.type === "file" && node.metadata?.binary);
+}
+
 type PermissionOp = "read" | "write" | "execute";
 
 function checkPermission(permissions: string, op: PermissionOp): boolean {

@@ -3,7 +3,7 @@ import { isCommandAvailable, HOME_COMMANDS } from "../availability";
 
 describe("isCommandAvailable", () => {
   describe("home computer", () => {
-    it("allows all home commands from the start", () => {
+    it("allows all ungated home commands from the start", () => {
       for (const cmd of HOME_COMMANDS) {
         if (cmd === "pdftotext" || cmd === "tree") continue;
         expect(isCommandAvailable(cmd, "home")).toBe(true);
@@ -42,25 +42,41 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("python", "home")).toBe(true);
     });
 
+    it("blocks basic tools without basic_tools_unlocked flag", () => {
+      const basicTools = ["mkdir", "rm", "mv", "cp", "touch", "echo", "whoami", "hostname", "date", "which", "man", "file"];
+      for (const cmd of basicTools) {
+        expect(isCommandAvailable(cmd, "home")).toBe(false);
+        expect(isCommandAvailable(cmd, "home", {})).toBe(false);
+      }
+    });
+
+    it("unlocks basic tools with basic_tools_unlocked flag", () => {
+      const basicTools = ["mkdir", "rm", "mv", "cp", "touch", "echo", "whoami", "hostname", "date", "which", "man", "file"];
+      for (const cmd of basicTools) {
+        expect(isCommandAvailable(cmd, "home", { basic_tools_unlocked: true })).toBe(true);
+      }
+    });
+
     it("blocks commands not in the home set and not unlocked via NexaCorp", () => {
-      const blocked = ["grep", "find", "dbt", "snow", "diff", "wc", "echo", "chmod", "mkdir", "rm", "mv", "cp", "touch"];
+      const blocked = ["grep", "find", "dbt", "snow", "diff", "wc", "chmod"];
       for (const cmd of blocked) {
         expect(isCommandAvailable(cmd, "home")).toBe(false);
       }
     });
 
-    it("unlocks NexaCorp-gated commands on home when their flag is set", () => {
-      expect(isCommandAvailable("grep", "home", { search_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("find", "home", { search_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("diff", "home", { search_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("head", "home", { inspection_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("tail", "home", { inspection_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("wc", "home", { inspection_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("sort", "home", { processing_tools_unlocked: true })).toBe(true);
-      expect(isCommandAvailable("uniq", "home", { processing_tools_unlocked: true })).toBe(true);
+    it("unlocks power tools on home with returned_home_day1 flag", () => {
+      const flags = { returned_home_day1: true };
+      expect(isCommandAvailable("grep", "home", flags)).toBe(true);
+      expect(isCommandAvailable("find", "home", flags)).toBe(true);
+      expect(isCommandAvailable("diff", "home", flags)).toBe(true);
+      expect(isCommandAvailable("head", "home", flags)).toBe(true);
+      expect(isCommandAvailable("tail", "home", flags)).toBe(true);
+      expect(isCommandAvailable("wc", "home", flags)).toBe(true);
+      expect(isCommandAvailable("sort", "home", flags)).toBe(true);
+      expect(isCommandAvailable("uniq", "home", flags)).toBe(true);
     });
 
-    it("does not unlock NexaCorp-gated commands on home without their flag", () => {
+    it("does not unlock power tools on home without returned_home_day1 flag", () => {
       expect(isCommandAvailable("grep", "home", {})).toBe(false);
       expect(isCommandAvailable("head", "home", {})).toBe(false);
       expect(isCommandAvailable("sort", "home", {})).toBe(false);
@@ -69,7 +85,7 @@ describe("isCommandAvailable", () => {
 
   describe("nexacorp computer", () => {
     it("allows base commands without any flags", () => {
-      const baseCmds = ["ls", "cd", "cat", "pwd", "mkdir", "rm", "mv", "cp", "touch", "echo", "chmod", "nano", "mail", "clear", "help", "history", "whoami", "hostname", "uname", "date", "which", "man", "file", "save", "load", "newgame", "sudo", "apt", "ssh"];
+      const baseCmds = ["ls", "cd", "cat", "pwd", "mkdir", "rm", "mv", "cp", "touch", "echo", "nano", "mail", "clear", "help", "history", "whoami", "hostname", "date", "which", "man", "file", "save", "load", "newgame", "ssh"];
       for (const cmd of baseCmds) {
         expect(isCommandAvailable(cmd, "nexacorp")).toBe(true);
       }
@@ -87,6 +103,15 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("coder", "nexacorp")).toBe(false);
       expect(isCommandAvailable("chip", "nexacorp")).toBe(false);
       expect(isCommandAvailable("piper", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("chmod", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("dbt", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("snow", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("sudo", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("apt", "nexacorp")).toBe(false);
+    });
+
+    it("unlocks chmod with chmod_unlocked flag", () => {
+      expect(isCommandAvailable("chmod", "nexacorp", { chmod_unlocked: true })).toBe(true);
     });
 
     it("unlocks search tools with search_tools_unlocked flag", () => {
@@ -119,6 +144,20 @@ describe("isCommandAvailable", () => {
 
     it("unlocks piper with piper_unlocked flag", () => {
       expect(isCommandAvailable("piper", "nexacorp", { piper_unlocked: true })).toBe(true);
+    });
+
+    it("unlocks dbt and snow with devcontainer_visited flag", () => {
+      const flags = { devcontainer_visited: true };
+      expect(isCommandAvailable("dbt", "nexacorp", flags)).toBe(true);
+      expect(isCommandAvailable("snow", "nexacorp", flags)).toBe(true);
+    });
+
+    it("blocks sudo and apt on nexacorp (no root access)", () => {
+      expect(isCommandAvailable("sudo", "nexacorp")).toBe(false);
+      expect(isCommandAvailable("apt", "nexacorp")).toBe(false);
+      // apt_unlocked is only set at home, so these stay blocked on nexacorp
+      expect(isCommandAvailable("sudo", "nexacorp", { apt_unlocked: true })).toBe(true);
+      expect(isCommandAvailable("apt", "nexacorp", { apt_unlocked: true })).toBe(true);
     });
   });
 

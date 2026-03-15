@@ -218,14 +218,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "Print the system hostname.",
   ].join("\n"),
 
-  uname: [
-    "Usage: uname [-a]",
-    "",
-    "Print system information.",
-    "",
-    "  -a   print all information",
-  ].join("\n"),
-
   file: [
     "Usage: file FILE...",
     "",

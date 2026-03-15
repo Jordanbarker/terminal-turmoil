@@ -20,16 +20,16 @@ const rm: CommandHandler = (args, flags, ctx) => {
 
     if (!node) {
       if (force) continue;
-      return { output: `rm: cannot remove '${arg}': No such file or directory` };
+      return { output: `rm: cannot remove '${arg}': No such file or directory`, exitCode: 1 };
     }
 
     if (isDirectory(node) && !recursive) {
-      return { output: `rm: cannot remove '${arg}': Is a directory` };
+      return { output: `rm: cannot remove '${arg}': Is a directory`, exitCode: 1 };
     }
 
     const result = currentFs.removeNode(absPath);
     if (result.error) {
-      return { output: result.error };
+      return { output: result.error, exitCode: 1 };
     }
     currentFs = result.fs!;
   }

@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { colorizeCsv } from "../../../lib/ansi";
 import { highlightSql } from "../../../lib/sqlHighlight";
+import { isBinaryFile } from "../../filesystem/VirtualFS";
 import { HELP_TEXTS } from "./helpTexts";
 
 const cat: CommandHandler = (args, _flags, ctx) => {
@@ -14,12 +15,13 @@ const cat: CommandHandler = (args, _flags, ctx) => {
   }
 
   const outputs: string[] = [];
+  let hasError = false;
 
   for (const arg of args) {
     const absolutePath = resolvePath(arg, ctx.cwd, ctx.homeDir);
     const node = ctx.fs.getNode(absolutePath);
 
-    if (node && node.type === "file" && node.metadata?.binary) {
+    if (isBinaryFile(node)) {
       const hint = arg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
       outputs.push(`cat: ${arg}: binary file${hint}`);
       continue;
@@ -29,6 +31,7 @@ const cat: CommandHandler = (args, _flags, ctx) => {
 
     if (result.error) {
       outputs.push(result.error);
+      hasError = true;
     } else if (result.content !== undefined) {
       const content = arg.endsWith(".csv")
         ? colorizeCsv(result.content)
@@ -39,7 +42,7 @@ const cat: CommandHandler = (args, _flags, ctx) => {
     }
   }
 
-  return { output: outputs.join("\n") };
+  return { output: outputs.join("\n"), exitCode: hasError ? 1 : 0 };
 };
 
-register("cat", cat, "Display file contents", HELP_TEXTS.cat);
+register("cat", cat, "Display file contents", HELP_TEXTS.cat, true);

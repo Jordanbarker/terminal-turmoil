@@ -4,7 +4,7 @@ import { resolvePath } from "../../../lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 
 function countStats(content: string): { lines: number; words: number; chars: number } {
-  const lines = content === "" ? 0 : content.split("\n").length;
+  const lines = content === "" ? 0 : content.replace(/\n$/, "").split("\n").length;
   const words = content.trim() === "" ? 0 : content.trim().split(/\s+/).length;
   const chars = content.length;
   return { lines, words, chars };
@@ -73,4 +73,4 @@ const wc: CommandHandler = (args, flags, ctx) => {
   return { output: outputLines.join("\n") };
 };
 
-register("wc", wc, "Count lines, words, and characters", HELP_TEXTS.wc);
+register("wc", wc, "Count lines, words, and characters", HELP_TEXTS.wc, true);

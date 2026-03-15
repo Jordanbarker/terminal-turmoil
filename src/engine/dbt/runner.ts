@@ -24,7 +24,7 @@ import { materializeModels } from "./materialize";
 function loadProject(ctx: CommandContext): { projectRoot: string } | { error: string } {
   const projectRoot = findDbtProject(ctx.fs, ctx.cwd);
   if (!projectRoot) {
-    return { error: "Runtime Error\n  Could not find dbt_project.yml. Are you in a dbt project directory?" };
+    return { error: "Runtime Error\n  Could not find dbt_project.yml. Are you in a dbt project directory?\n  Hint: Run 'chip' to initialize your workspace, then cd into the project." };
   }
   return { projectRoot };
 }

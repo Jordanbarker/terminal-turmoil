@@ -3,14 +3,14 @@
 import random
 from faker import Faker
 
-from config import DEPARTMENTS, RANDOM_SEED
+from config import RANDOM_SEED
 from narrative import NARRATIVE_RAW_EMPLOYEES
 
 fake = Faker()
 Faker.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
 
-# Departments used in raw employees (subset of DEPARTMENTS)
+# Executives excluded — they don't appear in raw employee rows
 RAW_DEPARTMENTS = [
     "Engineering", "Operations", "Sales", "Marketing",
     "People & Culture", "Product",
@@ -19,9 +19,6 @@ RAW_DEPARTMENTS = [
 
 def generate_raw_employees() -> list[dict]:
     """Generate ~17 raw employee rows including narrative employees."""
-    # Reserve IDs for narrative employees
-    narrative_ids = {e["EMPLOYEE_ID"] for e in NARRATIVE_RAW_EMPLOYEES}
-
     employees = []
     employee_id_counter = 1
 
