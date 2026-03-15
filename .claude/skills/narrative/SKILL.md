@@ -150,7 +150,8 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 type ObjectiveCompletionCheck =
   | { source: "storyFlag"; key: string }
   | { source: "completedObjective"; key: string }
-  | { source: "deliveredEmail"; key: string };
+  | { source: "deliveredEmail"; key: string }
+  | { source: "allVisibleChildren" };    // Derives completion from visible children with group pointing to this objective
 
 interface ObjectiveDefinition {
   id: string;
@@ -161,6 +162,7 @@ interface ObjectiveDefinition {
   prerequisite?: string;                 // Objective ID that must complete first (shows objective)
   visibleWhen?: ObjectiveCompletionCheck; // Alternative to prerequisite — show when check passes
   optional?: boolean;                    // Non-blocking objective
+  group?: string;                        // Parent objective ID — groups this objective under the parent in the tracker
 }
 
 interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDefinition[] }
@@ -168,17 +170,38 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
 
 ### CHAPTERS
 
-- **chapter-1** ("New Beginnings"): 5 objectives — explore_home (optional), fix_backup (hidden/optional), run_auto_apply (optional), check_email, accept_offer (with failCheck)
-- **chapter-2** ("First Day"): 15 objectives — read_welcome_email, read_onboarding, meet_the_team, review_handoff, run_dbt, oscar_search/check/diff_logs (hidden/optional, visibleWhen), auri_use_head/tail/wc (hidden/optional, visibleWhen), explore_jchen (hidden/optional), discover_tampering (hidden/optional), find_directives (hidden/optional), find_filtering (hidden/optional)
+- **chapter-1** ("New Beginnings"): Core objectives + 3 grouped optional quest lines:
+  - `olive_challenges` (allVisibleChildren) → 6 children: olive_ch_file/which/projects/mv/echo/man
+  - `cleanup_quest` (allVisibleChildren) → 5 children: cleanup_discover/investigate/identify/remove/verify
+  - `backup_quest` (allVisibleChildren) → 4 children: backup_mkdir/copy/log/verify
+  - Ungrouped: explore_home, learn_linux_basics, fix_backup, run_auto_apply, check_email, check_piper, accept_offer
+- **chapter-2** ("First Day"): Core objectives + grouped sub-quests:
+  - `help_oscar_logs` (concrete check) → 3 children: oscar_search/check/diff_logs
+  - `help_auri_inspect` (concrete check) → 3 children: auri_use_head/tail/wc
+  - `explore_jchen` (concrete check) → 2 children: discover_tampering, find_directives
+  - `olive_power_tools` (allVisibleChildren) → 5 children: olive_pt_grep/wc/redirect/sort_uniq/find
+  - Ungrouped: read_welcome_email, read_onboarding, meet_the_team, review_handoff, help_auri_pipeline, run_dbt, head_home, find_filtering, investigate_ops_data
 
 ### Objective Resolution (`objectives.ts`)
 
 ```ts
-interface ResolvedObjective { id: string; description: string; completed: boolean; visible: boolean }
+interface ResolvedObjective { id: string; description: string; completed: boolean; failed: boolean; visible: boolean; optional: boolean; group?: string }
 function resolveObjectives(chapter, storyFlags, completedObjectives, deliveredEmailIds): ResolvedObjective[]
 ```
 
-Resolves each objective's completion state from story flags, completed objectives, or delivered emails. Hidden objectives become visible once their prerequisite is completed.
+Three-pass resolution:
+1. **Pass 1**: Compute completion for concrete checks (storyFlag, completedObjective, deliveredEmail)
+2. **Pass 2**: Determine visibility (hidden/prerequisite/visibleWhen logic)
+3. **Pass 3**: Compute derived completion for `allVisibleChildren` parents: complete iff visible children exist AND all are complete
+
+### Adding Objective Groups
+
+To group sub-quests under a parent header in the ObjectiveTracker:
+
+1. **Create the parent objective** with `check: { source: "allVisibleChildren" }` — or use a concrete check if the parent has its own completion condition
+2. **Add `group: "parent_id"` to each child** objective
+3. **Constraints**: groups cannot be nested (a child cannot also be a parent), and group must reference an ID in the same chapter. The `storyIntegrity.test.ts` validates both rules
+4. The ObjectiveTracker renders children indented under the parent. When the parent is completed, children collapse
 
 ### Command Gating
 

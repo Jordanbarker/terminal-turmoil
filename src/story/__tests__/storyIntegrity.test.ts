@@ -153,7 +153,39 @@ describe("Story Integrity", () => {
     });
   });
 
-  describe("8. NEXACORP_EMAIL_IDS matches actual nexacorp email definitions", () => {
+  describe("8. Objective group references are valid", () => {
+    it("all group references point to valid objective IDs within the same chapter", () => {
+      for (const chapter of CHAPTERS) {
+        const objectiveIds = new Set(chapter.objectives.map((o) => o.id));
+        for (const objective of chapter.objectives) {
+          if (objective.group) {
+            expect(
+              objectiveIds.has(objective.group),
+              `Objective '${objective.id}' in '${chapter.id}' references group '${objective.group}' which doesn't exist in the same chapter`
+            ).toBe(true);
+          }
+        }
+      }
+    });
+
+    it("no nested groups — grouped objectives cannot themselves be group parents", () => {
+      for (const chapter of CHAPTERS) {
+        const parentIds = new Set(
+          chapter.objectives.filter((o) => o.group).map((o) => o.group!)
+        );
+        for (const objective of chapter.objectives) {
+          if (objective.group) {
+            expect(
+              parentIds.has(objective.id),
+              `Objective '${objective.id}' in '${chapter.id}' is both a child (group: '${objective.group}') and a parent`
+            ).toBe(false);
+          }
+        }
+      }
+    });
+  });
+
+  describe("9. NEXACORP_EMAIL_IDS matches actual nexacorp email definitions", () => {
     it("all IDs in NEXACORP_EMAIL_IDS exist in actual definitions", () => {
       const nexaEmailDefs = getNexacorpEmailDefinitions(TEST_USERNAME);
       const actualIds = new Set(nexaEmailDefs.map((d) => d.email.id));

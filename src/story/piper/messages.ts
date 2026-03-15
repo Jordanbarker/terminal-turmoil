@@ -42,6 +42,8 @@ export const PIPER_DELIVERY_IDS = [
   "oscar_log_tips",
   "dana_welcome",
   "oscar_access_review",
+  "oscar_log_normal",
+  "oscar_log_tampered",
   "oscar_processing_tips",
   "auri_hello",
   "auri_inspection_tips",

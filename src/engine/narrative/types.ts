@@ -3,7 +3,8 @@ import { StoryFlagName } from "./storyFlags";
 export type ObjectiveCompletionCheck =
   | { source: "storyFlag"; key: StoryFlagName }
   | { source: "completedObjective"; key: string }
-  | { source: "deliveredEmail"; key: string };
+  | { source: "deliveredEmail"; key: string }
+  | { source: "allVisibleChildren" };
 
 export interface ObjectiveDefinition {
   id: string;
@@ -14,6 +15,7 @@ export interface ObjectiveDefinition {
   prerequisite?: string;
   visibleWhen?: ObjectiveCompletionCheck;
   optional?: boolean;
+  group?: string;
 }
 
 export interface ChapterDefinition {

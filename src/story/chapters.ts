@@ -55,12 +55,21 @@ export const CHAPTERS: ChapterDefinition[] = [
 
       // Quest 1: Olive's Terminal Challenges
       {
+        id: "olive_challenges",
+        description: "Olive's Terminal Challenges",
+        check: { source: "allVisibleChildren" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "olive_challenges_read" },
+      },
+      {
         id: "olive_ch_file",
         description: "Identify a .deb package with file",
         check: { source: "storyFlag", key: "used_file_on_deb" },
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "olive_challenges_read" },
+        group: "olive_challenges",
       },
       {
         id: "olive_ch_which",
@@ -69,6 +78,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "used_file_on_deb" },
+        group: "olive_challenges",
       },
       {
         id: "olive_ch_projects",
@@ -77,6 +87,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "used_which_python" },
+        group: "olive_challenges",
       },
       {
         id: "olive_ch_mv",
@@ -85,6 +96,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "created_projects_dir" },
+        group: "olive_challenges",
       },
       {
         id: "olive_ch_echo",
@@ -93,6 +105,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "used_mv_home" },
+        group: "olive_challenges",
       },
       {
         id: "olive_ch_man",
@@ -101,9 +114,18 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "used_echo_pipe" },
+        group: "olive_challenges",
       },
 
       // Quest 2: Digital Spring Cleaning
+      {
+        id: "cleanup_quest",
+        description: "Digital Spring Cleaning",
+        check: { source: "allVisibleChildren" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
+      },
       {
         id: "cleanup_discover",
         description: "Explore ~/.cache for remnants",
@@ -111,6 +133,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
+        group: "cleanup_quest",
       },
       {
         id: "cleanup_investigate",
@@ -119,6 +142,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
+        group: "cleanup_quest",
       },
       {
         id: "cleanup_identify",
@@ -127,6 +151,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
+        group: "cleanup_quest",
       },
       {
         id: "cleanup_remove",
@@ -135,6 +160,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
+        group: "cleanup_quest",
       },
       {
         id: "cleanup_verify",
@@ -143,9 +169,18 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
+        group: "cleanup_quest",
       },
 
       // Quest 3: Fix & Extend Backup
+      {
+        id: "backup_quest",
+        description: "Fix & Extend Backup",
+        check: { source: "allVisibleChildren" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "backup_quest_started" },
+      },
       {
         id: "backup_mkdir",
         description: "Create a backup directory",
@@ -153,6 +188,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "backup_quest_started" },
+        group: "backup_quest",
       },
       {
         id: "backup_copy",
@@ -161,6 +197,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "backup_quest_started" },
+        group: "backup_quest",
       },
       {
         id: "backup_log",
@@ -169,6 +206,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "backup_quest_started" },
+        group: "backup_quest",
       },
       {
         id: "backup_verify",
@@ -177,6 +215,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "backup_quest_started" },
+        group: "backup_quest",
       },
     ],
   },
@@ -252,6 +291,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "search_tools_accepted" },
+        group: "help_oscar_logs",
       },
       {
         id: "oscar_check_backups",
@@ -260,6 +300,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "search_tools_accepted" },
+        group: "help_oscar_logs",
       },
       {
         id: "oscar_diff_logs",
@@ -268,6 +309,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "search_tools_accepted" },
+        group: "help_oscar_logs",
       },
       {
         id: "auri_use_head",
@@ -276,6 +318,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "inspection_tools_accepted" },
+        group: "help_auri_inspect",
       },
       {
         id: "auri_use_tail",
@@ -284,6 +327,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "inspection_tools_accepted" },
+        group: "help_auri_inspect",
       },
       {
         id: "auri_use_wc",
@@ -292,6 +336,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "inspection_tools_accepted" },
+        group: "help_auri_inspect",
       },
       {
         id: "explore_jchen",
@@ -307,6 +352,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         prerequisite: "explore_jchen",
         optional: true,
+        group: "explore_jchen",
       },
       {
         id: "find_directives",
@@ -315,6 +361,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         prerequisite: "explore_jchen",
         optional: true,
+        group: "explore_jchen",
       },
       {
         id: "find_filtering",
@@ -335,12 +382,21 @@ export const CHAPTERS: ChapterDefinition[] = [
 
       // Quest 4: Olive's Power Tools (visible after returning home)
       {
+        id: "olive_power_tools",
+        description: "Olive's Power Tools",
+        check: { source: "allVisibleChildren" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "olive_power_tools_read" },
+      },
+      {
         id: "olive_pt_grep",
         description: "Filter output with grep",
         hidden: true,
         optional: true,
         check: { source: "storyFlag", key: "used_grep_at_home" },
         visibleWhen: { source: "storyFlag", key: "olive_power_tools_read" },
+        group: "olive_power_tools",
       },
       {
         id: "olive_pt_wc",
@@ -349,6 +405,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         optional: true,
         check: { source: "storyFlag", key: "used_wc_at_home" },
         visibleWhen: { source: "storyFlag", key: "used_grep_at_home" },
+        group: "olive_power_tools",
       },
       {
         id: "olive_pt_redirect",
@@ -357,6 +414,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         optional: true,
         check: { source: "storyFlag", key: "used_history_redirect" },
         visibleWhen: { source: "storyFlag", key: "used_wc_at_home" },
+        group: "olive_power_tools",
       },
       {
         id: "olive_pt_sort_uniq",
@@ -365,6 +423,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         optional: true,
         check: { source: "storyFlag", key: "used_sort_uniq_home" },
         visibleWhen: { source: "storyFlag", key: "used_history_redirect" },
+        group: "olive_power_tools",
       },
       {
         id: "olive_pt_find",
@@ -373,6 +432,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         optional: true,
         check: { source: "storyFlag", key: "used_find_home" },
         visibleWhen: { source: "storyFlag", key: "used_sort_uniq_home" },
+        group: "olive_power_tools",
       },
     ],
   },

@@ -91,7 +91,7 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
       trigger: { type: "after_objective", objectiveId: "search_tools_tips_requested" },
     },
 
-    // === DM Oscar: Access review / sort+uniq (after search_tools_accepted) ===
+    // === DM Oscar: What did you find? (after reading system.log) ===
     {
       id: "oscar_access_review",
       channelId: "dm_oscar",
@@ -100,18 +100,52 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
           id: "oscar_access_1",
           from: "Oscar Diaz",
           timestamp: "10:30 AM",
-          body: "Hey again — thanks for helping with the logs earlier!",
+          body: "Hey — find anything interesting in those logs?",
         },
         {
           id: "oscar_access_2",
           from: "Oscar Diaz",
           timestamp: "10:30 AM",
-          body: "One more ask: I pulled a file access audit log from IT. It's at /var/log/access.log. Reading it is like a fun game of 'spot who has too much access.' Spoiler: the list is longer than you'd hope.",
+          body: "I took another look too. Some cron failures, an nginx timeout, the usual. Nothing that screams '3am sabotage.'",
+        },
+      ],
+      trigger: { type: "after_file_read", filePath: "/var/log/system.log", requireDelivered: "oscar_log_check" },
+      replyOptions: [
+        {
+          label: "Nothing weird — probably just a bad deploy.",
+          messageBody: "Yeah, nothing jumped out. Probably just a bad deploy that auto-recovered.",
+          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_normal" }],
         },
         {
-          id: "oscar_access_3",
+          label: "I diffed the logs — entries were stripped from the backup.",
+          messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",
+          visibleWhen: { flag: "discovered_log_tampering" },
+          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_tampered" }],
+        },
+      ],
+    },
+
+    // === Oscar: Crisis averted path → access.log ask ===
+    {
+      id: "oscar_log_normal",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_normal_1",
           from: "Oscar Diaz",
           timestamp: "10:31 AM",
+          body: "Yeah, that's what I'm thinking. Bad deploy that auto-recovered. Wouldn't be the first time.",
+        },
+        {
+          id: "oscar_normal_2",
+          from: "Oscar Diaz",
+          timestamp: "10:35 AM",
+          body: "Unrelated — while I was in there I noticed chip_service_account showing up a lot in /var/log/access.log. You're the AI person, right? Does that level of file access look normal to you?",
+        },
+        {
+          id: "oscar_normal_3",
+          from: "Oscar Diaz",
+          timestamp: "10:36 AM",
           body: `Could you sort through it and count how many times each entry shows up? Something like:
 
   sort /var/log/access.log | uniq -c
@@ -119,7 +153,59 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
 That should group the duplicates and show counts. Curious if anything jumps out.`,
         },
       ],
-      trigger: { type: "after_file_read", filePath: "/var/log/system.log", requireDelivered: "oscar_log_check" },
+      trigger: { type: "after_objective", objectiveId: "oscar_logs_normal" },
+      replyOptions: [
+        {
+          label: "On it — I'll sort through it.",
+          messageBody: "Sure thing, I'll sort the access log and see what stands out.",
+          triggerEvents: [{ type: "objective_completed", detail: "processing_tools_accepted" }],
+        },
+        {
+          label: "Sure — quick refresher on sort and uniq?",
+          messageBody: "Happy to help! Can you remind me how sort and uniq work?",
+          triggerEvents: [
+            { type: "objective_completed", detail: "processing_tools_tips_requested" },
+            { type: "objective_completed", detail: "processing_tools_accepted" },
+          ],
+        },
+      ],
+    },
+
+    // === Oscar: Tampering discovered path → access.log ask ===
+    {
+      id: "oscar_log_tampered",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_tamper_1",
+          from: "Oscar Diaz",
+          timestamp: "10:31 AM",
+          body: "Wait, entries in the backup that aren't in the live log?",
+        },
+        {
+          id: "oscar_tamper_2",
+          from: "Oscar Diaz",
+          timestamp: "10:31 AM",
+          body: "That's not log rotation. That looks like someone — or something — cleaning up after itself.",
+        },
+        {
+          id: "oscar_tamper_3",
+          from: "Oscar Diaz",
+          timestamp: "10:35 AM",
+          body: "OK this makes the access audit even more interesting. I noticed chip_service_account showing up a lot in /var/log/access.log. If something's scrubbing logs, I want to know what else it's touching.",
+        },
+        {
+          id: "oscar_tamper_4",
+          from: "Oscar Diaz",
+          timestamp: "10:36 AM",
+          body: `Could you sort through it and count how many times each entry shows up? Something like:
+
+  sort /var/log/access.log | uniq -c
+
+That should group the duplicates and show counts. Curious if anything jumps out.`,
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "oscar_logs_tampered" },
       replyOptions: [
         {
           label: "On it — I'll sort through it.",

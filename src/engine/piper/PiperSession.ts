@@ -44,6 +44,7 @@ export class PiperSession implements ISession {
   private activeChannelDesc?: string;
   private replyOptions: PiperReplyOption[] = [];
   private replyDeliveryId = "";
+  private replyOptionMapping: number[] = [];
 
   // Scroll state
   private scrollOffset = 0;
@@ -238,9 +239,7 @@ export class PiperSession implements ISession {
     this.markChannelSeen();
 
     // Check for pending replies
-    const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
-    this.replyOptions = pending?.options ?? [];
-    this.replyDeliveryId = pending?.deliveryId ?? "";
+    this.refreshReplyOptions();
 
     this.terminal.write(`\x1b[H\x1b[J${this.buildConversationView()}`);
   }
@@ -250,8 +249,8 @@ export class PiperSession implements ISession {
     const option = this.replyOptions[idx];
     this.scrollOffset = 0;
 
-    // Track the reply
-    const replyId = `reply:${this.replyDeliveryId}:${idx}`;
+    // Track the reply (use original index for stable IDs)
+    const replyId = `reply:${this.replyDeliveryId}:${this.replyOptionMapping[idx]}`;
     this.info.deliveredPiperIds = [...this.info.deliveredPiperIds, replyId];
 
     // Count messages before delivering follow-ups
@@ -323,10 +322,7 @@ export class PiperSession implements ISession {
       this.animationTimer = setTimeout(() => this.showNextMessage(), 500);
     } else {
       // No same-channel follow-ups — just redraw
-      const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
-      this.replyOptions = pending?.options ?? [];
-      this.replyDeliveryId = pending?.deliveryId ?? "";
-      this.selectedIndex = 0;
+      this.refreshReplyOptions();
 
       this.terminal.write(`\x1b[H\x1b[J${this.buildConversationView()}`);
     }
@@ -382,10 +378,7 @@ export class PiperSession implements ISession {
       this.animationTimer = null;
       this.markChannelSeen();
 
-      const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
-      this.replyOptions = pending?.options ?? [];
-      this.replyDeliveryId = pending?.deliveryId ?? "";
-      this.selectedIndex = 0;
+      this.refreshReplyOptions();
 
       this.redraw();
     }
@@ -511,12 +504,26 @@ export class PiperSession implements ISession {
     this.hiddenMessageCount = 0;
     this.markChannelSeen();
 
-    const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
-    this.replyOptions = pending?.options ?? [];
-    this.replyDeliveryId = pending?.deliveryId ?? "";
-    this.selectedIndex = 0;
+    this.refreshReplyOptions();
 
     this.redraw();
+  }
+
+  private refreshReplyOptions(): void {
+    const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    this.replyOptionMapping = [];
+    this.replyOptions = [];
+    this.replyDeliveryId = "";
+    if (pending?.options) {
+      for (let i = 0; i < pending.options.length; i++) {
+        const opt = pending.options[i];
+        if (opt.visibleWhen && !this.info.storyFlags[opt.visibleWhen.flag]) continue;
+        this.replyOptionMapping.push(i);
+        this.replyOptions.push(opt);
+      }
+      this.replyDeliveryId = pending.deliveryId;
+    }
+    this.selectedIndex = 0;
   }
 
   private getWidth(): number {

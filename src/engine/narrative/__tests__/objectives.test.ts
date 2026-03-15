@@ -145,4 +145,148 @@ describe("resolveObjectives", () => {
       "hidden_obj",
     ]);
   });
+
+  describe("allVisibleChildren", () => {
+    const groupChapter: ChapterDefinition = {
+      id: "group-chapter",
+      title: "Group Chapter",
+      objectives: [
+        {
+          id: "parent",
+          description: "Parent quest",
+          check: { source: "allVisibleChildren" },
+          hidden: true,
+          optional: true,
+          visibleWhen: { source: "storyFlag", key: "parent_visible" as StoryFlagName } as ObjectiveCompletionCheck,
+        },
+        {
+          id: "child_a",
+          description: "Child A",
+          check: { source: "storyFlag", key: "child_a_done" as StoryFlagName } as ObjectiveCompletionCheck,
+          hidden: true,
+          optional: true,
+          visibleWhen: { source: "storyFlag", key: "parent_visible" as StoryFlagName } as ObjectiveCompletionCheck,
+          group: "parent",
+        },
+        {
+          id: "child_b",
+          description: "Child B",
+          check: { source: "storyFlag", key: "child_b_done" as StoryFlagName } as ObjectiveCompletionCheck,
+          hidden: true,
+          optional: true,
+          visibleWhen: { source: "storyFlag", key: "child_a_done" as StoryFlagName } as ObjectiveCompletionCheck,
+          group: "parent",
+        },
+        {
+          id: "ungrouped",
+          description: "Ungrouped objective",
+          check: { source: "storyFlag", key: "ungrouped_done" as StoryFlagName } as ObjectiveCompletionCheck,
+        },
+      ],
+    };
+
+    it("completes parent when all visible children are complete", () => {
+      const result = resolveObjectives(
+        groupChapter,
+        { parent_visible: true, child_a_done: true, child_b_done: true },
+        [],
+        []
+      );
+      expect(result.find((o) => o.id === "parent")?.completed).toBe(true);
+    });
+
+    it("does not complete parent when some visible children are incomplete", () => {
+      const result = resolveObjectives(
+        groupChapter,
+        { parent_visible: true, child_a_done: true },
+        [],
+        []
+      );
+      expect(result.find((o) => o.id === "parent")?.completed).toBe(false);
+    });
+
+    it("does not complete parent when no children are visible", () => {
+      // parent is visible but no children are (none have their visibleWhen met)
+      const chapterWithHiddenChildren: ChapterDefinition = {
+        id: "hidden-children",
+        title: "Hidden Children",
+        objectives: [
+          {
+            id: "parent",
+            description: "Parent",
+            check: { source: "allVisibleChildren" },
+          },
+          {
+            id: "child",
+            description: "Child",
+            check: { source: "storyFlag", key: "child_done" as StoryFlagName } as ObjectiveCompletionCheck,
+            hidden: true,
+            visibleWhen: { source: "storyFlag", key: "never_set" as StoryFlagName } as ObjectiveCompletionCheck,
+            group: "parent",
+          },
+        ],
+      };
+      const result = resolveObjectives(chapterWithHiddenChildren, {}, [], []);
+      expect(result.find((o) => o.id === "parent")?.completed).toBe(false);
+    });
+
+    it("passes group field through to resolved objectives", () => {
+      const result = resolveObjectives(groupChapter, {}, [], []);
+      expect(result.find((o) => o.id === "child_a")?.group).toBe("parent");
+      expect(result.find((o) => o.id === "child_b")?.group).toBe("parent");
+      expect(result.find((o) => o.id === "ungrouped")?.group).toBeUndefined();
+      expect(result.find((o) => o.id === "parent")?.group).toBeUndefined();
+    });
+
+    it("handles mixed grouped and ungrouped objectives", () => {
+      const result = resolveObjectives(
+        groupChapter,
+        { parent_visible: true, child_a_done: true, child_b_done: true, ungrouped_done: true },
+        [],
+        []
+      );
+      expect(result.find((o) => o.id === "parent")?.completed).toBe(true);
+      expect(result.find((o) => o.id === "ungrouped")?.completed).toBe(true);
+    });
+
+    it("only considers visible children for completion", () => {
+      // child_a is visible and complete, child_b is not visible
+      const result = resolveObjectives(
+        groupChapter,
+        { parent_visible: true, child_a_done: true },
+        [],
+        []
+      );
+      // child_b is not visible (visibleWhen: child_a_done → true, so actually it IS visible)
+      // Let me construct a case where child_b truly isn't visible
+      const chapterMixed: ChapterDefinition = {
+        id: "mixed",
+        title: "Mixed",
+        objectives: [
+          {
+            id: "parent",
+            description: "Parent",
+            check: { source: "allVisibleChildren" },
+          },
+          {
+            id: "child_visible",
+            description: "Visible child",
+            check: { source: "storyFlag", key: "cv_done" as StoryFlagName } as ObjectiveCompletionCheck,
+            group: "parent",
+          },
+          {
+            id: "child_hidden",
+            description: "Hidden child",
+            check: { source: "storyFlag", key: "ch_done" as StoryFlagName } as ObjectiveCompletionCheck,
+            hidden: true,
+            visibleWhen: { source: "storyFlag", key: "never_set" as StoryFlagName } as ObjectiveCompletionCheck,
+            group: "parent",
+          },
+        ],
+      };
+      // Only child_visible is visible and it's complete
+      const result2 = resolveObjectives(chapterMixed, { cv_done: true }, [], []);
+      expect(result2.find((o) => o.id === "parent")?.completed).toBe(true);
+    });
+  });
 });

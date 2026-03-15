@@ -13,6 +13,7 @@ export interface PiperReplyOption {
   label: string;
   messageBody: string;
   triggerEvents?: GameEvent[];
+  visibleWhen?: { flag: string };
 }
 
 export interface PiperDelivery {
