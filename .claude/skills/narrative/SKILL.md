@@ -138,7 +138,7 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 
 | Flag | Event | Path / Detail | Value |
 |------|-------|---------------|-------|
-| `ran_dbt` | `command_executed` | detail: `dbt` | `true` |
+| `ran_dbt` | `command_executed` | detail: `dbt_build` | `true` |
 | `found_data_filtering` | `file_read` | multiple model SQL files under `models/` | `true` |
 | `found_data_filtering` | `file_read` | detail: `found_data_filtering` | `true` |
 
@@ -177,7 +177,7 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
   - Ungrouped: explore_home, learn_linux_basics, fix_backup, run_auto_apply, check_email, check_piper, accept_offer
 - **chapter-2** ("First Day"): Core objectives + grouped sub-quests:
   - `help_oscar_logs` (concrete check) → 3 children: oscar_search/check/diff_logs
-  - `help_auri_inspect` (concrete check) → 3 children: auri_use_head/tail/wc
+  - `meet_auri` (concrete check) → 5 optional children: auri_ls_data, auri_check_todo, auri_use_head/tail/wc
   - `explore_jchen` (concrete check) → 2 children: discover_tampering, find_directives
   - `olive_power_tools` (allVisibleChildren) → 5 children: olive_pt_grep/wc/redirect/sort_uniq/find
   - Ungrouped: read_welcome_email, read_onboarding, meet_the_team, review_handoff, help_auri_pipeline, run_dbt, head_home, find_filtering, investigate_ops_data

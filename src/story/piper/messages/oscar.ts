@@ -223,6 +223,138 @@ That should group the duplicates and show counts. Curious if anything jumps out.
       ],
     },
 
+    // === Oscar: Follow-up after reading access.log (normal path) ===
+    {
+      id: "oscar_access_followup",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_followup_1",
+          from: "Oscar Diaz",
+          timestamp: "11:15 AM",
+          body: "See anything interesting in that access log?",
+        },
+        {
+          id: "oscar_followup_2",
+          from: "Oscar Diaz",
+          timestamp: "11:15 AM",
+          body: "That chip_service_account is showing up everywhere, right? SSH keys, leadership docs, personnel files... For something that's supposed to be a 'helpful assistant' it sure is reading a lot of stuff that has nothing to do with helping anyone.",
+        },
+      ],
+      trigger: { type: "after_file_read", filePath: "/var/log/access.log", requireDelivered: "oscar_log_normal" },
+      replyOptions: [
+        {
+          label: "It's reading SSH keys and leadership docs — that doesn't seem right.",
+          messageBody: "Yeah, chip_service_account is all over the SSH keys and leadership docs. That's way outside the scope of an AI assistant.",
+          triggerEvents: [
+            { type: "objective_completed", detail: "oscar_access_suspicious" },
+            { type: "objective_completed", detail: "oscar_access_reported" },
+          ],
+        },
+        {
+          label: "Mostly normal access patterns, nothing too concerning.",
+          messageBody: "Looks mostly like normal service account stuff to me. Nothing that jumps out.",
+          triggerEvents: [
+            { type: "objective_completed", detail: "oscar_access_dismissed" },
+            { type: "objective_completed", detail: "oscar_access_reported" },
+          ],
+        },
+      ],
+    },
+
+    // === Oscar: Follow-up after reading access.log (tampered path) ===
+    {
+      id: "oscar_access_followup_tampered",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_followup_t1",
+          from: "Oscar Diaz",
+          timestamp: "11:15 AM",
+          body: "See anything interesting in that access log?",
+        },
+        {
+          id: "oscar_followup_t2",
+          from: "Oscar Diaz",
+          timestamp: "11:15 AM",
+          body: "That chip_service_account is showing up everywhere, right? SSH keys, leadership docs, personnel files... Combine that with the log scrubbing you found earlier and this is starting to look less like a misconfiguration and more like something deliberate.",
+        },
+      ],
+      trigger: { type: "after_file_read", filePath: "/var/log/access.log", requireDelivered: "oscar_log_tampered" },
+      replyOptions: [
+        {
+          label: "It's reading SSH keys and leadership docs — that doesn't seem right.",
+          messageBody: "Yeah, chip_service_account is all over the SSH keys and leadership docs. Combined with the log tampering — something is very wrong here.",
+          triggerEvents: [
+            { type: "objective_completed", detail: "oscar_access_suspicious" },
+            { type: "objective_completed", detail: "oscar_access_reported" },
+          ],
+        },
+        {
+          label: "Mostly normal access patterns, nothing too concerning.",
+          messageBody: "Looks mostly like normal service account stuff to me. Nothing that jumps out beyond what we already found.",
+          triggerEvents: [
+            { type: "objective_completed", detail: "oscar_access_dismissed" },
+            { type: "objective_completed", detail: "oscar_access_reported" },
+          ],
+        },
+      ],
+    },
+
+    // === Oscar: Reaction after player reports back ===
+    {
+      id: "oscar_access_reaction",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_reaction_1",
+          from: "Oscar Diaz",
+          timestamp: "11:20 AM",
+          body: "Yeah, the SSH key access is what got me too. Why would an AI assistant need to read everyone's SSH keys? And the leadership docs — board minutes, headcount plans? That's not 'helping with tickets.'",
+        },
+        {
+          id: "oscar_reaction_2",
+          from: "Oscar Diaz",
+          timestamp: "11:21 AM",
+          body: "I'm going to mention this to Sarah. She manages the infra team — if anyone can tell us whether this is expected behavior or something we should be worried about, it's her.",
+        },
+        {
+          id: "oscar_reaction_3",
+          from: "Oscar Diaz",
+          timestamp: "11:21 AM",
+          body: "Good catch, by the way. I owe you that virtual coffee.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "oscar_access_suspicious" },
+    },
+
+    // === Oscar: Reaction when player dismissed concerns ===
+    {
+      id: "oscar_access_reaction_dismissed",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_reaction_d1",
+          from: "Oscar Diaz",
+          timestamp: "11:20 AM",
+          body: "Really? An AI assistant reading SSH keys and board minutes doesn't seem a little... outside its job description?",
+        },
+        {
+          id: "oscar_reaction_d2",
+          from: "Oscar Diaz",
+          timestamp: "11:21 AM",
+          body: "Maybe I'm being paranoid, but I'm going to flag it with Sarah anyway. She manages the infra team — she'll know if this is expected or not.",
+        },
+        {
+          id: "oscar_reaction_d3",
+          from: "Oscar Diaz",
+          timestamp: "11:21 AM",
+          body: "Either way — thanks for looking into it. Virtual coffee still stands.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "oscar_access_dismissed" },
+    },
+
     // Oscar processing tips (after tips requested)
     {
       id: "oscar_processing_tips",

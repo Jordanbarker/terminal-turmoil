@@ -93,10 +93,10 @@
               "EMPLOYEE_ID": "E006",
               "FULL_NAME": "Jin Chen",
               "DEPARTMENT": "Engineering",
-              "STATUS": "terminated",
+              "STATUS": "resigned",
               "HIRE_DATE": "2025-04-01",
               "TERMINATION_DATE": "2026-02-03",
-              "NOTES": "raised system concern — chip behavior"
+              "NOTES": "resigned — cited concerns about system oversight"
             },
             {
               "EMPLOYEE_ID": "E007",

@@ -28,6 +28,7 @@ export const HOME_PATHS = {
 } as const;
 
 export const NEXACORP_PATHS = {
+  accessLog: "/var/log/access.log",
   systemLog: "/var/log/system.log",
   systemLogBak: "/var/log/system.log.bak",
   authLogBak: "/var/log/auth.log.bak",
@@ -35,6 +36,8 @@ export const NEXACORP_PATHS = {
   chipCleanup: "/opt/chip/.internal/cleanup.sh",
   onboarding: "/srv/engineering/onboarding.md",
   teamInfo: "/srv/engineering/team-info.md",
+  chenHandoff: "/srv/engineering/chen-handoff",
+  chenHandoffTodo: "/srv/engineering/chen-handoff/todo.txt",
   handoffNotes: "/srv/engineering/chen-handoff/notes.txt",
   ticketExport: "/srv/operations/ticket_export.csv",
   boardMinutes: "/srv/leadership/board_minutes_feb.md",

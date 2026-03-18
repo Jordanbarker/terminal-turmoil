@@ -1,6 +1,7 @@
 import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
+import { formatSize } from "../../../lib/formatSize";
 import { HELP_TEXTS } from "./helpTexts";
 
 function countStats(content: string): { lines: number; words: number; chars: number } {
@@ -14,11 +15,16 @@ function pad(n: number, width: number): string {
   return String(n).padStart(width);
 }
 
+function fmtChars(n: number, humanReadable: boolean): string {
+  return humanReadable ? formatSize(n, true) : String(n);
+}
+
 const wc: CommandHandler = (args, flags, ctx) => {
   const showLines = flags["l"];
   const showWords = flags["w"];
   const showChars = flags["c"];
   const showAll = !showLines && !showWords && !showChars;
+  const humanReadable = flags["h"] || flags["human-readable"];
 
   const fileArgs = args.filter((a) => !a.startsWith("-"));
 
@@ -28,7 +34,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     const parts: string[] = [];
     if (showAll || showLines) parts.push(pad(stats.lines, 8));
     if (showAll || showWords) parts.push(pad(stats.words, 8));
-    if (showAll || showChars) parts.push(pad(stats.chars, 8));
+    if (showAll || showChars) parts.push(fmtChars(stats.chars, humanReadable).padStart(8));
     return { output: parts.join("") };
   }
 
@@ -56,7 +62,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     const parts: string[] = [];
     if (showAll || showLines) parts.push(pad(stats.lines, 8));
     if (showAll || showWords) parts.push(pad(stats.words, 8));
-    if (showAll || showChars) parts.push(pad(stats.chars, 8));
+    if (showAll || showChars) parts.push(fmtChars(stats.chars, humanReadable).padStart(8));
     parts.push(` ${fileArg}`);
     outputLines.push(parts.join(""));
   }
@@ -65,7 +71,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     const parts: string[] = [];
     if (showAll || showLines) parts.push(pad(totalLines, 8));
     if (showAll || showWords) parts.push(pad(totalWords, 8));
-    if (showAll || showChars) parts.push(pad(totalChars, 8));
+    if (showAll || showChars) parts.push(fmtChars(totalChars, humanReadable).padStart(8));
     parts.push(" total");
     outputLines.push(parts.join(""));
   }

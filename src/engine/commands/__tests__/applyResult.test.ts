@@ -306,4 +306,116 @@ describe("computeEffects", () => {
       expect(effects.incrementalLines).toBeUndefined();
     });
   });
+
+  describe("cross-computer transitions", () => {
+    it("produces transitionTo for first-time visit (targetComputerExists = false)", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "ssh",
+          activeComputer: "home",
+          targetComputerExists: false,
+        })
+      );
+      expect(effects.transitionTo).toBe("nexacorp");
+      expect(effects.openTab).toBeUndefined();
+      expect(effects.suppressPrompt).toBe(true);
+    });
+
+    it("produces openTab for subsequent visit (targetComputerExists = true)", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "ssh",
+          activeComputer: "home",
+          targetComputerExists: true,
+        })
+      );
+      expect(effects.openTab).toBe("nexacorp");
+      expect(effects.transitionTo).toBeUndefined();
+      expect(effects.suppressPrompt).toBe(true);
+    });
+
+    it("exit command always produces transitionTo (never openTab)", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "exit",
+          activeComputer: "devcontainer",
+          targetComputerExists: true,
+        })
+      );
+      expect(effects.transitionTo).toBe("nexacorp");
+      expect(effects.openTab).toBeUndefined();
+    });
+
+    it("processes events for openTab transitions", () => {
+      const triggerEvent = { type: "command_executed" as const, detail: "ssh" };
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "ssh",
+          activeComputer: "home",
+          targetComputerExists: true,
+        })
+      );
+      // openTab transitions should still generate events (unlike first-time which returns early)
+      expect(effects.events.length).toBeGreaterThan(0);
+    });
+
+    it("openTab transitions still process trigger events from result", () => {
+      const customEvent = { type: "file_read" as const, detail: "some_trigger" };
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+        triggerEvents: [customEvent],
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "ssh",
+          activeComputer: "home",
+          targetComputerExists: true,
+        })
+      );
+      expect(effects.openTab).toBe("nexacorp");
+      expect(effects.events).toContainEqual(customEvent);
+      expect(effects.events).toContainEqual({ type: "command_executed", detail: "ssh" });
+    });
+
+    it("first-time transition returns early without processing events", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "nexacorp",
+        triggerEvents: [{ type: "file_read", detail: "test_trigger" }],
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "ssh",
+          activeComputer: "home",
+          targetComputerExists: false,
+        })
+      );
+      expect(effects.transitionTo).toBe("nexacorp");
+      expect(effects.openTab).toBeUndefined();
+      expect(effects.events).toEqual([]);
+    });
+  });
 });

@@ -53,10 +53,8 @@ function matchesTrigger(
   switch (trigger.type) {
     case "after_piper_reply":
       return event.type === "objective_completed" && event.detail === `piper_reply:${trigger.deliveryId}`;
-    case "after_story_flag":
-      return !!(storyFlags && storyFlags[trigger.flag]);
     default:
-      return matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries);
+      return matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries, storyFlags);
   }
 }
 
@@ -141,7 +139,7 @@ export function getPendingReply(
     const hasReply = def.replyOptions.some(
       (_, idx) => deliveredIds.includes(`reply:${def.id}:${idx}`)
     );
-    if (hasReply) continue;
+    if (hasReply) return null;
 
     return { deliveryId: def.id, options: def.replyOptions };
   }

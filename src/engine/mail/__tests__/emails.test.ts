@@ -7,6 +7,7 @@ const VALID_TRIGGER_TYPES = [
   "after_email_read",
   "after_command",
   "after_objective",
+  "after_story_flag",
 ] as const;
 
 describe("getEmailDefinitions", () => {
@@ -84,6 +85,13 @@ describe("getEmailDefinitions", () => {
     for (const def of defs2) {
       expect(def.email.to).toContain("alice");
     }
+  });
+});
+
+describe("getEmailDefinitions (devcontainer)", () => {
+  it("returns empty array — no mail system on devcontainer", () => {
+    const defs = getEmailDefinitions("testuser", "devcontainer");
+    expect(defs).toEqual([]);
   });
 });
 

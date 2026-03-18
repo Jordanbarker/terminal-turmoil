@@ -111,7 +111,14 @@ alias apply='python3 ~/scripts/auto_apply.py'
 # Added 2026-02-10
 alias research='cat ~/scripts/data/glassdoor_reviews.json'
 `),
-        ".bash_history": file(".bash_history", `sudo apt install build-essential git curl wget
+        ".bash_history": file(".bash_history", `top -bn1 | head -20
+ps aux | grep synthetica
+find / -name "synthetica*" 2>/dev/null
+cat .cache/synthetica/.heartbeat
+ls -la /tmp/.synth_eval_pipe
+cat /tmp/.synth_eval_pipe
+netstat -tulpn | grep ESTABLISHED
+sudo apt install build-essential git curl wget
 ssh-keygen -t ed25519 -C "ren@home"
 git clone https://github.com/ren/dotfiles.git
 cp dotfiles/.bashrc ~/
@@ -204,6 +211,8 @@ payload_fields:
   - gpu_usage
   - active_processes
   - browser_sessions
+  - ssh_keys_found
+  - cron_jobs
 `),
           }),
         }),
@@ -241,6 +250,78 @@ Setting up backups now. For real this time. External drive + rsync script
 on a cron job. Should have been doing this all along.
 
 Reported Synthetica to Indeed. Doubt anything will come of it.
+
+---
+
+2026-02-12
+
+Spent the day setting everything back up. Restoring dotfiles, regenerating
+SSH keys, changing every password I can think of. The whole time I keep
+going back to the .heartbeat file I found before I wiped.
+
+It wasn't just mining. It was phoning home every 5 minutes with hostname,
+active processes, browser sessions. It was watching what I was doing and
+reporting back. The mining was almost a distraction — loud, obvious, easy
+to spot. But the data collection? That was quiet. That was the point.
+
+It's not the mining that bothers me. It's that something was sitting on
+my machine, watching, and I had no idea.
+
+I keep checking my processes now. Every couple hours. top, ps aux, just
+making sure nothing's there. I know the drive is clean — I wiped it
+myself — but knowing and feeling are different things.
+
+---
+
+2026-02-15
+
+Found remnants in .cache/synthetica/ on the backup drive I almost restored
+from. Good thing I didn't. The heartbeat config had more payload fields
+than I realized — it wasn't just CPU and browser sessions. It was logging
+SSH keys found on the system, cron jobs, everything. It was cataloging me.
+
+I keep wondering what else it sent before I caught it. Four hours is a
+long time. How many heartbeats is that at 5-minute intervals? 48. Forty-
+eight snapshots of my system, shipped off to whoever's on the other end
+of that endpoint.
+
+And there's stuff I'll never know. Did it copy files? Read my bash
+history? The pipe config targeted browser cookies, but there could have
+been other collectors I didn't find before I wiped. That's the worst
+part — I destroyed the evidence when I destroyed the infection.
+
+Can't trust anything about the old install. Can barely trust this one.
+
+---
+
+2026-02-21
+
+NexaCorp offered me the job. $95k, starts Monday.
+
+I should be happy. I AM happy. But I'm also taking it because rent is
+due in 10 days and I have $847 in checking. That's not a reason to say
+no, but it's not the right reason to say yes either.
+
+Edward mentioned Chip again in the offer call. "You'll love working with
+Chip, it's like having a brilliant teammate who never sleeps." Something
+about that phrasing bugs me but I can't put my finger on why.
+
+The previous engineer — Jin? — apparently left with zero notice. Edward
+brushed it off ("sometimes people just move on") but that's twice now
+he's been vague about it. I almost asked for Jin's contact info but
+chickened out. What would I even say? "Hey, why'd you run?"
+
+I reported the Synthetica thing everywhere I could think of. Indeed,
+LinkedIn, even tried the FTC complaint form. Nobody has responded. Not
+even an acknowledgment. Someone else is going to run that package and
+the same thing will happen to them, and there's nothing I can do about
+it.
+
+I keep thinking about the heartbeat. Something sitting quietly on your
+machine, collecting data, phoning home. And you just... don't know. You
+go about your day and it goes about its business.
+
+Anyway. NexaCorp it is. Time to stop spiraling and start earning again.
 
 ---
 
@@ -383,6 +464,21 @@ Lessons learned:
   3. Don't pip install random packages without reading setup.py
   4. Keep dotfiles in a git repo (this saved me hours)
   5. Browser session tokens are a goldmine for attackers
+
+What it accessed (based on .heartbeat config + pipe targets):
+  - Firefox session tokens (GitHub, Google, AWS console)
+  - Active process list every 5 min via heartbeat
+  - Browser sessions (open tabs, session timing)
+  - SSH keys found on the system
+  - Cron job listings
+
+What I still don't know:
+  - Did it copy actual files? Bash history? SSH private keys?
+  - How long was it running before I noticed the CPU spike?
+    (Installed around 11pm, noticed around 3am — but was it
+    active immediately or did it wait?)
+  - Were there other data collectors besides the pipe and heartbeat?
+  - Who's on the other end of that endpoint?
 `),
           "cover_letter_template.txt": file("cover_letter_template.txt", `COVER LETTER TEMPLATE
 =====================
@@ -1576,6 +1672,27 @@ data_sources:
 retry_on_fail: true
 max_retries: 5
 exfil_interval_sec: 600
+last_successful_exfil: 2026-01-22T03:38:42Z
+collected_data:
+  cookie_jar:
+    - domain: github.com
+      token: ghp_****redacted****
+      expires: 2026-02-19
+    - domain: accounts.google.com
+      token: ya29.****redacted****
+      expires: 2026-01-29
+    - domain: signin.aws.amazon.com
+      token: AKIA****redacted****
+      expires: 2026-01-23
+  process_snapshot:
+    - pid: 1842
+      cmd: firefox
+    - pid: 2103
+      cmd: python3 scripts/auto_apply.py
+    - pid: 2291
+      cmd: ssh-agent
+    - pid: 3017
+      cmd: synthetica-eval --silent
 `),
     }),
   });

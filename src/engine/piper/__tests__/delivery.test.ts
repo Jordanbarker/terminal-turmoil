@@ -92,6 +92,15 @@ describe("checkPiperDeliveries", () => {
     expect(result).toContain("olive_tree_tip");
   });
 
+  it("delivers maya_dm_checkin_reply after replying to maya_dm_checkin", () => {
+    const event: GameEvent = {
+      type: "objective_completed",
+      detail: "piper_reply:maya_dm_checkin",
+    };
+    const result = checkPiperDeliveries(event, ["maya_dm_checkin"], USERNAME, "nexacorp");
+    expect(result).toContain("maya_dm_checkin_reply");
+  });
+
   it("delivers after_story_flag trigger when flag is set", () => {
     const event: GameEvent = { type: "command_executed", detail: "ls" };
     const storyFlags = { returned_home_day1: true } as Record<string, string | boolean>;
@@ -167,6 +176,19 @@ describe("getPendingReply", () => {
 
   it("returns null when already replied", () => {
     const pending = getPendingReply("dm_oscar", ["oscar_log_check", "reply:oscar_log_check:0"], USERNAME);
+    expect(pending).toBeNull();
+  });
+
+  it("does not resurface older unreplied options after replying to a newer delivery", () => {
+    // maya_dm_handoff has reply options and maya_dm_checkin has reply options
+    // After replying to checkin (newer), handoff (older) should NOT resurface
+    const delivered = [
+      "maya_dm_handoff",
+      "maya_dm_checkin",
+      "reply:maya_dm_checkin:0",
+      "maya_dm_checkin_reply",
+    ];
+    const pending = getPendingReply("dm_maya", delivered, USERNAME);
     expect(pending).toBeNull();
   });
 

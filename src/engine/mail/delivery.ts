@@ -1,7 +1,7 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { getEmailDefinitions } from "./emails";
 import { deliverEmail, getMailEntries } from "./mailUtils";
-import { ComputerId, PLAYER } from "../../state/types";
+import { ComputerId, PLAYER, StoryFlags } from "../../state/types";
 import { matchesCommonTrigger } from "../narrative/triggerMatcher";
 
 export type GameEvent =
@@ -16,7 +16,8 @@ export function checkEmailDeliveries(
   fs: VirtualFS,
   event: GameEvent,
   deliveredIds: string[],
-  computer: ComputerId = "nexacorp"
+  computer: ComputerId = "nexacorp",
+  storyFlags?: StoryFlags
 ): { fs: VirtualFS; newDeliveries: string[] } {
   const newDeliveries: string[] = [];
   let currentFs = fs;
@@ -35,7 +36,7 @@ export function checkEmailDeliveries(
     let matches = false;
     for (const trigger of triggers) {
       if (trigger.type === "immediate") continue;
-      matches = matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries);
+      matches = matchesCommonTrigger(trigger, event, deliveredIds, newDeliveries, storyFlags);
       if (matches) break;
     }
 

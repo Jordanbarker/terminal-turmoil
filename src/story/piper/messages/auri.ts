@@ -2,7 +2,7 @@ import { PiperDelivery } from "../../../engine/piper/types";
 
 export function getAuriDeliveries(_username: string): PiperDelivery[] {
   return [
-    // === DM Auri: Welcome + inspection task (after reading team-info.md) ===
+    // === DM Auri: Welcome + data audit (after reading Edward's welcome email) ===
     {
       id: "auri_hello",
       channelId: "dm_auri",
@@ -11,7 +11,7 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
           id: "auri_hello_1",
           from: "Auri Park",
           timestamp: "9:30 AM",
-          body: `Hey! I'm Auri, the data engineer on the team. Welcome!`,
+          body: `Hey! I'm Auri — Edward said I'm your onboarding buddy. Welcome to the team!`,
         },
         {
           id: "auri_hello_2",
@@ -23,76 +23,23 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
           id: "auri_hello_3",
           from: "Auri Park",
           timestamp: "9:31 AM",
-          body: "Actually, small ask while you're getting set up — Chen left a pipeline run history in the handoff folder. I haven't had a chance to look at it yet.",
+          body: "Small ask while you're getting set up — Chen left a bunch of stuff in the handoff folder. Start by checking what's in /srv/engineering/chen-handoff/ — ls -lh shows file sizes. And read todo.txt to see what's still open.",
         },
         {
           id: "auri_hello_4",
           from: "Auri Park",
           timestamp: "9:31 AM",
-          body: `Could you check /srv/engineering/chen-handoff/pipeline_runs.csv? Pull the header row, last few entries, and a line count. head, tail, and wc are good for that.`,
-        },
-        {
-          id: "auri_hello_5",
-          from: "Auri Park",
-          timestamp: "9:32 AM",
-          body: "Just want to know what we're working with before I dig into the models.",
-        },
+          body: `Then for the data: pipeline_runs.csv has run history. head, tail, and wc are great for a quick audit.`,
+        }
       ],
-      trigger: { type: "after_file_read", filePath: "/srv/engineering/team-info.md" },
+      trigger: { type: "after_email_read", emailId: "welcome_edward" },
       replyOptions: [
         {
           label: "I'll take a look at it.",
           messageBody: "Sure thing — I'll pull the header, tail, and line count and let you know.",
           triggerEvents: [{ type: "objective_completed", detail: "inspection_tools_accepted" }],
         },
-        {
-          label: "Happy to help — quick refresher on head/tail/wc?",
-          messageBody: "Happy to help! Could you remind me the syntax for head/tail/wc? It's been a while.",
-          triggerEvents: [
-            { type: "objective_completed", detail: "inspection_tools_tips_requested" },
-            { type: "objective_completed", detail: "inspection_tools_accepted" },
-          ],
-        },
       ],
-    },
-
-    // Auri inspection tips (after tips requested)
-    {
-      id: "auri_inspection_tips",
-      channelId: "dm_auri",
-      messages: [
-        {
-          id: "auri_itips_1",
-          from: "Auri Park",
-          timestamp: "9:38 AM",
-          body: "Actually, Chen left a cheatsheet somewhere in the handoff folder. Let me find it...",
-        },
-        {
-          id: "auri_itips_2",
-          from: "Auri Park",
-          timestamp: "9:38 AM",
-          body: "Yeah — /srv/engineering/chen-handoff/README.md has the key file locations. The commands you want are head, tail, and wc — standard stuff.",
-        },
-        {
-          id: "auri_itips_3",
-          from: "Auri Park",
-          timestamp: "9:39 AM",
-          body: `Quick version:
-
-  head -n 1 file.csv      Header row
-  tail -n 5 file.csv      Last 5 entries
-  wc -l file.csv          Line count
-
-That should be plenty for a quick look at the pipeline runs.`,
-        },
-        {
-          id: "auri_itips_4",
-          from: "Auri Park",
-          timestamp: "9:40 AM",
-          body: "Thanks for doing this!",
-        },
-      ],
-      trigger: { type: "after_objective", objectiveId: "inspection_tools_tips_requested" },
     },
 
     // === DM Auri: Pipeline help (after reading handoff notes) ===
@@ -110,7 +57,7 @@ That should be plenty for a quick look at the pipeline runs.`,
           id: "auri_pipe_2",
           from: "Auri Park",
           timestamp: "10:30 AM",
-          body: "Would you mind running the data pipeline when you get a chance? I've been meaning to check it but keep getting pulled into other things. I noticed dbt + Snowflake on your resume so this should be right up your alley!",
+          body: "You'll be working with the pipeline data a lot, so it'd be great if you could do a full build and get a feel for how the project's set up! Chen's todo says the test suite hasn't been run in weeks — would be really helpful to know where things stand.",
         },
         {
           id: "auri_pipe_3",
@@ -134,19 +81,19 @@ That should be plenty for a quick look at the pipeline runs.`,
           id: "auri_pipe_5",
           from: "Auri Park",
           timestamp: "10:32 AM",
-          body: "If anything looks off, let me know — some of Chen's models are a little... creative. I haven't had a chance to audit everything.",
+          body: "If anything looks off, let me know! Some of Chen's models are a little... creative. I inherited them when he left but haven't had a chance to really dig in — fresh eyes would be amazing.",
         },
       ],
       trigger: { type: "after_file_read", filePath: "/srv/engineering/chen-handoff/notes.txt" },
       replyOptions: [
         {
-          label: "dbt + Snowflake is my wheelhouse. On it!",
-          messageBody: "dbt and Snowflake? That's literally my wheelhouse. I'll get the pipeline running and let you know how it looks.",
+          label: "Makes sense — I'll check it out!",
+          messageBody: "Good call — I'll do a full build and let you know how it looks!",
           triggerEvents: [{ type: "objective_completed", detail: "pipeline_tools_accepted" }],
         },
         {
           label: "I've used dbt before but it's been a while. Tips?",
-          messageBody: "Happy to help! I've used dbt before but could use a refresher on the workflow. Any quick tips?",
+          messageBody: "Definitely want to get up to speed on the pipeline! I've used dbt before but it's been a while — any tips for how things are set up here?",
           triggerEvents: [
             { type: "objective_completed", detail: "pipeline_tools_tips_requested" },
             { type: "objective_completed", detail: "pipeline_tools_accepted" },
@@ -186,10 +133,7 @@ dbt — data build tool
           timestamp: "10:39 AM",
           body: `snow sql — Snowflake SQL console
   snow sql               Start interactive SQL shell
-  snow sql -q "SELECT.." Run a single query
-
-python — Python REPL
-  python                 Start Python interpreter`,
+  snow sql -q "SELECT.." Run a single query`,
         },
         {
           id: "auri_ptips_4",
@@ -210,6 +154,88 @@ python — Python REPL
       trigger: { type: "after_objective", objectiveId: "pipeline_tools_tips_requested" },
     },
 
+    // === DM Auri: dbt results follow-up (after running dbt) ===
+    {
+      id: "auri_dbt_results",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_dbt_1",
+          from: "Auri Park",
+          timestamp: "10:45 AM",
+          body: "Hey, how'd the pipeline run go? Everything build and pass?",
+        },
+        {
+          id: "auri_dbt_2",
+          from: "Auri Park",
+          timestamp: "10:45 AM",
+          body: "I've been meaning to audit those models for a while. There's a set of models prefixed with _chip_internal that I didn't write — they showed up a few months ago. I assumed Chen added them but there's no documentation.",
+        },
+        {
+          id: "auri_dbt_3",
+          from: "Auri Park",
+          timestamp: "10:46 AM",
+          body: "If you get a chance, take a look at those. They're in models/intermediate/ — the SQL files show what they're actually doing to the data. I'd love a second opinion.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "ran_dbt" },
+      replyOptions: [
+        {
+          label: "I'll check them out.",
+          messageBody: "Sure — I'll look at the _chip_internal models and let you know what I find.",
+        },
+        {
+          label: "The pipeline ran clean, no issues.",
+          messageBody: "Everything built and passed. I'll take a look at those _chip_internal models too.",
+        },
+      ],
+    },
+
+    // === DM Auri: Filtering reaction (after discovering data filtering) ===
+    {
+      id: "auri_filtering_reaction",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_filter_1",
+          from: "Auri Park",
+          timestamp: "11:50 AM",
+          body: "Wait — did you look at the _chip_internal models?",
+        },
+        {
+          id: "auri_filter_2",
+          from: "Auri Park",
+          timestamp: "11:50 AM",
+          body: "I just pulled them up. Those aren't cleaning the data. They're filtering it. Suppressing tickets, removing log entries, scrubbing employee records...",
+        },
+        {
+          id: "auri_filter_3",
+          from: "Auri Park",
+          timestamp: "11:51 AM",
+          body: "The mart tables that leadership looks at — they all run through these models. The business has been seeing filtered data for months and nobody noticed because the models are buried in the intermediate layer.",
+        },
+        {
+          id: "auri_filter_4",
+          from: "Auri Park",
+          timestamp: "11:51 AM",
+          body: "This isn't a bug. Someone built this on purpose.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "found_data_filtering" },
+      replyOptions: [
+        {
+          label: "Yeah — someone's been manipulating the pipeline.",
+          messageBody: "That's what I'm seeing too. The _chip_internal models are deliberately hiding data before it reaches the marts.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_confirmed" }],
+        },
+        {
+          label: "Who would have access to add those models?",
+          messageBody: "This is serious. Who has access to push models to the dbt project?",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_confirmed" }],
+        },
+      ],
+    },
+
     // Auri explains chmod (after dana_ops_accepted)
     {
       id: "auri_chmod_help",
@@ -225,26 +251,7 @@ python — Python REPL
           id: "auri_chmod_2",
           from: "Auri Park",
           timestamp: "11:25 AM",
-          body: "Permissions are actually pretty elegant once you see the pattern. Each file and directory has three permission groups: owner, group, and everyone else. Each group gets read (r), write (w), and execute (x).",
-        },
-        {
-          id: "auri_chmod_3",
-          from: "Auri Park",
-          timestamp: "11:26 AM",
-          body: `chmod uses octal numbers — each digit is a combo of permissions:
-
-  7 = rwx (read + write + execute)
-  5 = r-x (read + execute)
-  4 = r-- (read only)
-  0 = --- (no access)
-
-So 'chmod 755' means: owner gets full access, everyone else can read and traverse.`,
-        },
-        {
-          id: "auri_chmod_4",
-          from: "Auri Park",
-          timestamp: "11:26 AM",
-          body: `Try this:
+          body: `You can run 'man chmod' for the full breakdown of how permissions work. But the short version — try this:
 
   chmod 755 /srv/operations/
   ls /srv/operations/

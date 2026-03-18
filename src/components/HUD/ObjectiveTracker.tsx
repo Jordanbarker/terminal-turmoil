@@ -8,16 +8,16 @@ import {
   ResolvedObjective,
 } from "../../engine/narrative/objectives";
 
-function ObjectiveItem({ obj }: { obj: ResolvedObjective }) {
+function ObjectiveItem({ obj, className }: { obj: ResolvedObjective; className?: string }) {
   return (
     <li
-      className={
+      className={`${
         obj.completed
           ? "text-[#3fb950] line-through opacity-50"
           : obj.failed
             ? "text-red-500"
             : "text-[#c9d1d9]"
-      }
+      }${className ? ` ${className}` : ""}`}
     >
       {obj.completed ? "[x]" : obj.failed ? "[!]" : "[ ]"} {obj.description}
     </li>
@@ -29,16 +29,41 @@ interface GroupNode {
   children: ResolvedObjective[];
 }
 
-function ObjectiveGroup({ group }: { group: GroupNode }) {
+const depthClass = ["", "pl-4", "pl-8"] as const;
+
+function ObjectiveGroup({
+  group,
+  childrenByParent,
+  depth = 0,
+}: {
+  group: GroupNode;
+  childrenByParent: Map<string, ResolvedObjective[]>;
+  depth?: number;
+}) {
   return (
     <>
-      <ObjectiveItem obj={group.parent} />
+      <ObjectiveItem obj={group.parent} className={depthClass[depth]} />
       {!group.parent.completed &&
-        group.children.map((child) => (
-          <li key={child.id} className="pl-4">
-            <ObjectiveItem obj={child} />
-          </li>
-        ))}
+        group.children.map((child) => {
+          const nested = childrenByParent.get(child.id);
+          if (nested) {
+            return (
+              <ObjectiveGroup
+                key={child.id}
+                group={{ parent: child, children: nested }}
+                childrenByParent={childrenByParent}
+                depth={Math.min(depth + 1, 2) as 0 | 1 | 2}
+              />
+            );
+          }
+          return (
+            <ObjectiveItem
+              key={child.id}
+              obj={child}
+              className={depthClass[Math.min(depth + 1, 2)]}
+            />
+          );
+        })}
     </>
   );
 }
@@ -121,7 +146,13 @@ export default function ObjectiveTracker() {
 
   function renderItem(item: RenderItem) {
     if (item.type === "group") {
-      return <ObjectiveGroup key={item.group.parent.id} group={item.group} />;
+      return (
+        <ObjectiveGroup
+          key={item.group.parent.id}
+          group={item.group}
+          childrenByParent={childrenByParent}
+        />
+      );
     }
     return <ObjectiveItem key={item.obj.id} obj={item.obj} />;
   }
@@ -131,7 +162,7 @@ export default function ObjectiveTracker() {
       className="absolute top-2 right-2 z-10 pointer-events-auto
         bg-[#1a1f29]/85 border border-[#2a2f3a] rounded-md
         backdrop-blur-sm font-mono text-xs select-none
-        max-w-[240px]"
+        max-w-[400px]"
     >
       <button
         onClick={() => setCollapsed(!collapsed)}

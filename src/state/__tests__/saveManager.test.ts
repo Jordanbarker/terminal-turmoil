@@ -12,6 +12,10 @@ import {
 import { SaveData, SAVE_FORMAT_VERSION } from "../saveTypes";
 import { VirtualFS } from "../../engine/filesystem/VirtualFS";
 import { DirectoryNode } from "../../engine/filesystem/types";
+import {
+  serializeFS,
+  deserializeFS,
+} from "../../engine/filesystem/serialization";
 
 function createMinimalFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -48,10 +52,36 @@ function createMinimalFS(): VirtualFS {
   return new VirtualFS(root, "/home/player", "/home/player");
 }
 
+function createBareFS(): VirtualFS {
+  const root: DirectoryNode = {
+    type: "directory",
+    name: "/",
+    permissions: "rwxr-xr-x",
+    hidden: false,
+    children: {
+      home: {
+        type: "directory",
+        name: "home",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {
+          player: {
+            type: "directory",
+            name: "player",
+            permissions: "rwxr-xr-x",
+            hidden: false,
+            children: {},
+          },
+        },
+      },
+    },
+  };
+  return new VirtualFS(root, "/home/player", "/home/player");
+}
+
 function createState(): SaveableState {
+  const fs = createMinimalFS();
   return {
-    fs: createMinimalFS(),
-    cwd: "/home/player",
     username: "player",
     gamePhase: "playing",
     currentChapter: "chapter-1",
@@ -59,10 +89,10 @@ function createState(): SaveableState {
     deliveredEmailIds: ["email-1"],
     deliveredPiperIds: [],
     commandHistory: ["ls", "cd docs", "cat readme.md"],
-    activeComputer: "nexacorp",
     storyFlags: {},
-    stashedFs: null,
-    stashedCwd: "",
+    computerState: { nexacorp: { fs } },
+    tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
+    activeTabIndex: 0,
   };
 }
 
@@ -118,6 +148,33 @@ describe("createSaveData", () => {
     expect(data.fs.root).toBeDefined();
     expect(data.fs.cwd).toBe("/home/player");
     expect(data.fs.homeDir).toBe("/home/player");
+  });
+
+  it("serializes computerStates", () => {
+    const state = createState();
+    const data = createSaveData(state, "Test");
+    expect(data.computerStates).toBeDefined();
+    expect(data.computerStates!.nexacorp).toBeDefined();
+    expect(data.computerStates!.nexacorp.fs.root).toBeDefined();
+  });
+
+  it("serializes tabs and activeTabIndex", () => {
+    const state = createState();
+    const data = createSaveData(state, "Test");
+    expect(data.tabs).toEqual([{ computerId: "nexacorp", cwd: "/home/player" }]);
+    expect(data.activeTabIndex).toBe(0);
+  });
+
+  it("saves multi-tab layout", () => {
+    const state = createState();
+    state.tabs = [
+      { computerId: "nexacorp", cwd: "/home/player" },
+      { computerId: "devcontainer", cwd: "/home/player/project" },
+    ];
+    state.activeTabIndex = 1;
+    const data = createSaveData(state, "Test");
+    expect(data.tabs).toHaveLength(2);
+    expect(data.activeTabIndex).toBe(1);
   });
 });
 
@@ -205,5 +262,216 @@ describe("migrateSaveData", () => {
   it("returns data unchanged for current version", () => {
     const data = createSaveData(createState(), "Test");
     expect(migrateSaveData(data)).toBe(data);
+  });
+
+  it("migrates v4 data to v5 with computerStates and tabs", () => {
+    const fs = createMinimalFS();
+    const v4Data: SaveData = {
+      version: 4,
+      timestamp: Date.now(),
+      label: "v4 save",
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      cwd: "/home/player",
+      fs: serializeFS(fs),
+      activeComputer: "nexacorp",
+      storyFlags: {},
+    };
+    const migrated = migrateSaveData(v4Data);
+    expect(migrated.version).toBe(5);
+    expect(migrated.computerStates).toBeDefined();
+    expect(migrated.computerStates!.nexacorp).toBeDefined();
+    expect(migrated.tabs).toEqual([{ computerId: "nexacorp", cwd: "/home/player" }]);
+    expect(migrated.activeTabIndex).toBe(0);
+  });
+
+  it("migrates v4 with stashedFs", () => {
+    const fs = createMinimalFS();
+    const v4Data: SaveData = {
+      version: 4,
+      timestamp: Date.now(),
+      label: "v4 stashed",
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      cwd: "/home/player",
+      fs: serializeFS(fs),
+      activeComputer: "devcontainer",
+      storyFlags: {},
+      stashedFs: serializeFS(fs),
+    };
+    const migrated = migrateSaveData(v4Data);
+    expect(migrated.version).toBe(5);
+    expect(migrated.computerStates!.devcontainer).toBeDefined();
+    expect(migrated.computerStates!.nexacorp).toBeDefined();
+  });
+});
+
+describe("multi-tab round-trip", () => {
+  it("full round-trip with 3 tabs on 2 computers", () => {
+    const state: SaveableState = {
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      storyFlags: {},
+      computerState: {
+        nexacorp: { fs: createMinimalFS() },
+        devcontainer: { fs: createMinimalFS() },
+      },
+      tabs: [
+        { computerId: "nexacorp", cwd: "/home/player" },
+        { computerId: "devcontainer", cwd: "/home/player" },
+        { computerId: "nexacorp", cwd: "/home/player" },
+      ],
+      activeTabIndex: 1,
+    };
+
+    const data = createSaveData(state, "3-tab save");
+    saveToSlot("slot-1", data);
+    const loaded = loadFromSlot("slot-1");
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.computerStates).toBeDefined();
+    expect(loaded!.computerStates!.nexacorp).toBeDefined();
+    expect(loaded!.computerStates!.devcontainer).toBeDefined();
+    expect(loaded!.tabs).toHaveLength(3);
+    expect(loaded!.tabs![0].computerId).toBe("nexacorp");
+    expect(loaded!.tabs![1].computerId).toBe("devcontainer");
+    expect(loaded!.tabs![2].computerId).toBe("nexacorp");
+    expect(loaded!.activeTabIndex).toBe(1);
+  });
+
+  it("FS isolation preserved across save/load", () => {
+    const state: SaveableState = {
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      storyFlags: {},
+      computerState: {
+        nexacorp: { fs: createMinimalFS() },
+        devcontainer: { fs: createBareFS() },
+      },
+      tabs: [
+        { computerId: "nexacorp", cwd: "/home/player" },
+        { computerId: "devcontainer", cwd: "/home/player" },
+      ],
+      activeTabIndex: 0,
+    };
+
+    const data = createSaveData(state, "isolation test");
+    saveToSlot("slot-1", data);
+    const loaded = loadFromSlot("slot-1");
+
+    expect(loaded).not.toBeNull();
+    const nexaFs = deserializeFS(loaded!.computerStates!.nexacorp.fs);
+    const devFs = deserializeFS(loaded!.computerStates!.devcontainer.fs);
+
+    expect(nexaFs.readFile("/home/player/test.txt").content).toBe(
+      "test content"
+    );
+    expect(devFs.readFile("/home/player/test.txt").error).toBeDefined();
+  });
+
+  it("v4→v5 migration preserves tab-computer alignment", () => {
+    const fs = createMinimalFS();
+    const v4Data: SaveData = {
+      version: 4,
+      timestamp: Date.now(),
+      label: "v4 aligned",
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      cwd: "/home/player",
+      fs: serializeFS(fs),
+      activeComputer: "nexacorp",
+      storyFlags: {},
+      stashedFs: serializeFS(fs),
+    };
+
+    const migrated = migrateSaveData(v4Data);
+
+    expect(migrated.tabs![0].computerId).toBe("nexacorp");
+    expect(migrated.activeTabIndex).toBe(0);
+    expect(migrated.computerStates!.nexacorp).toBeDefined();
+    expect(migrated.computerStates!.devcontainer).toBeDefined();
+  });
+
+  it("single tab round-trip", () => {
+    const state: SaveableState = {
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-1",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      storyFlags: {},
+      computerState: { nexacorp: { fs: createMinimalFS() } },
+      tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
+      activeTabIndex: 0,
+    };
+
+    const data = createSaveData(state, "single tab");
+    saveToSlot("slot-1", data);
+    const loaded = loadFromSlot("slot-1");
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.tabs).toHaveLength(1);
+    expect(loaded!.activeTabIndex).toBe(0);
+  });
+
+  it("max tabs (5) round-trip", () => {
+    const state: SaveableState = {
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-3",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      storyFlags: {},
+      computerState: {
+        home: { fs: createMinimalFS() },
+        nexacorp: { fs: createMinimalFS() },
+        devcontainer: { fs: createBareFS() },
+      },
+      tabs: [
+        { computerId: "home", cwd: "/home/player" },
+        { computerId: "nexacorp", cwd: "/home/player" },
+        { computerId: "devcontainer", cwd: "/home/player" },
+        { computerId: "nexacorp", cwd: "/home/player" },
+        { computerId: "home", cwd: "/home/player" },
+      ],
+      activeTabIndex: 2,
+    };
+
+    const data = createSaveData(state, "max tabs");
+    saveToSlot("slot-1", data);
+    const loaded = loadFromSlot("slot-1");
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.tabs).toHaveLength(5);
+    expect(loaded!.activeTabIndex).toBe(2);
   });
 });

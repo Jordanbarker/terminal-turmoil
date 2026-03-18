@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createFilesystem } from "../../../story/filesystem/nexacorp";
+import { createDevcontainerFilesystem } from "../../../story/filesystem/devcontainer";
 import { VirtualFS } from "../VirtualFS";
 
 const USERNAME = "testplayer";
@@ -234,18 +235,24 @@ describe("createFilesystem", () => {
   });
 
   describe("conditional dbt project", () => {
-    it("does not include nexacorp-analytics by default", () => {
-      const root = createFilesystem(USERNAME);
+    it("does not include nexacorp-analytics in devcontainer by default", () => {
+      const root = createDevcontainerFilesystem(USERNAME);
       const fs = new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
       expect(fs.getNode(`/home/${USERNAME}/nexacorp-analytics`)).toBeNull();
     });
 
-    it("includes nexacorp-analytics when dbt_project_cloned is true", () => {
-      const root = createFilesystem(USERNAME, { dbt_project_cloned: true });
+    it("includes nexacorp-analytics in devcontainer when dbt_project_cloned is true", () => {
+      const root = createDevcontainerFilesystem(USERNAME, { dbt_project_cloned: true });
       const fs = new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
       expect(fs.getNode(`/home/${USERNAME}/nexacorp-analytics`)?.type).toBe("directory");
       const result = fs.readFile(`/home/${USERNAME}/nexacorp-analytics/dbt_project.yml`);
       expect(result.content).toContain("nexacorp_analytics");
+    });
+
+    it("does not include nexacorp-analytics on NexaCorp workstation", () => {
+      const root = createFilesystem(USERNAME, { dbt_project_cloned: true });
+      const fs = new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
+      expect(fs.getNode(`/home/${USERNAME}/nexacorp-analytics`)).toBeNull();
     });
   });
 

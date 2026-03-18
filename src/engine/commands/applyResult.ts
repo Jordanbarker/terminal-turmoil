@@ -1,9 +1,7 @@
 import { CommandResult, EditorSessionInfo, GameAction, IncrementalLine, SshSessionInfo } from "./types";
 import { VirtualFS } from "../filesystem/VirtualFS";
-import { checkEmailDeliveries, GameEvent } from "../mail/delivery";
-import { checkPiperDeliveries } from "../piper/delivery";
+import { GameEvent } from "../mail/delivery";
 import { resolvePath } from "../../lib/pathUtils";
-import { getTriggersForComputer, checkStoryFlagTriggers } from "../narrative/storyFlags";
 import { PromptSessionInfo } from "../prompt/types";
 import { ChipSessionInfo } from "../chip/types";
 import { PiperSessionInfo } from "../piper/types";
@@ -11,6 +9,7 @@ import { ComputerId, StoryFlags } from "../../state/types";
 import { colorize, ansi } from "../../lib/ansi";
 import { listSaveSlots, formatSlotName } from "../../state/saveManager";
 import { commandReadsFiles } from "./registry";
+import { processDeliveries } from "./processDeliveries";
 
 export type SessionToStart =
   | { type: "editor"; info: EditorSessionInfo }
@@ -42,6 +41,8 @@ export interface AppliedEffects {
   piperNotifications: number;
   suppressPrompt: boolean;
   transitionTo?: ComputerId;
+  /** Open a new tab on this computer (subsequent visit — no animation) */
+  openTab?: ComputerId;
   incrementalLines?: IncrementalLine[];
 }
 
@@ -56,6 +57,8 @@ export interface ApplyContext {
   deliveredPiperIds: string[];
   storyFlags: StoryFlags;
   fs: VirtualFS;
+  /** Whether the target computer already exists in computerState (for subsequent transitions) */
+  targetComputerExists?: boolean;
 }
 
 /**
@@ -94,9 +97,19 @@ export function computeEffects(
 
   // Computer transitions
   if (result.transitionTo) {
-    effects.transitionTo = result.transitionTo;
-    effects.suppressPrompt = true;
-    return effects;
+    // `exit` always uses transitionTo (closes connection, doesn't open new tab)
+    // `coder` uses openTab if target exists (subsequent visit — instant)
+    const isExit = applyCtx.parsedCommand === "exit";
+    if (!isExit && applyCtx.targetComputerExists) {
+      // Subsequent visit — produce openTab, continue to event processing below
+      effects.openTab = result.transitionTo;
+      effects.suppressPrompt = true;
+    } else {
+      // First-time transition OR exit — full transition handler
+      effects.transitionTo = result.transitionTo;
+      effects.suppressPrompt = true;
+      return effects;
+    }
   }
 
   // Session starts (no early return — event processing must still run below)
@@ -160,62 +173,25 @@ export function computeEffects(
 
   effects.events = events;
 
-  // Process story flag triggers (first pass — command/file/directory events)
-  const storyFlagTriggers = getTriggersForComputer(applyCtx.activeComputer, applyCtx.username);
-  let currentFlags = { ...applyCtx.storyFlags };
+  // Process deliveries (story flags, emails, piper) via extracted pure function
+  const deliveryResult = processDeliveries(
+    events,
+    currentFs,
+    applyCtx.activeComputer,
+    applyCtx.deliveredEmailIds,
+    applyCtx.deliveredPiperIds,
+    applyCtx.username,
+    applyCtx.storyFlags
+  );
 
-  for (const event of events) {
-    const flagResults = checkStoryFlagTriggers(event, storyFlagTriggers, currentFlags);
-    for (const flagResult of flagResults) {
-      effects.storyFlagUpdates.push(flagResult);
-      currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
-    }
+  if (deliveryResult.fs !== currentFs) {
+    effects.newFs = deliveryResult.fs;
   }
-
-  // Process email deliveries
-  let deliveredIds = [...applyCtx.deliveredEmailIds];
-  for (const event of events) {
-    const delivery = checkEmailDeliveries(
-      currentFs,
-      event,
-      deliveredIds,
-      applyCtx.activeComputer
-    );
-    if (delivery.newDeliveries.length > 0) {
-      currentFs = delivery.fs;
-      effects.newFs = currentFs;
-      deliveredIds = [...deliveredIds, ...delivery.newDeliveries];
-      effects.newDeliveredEmailIds.push(...delivery.newDeliveries);
-      effects.emailNotifications++;
-    }
-  }
-
-  // Process piper deliveries
-  let piperIds = [...applyCtx.deliveredPiperIds];
-  for (const event of events) {
-    const newPiper = checkPiperDeliveries(
-      event,
-      piperIds,
-      applyCtx.username,
-      applyCtx.activeComputer,
-      currentFlags
-    );
-    if (newPiper.length > 0) {
-      piperIds = [...piperIds, ...newPiper];
-      effects.newDeliveredPiperIds.push(...newPiper);
-      effects.piperNotifications++;
-    }
-  }
-
-  // Second pass: process piper_delivered events through story flag triggers
-  for (const id of effects.newDeliveredPiperIds) {
-    const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
-    const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, currentFlags);
-    for (const flagResult of flagResults) {
-      effects.storyFlagUpdates.push(flagResult);
-      currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
-    }
-  }
+  effects.storyFlagUpdates.push(...deliveryResult.storyFlagUpdates);
+  effects.newDeliveredEmailIds.push(...deliveryResult.newDeliveredEmailIds);
+  effects.emailNotifications += deliveryResult.emailNotifications;
+  effects.newDeliveredPiperIds.push(...deliveryResult.newDeliveredPiperIds);
+  effects.piperNotifications += deliveryResult.piperNotifications;
 
   // Pass through incremental lines
   if (result.incrementalLines) {

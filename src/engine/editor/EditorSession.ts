@@ -62,6 +62,10 @@ export class EditorSession implements ISession {
     };
   }
 
+  canClose(): boolean {
+    return !this.state.modified;
+  }
+
   /** Enter the alternate screen buffer and render initial state. */
   enter(): void {
     this.terminal.write("\x1b[?1049h"); // Enter alt buffer

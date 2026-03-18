@@ -168,17 +168,22 @@ describe("Story Integrity", () => {
       }
     });
 
-    it("no nested groups — grouped objectives cannot themselves be group parents", () => {
+    it("nesting is at most 2 levels deep — a grandchild cannot also be a group parent", () => {
       for (const chapter of CHAPTERS) {
         const parentIds = new Set(
           chapter.objectives.filter((o) => o.group).map((o) => o.group!)
         );
+        const objById = new Map(
+          chapter.objectives.map((o) => [o.id, o])
+        );
         for (const objective of chapter.objectives) {
-          if (objective.group) {
+          // If this objective is both a child and a parent, check its own parent isn't also a child
+          if (objective.group && parentIds.has(objective.id)) {
+            const parent = objById.get(objective.group);
             expect(
-              parentIds.has(objective.id),
-              `Objective '${objective.id}' in '${chapter.id}' is both a child (group: '${objective.group}') and a parent`
-            ).toBe(false);
+              parent?.group,
+              `Objective '${objective.id}' in '${chapter.id}' creates 3+ level nesting (its parent '${objective.group}' is also a child)`
+            ).toBeUndefined();
           }
         }
       }

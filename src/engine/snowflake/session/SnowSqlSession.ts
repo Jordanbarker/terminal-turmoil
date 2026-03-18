@@ -6,6 +6,7 @@ import { formatResultSet, formatStatusMessage, formatError } from "../formatter/
 import { colorize, ansi } from "../../../lib/ansi";
 import { isBackspace, isPrintable, CTRL_C, CTRL_D } from "../../terminal/keyCodes";
 import { ISession, SessionResult } from "../../session/types";
+import { GameEvent } from "../../mail/delivery";
 
 /**
  * Interactive Snowflake CLI SQL REPL session.
@@ -18,17 +19,27 @@ export class SnowSqlSession implements ISession {
   private state: SnowflakeState;
   private terminal: Terminal;
   private onStateChange: (state: SnowflakeState) => void;
+  private onReleaseLock?: () => void;
+  private pendingEvents: GameEvent[] = [];
+  private queriedCampaign = false;
 
   constructor(
     terminal: Terminal,
     state: SnowflakeState,
     context: SessionContext,
-    onStateChange: (state: SnowflakeState) => void
+    onStateChange: (state: SnowflakeState) => void,
+    onReleaseLock?: () => void
   ) {
     this.terminal = terminal;
     this.state = state;
     this.context = context;
     this.onStateChange = onStateChange;
+    this.onReleaseLock = onReleaseLock;
+  }
+
+  canClose(): boolean {
+    this.onReleaseLock?.();
+    return true;
   }
 
   enter(): void {
@@ -49,7 +60,7 @@ export class SnowSqlSession implements ISession {
 
       if (code === CTRL_D && this.inputBuffer.length === 0) {
         this.terminal.write("\r\n");
-        return { type: "exit", newState: this.state };
+        return { type: "exit", newState: this.state, triggerEvents: this.pendingEvents.length ? this.pendingEvents : undefined };
       }
 
       if (char === "\r" || char === "\n") {
@@ -58,7 +69,7 @@ export class SnowSqlSession implements ISession {
 
         // Check for commands
         if (trimmed.toLowerCase() === "quit" || trimmed.toLowerCase() === "exit") {
-          return { type: "exit", newState: this.state };
+          return { type: "exit", newState: this.state, triggerEvents: this.pendingEvents.length ? this.pendingEvents : undefined };
         }
 
         if (trimmed.toLowerCase() === "settings") {
@@ -117,6 +128,11 @@ export class SnowSqlSession implements ISession {
     this.state = state;
     this.context = context;
     this.onStateChange(state);
+
+    if (!this.queriedCampaign && /campaign_metrics/i.test(sql)) {
+      this.queriedCampaign = true;
+      this.pendingEvents.push({ type: "command_executed", detail: "queried_campaign_metrics" });
+    }
 
     for (const result of results) {
       let output: string;

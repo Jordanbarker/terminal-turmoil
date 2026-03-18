@@ -13,6 +13,7 @@ export interface ParsedCommand {
   flags: Record<string, boolean>;
   raw: string;
   rawArgs: string[];
+  error?: string;
 }
 
 export interface CommandContext {

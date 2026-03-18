@@ -152,6 +152,10 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
   return {
     output: runResult.output + "\n\n" + testResult.output,
     ...(!ctx.isPiped && { incrementalLines: combinedLines }),
+    triggerEvents: [
+      ...(runResult.triggerEvents || []),
+      { type: "command_executed" as const, detail: "dbt_build" },
+    ],
   };
 }
 

@@ -13,4 +13,6 @@ export interface SessionResult {
 export interface ISession {
   enter(): void | Promise<void>;
   handleInput(data: string): SessionResult | null;
+  /** Returns false if the session has unsaved state and should not be closed. Defaults to true. */
+  canClose?(): boolean;
 }

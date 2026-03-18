@@ -1424,6 +1424,12 @@ describe("parsePipeline (additional)", () => {
     expect(pipeline[0].command).toBe("a");
     expect(pipeline[1].command).toBe("b");
   });
+
+  it("returns error for unterminated quote in pipeline segment", () => {
+    const pipeline = parsePipeline('ls | cat "foo');
+    expect(pipeline.some((p) => p.error)).toBe(true);
+    expect(pipeline.find((p) => p.error)?.error).toBe("syntax error: unterminated quote");
+  });
 });
 
 // --- end-to-end pipe tests ---

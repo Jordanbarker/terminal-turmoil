@@ -1,10 +1,13 @@
-import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
+import { DirectoryNode } from "../../engine/filesystem/types";
 import { file, dir } from "../../engine/filesystem/builders";
+import { buildDbtProject } from "./nexacorp";
+import { StoryFlags } from "../../state/types";
 
-export function createDevcontainerFilesystem(username: string): DirectoryNode {
+export function createDevcontainerFilesystem(username: string, storyFlags?: StoryFlags): DirectoryNode {
   return dir("/", {
     home: dir("home", {
       [username]: dir(username, {
+        ...(storyFlags?.dbt_project_cloned ? { "nexacorp-analytics": buildDbtProject() } : {}),
         "README.md": file("README.md", `=== Coder Dev Container ===
 
 Workspace: ai

@@ -50,6 +50,51 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
       ],
     },
 
+    // === DM Jordan: Metrics follow-up (after querying campaign_metrics) ===
+    {
+      id: "jordan_metrics_followup",
+      channelId: "dm_jordan",
+      messages: [
+        {
+          id: "jordan_metrics_1",
+          from: "Jordan Kessler",
+          timestamp: "12:00 PM",
+          body: "Did you get a chance to query that campaign data?",
+        },
+        {
+          id: "jordan_metrics_2",
+          from: "Jordan Kessler",
+          timestamp: "12:00 PM",
+          body: "I just ran the numbers on my end again. The ad platform shows 245K impressions for chip_launch. Our dashboard shows 735K. That's exactly 3x.",
+        },
+        {
+          id: "jordan_metrics_3",
+          from: "Jordan Kessler",
+          timestamp: "12:01 PM",
+          body: "3x isn't a rounding error. That's triplicate rows. Somebody is inflating these numbers and I don't think it's accidental.",
+        },
+        {
+          id: "jordan_metrics_4",
+          from: "Jordan Kessler",
+          timestamp: "12:01 PM",
+          body: "I was about to present these to the board as wins. If I'd shown inflated metrics to leadership... yeah, that would've been bad. Thanks for catching this.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "found_inflated_metrics" },
+      replyOptions: [
+        {
+          label: "The duplicate rows look deliberate.",
+          messageBody: "Yeah, the data has triplicate entries. It doesn't look like a pipeline bug — someone set this up intentionally.",
+          triggerEvents: [{ type: "objective_completed", detail: "jordan_metrics_reported" }],
+        },
+        {
+          label: "Hold off on that presentation.",
+          messageBody: "Definitely hold off on presenting those numbers. There's something wrong with how the data is getting into Snowflake.",
+          triggerEvents: [{ type: "objective_completed", detail: "jordan_metrics_reported" }],
+        },
+      ],
+    },
+
     // Jordan snow sql tips (after tips requested)
     {
       id: "jordan_snowsql_tips",

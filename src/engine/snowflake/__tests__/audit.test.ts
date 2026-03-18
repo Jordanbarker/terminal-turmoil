@@ -136,7 +136,7 @@ describe("Seed Data Integration — Narrative Queries", () => {
     const r = rows(result);
     expect(r).toHaveLength(1);
     expect(r[0].FIRST_NAME).toBe("Jin");
-    expect(r[0].STATUS).toBe("terminated");
+    expect(r[0].STATUS).toBe("resigned");
   });
 
   it("finds employees with 'system concern' notes", () => {
@@ -216,13 +216,13 @@ describe("Seed Data Integration — Narrative Queries", () => {
     expect(Number(count)).toBe(16);
   });
 
-  it("finds 3 employees with system concern notes or terminated status", () => {
+  it("finds 3 employees with system concern notes or resigned status", () => {
     const result = run(
-      "SELECT FIRST_NAME, LAST_NAME FROM EMPLOYEES WHERE NOTES LIKE '%system concern%' OR STATUS = 'terminated'",
+      "SELECT FIRST_NAME, LAST_NAME FROM EMPLOYEES WHERE NOTES LIKE '%system concern%' OR STATUS = 'resigned'",
       state
     );
     const r = rows(result);
-    // Jin Chen (terminated + system concern), Sarah Knight, Oscar Diaz
+    // Jin Chen (resigned + system concern), Sarah Knight, Oscar Diaz
     expect(r.length).toBe(3);
   });
 

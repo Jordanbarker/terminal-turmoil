@@ -75,9 +75,21 @@ describe("parseInput", () => {
     expect(result.raw).toBe("ls -la");
   });
 
-  it("handles unclosed quotes by treating rest as one token", () => {
+  it("returns error for unterminated double quote", () => {
     const result = parseInput('echo "hello');
-    expect(result.args).toEqual(["hello"]);
+    expect(result.error).toBe("syntax error: unterminated quote");
+    expect(result.command).toBe("");
+  });
+
+  it("returns error for unterminated single quote", () => {
+    const result = parseInput("echo 'hello");
+    expect(result.error).toBe("syntax error: unterminated quote");
+    expect(result.command).toBe("");
+  });
+
+  it("returns error for trailing unmatched quote", () => {
+    const result = parseInput("dbt build'");
+    expect(result.error).toBe("syntax error: unterminated quote");
   });
 
   it("handles multiple spaces between tokens", () => {

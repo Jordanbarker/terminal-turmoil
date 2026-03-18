@@ -31,16 +31,19 @@ src/hooks/useTerminal.ts                 # gameAction handler (save/load/listSav
 Full snapshot of all game state:
 ```ts
 {
-  version: number;        // SAVE_FORMAT_VERSION (currently 3) for migrations
+  version: number;        // SAVE_FORMAT_VERSION (currently 5) for migrations
   timestamp: number;      // Date.now() at save time
   label: string;          // Display label
   username, gamePhase, currentChapter, completedObjectives,
-  deliveredEmailIds, commandHistory, cwd: string;
-  fs: SerializedFS;       // Full filesystem tree
+  deliveredEmailIds, deliveredPiperIds, commandHistory, cwd: string;
+  fs: SerializedFS;       // Full filesystem tree (legacy, kept for backward compat)
   activeComputer: ComputerId;  // "home" | "nexacorp" | "devcontainer"
   storyFlags: StoryFlags;      // Record<string, string | boolean>
-  stashedFs?: SerializedFS;    // Stashed FS from other computer (v3+)
-  stashedCwd?: string;         // Stashed cwd from other computer (v3+)
+  stashedFs?: SerializedFS;    // Legacy stashed FS (v3+, superseded by computerStates)
+  stashedCwd?: string;         // Legacy stashed cwd (v3+, superseded by tabs)
+  computerStates?: Record<string, { fs: SerializedFS }>;  // Per-computer FS (v5+)
+  tabs?: SavedTabState[];      // Tab layout: {computerId, cwd}[] (v5+)
+  activeTabIndex?: number;     // Index of active tab in tabs[] (v5+)
 }
 ```
 
@@ -105,16 +108,24 @@ Zustand auto-save key: `terminal-turmoil-save`
 
 ## What Gets Saved
 
+### Store state (auto-persisted via Zustand `partialize`)
 | Field | What it tracks |
 |-------|---------------|
-| `fs` (serialized) | Full filesystem tree — file edits, new files/dirs, email read/unread state |
-| `cwd` | Player's current working directory |
+| `serializedComputerState` | Per-computer serialized filesystems |
+| `persistedTabs` / `persistedActiveTabIndex` | Tab layout and active tab position |
 | `username` | Player's chosen username |
 | `gamePhase` | `"login" \| "booting" \| "playing" \| "transitioning"` |
 | `currentChapter` | Current narrative chapter ID |
 | `completedObjectives` | Array of completed objective IDs |
 | `deliveredEmailIds` | Which emails have been triggered (prevents re-delivery) |
+| `deliveredPiperIds` | Which Piper messages have been delivered (v4+) |
 | `commandHistory` | Terminal history for up-arrow recall (capped at 500) |
+| `storyFlags` | Narrative progression flags |
+
+Note: Legacy fields `fs`, `cwd`, `activeComputer` are NOT in the store — they were removed in favor of `computerState` + tabs. `createSaveData()` derives them for backward-compatible `SaveData` output.
+
+### SaveData (manual saves via save command)
+Includes all auto-persisted fields plus backward-compat fields (`fs`, `cwd`, `activeComputer`) derived from `computerStates` and `tabs`.
 
 ## Updating for Narrative Progression
 
@@ -140,8 +151,10 @@ When `AssistantState` is added to the store, add it to `SaveData` and bump `SAVE
 Each version bump gets a transformer in `migrateSaveData()`:
 ```ts
 function migrateSaveData(data: SaveData): SaveData {
-  if (data.version < 2) { data = migrateV1toV2(data); }
-  if (data.version < 3) { data = migrateV2toV3(data); }
+  if (data.version < 2) { /* add activeComputer, storyFlags */ }
+  if (data.version < 3) { /* no-op structural bump */ }
+  if (data.version < 4) { /* add deliveredPiperIds */ }
+  if (data.version < 5) { /* infer computerStates from fs+stashedFs, create tabs from activeComputer+cwd */ }
   return data;
 }
 ```
@@ -152,4 +165,5 @@ function migrateSaveData(data: SaveData): SaveData {
 - **Immutable FS**: Deserialization creates a new VirtualFS instance
 - **GameAction side-channel**: Commands return `gameAction` on `CommandResult`, handled by `useTerminal`
 - **Version migrations**: `SAVE_FORMAT_VERSION` + `migrateSaveData()` for forward compatibility
-- **Auto-persist**: Zustand `partialize` includes serialized FS — filesystem survives page reload
+- **Auto-persist**: Zustand `partialize` serializes `computerState` (per-computer FS) and tab layout — filesystem survives page reload. Legacy `fs`/`cwd`/`activeComputer` fields are NOT auto-persisted; they exist only in `SaveData` for backward compatibility with older save formats
+- **Tab-derived state**: The store has no `fs`, `cwd`, or `activeComputer` fields. These are derived from `computerState[tab.computerId].fs` and `tabs[activeTabId].cwd`/`.computerId` at point of use

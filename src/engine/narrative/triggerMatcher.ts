@@ -1,17 +1,20 @@
 import { GameEvent } from "../mail/delivery";
+import { StoryFlags } from "../../state/types";
 
 export type CommonTrigger =
   | { type: "immediate" }
   | { type: "after_file_read"; filePath: string; requireDelivered?: string }
   | { type: "after_email_read"; emailId: string }
   | { type: "after_command"; command: string }
-  | { type: "after_objective"; objectiveId: string };
+  | { type: "after_objective"; objectiveId: string }
+  | { type: "after_story_flag"; flag: string; requireDelivered?: string };
 
 export function matchesCommonTrigger(
   trigger: CommonTrigger,
   event: GameEvent,
   deliveredIds: string[],
-  newDeliveries: string[]
+  newDeliveries: string[],
+  flags?: StoryFlags
 ): boolean {
   switch (trigger.type) {
     case "immediate":
@@ -28,5 +31,11 @@ export function matchesCommonTrigger(
       return event.type === "command_executed" && event.detail === trigger.command;
     case "after_objective":
       return event.type === "objective_completed" && event.detail === trigger.objectiveId;
+    case "after_story_flag":
+      if (!(flags && flags[trigger.flag])) return false;
+      if (trigger.requireDelivered) {
+        return deliveredIds.includes(trigger.requireDelivered) || newDeliveries.includes(trigger.requireDelivered);
+      }
+      return true;
   }
 }

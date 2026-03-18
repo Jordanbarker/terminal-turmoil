@@ -16,15 +16,12 @@ import { PiperSession } from "../engine/piper/PiperSession";
 import { checkPiperDeliveries } from "../engine/piper/delivery";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
-import { ComputerId, StoryFlags } from "../state/types";
+import { ComputerId } from "../state/types";
 import { buildDbtProject } from "../story/filesystem/nexacorp";
 
 interface EventActionContext {
   term: Terminal;
-  setStoryFlag: (key: string, value: string | boolean) => void;
-  storyFlagsRef: React.MutableRefObject<StoryFlags>;
-  fsRef: React.MutableRefObject<VirtualFS>;
-  setFs: (fs: VirtualFS) => void;
+  computerId: ComputerId;
 }
 
 interface EventActionResult {
@@ -36,82 +33,67 @@ interface EventActionResult {
 const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResult> = {
   ssh_connect: () => ({ shouldTransition: true, skipDefault: true }),
   search_tools_accepted: (ctx) => {
-    ctx.setStoryFlag("search_tools_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, search_tools_unlocked: true };
-    useGameStore.getState().addToast("grep, find, and diff are now available!");
+    const store = useGameStore.getState();
+    store.setStoryFlag("search_tools_unlocked", true);
+    store.addToast("grep, find, and diff are now available!");
+    // Unlock multi-terminal tabs alongside search tools
+    if (!store.storyFlags.tabs_unlocked) {
+      store.setStoryFlag("tabs_unlocked", true);
+      store.addToast("Multi-terminal tabs unlocked! Ctrl+B, C to create, Ctrl+B, N/P to switch.");
+    }
     return {};
   },
   inspection_tools_accepted: (ctx) => {
-    ctx.setStoryFlag("inspection_tools_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, inspection_tools_unlocked: true };
-    useGameStore.getState().addToast("head, tail, and wc are now available!");
+    const store = useGameStore.getState();
+    store.setStoryFlag("inspection_tools_unlocked", true);
+    store.addToast("head, tail, and wc are now available!");
     return {};
   },
   processing_tools_accepted: (ctx) => {
-    ctx.setStoryFlag("processing_tools_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, processing_tools_unlocked: true };
-    useGameStore.getState().addToast("sort and uniq are now available!");
+    const store = useGameStore.getState();
+    store.setStoryFlag("processing_tools_unlocked", true);
+    store.addToast("sort and uniq are now available!");
     return {};
   },
   pipeline_tools_accepted: (ctx) => {
-    ctx.setStoryFlag("coder_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, coder_unlocked: true };
-    useGameStore.getState().addToast("coder command is now available! Try: coder ssh ai");
+    const store = useGameStore.getState();
+    store.setStoryFlag("coder_unlocked", true);
+    store.addToast("coder command is now available! Try: coder ssh ai");
     return {};
   },
   dana_ops_accepted: (ctx) => {
-    ctx.setStoryFlag("chmod_unlocked", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, chmod_unlocked: true };
-    useGameStore.getState().addToast("chmod command unlocked!");
+    const store = useGameStore.getState();
+    store.setStoryFlag("chmod_unlocked", true);
+    store.addToast("chmod command unlocked!");
     return {};
   },
   dana_ops_no_access: () => {
     return {};
   },
   dbt_project_cloned: (ctx) => {
-    ctx.setStoryFlag("dbt_project_cloned", true);
-    ctx.storyFlagsRef.current = { ...ctx.storyFlagsRef.current, dbt_project_cloned: true };
-    const homeDir = ctx.fsRef.current.homeDir;
-    const result = ctx.fsRef.current.insertNode(`${homeDir}/nexacorp-analytics`, buildDbtProject());
+    const store = useGameStore.getState();
+    store.setStoryFlag("dbt_project_cloned", true);
+    const currentFs = store.computerState[ctx.computerId]!.fs;
+    const homeDir = currentFs.homeDir;
+    const result = currentFs.insertNode(`${homeDir}/nexacorp-analytics`, buildDbtProject());
     if (result.fs) {
-      ctx.setFs(result.fs);
-      ctx.fsRef.current = result.fs;
+      store.setComputerFs(ctx.computerId, result.fs);
     }
-    useGameStore.getState().addToast("dbt project cloned to ~/nexacorp-analytics/");
+    store.addToast("dbt project cloned to ~/nexacorp-analytics/");
     return { skipDefault: true };
   },
 };
 
 interface SessionRouterDeps {
-  fsRef: React.MutableRefObject<VirtualFS>;
-  usernameRef: React.MutableRefObject<string>;
-  deliveredIdsRef: React.MutableRefObject<string[]>;
-  deliveredPiperIdsRef: React.MutableRefObject<string[]>;
   activeComputerRef: React.MutableRefObject<ComputerId>;
-  storyFlagsRef: React.MutableRefObject<StoryFlags>;
-  setFs: (fs: VirtualFS) => void;
-  addDeliveredEmails: (ids: string[]) => void;
-  addDeliveredPiperMessages: (ids: string[]) => void;
-  setStoryFlag: (key: string, value: string | boolean) => void;
   writePrompt: (term: Terminal) => void;
+  getPrompt: () => string;
   runSshTransition: (term: Terminal) => void;
+  pendingNotificationsRef: React.MutableRefObject<{ email: number; piper: number } | null>;
 }
 
 export function useSessionRouter(deps: SessionRouterDeps) {
-  const {
-    fsRef,
-    usernameRef,
-    deliveredIdsRef,
-    deliveredPiperIdsRef,
-    activeComputerRef,
-    storyFlagsRef,
-    setFs,
-    addDeliveredEmails,
-    addDeliveredPiperMessages,
-    setStoryFlag,
-    writePrompt,
-    runSshTransition,
-  } = deps;
+  const { activeComputerRef, writePrompt, getPrompt, runSshTransition, pendingNotificationsRef } = deps;
 
   const sessionRef = useRef<ISession | null>(null);
   const sessionTypeRef = useRef<string | null>(null);
@@ -124,27 +106,28 @@ export function useSessionRouter(deps: SessionRouterDeps) {
   /** Sync piper IDs from the live session back to game state. */
   const syncPiperIds = useCallback(() => {
     if (!piperInfoRef.current) return;
+    const store = useGameStore.getState();
     const newIds = piperInfoRef.current.deliveredPiperIds.filter(
-      (id) => !deliveredPiperIdsRef.current.includes(id)
+      (id) => !store.deliveredPiperIds.includes(id)
     );
     if (newIds.length > 0) {
-      addDeliveredPiperMessages(newIds);
-      deliveredPiperIdsRef.current = [...deliveredPiperIdsRef.current, ...newIds];
+      store.addDeliveredPiperMessages(newIds);
 
       // Fire piper_delivered story flag triggers for newly delivered messages
-      const piperTriggers = getTriggersForComputer(activeComputerRef.current, usernameRef.current);
+      const computerId = activeComputerRef.current;
+      const latestStore = useGameStore.getState();
+      const piperTriggers = getTriggersForComputer(computerId, latestStore.username);
       for (const id of newIds) {
         if (id.startsWith("reply:") || id.startsWith("seen:")) continue;
         const pdEvent = { type: "piper_delivered" as const, detail: id };
-        const flagResults = checkStoryFlagTriggers(pdEvent, piperTriggers, storyFlagsRef.current);
+        const flagResults = checkStoryFlagTriggers(pdEvent, piperTriggers, latestStore.storyFlags);
         for (const flagResult of flagResults) {
-          setStoryFlag(flagResult.flag, flagResult.value);
-          storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
-          if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+          latestStore.setStoryFlag(flagResult.flag, flagResult.value);
+          if (flagResult.toast) latestStore.addToast(flagResult.toast);
         }
       }
     }
-  }, [addDeliveredPiperMessages, setStoryFlag, deliveredPiperIdsRef, activeComputerRef, usernameRef, storyFlagsRef]);
+  }, [activeComputerRef]);
 
   /**
    * Process trigger events from a session result. Returns true if SSH transition triggered.
@@ -153,7 +136,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
   const processTriggerEvents = useCallback(
     (term: Terminal, events: import("../engine/mail/delivery").GameEvent[], notify: boolean): boolean => {
       let shouldTransition = false;
-      const actionCtx: EventActionContext = { term, setStoryFlag, storyFlagsRef, fsRef, setFs };
+      const computerId = activeComputerRef.current;
+      const actionCtx: EventActionContext = { term, computerId };
 
       for (const event of events) {
         // Check for registered event actions
@@ -163,65 +147,61 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           if (actionResult.skipDefault) continue;
         }
 
+        const store = useGameStore.getState();
+        const currentFs = store.computerState[computerId]!.fs;
+
         const delivery = checkEmailDeliveries(
-          fsRef.current,
+          currentFs,
           event,
-          deliveredIdsRef.current,
-          activeComputerRef.current
+          store.deliveredEmailIds,
+          computerId,
+          store.storyFlags
         );
         if (delivery.newDeliveries.length > 0) {
-          setFs(delivery.fs);
-          fsRef.current = delivery.fs;
-          addDeliveredEmails(delivery.newDeliveries);
-          deliveredIdsRef.current = [
-            ...deliveredIdsRef.current,
-            ...delivery.newDeliveries,
-          ];
+          store.setComputerFs(computerId, delivery.fs);
+          store.addDeliveredEmails(delivery.newDeliveries);
           if (notify) {
-            term.write(`\r\n\n${colorize(`You have new mail in /var/mail/${usernameRef.current}`, ansi.yellow, ansi.bold)}`);
+            term.write(`\r\n${colorize(`You have new mail in /var/mail/${store.username}`, ansi.yellow, ansi.bold)}`);
           }
         }
 
         // Check piper deliveries
+        const latestStore = useGameStore.getState();
         const piperNew = checkPiperDeliveries(
           event,
-          deliveredPiperIdsRef.current,
-          usernameRef.current,
-          activeComputerRef.current,
-          storyFlagsRef.current
+          latestStore.deliveredPiperIds,
+          latestStore.username,
+          computerId,
+          latestStore.storyFlags
         );
         if (piperNew.length > 0) {
-          addDeliveredPiperMessages(piperNew);
-          deliveredPiperIdsRef.current = [
-            ...deliveredPiperIdsRef.current,
-            ...piperNew,
-          ];
+          latestStore.addDeliveredPiperMessages(piperNew);
           if (notify) {
-            term.write(`\r\n\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
           }
         }
 
         // Wire objective_completed events to store
         if (event.type === "objective_completed") {
-          const store = useGameStore.getState();
-          store.completeObjective(event.detail);
+          useGameStore.getState().completeObjective(event.detail);
         }
       }
 
       // Process story flag triggers from session events
-      const triggers = getTriggersForComputer(activeComputerRef.current, usernameRef.current);
+      const store = useGameStore.getState();
+      const triggers = getTriggersForComputer(computerId, store.username);
       for (const event of events) {
-        const flagResults = checkStoryFlagTriggers(event, triggers, storyFlagsRef.current);
+        const latestFlags = useGameStore.getState().storyFlags;
+        const flagResults = checkStoryFlagTriggers(event, triggers, latestFlags);
         for (const flagResult of flagResults) {
-          setStoryFlag(flagResult.flag, flagResult.value);
-          storyFlagsRef.current = { ...storyFlagsRef.current, [flagResult.flag]: flagResult.value };
+          useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
           if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
         }
       }
 
       return shouldTransition;
     },
-    [setFs, addDeliveredEmails, addDeliveredPiperMessages, setStoryFlag, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef]
+    [activeComputerRef]
   );
 
   /** Route input to the active session. Returns true if input was consumed. */
@@ -232,19 +212,22 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       const result = sessionRef.current.handleInput(data);
       if (!result) return true; // still waiting (prompt session)
 
+      const computerId = activeComputerRef.current;
+
       // Apply session FS changes FIRST so trigger event deliveries build on top
       if (result.newFs) {
-        fsRef.current = result.newFs;
+        useGameStore.getState().setComputerFs(computerId, result.newFs);
+      }
+
+      // Sync piper IDs mid-session BEFORE processing trigger events,
+      // so processTriggerEvents sees already-delivered IDs and doesn't re-deliver them
+      if (sessionTypeRef.current === "piper") {
+        syncPiperIds();
       }
 
       // Process mid-session events without terminal notifications (session owns the screen)
       if (result.triggerEvents?.length && result.type !== "exit") {
         processTriggerEvents(term, result.triggerEvents, false);
-      }
-
-      // Sync piper IDs mid-session (replies + seen markers)
-      if (sessionTypeRef.current === "piper") {
-        syncPiperIds();
       }
 
       if (result.type !== "exit") return true; // continue
@@ -255,16 +238,18 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       sessionTypeRef.current = null;
 
       // Mark intro as seen when player exits nano (not when it opens)
-      if (type === "editor" && activeComputerRef.current === "home") {
+      if (type === "editor" && computerId === "home") {
         const store = useGameStore.getState();
         if (!store.hasSeenIntro) {
           store.setHasSeenIntro();
         }
       }
 
-      if (type === "snow-sql" && result.newState) {
-        const store = useGameStore.getState();
-        store.setSnowflakeState(result.newState);
+      if (type === "snow-sql") {
+        if (result.newState) {
+          useGameStore.getState().setSnowflakeState(result.newState);
+        }
+        useGameStore.getState().setActiveSnowSession(null);
       }
 
       // Final piper ID sync on exit
@@ -281,39 +266,58 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       if (result.triggerEvents?.length) {
         const shouldTransition = processTriggerEvents(term, result.triggerEvents, true);
         if (shouldTransition) {
+          pendingNotificationsRef.current = null;
           runSshTransition(term);
           return true;
         }
       }
 
-      // Sync store with fsRef (which may have been updated by trigger event deliveries)
-      if (result.newFs) {
-        setFs(fsRef.current);
+      // Flush notifications deferred from the command that started this session
+      if (pendingNotificationsRef.current) {
+        const pending = pendingNotificationsRef.current;
+        pendingNotificationsRef.current = null;
+        const username = useGameStore.getState().username;
+        if (pending.email > 0) {
+          term.write(`\r\n${colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold)}`);
+        }
+        if (pending.piper > 0) {
+          term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+        }
       }
 
-      writePrompt(term);
+      // FS was already synced to store via setComputerFs above
+      // Piper and editor use the alternate screen buffer — no leading \r\n needed
+      const usedAltScreen = type === "piper" || type === "editor";
+      if (usedAltScreen) {
+        term.write(getPrompt());
+      } else {
+        writePrompt(term);
+      }
       return true;
     },
-    [setFs, setStoryFlag, writePrompt, runSshTransition, fsRef, usernameRef, deliveredIdsRef, deliveredPiperIdsRef, activeComputerRef, storyFlagsRef, processTriggerEvents, syncPiperIds]
+    [activeComputerRef, processTriggerEvents, syncPiperIds, writePrompt, getPrompt, runSshTransition]
   );
 
   /** Start a new session from an AppliedEffects startSession descriptor. */
   const startSession = useCallback(
     (term: Terminal, session: SessionToStart): void => {
+      const computerId = activeComputerRef.current;
+
       if (session.type === "editor") {
+        const store = useGameStore.getState();
+        const currentFs = store.computerState[computerId]!.fs;
         const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave } = session.info;
         const trigger = triggerEvents
           ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave }
           : undefined;
         const editorSession = new EditorSession(
           term,
-          fsRef.current,
+          currentFs,
           filePath,
           content,
           readOnly,
           (newFs: VirtualFS) => {
-            setFs(newFs);
-            fsRef.current = newFs;
+            useGameStore.getState().setComputerFs(computerId, newFs);
           },
           trigger
         );
@@ -322,21 +326,31 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         editorSession.enter();
       } else if (session.type === "snow-sql") {
         const store = useGameStore.getState();
+        if (store.activeSnowSession) {
+          term.write("\r\n" + colorize("Another Snowflake session is already active.", ansi.red) + "\r\n");
+          writePrompt(term);
+          return;
+        }
+        const tabId = store.activeTabId;
+        store.setActiveSnowSession(tabId);
         const snowSqlSession = new SnowSqlSession(
           term,
           store.snowflakeState,
           createDefaultContext(store.username),
-          (newState) => store.setSnowflakeState(newState)
+          (newState) => useGameStore.getState().setSnowflakeState(newState),
+          () => useGameStore.getState().setActiveSnowSession(null)
         );
         sessionRef.current = snowSqlSession;
         sessionTypeRef.current = "snow-sql";
         snowSqlSession.enter();
       } else if (session.type === "prompt") {
+        const store = useGameStore.getState();
+        const currentFs = store.computerState[computerId]!.fs;
         const promptSession = new PromptSession(
           term,
           session.info,
-          fsRef.current,
-          usernameRef.current
+          currentFs,
+          store.username
         );
         sessionRef.current = promptSession;
         sessionTypeRef.current = "prompt";
@@ -353,12 +367,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           }
         });
       } else if (session.type === "ssh") {
+        const store = useGameStore.getState();
+        const currentFs = store.computerState[computerId]!.fs;
         const sshSession = new SshSession(
           term,
-          fsRef.current,
+          currentFs,
           session.info.host,
           session.info.username,
-          fsRef.current.homeDir
+          currentFs.homeDir
         );
         sessionRef.current = sshSession;
         sessionTypeRef.current = "ssh";
@@ -366,8 +382,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       } else if (session.type === "chip") {
         const chipSession = new ChipSession(term, session.info, (topics) => {
           const value = topics.join(",");
-          setStoryFlag("used_chip_topics", value);
-          storyFlagsRef.current = { ...storyFlagsRef.current, used_chip_topics: value };
+          useGameStore.getState().setStoryFlag("used_chip_topics", value);
         });
         sessionRef.current = chipSession;
         sessionTypeRef.current = "chip";
@@ -385,8 +400,13 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         piperSession.enter();
       }
     },
-    [setFs, setStoryFlag, writePrompt, fsRef, usernameRef, storyFlagsRef]
+    [activeComputerRef, writePrompt]
   );
 
-  return { hasActiveSession, routeInput, startSession };
+  const canCloseCurrentSession = useCallback((): boolean => {
+    if (!sessionRef.current) return true;
+    return sessionRef.current.canClose?.() ?? true;
+  }, []);
+
+  return { hasActiveSession, routeInput, startSession, canCloseCurrentSession };
 }

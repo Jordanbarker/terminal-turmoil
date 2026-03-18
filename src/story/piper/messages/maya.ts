@@ -18,6 +18,12 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
           id: "maya_dm_2",
           from: "Maya Johnson",
           timestamp: "9:20 AM",
+          body: "I paired you with Auri Park as your onboarding buddy — she's great! She'll reach out to help you get oriented with the data systems.",
+        },
+        {
+          id: "maya_dm_3",
+          from: "Maya Johnson",
+          timestamp: "9:21 AM",
           body: "I'm here if you need anything. And I mean anything — questions about the team, the company, where to find things, or just want to vent about first-day overwhelm. My door is always open!",
         },
       ],
@@ -64,7 +70,7 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
           id: "maya_jin_1",
           from: "Maya Johnson",
           timestamp: "10:50 AM",
-          body: "I probably shouldn't say too much. Just... if anything in the handoff feels incomplete, it's not because he didn't care. He cared a lot.",
+          body: "I probably shouldn't say too much. He wasn't really the type to make a fuss about things — kept his head down, did his work. Just... if anything in the handoff feels incomplete, it's not because he didn't care. He cared a lot.",
         },
       ],
       trigger: { type: "after_piper_reply", deliveryId: "maya_dm_handoff" },
@@ -93,6 +99,21 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
           messageBody: "All good! Lots to learn but I'm enjoying it. Thanks for checking in.",
         },
       ],
+    },
+
+    // === DM Maya: Response to checkin reply ===
+    {
+      id: "maya_dm_checkin_reply",
+      channelId: "dm_maya",
+      messages: [
+        {
+          id: "maya_checkin_reply_1",
+          from: "Maya Johnson",
+          timestamp: "11:35 AM",
+          body: "Glad to hear it. You're doing great — seriously. And you know where to find me if you ever need anything.",
+        },
+      ],
+      trigger: { type: "after_piper_reply", deliveryId: "maya_dm_checkin" },
     },
   ];
 }

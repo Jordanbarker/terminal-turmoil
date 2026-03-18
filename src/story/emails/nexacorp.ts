@@ -28,8 +28,9 @@ export function getNexacorpEmailDefinitions(username: string): EmailDelivery[] {
       body: `Hey!
 
 So glad you're here — we've been looking forward to getting you
-on board. Chip should reach out shortly to help with onboarding.
-Let me know if you don't see anything from him today.
+on board. Your onboarding buddy Auri Park will reach out on
+Piper — she's been running the data side of things and will
+help you get oriented.
 
 Your first priority is just getting familiar with the system.
 Here are a couple things to check out first:
@@ -58,15 +59,14 @@ great and I'm looking forward to diving in.
 Let me know when you'd like to chat about that first project!`,
       },
       {
-        label: "What happened to Jin Chen?",
+        label: "Anything I should watch out for?",
         replyBody: `Hey Edward,
 
-Thanks for the welcome! I noticed I seem to be replacing someone —
-is there anything I should know about the handoff or any ongoing
-work I should be aware of?
+Appreciate the welcome! Quick question — any unwritten rules,
+office quirks, or things I should know that aren't in the
+onboarding docs?
 
-Just want to make sure I'm not missing any context.`,
-        triggerEvents: [{ type: "objective_completed", detail: "asked_about_chen" }],
+Want to make sure I don't step on any landmines my first week.`,
       },
     ],
   },
@@ -144,8 +144,8 @@ When you need it for data work, just connect with:
   coder ssh ai
 
 It's got dbt, snow (Snowflake CLI), and python pre-installed.
-Auri can walk you through the analytics pipeline when you're
-ready.
+Your buddy Auri can walk you through the analytics pipeline when
+you're ready.
 
 Type 'exit' to disconnect and get back to your workstation.
 Let me know if you hit any issues!
@@ -199,6 +199,10 @@ Other things to know:
   - Company town hall is Fridays at noon
   - PTO is flexible after your first 60 days — just give your manager a heads up
 
+One more thing — we pair every new hire with an onboarding buddy
+to help you get oriented. I've paired you with Auri Park on the
+data engineering team. She'll reach out on Piper to say hi!
+
 I know that's a lot of checkboxes for day one. Don't stress
 about it — none of it's due today. Just settle in, meet folks,
 and come find me if you need anything. I mean that!
@@ -218,13 +222,14 @@ and come find me if you need anything. I mean that!
       from: "Edward Torres <edward@nexacorp.com>",
       to: `${username}@nexacorp.com`,
       date: "Mon, 23 Feb 2026 09:45:00",
-      subject: "Auri could use a hand",
+      subject: "Data pipeline context",
       body: `Hey,
 
-Auri mentioned she's been stretched thin since Chen left — she
-could really use some help with the data pipeline stuff. No
-pressure today, but when you get a chance, the handoff docs are
-at /srv/engineering/chen-handoff/.
+Since you're working with Auri on the data side, the handoff docs
+are worth a look — they're at /srv/engineering/chen-handoff/.
+
+She's been handling the pipeline solo since Chen left, so there's
+a lot of context in there that'll help you hit the ground running.
 
 Should give you a good sense of what Chen was working on before
 he left.
@@ -245,8 +250,9 @@ Thanks!
       subject: "End of day 1",
       body: `Hey,
 
-Great first day! Heard from Auri that you got the pipeline
-running — really appreciate you jumping on that.
+Great first day! Auri mentioned you already ran a full build on
+the analytics pipeline — great to see you getting up to speed
+on the data side.
 
 P.S. Chen's home directory (/home/jchen/) still hasn't been
 cleaned up. Might be useful context for understanding the
@@ -255,7 +261,10 @@ codebase, might just be clutter. IT will get to it eventually.
 - Edward
 `,
     },
-    trigger: { type: "after_command", command: "dbt" },
+    trigger: [
+      { type: "after_command", command: "dbt" },
+      { type: "after_story_flag", flag: "ran_dbt" },
+    ],
   },
 
   // === Light-tier founder emails (after reading Edward's welcome) ===

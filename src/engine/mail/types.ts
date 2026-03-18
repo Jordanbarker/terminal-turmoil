@@ -24,4 +24,5 @@ export type EmailTrigger =
   | { type: "after_file_read"; filePath: string; requireDelivered?: string }
   | { type: "after_email_read"; emailId: string }
   | { type: "after_command"; command: string }
-  | { type: "after_objective"; objectiveId: string };
+  | { type: "after_objective"; objectiveId: string }
+  | { type: "after_story_flag"; flag: string };

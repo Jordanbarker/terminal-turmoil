@@ -1,17 +1,14 @@
 import { useCallback, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
-import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { getAvailableCommands } from "../engine/commands/registry";
 import { getSuggestion } from "../engine/suggestions/suggest";
 import { isBackspace, isPrintable, CTRL_C } from "../engine/terminal/keyCodes";
-import { ComputerId, StoryFlags } from "../state/types";
+import { ComputerId } from "../state/types";
 
 interface CommandLineDeps {
-  fsRef: React.MutableRefObject<VirtualFS>;
   cwdRef: React.MutableRefObject<string>;
   activeComputerRef: React.MutableRefObject<ComputerId>;
-  storyFlagsRef: React.MutableRefObject<StoryFlags>;
   writePrompt: (term: Terminal) => void;
 }
 
@@ -21,22 +18,19 @@ export interface CommandLineResult {
 }
 
 export function useCommandLine(deps: CommandLineDeps) {
-  const { fsRef, cwdRef, activeComputerRef, storyFlagsRef, writePrompt } = deps;
+  const { cwdRef, activeComputerRef, writePrompt } = deps;
   const lineBuffer = useRef("");
   const cursorPos = useRef(0);
   const ghostLengthRef = useRef(0);
 
   const {
     commandHistory,
-    historyIndex,
     pushHistory,
-    setHistoryIndex,
   } = useGameStore();
 
   const historyRef = useRef(commandHistory);
-  const historyIndexRef = useRef(historyIndex);
+  const historyIndexRef = useRef(-1);
   historyRef.current = commandHistory;
-  historyIndexRef.current = historyIndex;
 
   const clearGhost = useCallback((term: Terminal) => {
     if (ghostLengthRef.current > 0) {
@@ -76,13 +70,18 @@ export function useCommandLine(deps: CommandLineDeps) {
     if (!input) return;
     if (cursorPos.current !== input.length) return;
 
-    const commandNames = getAvailableCommands(activeComputerRef.current, storyFlagsRef.current).map((c) => c.name);
+    const store = useGameStore.getState();
+    const computerId = activeComputerRef.current;
+    const currentFs = store.computerState[computerId]?.fs;
+    if (!currentFs) return;
+
+    const commandNames = getAvailableCommands(computerId, store.storyFlags).map((c) => c.name);
     const suggestion = getSuggestion(input, {
       commandHistory: historyRef.current,
       commandNames,
-      fs: fsRef.current,
+      fs: currentFs,
       cwd: cwdRef.current,
-      homeDir: fsRef.current.homeDir,
+      homeDir: currentFs.homeDir,
     });
 
     if (suggestion && suggestion.length > input.length) {
@@ -90,7 +89,7 @@ export function useCommandLine(deps: CommandLineDeps) {
       term.write(`\x1b[s\x1b[2m${suffix}\x1b[0m\x1b[u`);
       ghostLengthRef.current = suffix.length;
     }
-  }, [fsRef, cwdRef, storyFlagsRef]);
+  }, [cwdRef]);
 
   /**
    * Process a single character of input for the command line.
@@ -107,7 +106,7 @@ export function useCommandLine(deps: CommandLineDeps) {
         if (input.trim()) {
           term.write("\r\n");
           pushHistory(input);
-          setHistoryIndex(-1);
+          historyIndexRef.current = -1;
           return { type: "submit", input };
         }
 
@@ -155,7 +154,7 @@ export function useCommandLine(deps: CommandLineDeps) {
 
       return null;
     },
-    [clearGhost, renderGhostText, rewriteFromCursor, pushHistory, setHistoryIndex, writePrompt]
+    [clearGhost, renderGhostText, rewriteFromCursor, pushHistory, writePrompt]
   );
 
   const findPrevWordBoundary = useCallback((buffer: string, pos: number): number => {
@@ -224,7 +223,6 @@ export function useCommandLine(deps: CommandLineDeps) {
           clearAndRewriteLine(term, lineBuffer.current.length, cursorPos.current, historyEntry, historyEntry.length);
           lineBuffer.current = historyEntry;
           cursorPos.current = historyEntry.length;
-          setHistoryIndex(newIdx);
           historyIndexRef.current = newIdx;
         }
         renderGhostText(term);
@@ -240,7 +238,6 @@ export function useCommandLine(deps: CommandLineDeps) {
           clearAndRewriteLine(term, oldLen, oldPos, "", 0);
           lineBuffer.current = "";
           cursorPos.current = 0;
-          setHistoryIndex(-1);
           historyIndexRef.current = -1;
         } else {
           const newIdx = idx + 1;
@@ -248,7 +245,6 @@ export function useCommandLine(deps: CommandLineDeps) {
           clearAndRewriteLine(term, oldLen, oldPos, historyEntry, historyEntry.length);
           lineBuffer.current = historyEntry;
           cursorPos.current = historyEntry.length;
-          setHistoryIndex(newIdx);
           historyIndexRef.current = newIdx;
         }
         renderGhostText(term);
@@ -268,14 +264,17 @@ export function useCommandLine(deps: CommandLineDeps) {
           cursorPos.current = pos + 1;
           term.write("\x1b[C");
         } else if (ghostLengthRef.current > 0) {
-          const commandNames = getAvailableCommands(activeComputerRef.current, storyFlagsRef.current).map((c) => c.name);
-          const suggestion = getSuggestion(lineBuffer.current, {
+          const store = useGameStore.getState();
+          const cId = activeComputerRef.current;
+          const curFs = store.computerState[cId]?.fs;
+          const commandNames = getAvailableCommands(cId, store.storyFlags).map((c) => c.name);
+          const suggestion = curFs ? getSuggestion(lineBuffer.current, {
             commandHistory: historyRef.current,
             commandNames,
-            fs: fsRef.current,
+            fs: curFs,
             cwd: cwdRef.current,
-            homeDir: fsRef.current.homeDir,
-          });
+            homeDir: curFs.homeDir,
+          }) : null;
 
           if (suggestion && suggestion.length > lineBuffer.current.length) {
             clearGhost(term);
@@ -323,7 +322,7 @@ export function useCommandLine(deps: CommandLineDeps) {
         }
       }
     },
-    [clearGhost, clearAndRewriteLine, renderGhostText, setHistoryIndex, fsRef, cwdRef, findPrevWordBoundary, findNextWordBoundary]
+    [clearGhost, clearAndRewriteLine, renderGhostText, cwdRef, findPrevWordBoundary, findNextWordBoundary]
   );
 
   return { handleChar, handleArrow, deleteWordBackward, deleteWordForward };

@@ -21,39 +21,37 @@ export interface Toast {
   message: string;
 }
 
-interface GameStore {
-  fs: VirtualFS;
+export interface TabState {
+  id: string;
+  computerId: ComputerId;
   cwd: string;
+}
+
+interface GameStore {
   username: string;
   commandHistory: string[];
-  historyIndex: number;
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
   gamePhase: GamePhase;
   snowflakeState: SnowflakeState;
-  activeComputer: ComputerId;
   storyFlags: StoryFlags;
   hasSeenIntro: boolean;
   toasts: Toast[];
-  stashedFs: VirtualFS | null;
-  stashedCwd: string;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS }>>;
+  tabs: TabState[];
+  activeTabId: string;
+  activeSnowSession: string | null;
 
   // Actions
-  setFs: (fs: VirtualFS) => void;
-  setCwd: (cwd: string) => void;
   setUsername: (username: string) => void;
   pushHistory: (command: string) => void;
-  setHistoryIndex: (index: number) => void;
   completeObjective: (id: string) => void;
   setGamePhase: (phase: GamePhase) => void;
   addDeliveredEmails: (ids: string[]) => void;
   addDeliveredPiperMessages: (ids: string[]) => void;
   setSnowflakeState: (state: SnowflakeState) => void;
-  setActiveComputer: (id: ComputerId) => void;
-  setStashedFs: (fs: VirtualFS | null) => void;
-  setStashedCwd: (cwd: string) => void;
   setCurrentChapter: (chapter: string) => void;
   setStoryFlag: (key: string, value: string | boolean) => void;
   setHasSeenIntro: () => void;
@@ -62,9 +60,17 @@ interface GameStore {
   resetGame: () => void;
   saveGame: (slotId: SaveSlotId, label?: string) => boolean;
   loadGame: (slotId: SaveSlotId) => boolean;
+  setComputerFs: (computer: ComputerId, fs: VirtualFS) => void;
+  initComputer: (computer: ComputerId, fs: VirtualFS) => void;
+  addTab: (computerId: ComputerId, cwd: string) => string;
+  removeTab: (tabId: string) => void;
+  setActiveTab: (tabId: string) => void;
+  setTabCwd: (tabId: string, cwd: string) => void;
+  setActiveSnowSession: (tabId: string | null) => void;
+  setTabComputer: (tabId: string, computerId: ComputerId, cwd: string) => void;
 }
 
-function buildFs(
+export function buildFs(
   username: string,
   computer: ComputerId,
   storyFlags: StoryFlags = {},
@@ -73,7 +79,7 @@ function buildFs(
   const root = computer === "home"
     ? createHomeFilesystem(username)
     : computer === "devcontainer"
-      ? createDevcontainerFilesystem(username)
+      ? createDevcontainerFilesystem(username, storyFlags)
       : createNexacorpFilesystem(username, storyFlags);
   let fs = new VirtualFS(
     root,
@@ -88,26 +94,31 @@ function buildFs(
   return fs;
 }
 
+const MAX_TABS = 5;
+let tabCounter = 0;
+function nextTabId(): string {
+  return `tab-${++tabCounter}`;
+}
+
 function createInitialState(username = PLAYER.username) {
   const fs = buildFs(username, "home");
+  const initialTabId = nextTabId();
   return {
-    fs,
-    cwd: fs.cwd,
     username,
     commandHistory: ["nano terminal_notes.txt"],
-    historyIndex: -1,
     currentChapter: "chapter-1",
     completedObjectives: [] as string[],
     deliveredEmailIds: [] as string[],
     deliveredPiperIds: [] as string[],
     gamePhase: "playing" as GamePhase,
     snowflakeState: createInitialSnowflakeState(),
-    activeComputer: "home" as ComputerId,
     storyFlags: {} as StoryFlags,
     hasSeenIntro: false,
     toasts: [] as Toast[],
-    stashedFs: null as VirtualFS | null,
-    stashedCwd: "",
+    computerState: { home: { fs } } as Partial<Record<ComputerId, { fs: VirtualFS }>>,
+    tabs: [{ id: initialTabId, computerId: "home" as ComputerId, cwd: fs.cwd }] as TabState[],
+    activeTabId: initialTabId,
+    activeSnowSession: null as string | null,
   };
 }
 
@@ -118,23 +129,24 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       ...createInitialState(),
 
-      setFs: (fs) => set({ fs }),
-      setCwd: (cwd) => set({ cwd }),
       setUsername: (username) => {
         const state = get();
-        const fs = buildFs(username, state.activeComputer, state.storyFlags, state.deliveredEmailIds);
+        const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+        const computerId = activeTab?.computerId ?? "home";
+        const fs = buildFs(username, computerId, state.storyFlags, state.deliveredEmailIds);
         let finalFs = fs;
-        if (state.activeComputer === "nexacorp") {
+        if (computerId === "nexacorp") {
           finalFs = syncToVirtualFS(state.snowflakeState, fs);
         }
-        set({ username, fs: finalFs, cwd: finalFs.cwd });
+        set({
+          username,
+          computerState: { ...state.computerState, [computerId]: { fs: finalFs } },
+        });
       },
       pushHistory: (command) =>
         set((state) => ({
           commandHistory: [...state.commandHistory, command].slice(-MAX_HISTORY),
-          historyIndex: -1,
         })),
-      setHistoryIndex: (index) => set({ historyIndex: index }),
       completeObjective: (id) =>
         set((state) => ({
           completedObjectives: [...state.completedObjectives, id],
@@ -158,9 +170,6 @@ export const useGameStore = create<GameStore>()(
           return { deliveredPiperIds: [...filtered, ...ids] };
         }),
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
-      setActiveComputer: (id) => set({ activeComputer: id }),
-      setStashedFs: (fs) => set({ stashedFs: fs }),
-      setStashedCwd: (cwd) => set({ stashedCwd: cwd }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
       setStoryFlag: (key, value) =>
         set((state) => ({
@@ -175,11 +184,63 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           toasts: state.toasts.filter((t) => t.id !== id),
         })),
-      resetGame: () => set(createInitialState()),
+      setComputerFs: (computer, fs) =>
+        set((state) => ({
+          computerState: { ...state.computerState, [computer]: { fs } },
+        })),
+      initComputer: (computer, fs) =>
+        set((state) => ({
+          computerState: { ...state.computerState, [computer]: { fs } },
+        })),
+      addTab: (computerId, cwd) => {
+        const state = get();
+        if (state.tabs.length >= MAX_TABS) return state.activeTabId;
+        const id = nextTabId();
+        set({
+          tabs: [...state.tabs, { id, computerId, cwd }],
+          activeTabId: id,
+        });
+        return id;
+      },
+      removeTab: (tabId) =>
+        set((state) => {
+          const newTabs = state.tabs.filter((t) => t.id !== tabId);
+          if (newTabs.length === 0) return {}; // Can't remove last tab
+          if (state.activeTabId === tabId) {
+            const idx = state.tabs.findIndex((t) => t.id === tabId);
+            const newActive = newTabs[Math.min(idx, newTabs.length - 1)];
+            return {
+              tabs: newTabs,
+              activeTabId: newActive.id,
+            };
+          }
+          return { tabs: newTabs };
+        }),
+      setActiveTab: (tabId) =>
+        set((state) => {
+          const tab = state.tabs.find((t) => t.id === tabId);
+          if (!tab) return {};
+          return { activeTabId: tabId };
+        }),
+      setTabCwd: (tabId, cwd) =>
+        set((state) => ({
+          tabs: state.tabs.map((t) => t.id === tabId ? { ...t, cwd } : t),
+        })),
+      setActiveSnowSession: (tabId) => set({ activeSnowSession: tabId }),
+      setTabComputer: (tabId, computerId, cwd) =>
+        set((state) => ({
+          tabs: state.tabs.map((t) => t.id === tabId ? { ...t, computerId, cwd } : t),
+        })),
+      resetGame: () => {
+        tabCounter = 0;
+        set(createInitialState());
+      },
 
       saveGame: (slotId, label) => {
         const state = get();
-        const data = createSaveData(state, label ?? `Save ${slotId}`);
+        const activeTabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
+        const saveable = { ...state, activeTabIndex: activeTabIndex >= 0 ? activeTabIndex : 0 };
+        const data = createSaveData(saveable, label ?? `Save ${slotId}`);
         return saveToSlot(slotId, data);
       },
 
@@ -192,9 +253,46 @@ export const useGameStore = create<GameStore>()(
         if (data.stashedFs) {
           try { stashedFs = deserializeFS(data.stashedFs); } catch { stashedFs = null; }
         }
+        const activeComp = data.activeComputer ?? "nexacorp";
+
+        // Build computerState from v5 computerStates or infer from legacy fields
+        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS }>> = {};
+        if (data.computerStates) {
+          for (const [id, cs] of Object.entries(data.computerStates)) {
+            try {
+              loadedComputerState[id as ComputerId] = { fs: deserializeFS(cs.fs) };
+            } catch { /* skip corrupted entries */ }
+          }
+        } else {
+          loadedComputerState[activeComp] = { fs };
+          if (stashedFs) {
+            if (activeComp === "devcontainer") {
+              loadedComputerState.nexacorp = { fs: stashedFs };
+            } else if (activeComp === "nexacorp") {
+              loadedComputerState.devcontainer = { fs: stashedFs };
+            }
+          }
+        }
+
+        // Restore tabs from v5 or create single tab from legacy fields
+        tabCounter = 0;
+        let tabs: TabState[];
+        let activeTabId: string;
+        if (data.tabs && data.tabs.length > 0) {
+          tabs = data.tabs.map((t) => ({
+            id: nextTabId(),
+            computerId: t.computerId,
+            cwd: t.cwd,
+          }));
+          const activeIdx = Math.min(data.activeTabIndex ?? 0, tabs.length - 1);
+          activeTabId = tabs[activeIdx].id;
+        } else {
+          const id = nextTabId();
+          tabs = [{ id, computerId: activeComp, cwd }];
+          activeTabId = id;
+        }
+
         set({
-          fs,
-          cwd,
           username: data.username,
           gamePhase: data.gamePhase,
           currentChapter: data.currentChapter,
@@ -202,62 +300,51 @@ export const useGameStore = create<GameStore>()(
           deliveredEmailIds: data.deliveredEmailIds,
           deliveredPiperIds: data.deliveredPiperIds ?? [],
           commandHistory: data.commandHistory,
-          historyIndex: -1,
-          activeComputer: data.activeComputer ?? "nexacorp",
           storyFlags: data.storyFlags ?? {},
-          stashedFs,
-          stashedCwd: data.stashedCwd ?? "",
+          computerState: loadedComputerState,
+          tabs,
+          activeTabId,
         });
         return true;
       },
     }),
     {
       name: "terminal-turmoil-save",
-      partialize: (state) => ({
-        username: state.username,
-        commandHistory: state.commandHistory.slice(-MAX_HISTORY),
-        currentChapter: state.currentChapter,
-        completedObjectives: state.completedObjectives,
-        deliveredEmailIds: state.deliveredEmailIds,
-        deliveredPiperIds: state.deliveredPiperIds,
-        gamePhase: state.gamePhase,
-        cwd: state.cwd,
-        activeComputer: state.activeComputer,
-        storyFlags: state.storyFlags,
-        hasSeenIntro: state.hasSeenIntro,
-        serializedFs: serializeFS(state.fs),
-        serializedSnowflake: serializeSnowflake(state.snowflakeState),
-        serializedStashedFs: state.stashedFs ? serializeFS(state.stashedFs) : undefined,
-        stashedCwd: state.stashedCwd || undefined,
-      }),
+      partialize: (state) => {
+        // Serialize all computer FS entries
+        const serializedComputerState: Record<string, { fs: SerializedFS }> = {};
+        for (const [id, cs] of Object.entries(state.computerState)) {
+          if (cs) serializedComputerState[id] = { fs: serializeFS(cs.fs) };
+        }
+        // Persist tab layout
+        const activeTabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
+        return {
+          username: state.username,
+          commandHistory: state.commandHistory.slice(-MAX_HISTORY),
+          currentChapter: state.currentChapter,
+          completedObjectives: state.completedObjectives,
+          deliveredEmailIds: state.deliveredEmailIds,
+          deliveredPiperIds: state.deliveredPiperIds,
+          gamePhase: state.gamePhase,
+          storyFlags: state.storyFlags,
+          hasSeenIntro: state.hasSeenIntro,
+          serializedSnowflake: serializeSnowflake(state.snowflakeState),
+          serializedComputerState,
+          persistedTabs: state.tabs.map((t) => ({ computerId: t.computerId, cwd: t.cwd })),
+          persistedActiveTabIndex: activeTabIndex >= 0 ? activeTabIndex : 0,
+        };
+      },
       merge: (persisted, currentState) => {
         const p = persisted as Record<string, unknown> | null;
         if (!p) return currentState;
 
         const username = (p.username as string) ?? currentState.username;
-        const activeComputer = (p.activeComputer as ComputerId) ?? currentState.activeComputer;
         const storyFlags = (p.storyFlags as StoryFlags) ?? currentState.storyFlags;
         const deliveredEmailIds = (p.deliveredEmailIds as string[]) ?? [];
 
         // Backward compat: existing saves with hasSeenIntro should have commands_unlocked
         if ((p.hasSeenIntro as boolean) && !storyFlags.commands_unlocked) {
           storyFlags.commands_unlocked = true;
-        }
-
-        // Reconstruct VirtualFS from serialized data
-        let fs: VirtualFS;
-        const serializedFs = p.serializedFs as SerializedFS | undefined;
-        try {
-          if (serializedFs?.root) {
-            fs = deserializeFS(serializedFs);
-            if (!fs.getNode(fs.homeDir)) {
-              fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
-            }
-          } else {
-            fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
-          }
-        } catch {
-          fs = buildFs(username, activeComputer, storyFlags, deliveredEmailIds);
         }
 
         // Reconstruct SnowflakeState
@@ -273,25 +360,78 @@ export const useGameStore = create<GameStore>()(
           sfState = createInitialSnowflakeState();
         }
 
-        // Sync snowflake metadata to VirtualFS (only relevant for nexacorp)
-        if (activeComputer === "nexacorp") {
-          fs = syncToVirtualFS(sfState, fs);
-        }
-
-        // Reconstruct stashed FS if present
-        let stashedFs: VirtualFS | null = null;
-        const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
-        try {
-          if (serializedStashedFs?.root) {
-            stashedFs = deserializeFS(serializedStashedFs);
+        // Build computerState from persisted data or infer from legacy fields
+        const computerState: Partial<Record<ComputerId, { fs: VirtualFS }>> = {};
+        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS }> | undefined;
+        if (serializedCS) {
+          for (const [id, cs] of Object.entries(serializedCS)) {
+            try {
+              computerState[id as ComputerId] = { fs: deserializeFS(cs.fs) };
+            } catch { /* skip corrupted entries */ }
           }
-        } catch {
-          stashedFs = null;
+          // Sync snowflake to nexacorp if present
+          if (computerState.nexacorp) {
+            computerState.nexacorp = { fs: syncToVirtualFS(sfState, computerState.nexacorp.fs) };
+          }
+        } else {
+          // Legacy save — build computerState from serializedFs + stashed FS
+          const legacyComputer = (p.activeComputer as ComputerId) ?? "home";
+          let legacyFs: VirtualFS;
+          const serializedFs = p.serializedFs as SerializedFS | undefined;
+          try {
+            if (serializedFs?.root) {
+              legacyFs = deserializeFS(serializedFs);
+              if (!legacyFs.getNode(legacyFs.homeDir)) {
+                legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
+              }
+            } else {
+              legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
+            }
+          } catch {
+            legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
+          }
+          if (legacyComputer === "nexacorp") {
+            legacyFs = syncToVirtualFS(sfState, legacyFs);
+          }
+          computerState[legacyComputer] = { fs: legacyFs };
+
+          // Reconstruct stashed FS if present
+          const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
+          try {
+            if (serializedStashedFs?.root) {
+              const stashedFs = deserializeFS(serializedStashedFs);
+              if (legacyComputer === "devcontainer") {
+                computerState.nexacorp = { fs: stashedFs };
+              } else if (legacyComputer === "nexacorp") {
+                computerState.devcontainer = { fs: stashedFs };
+              }
+            }
+          } catch { /* skip corrupted stashed fs */ }
         }
 
-        // Validate cwd exists in the filesystem
-        const persistedCwd = p.cwd as string | undefined;
-        const cwd = (persistedCwd && fs.getNode(persistedCwd)) ? persistedCwd : fs.cwd;
+        // Restore tabs from persisted data or create a single tab from legacy fields
+        tabCounter = 0;
+        const persistedTabs = p.persistedTabs as Array<{ computerId: ComputerId; cwd: string }> | undefined;
+        const persistedActiveTabIndex = (p.persistedActiveTabIndex as number) ?? 0;
+        let tabs: TabState[];
+        let restoredActiveTabId: string;
+        if (persistedTabs && persistedTabs.length > 0) {
+          tabs = persistedTabs.map((t) => ({
+            id: nextTabId(),
+            computerId: t.computerId,
+            cwd: t.cwd,
+          }));
+          const activeIdx = Math.min(persistedActiveTabIndex, tabs.length - 1);
+          restoredActiveTabId = tabs[activeIdx].id;
+        } else {
+          const legacyComputer = (p.activeComputer as ComputerId) ?? "home";
+          const legacyCwd = (p.cwd as string) ?? `/home/${username}`;
+          const legacyFs = computerState[legacyComputer]?.fs;
+          const cwd = (legacyCwd && legacyFs?.getNode(legacyCwd)) ? legacyCwd : (legacyFs?.cwd ?? `/home/${username}`);
+          const id = nextTabId();
+          tabs = [{ id, computerId: legacyComputer, cwd }];
+          restoredActiveTabId = id;
+        }
 
         return {
           ...currentState,
@@ -302,14 +442,12 @@ export const useGameStore = create<GameStore>()(
           deliveredEmailIds: (p.deliveredEmailIds as string[]) ?? currentState.deliveredEmailIds,
           deliveredPiperIds: (p.deliveredPiperIds as string[]) ?? currentState.deliveredPiperIds,
           gamePhase: (p.gamePhase as GamePhase) ?? currentState.gamePhase,
-          activeComputer,
           storyFlags,
           hasSeenIntro: (p.hasSeenIntro as boolean) ?? currentState.hasSeenIntro,
-          fs,
-          cwd,
           snowflakeState: sfState,
-          stashedFs,
-          stashedCwd: (p.stashedCwd as string) ?? "",
+          computerState,
+          tabs,
+          activeTabId: restoredActiveTabId,
         };
       },
     }

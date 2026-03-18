@@ -74,7 +74,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
     label: "Why did Jin Chen leave?",
     response:
       "Let me check... Employee ID E031, Jin Chen. Department: Engineering. " +
-      "Status: terminated, February 2026. That's all I have in the records. " +
+      "Status: resigned, February 2026. That's all I have in the records. " +
       "HR would know more — I just see what's in the database.",
   },
   {

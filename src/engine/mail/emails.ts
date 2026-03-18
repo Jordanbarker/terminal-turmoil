@@ -6,7 +6,7 @@ import { getNexacorpEmailDefinitions } from "../../story/emails/nexacorp";
 export { getNexacorpEmailDefinitions } from "../../story/emails/nexacorp";
 
 export function getEmailDefinitions(username: string, computer: ComputerId = "nexacorp"): EmailDelivery[] {
-  return computer === "home"
-    ? getHomeEmailDefinitions(username)
-    : getNexacorpEmailDefinitions(username);
+  if (computer === "home") return getHomeEmailDefinitions(username);
+  if (computer === "devcontainer") return [];
+  return getNexacorpEmailDefinitions(username);
 }

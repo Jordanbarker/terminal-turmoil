@@ -42,6 +42,7 @@ import "./uniq";
 import "./date";
 import "./which";
 import "./man";
+import "./df";
 // Network
 import "./ssh";
 // Remote environments

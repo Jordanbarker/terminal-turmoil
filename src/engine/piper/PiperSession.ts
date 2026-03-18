@@ -65,6 +65,10 @@ export class PiperSession implements ISession {
     return this.info.computerId ?? "nexacorp";
   }
 
+  canClose(): boolean {
+    return true;
+  }
+
   enter(): void {
     this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
     this.terminal.write(`\x1b[?1049h\x1b[H\x1b[J\x1b[?25l${this.buildChannelListView()}`);

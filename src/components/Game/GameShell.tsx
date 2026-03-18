@@ -8,7 +8,7 @@ import Toast from "../HUD/Toast";
 import { useGameStore } from "../../state/gameStore";
 
 // Dynamic import: xterm.js requires window
-const Terminal = dynamic(() => import("../Terminal/Terminal"), {
+const TabManager = dynamic(() => import("../Terminal/TabManager"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full bg-[#0a0e14] text-[#6c7380] font-mono">
@@ -23,7 +23,7 @@ export default function GameShell() {
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0a0e14] overflow-hidden">
       <div className="flex-1 relative min-h-0">
-        <Terminal />
+        <TabManager />
         {gamePhase === "playing" && (
           <>
             <ObjectiveTracker />

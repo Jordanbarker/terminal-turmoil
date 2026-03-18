@@ -3,10 +3,14 @@
 import { useGameStore } from "../../state/gameStore";
 
 export default function StatusBar() {
-  const cwd = useGameStore((s) => s.cwd);
+  const tabs = useGameStore((s) => s.tabs);
+  const activeTabId = useGameStore((s) => s.activeTabId);
   const chapter = useGameStore((s) => s.currentChapter);
   const gamePhase = useGameStore((s) => s.gamePhase);
-  const activeComputer = useGameStore((s) => s.activeComputer);
+
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeComputer = activeTab?.computerId ?? "home";
+  const cwd = activeTab?.cwd ?? "";
 
   let leftText: string;
   if (gamePhase === "playing") {
@@ -15,6 +19,8 @@ export default function StatusBar() {
     leftText = "Shutting down...";
   } else if (activeComputer === "home") {
     leftText = "Personal Workstation";
+  } else if (activeComputer === "devcontainer") {
+    leftText = "NexaCorp Dev Container";
   } else {
     leftText = "NexaCorp Internal Systems";
   }

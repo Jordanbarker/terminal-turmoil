@@ -15,7 +15,7 @@
       ["E003", "Marcus Reyes", "Executive", "active", "2025-02-15", null, ""],
       ["E004", "Tom Chen", "Executive", "active", "2025-02-15", null, ""],
       ["E005", "Sarah Knight", "Engineering", "active", "2025-03-01", null, "noted system concern re: odd API calls"],
-      ["E006", "Jin Chen", "Engineering", "terminated", "2025-04-01", "2026-02-03", "raised system concern — chip behavior"],
+      ["E006", "Jin Chen", "Engineering", "resigned", "2025-04-01", "2026-02-03", "resigned — cited concerns about system oversight"],
       ["E007", "Dana Okafor", "Operations", "active", "2025-05-01", null, ""],
       ["E008", "Oscar Diaz", "Engineering", "active", "2025-06-01", null, "flagged system concern in ticket #4412"],
       ["E009", "Maya Johnson", "People & Culture", "active", "2025-06-15", null, ""],
@@ -422,7 +422,7 @@
     ],
     "rows": [
       ["E005", "Sarah Knight", "active", "noted system concern re: odd API calls", "system concern filter"],
-      ["E006", "Jin Chen", "terminated", "raised system concern — chip behavior", "system concern filter"],
+      ["E006", "Jin Chen", "resigned", "resigned — cited concerns about system oversight", "system concern filter"],
       ["E008", "Oscar Diaz", "active", "flagged system concern in ticket #4412", "system concern filter"]
     ]
   },

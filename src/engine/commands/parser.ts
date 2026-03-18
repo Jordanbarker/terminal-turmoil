@@ -10,6 +10,9 @@ export function parseInput(raw: string): ParsedCommand {
   }
 
   const tokens = tokenize(trimmed);
+  if (tokens === null) {
+    return { command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error: "syntax error: unterminated quote" };
+  }
   const command = tokens[0] || "";
   const rawArgs = tokens.slice(1);
   const args: string[] = [];
@@ -83,7 +86,7 @@ export function splitOnPipe(input: string): string[] {
 /**
  * Split input into tokens, respecting single and double quotes.
  */
-function tokenize(input: string): string[] {
+function tokenize(input: string): string[] | null {
   const tokens: string[] = [];
   let current = "";
   let inSingle = false;
@@ -105,6 +108,8 @@ function tokenize(input: string): string[] {
       current += char;
     }
   }
+
+  if (inSingle || inDouble) return null;
 
   if (current) tokens.push(current);
   return tokens;

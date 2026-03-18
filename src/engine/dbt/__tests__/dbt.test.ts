@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { VirtualFS } from "../../filesystem/VirtualFS";
-import { createFilesystem } from "../../../story/filesystem/nexacorp";
+import { createDevcontainerFilesystem } from "../../../story/filesystem/devcontainer";
 import { CommandContext } from "../../commands/types";
 import {
   runModels,
@@ -37,9 +37,9 @@ const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 const username = "player";
 
 function makeCtx(cwd: string): CommandContext {
-  const root = createFilesystem(username, { dbt_project_cloned: true });
+  const root = createDevcontainerFilesystem(username, { dbt_project_cloned: true });
   const fs = new VirtualFS(root, cwd, `/home/${username}`);
-  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "nexacorp" as const, storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true } };
+  return { fs, cwd, homeDir: `/home/${username}`, activeComputer: "devcontainer" as const, storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true } };
 }
 
 const projectDir = `/home/${username}/nexacorp-analytics`;

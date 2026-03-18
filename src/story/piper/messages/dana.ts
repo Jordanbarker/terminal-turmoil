@@ -106,5 +106,32 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
       ],
       trigger: { type: "after_file_read", filePath: "/srv/operations/ticket_export.csv" },
     },
+
+    // === DM Dana: Schema follow-up (after finding data filtering, if player helped with CSV) ===
+    {
+      id: "dana_schema_followup",
+      channelId: "dm_dana",
+      messages: [
+        {
+          id: "dana_schema_1",
+          from: "Dana Okafor",
+          timestamp: "12:10 PM",
+          body: "Hey — remember that mystery column in the ticket CSV? I dug into it more.",
+        },
+        {
+          id: "dana_schema_2",
+          from: "Dana Okafor",
+          timestamp: "12:10 PM",
+          body: "The resolution_notes column was added by chip_service_account. Same account that's been auto-resolving tickets in our system. I found 47 tickets closed in the last month with no human reviewer.",
+        },
+        {
+          id: "dana_schema_3",
+          from: "Dana Okafor",
+          timestamp: "12:11 PM",
+          body: "I thought it was just a schema issue but now I'm seeing a pattern. Schema changes, auto-resolved tickets, and nobody in ops approved any of it.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "found_data_filtering", requireDelivered: "dana_ops_resolved" },
+    },
   ];
 }

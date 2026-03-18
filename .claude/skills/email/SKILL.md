@@ -54,21 +54,25 @@ interface ReplyOption {
 
 interface EmailDelivery {
   email: Email;
-  trigger: EmailTrigger;
+  trigger: EmailTrigger | EmailTrigger[]; // Array = any-of (first match wins)
   replyOptions?: ReplyOption[]; // If set, mail command shows inline prompt
 }
 
 type EmailTrigger =
   | { type: "immediate" }
-  | { type: "after_file_read"; filePath: string }
+  | { type: "after_file_read"; filePath: string; requireDelivered?: string }
   | { type: "after_email_read"; emailId: string }
   | { type: "after_command"; command: string }
-  | { type: "after_objective"; objectiveId: string };
+  | { type: "after_objective"; objectiveId: string }
+  | { type: "after_story_flag"; flag: string };
 
 type GameEvent =
   | { type: "command_executed"; detail: string }
   | { type: "file_read"; detail: string }
-  | { type: "objective_completed"; detail: string };
+  | { type: "objective_completed"; detail: string }
+  | { type: "directory_visit"; detail: string }
+  | { type: "directory_created"; detail: string }
+  | { type: "piper_delivered"; detail: string };
 ```
 
 ### Parsed Types (`mail/mailUtils.ts`)
@@ -126,7 +130,7 @@ Email body here...
 ### `delivery.ts`
 | Function | Purpose |
 |----------|---------|
-| `checkEmailDeliveries(fs, event, deliveredIds, computer?)` | Check triggers, deliver matching emails, return `{ fs, newDeliveries }`. Routes to home or nexacorp email definitions based on `computer` (defaults to "nexacorp"). |
+| `checkEmailDeliveries(fs, event, deliveredIds, computer?, storyFlags?)` | Check triggers, deliver matching emails, return `{ fs, newDeliveries }`. Routes to home or nexacorp definitions based on `computer` (defaults to "nexacorp"); returns empty for `"devcontainer"` (no mail system). The optional `storyFlags` param is passed through to `matchesCommonTrigger()` for `after_story_flag` triggers. |
 
 ## Mail Command (`mail.ts`)
 

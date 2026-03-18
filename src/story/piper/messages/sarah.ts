@@ -17,7 +17,7 @@ export function getSarahDeliveries(_username: string): PiperDelivery[] {
           id: "sarah_dm_2",
           from: "Sarah Knight",
           timestamp: "2:16 PM",
-          body: "jin brought it up before he left. got told it was background processing. maybe it is. just figured you should know since you're the ai person now.",
+          body: "jin brought it up before he left. wasn't exactly loud about it either — mentioned it to me once, almost offhand. got told it was background processing. maybe it is. just figured you should know since you're the ai person now.",
         },
         {
           id: "sarah_dm_3",

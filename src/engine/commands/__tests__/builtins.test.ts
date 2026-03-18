@@ -19,6 +19,8 @@ import "../builtins/newgame";
 import "../builtins/mail";
 import "../builtins/python";
 import "../builtins/snow";
+import "../builtins/wc";
+import "../builtins/df";
 
 function createTestFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -123,10 +125,22 @@ describe("ls", () => {
     expect(result.output).toContain(".hidden");
   });
 
-  it("shows long format with -l", () => {
+  it("shows long format with -l including sizes", () => {
     const result = execute("ls", [], { l: true }, ctx());
     expect(result.output).toContain("rw-r--r--");
     expect(result.output).toContain("rwxr-xr-x");
+    // "hello world" = 11 bytes
+    expect(result.output).toContain("11");
+    // directories = 4096 bytes
+    expect(result.output).toContain("4096");
+  });
+
+  it("shows human-readable sizes with -lh", () => {
+    const result = execute("ls", [], { l: true, h: true }, ctx());
+    // directories = 4096 → "4K"
+    expect(result.output).toContain("4K");
+    // 11 bytes stays as "11"
+    expect(result.output).toContain("11");
   });
 
   it("lists a specific directory", () => {
@@ -154,6 +168,7 @@ describe("ls", () => {
   it("shows long format for a single file arg", () => {
     const result = execute("ls", ["notes.txt"], { l: true }, ctx());
     expect(result.output).toContain("rw-r--r--");
+    expect(result.output).toContain("11");
     expect(result.output).toContain("notes.txt");
   });
 
@@ -261,6 +276,19 @@ describe("help", () => {
     expect(result.output).toContain("ls");
     expect(result.output).toContain("cd");
     expect(result.output).toContain("cat");
+  });
+
+  it("shows tab shortcuts when tabs_unlocked is set", () => {
+    const result = execute("help", [], {}, { ...ctx(), storyFlags: { ...ALL_UNLOCKED, tabs_unlocked: true } });
+    expect(result.output).toContain("Terminal tabs");
+    expect(result.output).toContain("Ctrl+B, C");
+    expect(result.output).toContain("Ctrl+B, X");
+  });
+
+  it("hides tab shortcuts when tabs_unlocked is not set", () => {
+    const result = execute("help", [], {}, ctx());
+    expect(result.output).not.toContain("Terminal tabs");
+    expect(result.output).not.toContain("Ctrl+B");
   });
 });
 
@@ -605,6 +633,39 @@ describe("unknown command", () => {
   it("returns command not found", () => {
     const result = execute("foobar", [], {}, ctx());
     expect(result.output).toContain("command not found");
+  });
+});
+
+describe("wc", () => {
+  it("counts lines, words, and chars for a file", () => {
+    const result = execute("wc", ["notes.txt"], {}, ctx());
+    expect(result.output).toContain("notes.txt");
+    // "hello world" = 1 line, 2 words, 11 chars
+    expect(result.output).toContain("1");
+    expect(result.output).toContain("2");
+    expect(result.output).toContain("11");
+  });
+
+  it("formats chars with -h flag", () => {
+    const result = execute("wc", ["notes.txt"], { c: true, h: true }, ctx());
+    // 11 bytes is below 1024, stays as "11"
+    expect(result.output).toContain("11");
+  });
+});
+
+describe("df", () => {
+  it("shows filesystem usage", () => {
+    const result = execute("df", [], {}, ctx());
+    expect(result.output).toContain("Filesystem");
+    expect(result.output).toContain("/dev/sda1");
+    expect(result.output).toContain("Mounted on");
+  });
+
+  it("shows human-readable sizes with -h", () => {
+    const result = execute("df", [], { h: true }, ctx());
+    // NexaCorp = 1T total
+    expect(result.output).toContain("1T");
+    expect(result.output).toContain("/dev/sda1");
   });
 });
 

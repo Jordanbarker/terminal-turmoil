@@ -1,7 +1,8 @@
-import { serializeFS, deserializeFS } from "../engine/filesystem/serialization";
+import { serializeFS, deserializeFS, SerializedFS } from "../engine/filesystem/serialization";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import {
   SaveData,
+  SavedTabState,
   SaveSlotId,
   SaveSlotMeta,
   SAVE_FORMAT_VERSION,
@@ -16,9 +17,12 @@ function slotKey(slotId: SaveSlotId): string {
 
 export const ALL_SLOTS: SaveSlotId[] = ["auto", "slot-1", "slot-2", "slot-3"];
 
-export interface SaveableState {
-  fs: VirtualFS;
+export interface TabLike {
+  computerId: ComputerId;
   cwd: string;
+}
+
+export interface SaveableState {
   username: string;
   gamePhase: GamePhase;
   currentChapter: string;
@@ -26,13 +30,25 @@ export interface SaveableState {
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
   commandHistory: string[];
-  activeComputer: ComputerId;
   storyFlags: StoryFlags;
-  stashedFs: VirtualFS | null;
-  stashedCwd: string;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS }>>;
+  tabs: TabLike[];
+  activeTabIndex: number;
 }
 
 export function createSaveData(state: SaveableState, label: string): SaveData {
+  // Serialize all computer FS entries
+  const computerStates: Record<string, { fs: SerializedFS }> = {};
+  for (const [id, cs] of Object.entries(state.computerState)) {
+    if (cs) computerStates[id] = { fs: serializeFS(cs.fs) };
+  }
+
+  // Derive active computer and FS from tabs (for backward compat with older save readers)
+  const activeTab = state.tabs[state.activeTabIndex] ?? state.tabs[0];
+  const activeComputer: ComputerId = activeTab?.computerId ?? "home";
+  const activeSerializedFs = computerStates[activeComputer]?.fs
+    ?? Object.values(computerStates)[0]?.fs;
+
   return {
     version: SAVE_FORMAT_VERSION,
     timestamp: Date.now(),
@@ -44,12 +60,13 @@ export function createSaveData(state: SaveableState, label: string): SaveData {
     deliveredEmailIds: [...state.deliveredEmailIds],
     deliveredPiperIds: [...state.deliveredPiperIds],
     commandHistory: state.commandHistory.slice(-500),
-    cwd: state.cwd,
-    fs: serializeFS(state.fs),
-    activeComputer: state.activeComputer,
+    cwd: activeTab?.cwd ?? `/home/${state.username}`,
+    fs: activeSerializedFs!,
+    activeComputer,
     storyFlags: { ...state.storyFlags },
-    stashedFs: state.stashedFs ? serializeFS(state.stashedFs) : undefined,
-    stashedCwd: state.stashedCwd || undefined,
+    computerStates,
+    tabs: state.tabs.map((t) => ({ computerId: t.computerId, cwd: t.cwd })),
+    activeTabIndex: state.activeTabIndex >= 0 ? state.activeTabIndex : 0,
   };
 }
 
@@ -142,6 +159,26 @@ export function migrateSaveData(data: SaveData): SaveData {
       ...data,
       version: 4,
       deliveredPiperIds: [],
+    };
+  }
+  if (data.version < 5) {
+    // Infer computerStates from legacy fs + stashedFs fields
+    const computerStates: Record<string, { fs: SerializedFS }> = {};
+    const active = data.activeComputer ?? "nexacorp";
+    computerStates[active] = { fs: data.fs };
+    if (data.stashedFs) {
+      if (active === "devcontainer") {
+        computerStates.nexacorp = { fs: data.stashedFs };
+      } else if (active === "nexacorp") {
+        computerStates.devcontainer = { fs: data.stashedFs };
+      }
+    }
+    data = {
+      ...data,
+      version: 5,
+      computerStates,
+      tabs: [{ computerId: active, cwd: data.cwd }],
+      activeTabIndex: 0,
     };
   }
   return data;

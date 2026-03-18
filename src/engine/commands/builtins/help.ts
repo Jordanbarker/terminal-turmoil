@@ -28,6 +28,17 @@ const help: CommandHandler = (_args, _flags, ctx) => {
     `Use ${colorize("man <command>", ansi.green)} for detailed usage.`,
   ];
 
+  if (ctx.storyFlags?.tabs_unlocked) {
+    lines.push(
+      "",
+      colorize("Terminal tabs (tmux-style):", ansi.bold, ansi.yellow),
+      `  ${colorize("Ctrl+B, C", ansi.green)}  Create new tab`,
+      `  ${colorize("Ctrl+B, X", ansi.green)}  Close current tab`,
+      `  ${colorize("Ctrl+B, N/P", ansi.green)}  Next/previous tab`,
+      `  ${colorize("Ctrl+B, 1-5", ansi.green)}  Jump to tab`,
+    );
+  }
+
   return { output: lines.join("\n") };
 };
 

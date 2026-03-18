@@ -132,6 +132,18 @@ describe("getSuggestion", () => {
     it("supports nano path completion", () => {
       expect(getSuggestion("nano no", createCtx())).toBe("nano notes.txt");
     });
+
+    it("completes path after flags (head -n 1)", () => {
+      expect(getSuggestion("head -n 1 no", createCtx())).toBe("head -n 1 notes.txt");
+    });
+
+    it("completes path after flags (tail -n 5)", () => {
+      expect(getSuggestion("tail -n 5 no", createCtx())).toBe("tail -n 5 notes.txt");
+    });
+
+    it("completes path after pattern argument (grep)", () => {
+      expect(getSuggestion("grep pattern no", createCtx())).toBe("grep pattern notes.txt");
+    });
   });
 
   describe("priority", () => {

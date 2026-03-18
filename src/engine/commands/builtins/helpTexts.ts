@@ -21,8 +21,9 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "List directory contents.",
     "",
-    "  -a, --all     do not ignore entries starting with .",
-    "  -l            use a long listing format",
+    "  -a, --all              do not ignore entries starting with .",
+    "  -l                     use a long listing format",
+    "  -h, --human-readable   print sizes in human readable format",
   ].join("\n"),
 
   cat: [
@@ -143,13 +144,14 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   wc: [
-    "Usage: wc [-l] [-w] [-c] [FILE...]",
+    "Usage: wc [-l] [-w] [-c] [-h] [FILE...]",
     "",
     "Print line, word, and byte counts for each FILE.",
     "",
     "  -l   print the line count",
     "  -w   print the word count",
     "  -c   print the character count",
+    "  -h   print byte counts in human readable format",
   ].join("\n"),
 
   echo: [
@@ -163,7 +165,22 @@ export const HELP_TEXTS: Record<string, string> = {
   chmod: [
     "Usage: chmod MODE FILE",
     "",
-    "Change file permissions using numeric mode (e.g. 644, 755).",
+    "Change file permissions using numeric mode.",
+    "",
+    "Each file has three permission groups: owner, group, and",
+    "everyone else. Each group gets read (r), write (w), and",
+    "execute (x). chmod uses octal numbers where each digit is",
+    "a combination of permissions:",
+    "",
+    "  7 = rwx (read + write + execute)",
+    "  6 = rw- (read + write)",
+    "  5 = r-x (read + execute)",
+    "  4 = r-- (read only)",
+    "  0 = --- (no access)",
+    "",
+    "Examples:",
+    "  chmod 755 dir/    owner=rwx, group=r-x, others=r-x",
+    "  chmod 644 file    owner=rw-, group=r--, others=r--",
   ].join("\n"),
 
   mkdir: [
@@ -270,6 +287,14 @@ export const HELP_TEXTS: Record<string, string> = {
     "Usage: man COMMAND",
     "",
     "Display manual page for COMMAND.",
+  ].join("\n"),
+
+  df: [
+    "Usage: df [-h]",
+    "",
+    "Report filesystem disk space usage.",
+    "",
+    "  -h, --human-readable   print sizes in human readable format",
   ].join("\n"),
 
   help: [

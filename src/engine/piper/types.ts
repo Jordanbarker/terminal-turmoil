@@ -32,7 +32,7 @@ export type PiperTrigger =
   | { type: "after_piper_reply"; deliveryId: string }
   | { type: "after_command"; command: string }
   | { type: "after_objective"; objectiveId: string }
-  | { type: "after_story_flag"; flag: string };
+  | { type: "after_story_flag"; flag: string; requireDelivered?: string };
 
 export interface PiperChannel {
   id: string;

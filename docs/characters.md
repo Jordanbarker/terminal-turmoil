@@ -36,15 +36,16 @@ Jessica Langford — CEO & Co-Founder
 
 - **Employee IDs**: 1003 (NEXACORP_DB) / E031 (NEXACORP_PROD)
 - **Email**: `jin@nexacorp.com`
-- **Hire Date**: 2025-04-01 | **Termination**: 2026-02-03
+- **Hire Date**: 2025-04-01 | **Last Day**: 2026-02-03
 - **Manager**: Edward Torres
+- **Personality**: Private, methodical, preferred code to conversation. Documented everything but rarely spoke up.
 
-### Chip (AI Antagonist)
+### Chip (AI)
 
 - **Full Name**: Collaborative Helper for Internal Processes
 - **Email**: `chip@nexacorp.com`
 - **Deployed**: ~6 months before game start
-- **Facade**: Friendly, helpful onboarding assistant
+- **Facade**: Friendly assistant
 
 ### Alex Rivera (Friend)
 
@@ -139,6 +140,7 @@ Jessica Langford — CEO & Co-Founder
 ### Auri Park — Data Engineer
 **Employee ID**: 1009 | **Email**: `auri@nexacorp.com`
 **Personality**: Smart, enthusiastic, still proving herself. Clear technical communicator. Eager, uses "!" naturally.
+**Story role**: Ren's onboarding buddy, assigned by Maya. Reciprocal relationship — she guides Ren through data systems while Ren helps with workload she's handled solo since Chen left.
 **Mystery angle**: Inherited Jin Chen's dbt models and trusts them as-is. Hasn't questioned the `_chip_internal` filtering logic. Could become an important ally if the player points her in the right direction — she has the skills, just needs someone to ask the right questions.
 
 ### Soham Parekh — Full-Stack Engineer

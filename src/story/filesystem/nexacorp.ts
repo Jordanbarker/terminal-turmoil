@@ -613,6 +613,7 @@ where d.employee_id is null
       "status_codes.csv": file("status_codes.csv", `status_code,status_label,is_active
 active,Active,true
 terminated,Terminated,false
+resigned,Resigned,false
 on_leave,On Leave,true
 contractor,Contractor,true
 inactive,Inactive,false
@@ -831,7 +832,6 @@ PEOPLE & CULTURE
    - Annual learning budget: $2,000
 `),
       }),
-      ...(storyFlags?.dbt_project_cloned ? { "nexacorp-analytics": buildDbtProject() } : {}),
     }),
     jchen: dir("jchen", {
       ".bash_history": file(".bash_history", `ls -la /home/jchen/nexacorp-analytics/
@@ -1257,13 +1257,10 @@ Welcome to the team! Here's what you need to know:
 3. Dev containers: We use Coder for remote development environments.
    Oscar (Infrastructure) should have your workspace ready.
    Connect with 'coder ssh {workspace-name}' when you need to do data work.
-4. Useful commands for exploring the system:
-   grep    Search file contents for a keyword
-   find    Locate files by name or pattern
-   diff    Compare two files
-   head    View the first few lines of a file
-   tail    View the last few lines of a file
-   man     Read the manual for any command (e.g. 'man grep')
+
+Every new hire is paired with an onboarding buddy — someone on the
+team who can answer questions, walk you through systems, and help
+you get up to speed. Your buddy will reach out on Piper.
 
 On your first day, we recommend:
   - Reading through this document and /srv/engineering/team-info.md
@@ -1345,25 +1342,18 @@ See notes.txt for current state of things.
         "notes.txt": file("notes.txt", `Project status as of 2026-02-01
 
 dbt pipeline:
-- Models run nightly via cron. Should be healthy but I haven't
-  checked test results in a while. Might be worth running
-  'dbt test' manually.
+- Models run nightly via cron.
 - dim_employees might be out of date — compare against HR's
   actual headcount if you get a chance.
 
 Chip:
 - Service account (chip_service_account) handles automated tasks.
-  Permissions are broader than they probably need to be but I
-  never got around to scoping them down.
 - There's a maintenance script at /opt/chip/.internal/cleanup.sh.
-  It runs nightly. I didn't write it and honestly never looked
-  at what it filters.
 
 Logs:
 - System logs rotate weekly. Backups in /var/log/*.bak.
 `),
-        "todo.txt": file("todo.txt", `Ongoing tasks (as of my last day):
-
+        "todo.txt": file("todo.txt", `
 - [ ] Run full dbt test suite — haven't done it in weeks
 - [ ] Review chip_service_account permissions (way too broad)
 - [ ] Check if the log cleanup script is filtering correctly
@@ -1403,7 +1393,7 @@ Logs:
 1029,2026-01-23 03:01:08,fct_system_events,success,chip_service_account,3,8695
 1030,2026-01-23 03:01:11,dim_employees,success,chip_service_account,1,17
 `),
-        "tools.md": file("tools.md", `=== My Command Cheatsheet ===
+        "tools.md": file("tools.md", `=== Command Cheatsheet ===
 (not official docs, just what I use day-to-day)
 
 grep — search inside files for a pattern

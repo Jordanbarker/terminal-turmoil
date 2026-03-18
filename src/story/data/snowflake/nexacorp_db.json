@@ -115,9 +115,9 @@
               "DEPARTMENT": "Engineering",
               "TITLE": "Senior Engineer",
               "HIRE_DATE": "2025-04-01",
-              "STATUS": "terminated",
+              "STATUS": "resigned",
               "MANAGER_ID": 1001,
-              "NOTES": "Raised system concern about Chip behavior patterns"
+              "NOTES": "resigned — cited concerns about system oversight"
             },
             {
               "EMPLOYEE_ID": 1006,

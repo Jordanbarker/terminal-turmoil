@@ -3,26 +3,33 @@ import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { isDirectory, isFile, FSNode } from "../../filesystem/types";
 import { colorize, ansi } from "../../../lib/ansi";
+import { formatSize } from "../../../lib/formatSize";
 import { HELP_TEXTS } from "./helpTexts";
 
-function formatEntry(entry: FSNode, longFormat: boolean): string {
-  if (longFormat) {
-    const typeChar = isDirectory(entry) ? "d" : "-";
-    const perms = entry.permissions;
-    const name = isDirectory(entry)
-      ? colorize(entry.name, ansi.bold, ansi.blue)
-      : entry.name;
-    return `${typeChar}${perms}  ${name}`;
-  }
-  return isDirectory(entry)
-    ? colorize(entry.name, ansi.bold, ansi.blue)
-    : entry.name;
+function getSize(entry: FSNode): number {
+  return isFile(entry) ? entry.content.length : 4096;
+}
+
+function formatLongEntries(entries: FSNode[], humanReadable: boolean): string[] {
+  const sizes = entries.map((e) => formatSize(getSize(e), humanReadable));
+  const maxWidth = Math.max(...sizes.map((s) => s.length));
+
+  return entries.map((e, i) => {
+    const typeChar = isDirectory(e) ? "d" : "-";
+    const perms = e.permissions;
+    const sizeStr = sizes[i].padStart(maxWidth);
+    const name = isDirectory(e)
+      ? colorize(e.name, ansi.bold, ansi.blue)
+      : e.name;
+    return `${typeChar}${perms}  ${sizeStr}  ${name}`;
+  });
 }
 
 const ls: CommandHandler = (args, flags, ctx) => {
   const targets = args.length > 0 ? args : [ctx.cwd];
   const showHidden = flags["a"] || flags["all"];
   const longFormat = flags["l"];
+  const humanReadable = flags["h"] || flags["human-readable"];
   const showHeaders = targets.length > 1;
 
   const errors: string[] = [];
@@ -59,9 +66,15 @@ const ls: CommandHandler = (args, flags, ctx) => {
   }
 
   if (fileEntries.length > 0) {
-    const formatted = fileEntries.map((e) => formatEntry(e, longFormat));
-    const separator = longFormat || ctx.isPiped ? "\n" : "  ";
-    sections.push(formatted.join(separator));
+    if (longFormat) {
+      sections.push(formatLongEntries(fileEntries, humanReadable).join("\n"));
+    } else {
+      const formatted = fileEntries.map((e) =>
+        isDirectory(e) ? colorize(e.name, ansi.bold, ansi.blue) : e.name
+      );
+      const separator = ctx.isPiped ? "\n" : "  ";
+      sections.push(formatted.join(separator));
+    }
   }
 
   for (const dir of dirs) {
@@ -70,9 +83,15 @@ const ls: CommandHandler = (args, flags, ctx) => {
       lines.push(`${dir.label}:`);
     }
     if (dir.entries.length > 0) {
-      const formatted = dir.entries.map((e) => formatEntry(e, longFormat));
-      const separator = longFormat || ctx.isPiped ? "\n" : "  ";
-      lines.push(formatted.join(separator));
+      if (longFormat) {
+        lines.push(formatLongEntries(dir.entries, humanReadable).join("\n"));
+      } else {
+        const formatted = dir.entries.map((e) =>
+          isDirectory(e) ? colorize(e.name, ansi.bold, ansi.blue) : e.name
+        );
+        const separator = ctx.isPiped ? "\n" : "  ";
+        lines.push(formatted.join(separator));
+      }
     }
     sections.push(lines.join("\n"));
   }

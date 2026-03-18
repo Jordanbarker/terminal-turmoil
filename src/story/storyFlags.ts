@@ -48,9 +48,13 @@ export const STORY_FLAG_NAMES = [
   "coder_unlocked",
   "piper_unlocked",
 
+  "tabs_unlocked",
+
   "oscar_searched_logs",
   "oscar_checked_backups",
   "oscar_diffed_logs",
+  "auri_listed_handoff",
+  "auri_read_todo",
   "auri_used_head",
   "auri_used_tail",
   "auri_used_wc",
@@ -177,6 +181,8 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.authLogBak, flag: "found_auth_backup", value: true },
     { event: "file_read", path: p.chipDirectives, flag: "found_chip_directives", value: true },
     { event: "file_read", path: p.chipCleanup, flag: "found_cleanup_script", value: true },
+    { event: "directory_visit", path: p.chenHandoff, flag: "auri_listed_handoff", value: true },
+    { event: "file_read", path: p.chenHandoffTodo, flag: "auri_read_todo", value: true },
     { event: "file_read", path: p.onboarding, flag: "read_onboarding", value: true },
     { event: "file_read", detail: "oscar_coder_setup", flag: "coder_unlocked", value: true, toast: "coder command unlocked! Try: coder ssh ai" },
     { event: "file_read", path: p.teamInfo, flag: "read_team_info", value: true },
@@ -186,6 +192,7 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", detail: "edward_end_of_day", flag: "read_end_of_day", value: true },
     { event: "file_read", detail: "discovered_log_tampering", flag: "discovered_log_tampering", value: true },
     { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
+    { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
     { event: "file_read", path: p.ticketExport, flag: "read_ticket_export", value: true },
     { event: "file_read", path: p.boardMinutes, flag: "read_board_minutes", value: true },
     { event: "file_read", path: p.headcountPlan, flag: "read_headcount_plan", value: true },
@@ -201,12 +208,13 @@ export function getTriggersForComputer(computer: ComputerId, username: string): 
 export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
   return [
-    { event: "command_executed", detail: "dbt", flag: "ran_dbt", value: true },
+    { event: "command_executed", detail: "dbt_build", flag: "ran_dbt", value: true },
     { event: "file_read", path: p.dbtDimEmployees(username), flag: "found_data_filtering", value: true },
     { event: "file_read", path: p.dbtFctTickets(username), flag: "found_data_filtering", value: true },
     { event: "file_read", path: p.dbtChipTicketSuppression(username), flag: "found_data_filtering", value: true },
     { event: "file_read", path: p.dbtChipLogFilter(username), flag: "found_data_filtering", value: true },
     { event: "file_read", path: p.dbtChipDataCleanup(username), flag: "found_data_filtering", value: true },
     { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
+    { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
   ];
 }
