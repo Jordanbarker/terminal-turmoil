@@ -56,7 +56,6 @@ Commands unlock progressively through Piper conversations and exploration:
                  │     ▼                        ▼
                  │  basic_tools_unlocked    flavor flags set:
                  │  (13 commands)           read_resume?
-                 │     │                    read_cover_letter?
                  │     ▼                    read_diary?
                  │  olive_tree_tip          read_job_notes?
                  │  Piper delivered         read_glassdoor?

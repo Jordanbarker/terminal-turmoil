@@ -42,7 +42,7 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
       ],
     },
 
-    // === DM Auri: Pipeline help (after reading handoff notes) ===
+    // === DM Auri: Pipeline check-in (after reading handoff notes) ===
     {
       id: "auri_pipeline_help",
       channelId: "dm_auri",
@@ -53,38 +53,119 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
           timestamp: "10:30 AM",
           body: "Hey! Have you had a chance to look at the handoff notes yet?",
         },
-        {
-          id: "auri_pipe_2",
-          from: "Auri Park",
-          timestamp: "10:30 AM",
-          body: "You'll be working with the pipeline data a lot, so it'd be great if you could do a full build and get a feel for how the project's set up! Chen's todo says the test suite hasn't been run in weeks — would be really helpful to know where things stand.",
-        },
-        {
-          id: "auri_pipe_3",
-          from: "Auri Park",
-          timestamp: "10:31 AM",
-          body: `We do all our data work in a Coder dev container — Oscar set one up for you already. Here's the quick version:
-
-  1. 'coder ssh ai' — connect to the dev container
-  2. Ask Chip to clone the analytics repo (just run 'chip')
-  3. 'dbt run' — builds all the models
-  4. 'dbt test' — runs the test suite
-  5. 'exit' when you're done — back to your workstation`,
-        },
-        {
-          id: "auri_pipe_4",
-          from: "Auri Park",
-          timestamp: "10:32 AM",
-          body: "Everything talks to our Snowflake instance. The staging models pull from raw tables, intermediate models do the joins, and the marts are what the business actually looks at.",
-        },
-        {
-          id: "auri_pipe_5",
-          from: "Auri Park",
-          timestamp: "10:32 AM",
-          body: "If anything looks off, let me know! Some of Chen's models are a little... creative. I inherited them when he left but haven't had a chance to really dig in — fresh eyes would be amazing.",
-        },
       ],
       trigger: { type: "after_file_read", filePath: "/srv/engineering/chen-handoff/notes.txt" },
+      replyOptions: [
+        {
+          label: "The notes feel kind of rushed. Did Chen leave in a hurry?",
+          messageBody: "Yeah I read through them. They feel kind of rushed honestly — like he was in a hurry to wrap up. Did something happen with Chen?",
+          triggerEvents: [
+            { type: "objective_completed", detail: "handoff_curious_about_chen" },
+            { type: "objective_completed", detail: "handoff_reviewed" },
+          ],
+        },
+        {
+          label: "All done — what should I tackle first?",
+          messageBody: "All read! Looks like there's a lot going on with the pipeline. What should I tackle first?",
+          triggerEvents: [
+            { type: "objective_completed", detail: "handoff_reviewed_proactive" },
+            { type: "objective_completed", detail: "handoff_reviewed" },
+          ],
+        },
+      ],
+    },
+
+    // === DM Auri: Chen response (curious about Chen's departure) ===
+    {
+      id: "auri_chen_response",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_chen_1",
+          from: "Auri Park",
+          timestamp: "10:35 AM",
+          body: "Yeah... honestly? It all happened kind of fast. One week he was here, the next he wasn't.",
+        },
+        {
+          id: "auri_chen_2",
+          from: "Auri Park",
+          timestamp: "10:35 AM",
+          body: "Edward said it was voluntary. He'd been working late for months — maybe he just needed a break?",
+        },
+        {
+          id: "auri_chen_3",
+          from: "Auri Park",
+          timestamp: "10:36 AM",
+          body: "Anyway — I don't want to speculate. The important thing is the work he left behind.",
+        },
+        {
+          id: "auri_chen_4",
+          from: "Auri Park",
+          timestamp: "10:36 AM",
+          body: "You'll be working with the pipeline data a lot, so it'd be great if you could do a full build and get a feel for how the project's set up. Chen's todo says the test suite hasn't been run in weeks — would be really helpful to know where things stand.",
+        },
+        {
+          id: "auri_chen_5",
+          from: "Auri Park",
+          timestamp: "10:37 AM",
+          body: "We do all our data work in a Coder dev container — Oscar should reach out with your workspace details. Once you're in, clone the repo with git clone nexacorp/nexacorp-analytics. If you hit any git issues, ask Chip — he knows git better than anyone here. They revoked his direct access after... well, there was an incident. But he can still talk you through anything.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "handoff_curious_about_chen" },
+      replyOptions: [
+        {
+          label: "Makes sense — I'll check it out!",
+          messageBody: "Good call — I'll do a full build and let you know how it looks!",
+          triggerEvents: [{ type: "objective_completed", detail: "pipeline_tools_accepted" }],
+        },
+        {
+          label: "I've used dbt before but it's been a while. Tips?",
+          messageBody: "Definitely want to get up to speed on the pipeline! I've used dbt before but it's been a while — any tips for how things are set up here?",
+          triggerEvents: [
+            { type: "objective_completed", detail: "pipeline_tools_tips_requested" },
+            { type: "objective_completed", detail: "pipeline_tools_accepted" },
+          ],
+        },
+      ],
+    },
+
+    // === DM Auri: Proactive response (player wants to get started) ===
+    {
+      id: "auri_proactive_response",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_proactive_1",
+          from: "Auri Park",
+          timestamp: "10:35 AM",
+          body: "Love the energy!",
+        },
+        {
+          id: "auri_proactive_2",
+          from: "Auri Park",
+          timestamp: "10:35 AM",
+          body: "The data pipeline is the big thing. You'll be working with it daily, so it'd be great if you could do a full build and get a feel for how the project's set up. Chen's todo says the test suite hasn't been run in weeks.",
+        },
+        {
+          id: "auri_proactive_3",
+          from: "Auri Park",
+          timestamp: "10:36 AM",
+          body: "We do all our data work in a Coder dev container — Oscar should reach out with your workspace details. The repo is nexacorp/nexacorp-analytics — git clone it once you're in.",
+        },
+        {
+          id: "auri_proactive_3b",
+          from: "Auri Park",
+          timestamp: "10:36 AM",
+          body: "If you need help with git, Chip's your guy — he knows it inside and out. They pulled his direct access after the incident, but he can still walk you through anything.",
+        },
+        {
+          id: "auri_proactive_4",
+          from: "Auri Park",
+          timestamp: "10:36 AM",
+          body: "Everything talks to our Snowflake instance. The staging models pull from raw tables, intermediate models do the joins, and the marts are what the business actually looks at.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "handoff_reviewed_proactive" },
       replyOptions: [
         {
           label: "Makes sense — I'll check it out!",
@@ -118,11 +199,9 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
           from: "Auri Park",
           timestamp: "10:38 AM",
           body: `First, connect to the dev container:
-  coder ssh ai           Connect to your workspace
+  coder ssh ai
 
 Then inside the container:
-
-dbt — data build tool
   dbt run                Build all models
   dbt test               Run all tests
   dbt build              Run + test in one step`,
@@ -148,7 +227,7 @@ dbt — data build tool
           id: "auri_ptips_5",
           from: "Auri Park",
           timestamp: "10:40 AM",
-          body: "Start with 'chip' to clone the repo, then 'dbt run' to build everything. If tests fail, that's actually interesting — means something might be off in the data. Good luck!",
+          body: "Start with 'git clone nexacorp/nexacorp-analytics', then 'dbt run' to build everything. If tests fail, that's actually interesting — means something might be off in the data. Good luck!",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "pipeline_tools_tips_requested" },
@@ -163,7 +242,7 @@ dbt — data build tool
           id: "auri_dbt_1",
           from: "Auri Park",
           timestamp: "10:45 AM",
-          body: "Hey, how'd the pipeline run go? Everything build and pass?",
+          body: "Hey, how'd the pipeline run go?",
         },
         {
           id: "auri_dbt_2",

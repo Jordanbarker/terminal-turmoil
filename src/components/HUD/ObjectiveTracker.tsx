@@ -31,6 +31,31 @@ interface GroupNode {
 
 const depthClass = ["", "pl-4", "pl-8"] as const;
 
+function renderChild(
+  child: ResolvedObjective,
+  childrenByParent: Map<string, ResolvedObjective[]>,
+  depth: number
+) {
+  const nested = childrenByParent.get(child.id);
+  if (nested) {
+    return (
+      <ObjectiveGroup
+        key={child.id}
+        group={{ parent: child, children: nested }}
+        childrenByParent={childrenByParent}
+        depth={Math.min(depth + 1, 2) as 0 | 1 | 2}
+      />
+    );
+  }
+  return (
+    <ObjectiveItem
+      key={child.id}
+      obj={child}
+      className={depthClass[Math.min(depth + 1, 2)]}
+    />
+  );
+}
+
 function ObjectiveGroup({
   group,
   childrenByParent,
@@ -40,30 +65,30 @@ function ObjectiveGroup({
   childrenByParent: Map<string, ResolvedObjective[]>;
   depth?: number;
 }) {
+  const childDepth = Math.min(depth + 1, 2);
+  const requiredChildren = group.children.filter((c) => !c.optional);
+  const optionalChildren = group.children.filter((c) => c.optional);
+
   return (
     <>
       <ObjectiveItem obj={group.parent} className={depthClass[depth]} />
-      {!group.parent.completed &&
-        group.children.map((child) => {
-          const nested = childrenByParent.get(child.id);
-          if (nested) {
-            return (
-              <ObjectiveGroup
-                key={child.id}
-                group={{ parent: child, children: nested }}
-                childrenByParent={childrenByParent}
-                depth={Math.min(depth + 1, 2) as 0 | 1 | 2}
-              />
-            );
-          }
-          return (
-            <ObjectiveItem
-              key={child.id}
-              obj={child}
-              className={depthClass[Math.min(depth + 1, 2)]}
-            />
-          );
-        })}
+      {!group.parent.completed && (
+        <>
+          {requiredChildren.map((child) =>
+            renderChild(child, childrenByParent, depth)
+          )}
+          {optionalChildren.length > 0 && (
+            <>
+              <li className={`text-[#8b949e] text-center ${depthClass[childDepth]}`}>
+                ── Optional ──
+              </li>
+              {optionalChildren.map((child) =>
+                renderChild(child, childrenByParent, depth)
+              )}
+            </>
+          )}
+        </>
+      )}
     </>
   );
 }

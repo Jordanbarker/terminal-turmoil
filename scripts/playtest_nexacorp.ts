@@ -82,7 +82,6 @@ async function main() {
   const runner = new GameRunner("home");
   runner.storyFlags = {
     read_resume: true,
-    read_cover_letter: true,
     read_diary: true,
     read_glassdoor: true,
   };
@@ -145,7 +144,6 @@ async function main() {
   section("6. CHIP CACHE FILES (should exist since story flags are set)");
 
   cmd(runner, "ls /opt/chip/cache/");
-  cmd(runner, "cat /opt/chip/cache/onboarding_prep.txt");
   cmd(runner, "cat /opt/chip/cache/candidate_profile.txt");
   cmd(runner, "cat /opt/chip/cache/sentiment_analysis.txt");
 

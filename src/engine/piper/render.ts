@@ -56,10 +56,39 @@ export function renderChannelList(
   return lines.join("\r\n");
 }
 
-export function renderConversation(messages: PiperMessage[], width: number): string {
+export function renderNewMessagesDivider(width: number): string {
+  const label = " NEW ";
+  const totalDashes = Math.max(0, width - label.length);
+  const left = Math.floor(totalDashes / 2);
+  const right = totalDashes - left;
+  return colorize(`${"─".repeat(left)}${label}${"─".repeat(right)}`, ansi.red);
+}
+
+export function renderConversation(messages: PiperMessage[], width: number, unreadCount = 0): string {
   const lines: string[] = [];
 
-  for (const msg of messages) {
+  // Find divider insertion point: count NPC messages from end to locate boundary
+  let dividerBeforeIndex = -1;
+  if (unreadCount > 0) {
+    let npcCount = 0;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (!messages[i].isPlayer) {
+        npcCount++;
+        if (npcCount === unreadCount) {
+          dividerBeforeIndex = i;
+          break;
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    if (i === dividerBeforeIndex) {
+      lines.push("");
+      lines.push(renderNewMessagesDivider(width));
+    }
+
+    const msg = messages[i];
     if (msg.isPlayer) {
       // Player messages: right-aligned style
       const wrapped = wordWrap(msg.body, width - 4);

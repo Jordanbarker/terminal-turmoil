@@ -5,9 +5,9 @@ export type CommonTrigger =
   | { type: "immediate" }
   | { type: "after_file_read"; filePath: string; requireDelivered?: string }
   | { type: "after_email_read"; emailId: string }
-  | { type: "after_command"; command: string }
+  | { type: "after_command"; command: string; requiredFlags?: string[] }
   | { type: "after_objective"; objectiveId: string }
-  | { type: "after_story_flag"; flag: string; requireDelivered?: string };
+  | { type: "after_story_flag"; flag: string; requireDelivered?: string; requiredFlags?: string[] };
 
 export function matchesCommonTrigger(
   trigger: CommonTrigger,
@@ -28,11 +28,16 @@ export function matchesCommonTrigger(
     case "after_email_read":
       return event.type === "file_read" && event.detail === trigger.emailId;
     case "after_command":
-      return event.type === "command_executed" && event.detail === trigger.command;
+      if (event.type !== "command_executed" || event.detail !== trigger.command) return false;
+      if (trigger.requiredFlags && flags) {
+        return trigger.requiredFlags.every((f) => flags[f]);
+      }
+      return true;
     case "after_objective":
       return event.type === "objective_completed" && event.detail === trigger.objectiveId;
     case "after_story_flag":
       if (!(flags && flags[trigger.flag])) return false;
+      if (trigger.requiredFlags && !trigger.requiredFlags.every((f) => flags[f])) return false;
       if (trigger.requireDelivered) {
         return deliveredIds.includes(trigger.requireDelivered) || newDeliveries.includes(trigger.requireDelivered);
       }

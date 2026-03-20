@@ -31,7 +31,7 @@ const help: CommandHandler = (_args, _flags, ctx) => {
   if (ctx.storyFlags?.tabs_unlocked) {
     lines.push(
       "",
-      colorize("Terminal tabs (tmux-style):", ansi.bold, ansi.yellow),
+      colorize("Terminal tabs:", ansi.bold, ansi.yellow),
       `  ${colorize("Ctrl+B, C", ansi.green)}  Create new tab`,
       `  ${colorize("Ctrl+B, X", ansi.green)}  Close current tab`,
       `  ${colorize("Ctrl+B, N/P", ansi.green)}  Next/previous tab`,

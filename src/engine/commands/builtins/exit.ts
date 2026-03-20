@@ -8,7 +8,7 @@ const exit: CommandHandler = (_args, _flags, ctx) => {
   if (ctx.activeComputer === "nexacorp" && ctx.storyFlags?.read_end_of_day) {
     return { output: "", transitionTo: "home" };
   }
-  return { output: "exit: not in a remote session" };
+  return { output: "You still have work to do before you can leave." };
 };
 
 register("exit", exit, "Exit the current remote session");

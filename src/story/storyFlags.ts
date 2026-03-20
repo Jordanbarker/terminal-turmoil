@@ -12,7 +12,6 @@ export interface StoryFlagTrigger {
 
 export const STORY_FLAG_NAMES = [
   "read_resume",
-  "read_cover_letter",
   "read_diary",
   "read_job_notes",
   "read_glassdoor",
@@ -53,6 +52,7 @@ export const STORY_FLAG_NAMES = [
   "oscar_searched_logs",
   "oscar_checked_backups",
   "oscar_diffed_logs",
+  "oscar_access_completed",
   "auri_listed_handoff",
   "auri_read_todo",
   "auri_used_head",
@@ -113,7 +113,6 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
   return [
     { event: "file_read", path: p.resume(username), flag: "read_resume", value: true },
-    { event: "file_read", path: p.coverLetter(username), flag: "read_cover_letter", value: true },
     { event: "file_read", path: p.diary(username), flag: "read_diary", value: true },
     { event: "file_read", path: p.jobNotes(username), flag: "read_job_notes", value: true },
     { event: "file_read", path: p.glassdoorReviews(username), flag: "read_glassdoor", value: true },
@@ -174,6 +173,7 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.systemLog, flag: "oscar_searched_logs", value: true },
     { event: "file_read", path: p.systemLogBak, flag: "oscar_checked_backups", value: true },
     { event: "command_executed", detail: "diff", flag: "oscar_diffed_logs", value: true },
+    { event: "objective_completed", detail: "oscar_access_reported", flag: "oscar_access_completed", value: true },
     { event: "command_executed", detail: "head", flag: "auri_used_head", value: true },
     { event: "command_executed", detail: "tail", flag: "auri_used_tail", value: true },
     { event: "command_executed", detail: "wc", flag: "auri_used_wc", value: true },
@@ -208,6 +208,7 @@ export function getTriggersForComputer(computer: ComputerId, username: string): 
 export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
   return [
+    { event: "command_executed", detail: "git_clone_nexacorp-analytics", flag: "dbt_project_cloned", value: true, toast: "dbt project cloned to ~/nexacorp-analytics/" },
     { event: "command_executed", detail: "dbt_build", flag: "ran_dbt", value: true },
     { event: "file_read", path: p.dbtDimEmployees(username), flag: "found_data_filtering", value: true },
     { event: "file_read", path: p.dbtFctTickets(username), flag: "found_data_filtering", value: true },

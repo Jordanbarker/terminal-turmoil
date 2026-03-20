@@ -108,41 +108,6 @@ describe("createFilesystem", () => {
     });
   });
 
-  describe("jchen home directory", () => {
-    it("has /home/jchen", () => {
-      expect(fs.getNode("/home/jchen")?.type).toBe("directory");
-    });
-
-    it("has .bash_history", () => {
-      const node = fs.getNode("/home/jchen/.bash_history");
-      expect(node?.type).toBe("file");
-      expect(node?.hidden).toBe(true);
-    });
-
-    it("has .bashrc with custom PS1", () => {
-      const result = fs.readFile("/home/jchen/.bashrc");
-      expect(result.content).toContain("jchen@nexacorp-ws01");
-    });
-
-    it("has .gitconfig with jchen identity", () => {
-      const result = fs.readFile("/home/jchen/.gitconfig");
-      expect(result.content).toContain("Jin Chen");
-      expect(result.content).toContain("jchen@nexacorp.com");
-    });
-
-    it("has scripts/log_compare.sh", () => {
-      const result = fs.readFile("/home/jchen/scripts/log_compare.sh");
-      expect(result.content).toContain("#!/bin/bash");
-      expect(result.content).toContain("chip_service_account");
-    });
-
-    it("has projects/chip-audit/notes.md", () => {
-      const result = fs.readFile("/home/jchen/projects/chip-audit/notes.md");
-      expect(result.content).toContain("chip_service_account");
-      expect(result.content).toContain("timeline");
-    });
-  });
-
   describe("system directories", () => {
     it("has /var/log with system.log", () => {
       const result = fs.readFile("/var/log/system.log");

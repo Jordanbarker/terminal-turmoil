@@ -17,19 +17,13 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
           id: "oscar_log_2",
           from: "Oscar Diaz",
           timestamp: "9:45 AM",
-          body: "Could you check the system logs in /var/log/ for anything weird around 3am? I'm buried in the fix and could use a second pair of eyes. Fair warning — reading system logs on your first day is either a great sign or a terrible one.",
+          body: "Could you poke around /var/log/ and see if anything looks off around 3am? I'm buried in the fix and could use a second pair of eyes. Fair warning — reading system logs on your first day is either a great sign or a terrible one.",
         },
         {
           id: "oscar_log_3",
           from: "Oscar Diaz",
           timestamp: "9:46 AM",
-          body: "Something like 'grep error /var/log/system.log' should get you started. You can also use 'find' to locate other log files and 'diff' to compare them.",
-        },
-        {
-          id: "oscar_log_4",
-          from: "Oscar Diaz",
-          timestamp: "9:46 AM",
-          body: "No rush, just whenever you get a sec.",
+          body: "There should be a few log files in there. I'm mostly curious about errors or anything that doesn't belong. No rush, just whenever you get a sec.",
         },
       ],
       trigger: { type: "after_file_read", filePath: "/srv/engineering/onboarding.md" },
@@ -91,36 +85,38 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
       trigger: { type: "after_objective", objectiveId: "search_tools_tips_requested" },
     },
 
+    // Oscar tab tip (after accepting log task)
+    {
+      id: "oscar_tab_tip",
+      channelId: "dm_oscar",
+      messages: [
+        {
+          id: "oscar_tab_1",
+          from: "Oscar Diaz",
+          timestamp: "9:55 AM",
+          body: "Oh one more thing — your terminal supports tabs. Ctrl+B, C opens a new one. Super handy for tailing logs in one tab while you grep in another.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "search_tools_accepted" },
+    },
+
     // === DM Oscar: What did you find? (after reading system.log) ===
     {
       id: "oscar_access_review",
       channelId: "dm_oscar",
-      messages: [
-        {
-          id: "oscar_access_1",
-          from: "Oscar Diaz",
-          timestamp: "10:30 AM",
-          body: "Hey — find anything interesting in those logs?",
-        },
-        {
-          id: "oscar_access_2",
-          from: "Oscar Diaz",
-          timestamp: "10:30 AM",
-          body: "I took another look too. Some cron failures, an nginx timeout, the usual. Nothing that screams '3am sabotage.'",
-        },
-      ],
+      messages: [],
       trigger: { type: "after_file_read", filePath: "/var/log/system.log", requireDelivered: "oscar_log_check" },
       replyOptions: [
         {
           label: "Nothing weird — probably just a bad deploy.",
           messageBody: "Yeah, nothing jumped out. Probably just a bad deploy that auto-recovered.",
-          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_normal" }],
+          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_normal" }, { type: "objective_completed", detail: "oscar_log_findings_shared" }],
         },
         {
           label: "I diffed the logs — entries were stripped from the backup.",
           messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",
           visibleWhen: { flag: "discovered_log_tampering" },
-          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_tampered" }],
+          triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_tampered" }, { type: "objective_completed", detail: "oscar_log_findings_shared" }],
         },
       ],
     },

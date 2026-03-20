@@ -1606,7 +1606,7 @@ describe("exit", () => {
 
   it("shows error when not in remote session", () => {
     const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "nexacorp" }));
-    expect(result.output).toContain("not in a remote session");
+    expect(result.output).toContain("still have work to do");
     expect(result.transitionTo).toBeUndefined();
   });
 

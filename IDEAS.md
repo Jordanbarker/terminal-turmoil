@@ -111,3 +111,11 @@ Phase 3: open-ended challenges ("The access logs contain evidence of the breach"
 Narrative context creates durable memory. "Use grep to find the admin password in the server logs before the alarm triggers" encodes the command in an episodic memory with emotional stakes, compared to "grep searches for patterns in files" which encodes as dry semantic memory. 
 Spaced repetition should be invisible. Don't flash cards — just ensure that early commands keep appearing naturally in later chapters. If grep is introduced in Chapter 4, make sure Chapters 6, 8, and 10 require grep in combination with newer commands.
 Validate results, not keystrokes. The game should check whether the player's command would produce the correct output given the virtual filesystem state — not just string-match against an expected command. If the challenge is "find the hidden file," accept ls -a, ls -la, find . -name ".*", or any other valid approach. This teaches problem-solving rather than rote memorization and mirrors how real terminal usage works.
+
+
+STORY FLAGS
+ran_auto_apply - get another job offer
+
+          label: "I diffed the logs — entries were stripped from the backup.",
+          messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",
+          visibleWhen: { flag: "discovered_log_tampering" },

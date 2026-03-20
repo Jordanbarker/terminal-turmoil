@@ -297,6 +297,26 @@ export const HELP_TEXTS: Record<string, string> = {
     "  -h, --human-readable   print sizes in human readable format",
   ].join("\n"),
 
+  git: [
+    "Usage: git <command> [<args>]",
+    "",
+    "The distributed version control system.",
+    "",
+    "  git init                    Create an empty repository",
+    "  git clone <url>             Clone a remote repository",
+    "  git add <file|.>            Stage changes for commit",
+    "  git commit -m 'msg'         Record changes to the repository",
+    "  git status [-s]             Show the working tree status",
+    "  git log [--oneline]         Show commit history",
+    "  git branch [-d|-D <name>]   List or delete branches",
+    "  git checkout [-b] <branch>  Switch or create branches",
+    "  git diff [--staged]         Show changes",
+    "  git push [-u] [origin br]   Update remote refs",
+    "  git pull [origin branch]    Fetch and merge from remote",
+    "  git rm [-r] <file>          Remove files from tracking",
+    "  git stash [pop|list]        Stash working changes",
+  ].join("\n"),
+
   help: [
     "Usage: help",
     "",

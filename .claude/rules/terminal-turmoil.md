@@ -26,7 +26,7 @@ npm run check     # Combined typecheck + test + build
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`, `git`
 
 Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
 
@@ -49,6 +49,7 @@ src/
 │   ├── python/             # Python REPL via Pyodide
 │   ├── snowflake/          # In-browser Snowflake SQL engine (lexer, parser, planner, executor, functions, formatter, session, bridge, seed, state) (__tests__/)
 │   ├── dbt/                # Virtual dbt CLI (project discovery, runner, output, data) (__tests__/)
+│   ├── git/                # Virtual git CLI (repo, output, remotes, types) (__tests__/)
 │   ├── mail/               # In-game email system (delivery, dispatcher, Maildir layout) (__tests__/)
 │   ├── piper/              # Piper messaging system (PiperSession, delivery, render, types) (__tests__/)
 │   ├── prompt/             # Inline prompt system (numbered choices for email replies, narrative)

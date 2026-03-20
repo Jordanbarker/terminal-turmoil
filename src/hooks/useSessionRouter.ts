@@ -17,7 +17,6 @@ import { checkPiperDeliveries } from "../engine/piper/delivery";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
 import { ComputerId } from "../state/types";
-import { buildDbtProject } from "../story/filesystem/nexacorp";
 
 interface EventActionContext {
   term: Terminal;
@@ -39,7 +38,7 @@ const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResu
     // Unlock multi-terminal tabs alongside search tools
     if (!store.storyFlags.tabs_unlocked) {
       store.setStoryFlag("tabs_unlocked", true);
-      store.addToast("Multi-terminal tabs unlocked! Ctrl+B, C to create, Ctrl+B, N/P to switch.");
+      store.addToast("Terminal tabs unlocked!");
     }
     return {};
   },
@@ -70,18 +69,6 @@ const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResu
   dana_ops_no_access: () => {
     return {};
   },
-  dbt_project_cloned: (ctx) => {
-    const store = useGameStore.getState();
-    store.setStoryFlag("dbt_project_cloned", true);
-    const currentFs = store.computerState[ctx.computerId]!.fs;
-    const homeDir = currentFs.homeDir;
-    const result = currentFs.insertNode(`${homeDir}/nexacorp-analytics`, buildDbtProject());
-    if (result.fs) {
-      store.setComputerFs(ctx.computerId, result.fs);
-    }
-    store.addToast("dbt project cloned to ~/nexacorp-analytics/");
-    return { skipDefault: true };
-  },
 };
 
 interface SessionRouterDeps {
@@ -97,6 +84,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
   const sessionRef = useRef<ISession | null>(null);
   const sessionTypeRef = useRef<string | null>(null);
+  const sessionTabIdRef = useRef<string | null>(null);
   const piperInfoRef = useRef<import("../engine/piper/types").PiperSessionInfo | null>(null);
 
   const hasActiveSession = useCallback(() => {
@@ -209,6 +197,10 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     (term: Terminal, data: string): boolean => {
       if (!sessionRef.current) return false;
 
+      // Only route input to the session from the tab that owns it
+      const activeTabId = useGameStore.getState().activeTabId;
+      if (activeTabId !== sessionTabIdRef.current) return false;
+
       const result = sessionRef.current.handleInput(data);
       if (!result) return true; // still waiting (prompt session)
 
@@ -236,6 +228,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       const type = sessionTypeRef.current;
       sessionRef.current = null;
       sessionTypeRef.current = null;
+      sessionTabIdRef.current = null;
 
       // Mark intro as seen when player exits nano (not when it opens)
       if (type === "editor" && computerId === "home") {
@@ -273,23 +266,27 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       }
 
       // Flush notifications deferred from the command that started this session
+      let wroteNotifications = false;
       if (pendingNotificationsRef.current) {
         const pending = pendingNotificationsRef.current;
         pendingNotificationsRef.current = null;
         const username = useGameStore.getState().username;
         if (pending.email > 0) {
           term.write(`\r\n${colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold)}`);
+          wroteNotifications = true;
         }
         if (pending.piper > 0) {
           term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+          wroteNotifications = true;
         }
       }
 
       // FS was already synced to store via setComputerFs above
       // Piper and editor use the alternate screen buffer — no leading \r\n needed
+      // (but if notifications were just written, we need a newline before the prompt)
       const usedAltScreen = type === "piper" || type === "editor";
       if (usedAltScreen) {
-        term.write(getPrompt());
+        term.write((wroteNotifications ? "\r\n" : "") + getPrompt());
       } else {
         writePrompt(term);
       }
@@ -302,6 +299,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
   const startSession = useCallback(
     (term: Terminal, session: SessionToStart): void => {
       const computerId = activeComputerRef.current;
+      sessionTabIdRef.current = useGameStore.getState().activeTabId;
 
       if (session.type === "editor") {
         const store = useGameStore.getState();
@@ -405,6 +403,9 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
   const canCloseCurrentSession = useCallback((): boolean => {
     if (!sessionRef.current) return true;
+    // Only the tab that owns the session needs to check canClose
+    const activeTabId = useGameStore.getState().activeTabId;
+    if (activeTabId !== sessionTabIdRef.current) return true;
     return sessionRef.current.canClose?.() ?? true;
   }, []);
 

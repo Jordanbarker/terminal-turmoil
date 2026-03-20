@@ -17,7 +17,7 @@ This is your remote development environment for data engineering work.
 It has dbt, Snowflake CLI (snow), and Python pre-installed.
 
 Getting started:
-  1. Use 'chip' to clone the analytics repo
+  1. Run 'git clone nexacorp/nexacorp-analytics'
   2. Run 'dbt build' to execute the full pipeline
   3. Use 'snow sql' to query the Snowflake warehouse directly
 

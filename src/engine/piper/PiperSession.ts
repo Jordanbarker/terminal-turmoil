@@ -46,6 +46,9 @@ export class PiperSession implements ISession {
   private replyDeliveryId = "";
   private replyOptionMapping: number[] = [];
 
+  // Unread tracking for "NEW" divider
+  private unreadCountAtOpen = 0;
+
   // Scroll state
   private scrollOffset = 0;
 
@@ -88,6 +91,7 @@ export class PiperSession implements ISession {
             return this.exitSession();
           } else {
             this.view = "channels";
+            this.unreadCountAtOpen = 0;
             this.selectedIndex = 0;
             this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
             this.terminal.write(`\x1b[H\x1b[J${this.buildChannelListView()}`);
@@ -172,6 +176,7 @@ export class PiperSession implements ISession {
     if (char === "q") {
       // Go back to channel list
       this.view = "channels";
+      this.unreadCountAtOpen = 0;
       this.selectedIndex = 0;
       this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
       this.terminal.write(`\x1b[H\x1b[J${this.buildChannelListView()}`);
@@ -233,6 +238,9 @@ export class PiperSession implements ISession {
     this.view = "conversation";
     this.selectedIndex = 0;
     this.scrollOffset = 0;
+
+    // Capture unread count before marking seen (for "NEW" divider)
+    this.unreadCountAtOpen = item.unread;
 
     // Emit piper_checked when viewing a channel with unread messages
     if (item.unread) {
@@ -381,6 +389,7 @@ export class PiperSession implements ISession {
       this.isAnimating = false;
       this.animationTimer = null;
       this.markChannelSeen();
+      this.unreadCountAtOpen = 0;
 
       this.refreshReplyOptions();
 
@@ -426,7 +435,7 @@ export class PiperSession implements ISession {
     const messages = this.hiddenMessageCount > 0
       ? allMessages.slice(0, allMessages.length - this.hiddenMessageCount)
       : allMessages;
-    const conversation = renderConversation(messages, width);
+    const conversation = renderConversation(messages, width, this.unreadCountAtOpen);
     const hasReply = this.replyOptions.length > 0;
 
     // Calculate available rows for conversation content

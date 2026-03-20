@@ -254,17 +254,14 @@ Great first day! Auri mentioned you already ran a full build on
 the analytics pipeline — great to see you getting up to speed
 on the data side.
 
-P.S. Chen's home directory (/home/jchen/) still hasn't been
-cleaned up. Might be useful context for understanding the
-codebase, might just be clutter. IT will get to it eventually.
-
 - Edward
 `,
     },
-    trigger: [
-      { type: "after_command", command: "dbt" },
-      { type: "after_story_flag", flag: "ran_dbt" },
-    ],
+    trigger: {
+      type: "after_story_flag",
+      flag: "ran_dbt",
+      requiredFlags: ["read_team_info", "oscar_access_completed"],
+    },
   },
 
   // === Light-tier founder emails (after reading Edward's welcome) ===

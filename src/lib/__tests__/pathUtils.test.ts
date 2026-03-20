@@ -14,7 +14,7 @@ describe("normalizePath", () => {
 
   it("resolves .. segments", () => {
     expect(normalizePath("/home/player/..")).toBe("/home");
-    expect(normalizePath("/home/player/../jchen")).toBe("/home/jchen");
+    expect(normalizePath("/home/player/../other")).toBe("/home/other");
     expect(normalizePath("/a/b/c/../../d")).toBe("/a/d");
   });
 
@@ -52,7 +52,7 @@ describe("resolvePath", () => {
 
   it("resolves relative paths against cwd", () => {
     expect(resolvePath("docs", cwd, homeDir)).toBe("/home/player/docs");
-    expect(resolvePath("../jchen", cwd, homeDir)).toBe("/home/jchen");
+    expect(resolvePath("../other", cwd, homeDir)).toBe("/home/other");
   });
 
   it("resolves . to cwd", () => {

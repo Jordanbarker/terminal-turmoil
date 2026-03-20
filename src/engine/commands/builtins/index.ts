@@ -52,3 +52,5 @@ import "./exit";
 import "./chip";
 // Messaging
 import "./piper";
+// Version control
+import "./git";

@@ -1,6 +1,5 @@
 export const HOME_PATHS = {
   resume: (u: string) => `/home/${u}/Downloads/resume_final_v3.pdf`,
-  coverLetter: (u: string) => `/home/${u}/Documents/cover_letter_nexacorp.txt`,
   diary: (u: string) => `/home/${u}/.private/diary.txt`,
   jobNotes: (u: string) => `/home/${u}/Desktop/job_search_notes.txt`,
   glassdoorReviews: (u: string) => `/home/${u}/scripts/data/glassdoor_reviews.json`,

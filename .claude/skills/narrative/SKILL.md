@@ -31,7 +31,7 @@ src/story/
 │   └── messages.ts        # getPiperDeliveries() — all Piper message definitions with triggers
 └── filesystem/
     ├── paths.ts           # HOME_PATHS and NEXACORP_PATHS constants for story flag trigger paths
-    └── nexacorp.ts        # buildChipCacheFiles(storyFlags) — conditional surveillance files
+    └── nexacorp.ts        # createNexacorpFilesystem(username, storyFlags)
 
 src/state/
 ├── types.ts               # StoryFlags, ComputerId, GamePhase, GameState
@@ -94,7 +94,6 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | Flag | Event | Path / Detail | Value |
 |------|-------|---------------|-------|
 | `read_resume` | `file_read` | `/home/{username}/Downloads/resume_final_v3.pdf` | `true` |
-| `read_cover_letter` | `file_read` | `/home/{username}/Documents/cover_letter_nexacorp.txt` | `true` |
 | `read_diary` | `file_read` | `/home/{username}/.private/diary.txt` | `true` |
 | `read_job_notes` | `file_read` | `/home/{username}/Desktop/job_search_notes.txt` | `true` |
 | `read_glassdoor` | `file_read` | `/home/{username}/scripts/data/glassdoor_reviews.json` | `true` |
@@ -261,18 +260,6 @@ Full sequence:
 6. `useLoginSequence` hook detects transition, builds NexaCorp filesystem via `createNexacorpFilesystem(username, storyFlags)`
 7. Login screen renders inside xterm.js → boot sequence → `gamePhase: "playing"` on NexaCorp
 
-## Chip Cache Files (`buildChipCacheFiles`)
-
-`buildChipCacheFiles(storyFlags)` in `story/filesystem/nexacorp.ts` generates surveillance files based on what the player read on their home PC. These appear in `/opt/chip/cache/` on NexaCorp login.
-
-| File | Condition | Content |
-|------|-----------|---------|
-| `onboarding_prep.txt` | `storyFlags["read_cover_letter"]` | Chip's analysis of candidate's cover letter phrases; recommends messaging strategy |
-| `candidate_profile.txt` | `storyFlags["read_resume"]` | Chip's extraction of technical skills, experience, risk assessment (`LOW`) |
-| `sentiment_analysis.txt` | `storyFlags["read_diary"]` | Emotional state assessment (anxiety/desperation HIGH); notes "ideal candidate — high skill, low confrontation" |
-
-These reveal Chip was monitoring the player's home PC during the hiring process.
-
 ## Investigation Paths
 
 ### Jin Chen's Breadcrumbs
@@ -313,4 +300,4 @@ When designing story progression, email triggers, or investigation paths involvi
 3. **Use path constants** — story flag trigger paths use constants from `story/filesystem/paths.ts` (`HOME_PATHS`, `NEXACORP_PATHS`) — use these instead of inline strings when adding new path-based triggers
 4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp.ts`), email definitions (`story/emails/`), or Chip behavior
 5. **Add tests** for the trigger in `engine/narrative/__tests__/`
-6. If the flag should affect NexaCorp content, check `buildChipCacheFiles()` or `createNexacorpFilesystem()` patterns in `story/filesystem/nexacorp.ts`
+6. If the flag should affect NexaCorp content, check `createNexacorpFilesystem()` in `story/filesystem/nexacorp.ts`

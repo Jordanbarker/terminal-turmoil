@@ -86,6 +86,7 @@ import "../engine/commands/builtins";
 
 export function useTerminal() {
   const busyRef = useRef(false);
+  const busyTabIdRef = useRef<string | null>(null);
   const confirmNewGameRef = useRef(false);
   const pendingNotificationsRef = useRef<{ email: number; piper: number } | null>(null);
 
@@ -201,6 +202,7 @@ export function useTerminal() {
       if (effects.incrementalLines) {
         applyStateEffects(effects, computerId);
         busyRef.current = true;
+        busyTabIdRef.current = useGameStore.getState().activeTabId;
         const lines = effects.incrementalLines;
         let i = 0;
         const writeNext = () => {
@@ -212,6 +214,7 @@ export function useTerminal() {
           } else {
             writeNotifications(term, effects);
             busyRef.current = false;
+            busyTabIdRef.current = null;
             writePrompt(term);
           }
         };
@@ -325,8 +328,9 @@ export function useTerminal() {
       // Route input to active session if one exists
       if (sessionRouter.routeInput(term, data)) return;
 
-      // Ignore input while an async command is running
-      if (busyRef.current) return;
+      // Ignore input while an async command is running in this tab
+      const activeTabId = useGameStore.getState().activeTabId;
+      if (busyRef.current && activeTabId === busyTabIdRef.current) return;
 
       // Handle special characters
       for (let i = 0; i < data.length; i++) {
@@ -412,6 +416,7 @@ export function useTerminal() {
 
         // Gate input while command is queued/executing
         busyRef.current = true;
+        busyTabIdRef.current = useGameStore.getState().activeTabId;
         if (hasAsyncCmd) {
           term.write(colorize("Loading...", ansi.dim));
         }
@@ -517,6 +522,7 @@ export function useTerminal() {
 
           const earlyReturn = applyCommandResult(lastResult, pipeline[pipeline.length - 1], runningFs);
           busyRef.current = false;
+          busyTabIdRef.current = null;
           if (!earlyReturn) {
             writePrompt(term);
           }
