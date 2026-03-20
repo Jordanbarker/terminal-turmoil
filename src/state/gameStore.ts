@@ -68,6 +68,7 @@ interface GameStore {
   setTabCwd: (tabId: string, cwd: string) => void;
   setActiveSnowSession: (tabId: string | null) => void;
   setTabComputer: (tabId: string, computerId: ComputerId, cwd: string) => void;
+  removeComputer: (computer: ComputerId) => void;
 }
 
 export function buildFs(
@@ -231,6 +232,11 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           tabs: state.tabs.map((t) => t.id === tabId ? { ...t, computerId, cwd } : t),
         })),
+      removeComputer: (computer) =>
+        set((state) => {
+          const { [computer]: _, ...rest } = state.computerState;
+          return { computerState: rest };
+        }),
       resetGame: () => {
         tabCounter = 0;
         set(createInitialState());

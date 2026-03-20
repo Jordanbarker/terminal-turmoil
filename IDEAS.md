@@ -1,5 +1,4 @@
 your absolutely right!
-Add "feel the AGI" to the openclam piper 
 Pick a side, Sarah or Erik
 id_ed25519.pub — IT recycled jchen's keypair "why do I have jchen's key?"   
 work todo list / kanban board
@@ -114,7 +113,8 @@ Validate results, not keystrokes. The game should check whether the player's com
 
 
 STORY FLAGS
-ran_auto_apply - get another job offer
+- NexaCorp investigation: found_auth_backup, found_cleanup_script, read_board_minutes, read_headcount_plan
+- ran_auto_apply - get another job offer
 
           label: "I diffed the logs — entries were stripped from the backup.",
           messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",

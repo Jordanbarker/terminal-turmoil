@@ -14,6 +14,10 @@ const ssh: CommandHandler = (args, _flags, ctx) => {
     return { output: `ssh: connect to host ${args[0]}: Connection refused` };
   }
 
+  if (ctx.storyFlags?.returned_home_day1) {
+    return { output: `ssh: connect to host ${args[0]}: Connection timed out` };
+  }
+
   const target = args[0];
 
   // Read ~/.ssh/config for alias resolution

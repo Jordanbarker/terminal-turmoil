@@ -12,12 +12,6 @@ export interface StoryFlagTrigger {
 
 export const STORY_FLAG_NAMES = [
   "read_resume",
-  "read_diary",
-  "read_job_notes",
-  "read_glassdoor",
-  "research_depth",
-  "read_auto_apply",
-  "read_bashrc",
   "read_cron_backup",
   "fixed_backup_script",
   "ran_auto_apply",
@@ -113,12 +107,6 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
   return [
     { event: "file_read", path: p.resume(username), flag: "read_resume", value: true },
-    { event: "file_read", path: p.diary(username), flag: "read_diary", value: true },
-    { event: "file_read", path: p.jobNotes(username), flag: "read_job_notes", value: true },
-    { event: "file_read", path: p.glassdoorReviews(username), flag: "read_glassdoor", value: true },
-    { event: "file_read", path: p.glassdoorReviews(username), flag: "research_depth", value: "deep" },
-    { event: "file_read", path: p.autoApply(username), flag: "read_auto_apply", value: true },
-    { event: "file_read", path: p.bashrc(username), flag: "read_bashrc", value: true },
     { event: "directory_visit", path: p.downloadsDir(username), flag: "pdftotext_unlocked", value: true, toast: "pdftotext command unlocked!" },
     { event: "file_read", path: p.resume(username), flag: "pdftotext_unlocked", value: true, toast: "pdftotext command unlocked!" },
     { event: "file_read", path: p.jobJd(username), flag: "pdftotext_unlocked", value: true, toast: "pdftotext command unlocked!" },

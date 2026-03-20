@@ -317,6 +317,16 @@ export const HELP_TEXTS: Record<string, string> = {
     "  git stash [pop|list]        Stash working changes",
   ].join("\n"),
 
+  bash: [
+    "Usage: bash [SCRIPT] [-c COMMAND]",
+    "",
+    "Execute shell scripts or commands.",
+    "",
+    "  bash script.sh       Run a shell script",
+    "  bash -c 'command'    Execute a command string",
+    "  ./script.sh          Run an executable script directly",
+  ].join("\n"),
+
   help: [
     "Usage: help",
     "",

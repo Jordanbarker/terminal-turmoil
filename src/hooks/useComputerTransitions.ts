@@ -4,8 +4,9 @@ import { useGameStore, buildFs } from "../state/gameStore";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createHomeFilesystem } from "../story/filesystem/home";
-import { checkEmailDeliveries, seedDeliveredEmails } from "../engine/mail/delivery";
-import { seedImmediatePiper } from "../engine/piper/delivery";
+import { checkEmailDeliveries, seedDeliveredEmails, GameEvent } from "../engine/mail/delivery";
+import { seedImmediatePiper, checkPiperDeliveries } from "../engine/piper/delivery";
+import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { colorize, ansi } from "../lib/ansi";
 import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getCoderConnectionSequence, coderBanner } from "../lib/ascii";
@@ -185,6 +186,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
         s.initComputer("home", newFs);
 
+        // Remove nexacorp/devcontainer from computerState so they don't appear in "+" dropdown
+        s.removeComputer("nexacorp");
+        s.removeComputer("devcontainer");
+
         // Repurpose current tab to home
         const homeCwd = newFs.cwd;
         s.setTabComputer(s.activeTabId, "home", homeCwd);
@@ -209,6 +214,34 @@ export function useComputerTransitions(deps: TransitionDeps) {
           latest.addDeliveredEmails(deliveryResult.newDeliveries);
           term.writeln("");
           term.write(colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold));
+        }
+
+        // Deliver Piper messages triggered by returned_home_day1
+        const latestForPiper = useGameStore.getState();
+        const newPiperIds = checkPiperDeliveries(
+          { type: "objective_completed", detail: "head_home" },
+          [...latestForPiper.deliveredPiperIds],
+          username,
+          "home",
+          latestForPiper.storyFlags
+        );
+        if (newPiperIds.length > 0) {
+          latestForPiper.addDeliveredPiperMessages(newPiperIds);
+          term.writeln("");
+          term.write(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
+
+          // Process piper_delivered story flag triggers (mirrors processDeliveries 4th pass)
+          const storyFlagTriggers = getTriggersForComputer("home", username);
+          const latestFlags = useGameStore.getState().storyFlags;
+          let currentFlags = { ...latestFlags };
+          for (const id of newPiperIds) {
+            const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+            const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, currentFlags);
+            for (const flagResult of flagResults) {
+              useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+              currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
+            }
+          }
         }
 
         useGameStore.getState().setGamePhase("playing");

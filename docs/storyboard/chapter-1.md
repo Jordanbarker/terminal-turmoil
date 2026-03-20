@@ -54,14 +54,14 @@ Commands unlock progressively through Piper conversations and exploration:
                  │   olive_linux_basics]     read personal files
                  │     │                        │
                  │     ▼                        ▼
-                 │  basic_tools_unlocked    flavor flags set:
-                 │  (13 commands)           read_resume?
-                 │     ▼                    read_diary?
-                 │  olive_tree_tip          read_job_notes?
-                 │  Piper delivered         read_glassdoor?
-                 │     │                    read_auto_apply?
-                 │     ▼                    read_bashrc?
-                 │  apt_unlocked            pdftotext_unlocked?
+                 │  basic_tools_unlocked    read_resume?
+                 │  (13 commands)           pdftotext_unlocked?
+                 │     ▼
+                 │  olive_tree_tip
+                 │  Piper delivered
+                 │     │
+                 │     ▼
+                 │  apt_unlocked
                  │  (sudo, apt)
                  │
        ┌─────────┴──────────────────────────────────────────┐
@@ -93,8 +93,8 @@ Commands unlock progressively through Piper conversations and exploration:
   │ _file Piper  │   │ delivered     │   │ delivered     │
   │ delivered    │   │               │   │               │
   │              │   │ Requires:     │   │ Requires:     │
-  │ Sequential:  │   │ read_diary +  │   │ fix_backup    │
-  │              │   │ olive_linux   │   │ completed     │
+  │ Sequential:  │   │ olive_linux   │   │ fix_backup    │
+  │              │   │ _basics       │   │ completed     │
   │ 1. file      │   │ _basics       │   │               │
   │ 2. which     │   │ delivered     │   │ 1. mkdir      │
   │ 3. mkdir     │   │               │   │    ~/backups  │

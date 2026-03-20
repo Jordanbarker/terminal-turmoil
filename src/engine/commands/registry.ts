@@ -1,6 +1,12 @@
 import { CommandHandler, AsyncCommandHandler, CommandResult, CommandContext } from "./types";
 import { isCommandAvailable } from "./availability";
 import { ComputerId, StoryFlags } from "../../state/types";
+import { resolvePath } from "../../lib/pathUtils";
+
+/** Check if a command string looks like a path (starts with ./ or /). */
+function isPathCommand(name: string): boolean {
+  return name.startsWith("./") || name.startsWith("/");
+}
 
 const NEXACORP_GATE_HINTS: Record<string, string> = {
   coder: "Read your welcome email and check /srv/engineering/onboarding.md to get set up.",
@@ -52,6 +58,10 @@ export async function executeAsync(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): Promise<CommandResult> {
+  // Path execution: ./script.sh or /path/to/script.sh
+  if (isPathCommand(commandName)) {
+    return executePathCommand(commandName, ctx);
+  }
   const asyncEntry = asyncCommands.get(commandName);
   if (asyncEntry) {
     if (flags["help"] && asyncEntry.helpText) {
@@ -62,7 +72,33 @@ export async function executeAsync(
   return execute(commandName, args, flags, ctx);
 }
 
+/** Execute a file path as a script (./script.sh or /path/to/script). */
+async function executePathCommand(pathStr: string, ctx: CommandContext): Promise<CommandResult> {
+  const absPath = resolvePath(pathStr, ctx.cwd, ctx.homeDir);
+  const node = ctx.fs.getNode(absPath);
+  if (!node) {
+    return { output: `bash: ${pathStr}: No such file or directory`, exitCode: 127 };
+  }
+  if (node.type === "directory") {
+    return { output: `bash: ${pathStr}: Is a directory`, exitCode: 126 };
+  }
+  // Check execute permission (owner execute = index 2 in "rwxr-xr-x")
+  const perms = node.permissions ?? "rw-r--r--";
+  if (perms[2] !== "x") {
+    return { output: `bash: ${pathStr}: Permission denied`, exitCode: 126 };
+  }
+  const content = node.type === "file" ? node.content : "";
+  // Lazy import to avoid circular dependency at module load time
+  const { executeScript } = await import("./builtins/bash");
+  const result = await executeScript(content, ctx);
+  // Add file_read event for the script file
+  const scriptEvent = { type: "file_read" as const, detail: absPath };
+  const events = result.triggerEvents ? [scriptEvent, ...result.triggerEvents] : [scriptEvent];
+  return { ...result, triggerEvents: events };
+}
+
 export function isAsyncCommand(name: string): boolean {
+  if (isPathCommand(name)) return true;
   return asyncCommands.has(name);
 }
 

@@ -94,12 +94,6 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | Flag | Event | Path / Detail | Value |
 |------|-------|---------------|-------|
 | `read_resume` | `file_read` | `/home/{username}/Downloads/resume_final_v3.pdf` | `true` |
-| `read_diary` | `file_read` | `/home/{username}/.private/diary.txt` | `true` |
-| `read_job_notes` | `file_read` | `/home/{username}/Desktop/job_search_notes.txt` | `true` |
-| `read_glassdoor` | `file_read` | `/home/{username}/scripts/data/glassdoor_reviews.json` | `true` |
-| `research_depth` | `file_read` | `/home/{username}/scripts/data/glassdoor_reviews.json` | `"deep"` |
-| `read_auto_apply` | `file_read` | `/home/{username}/scripts/auto_apply.py` | `true` |
-| `read_bashrc` | `file_read` | `/home/{username}/.bashrc` | `true` |
 | `pdftotext_unlocked` | `directory_visit` | `/home/{username}/Downloads` | `true` |
 | `pdftotext_unlocked` | `file_read` | (any PDF in `~/Downloads`) | `true` |
 | `tree_installed` | `command_executed` | detail: `apt_install_tree` | `true` |

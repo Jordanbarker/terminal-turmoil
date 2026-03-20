@@ -34,6 +34,7 @@ export const PIPER_DELIVERY_IDS = [
   "olive_pt_challenge_sort_uniq",
   "olive_pt_challenge_find",
   "openclam_history",
+  "openclam_end_of_day",
   "bubble_buddies_history",
   // NexaCorp deliveries
   "general_edward_welcome",

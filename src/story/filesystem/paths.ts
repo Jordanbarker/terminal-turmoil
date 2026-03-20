@@ -1,10 +1,5 @@
 export const HOME_PATHS = {
   resume: (u: string) => `/home/${u}/Downloads/resume_final_v3.pdf`,
-  diary: (u: string) => `/home/${u}/.private/diary.txt`,
-  jobNotes: (u: string) => `/home/${u}/Desktop/job_search_notes.txt`,
-  glassdoorReviews: (u: string) => `/home/${u}/scripts/data/glassdoor_reviews.json`,
-  autoApply: (u: string) => `/home/${u}/scripts/auto_apply.py`,
-  bashrc: (u: string) => `/home/${u}/.bashrc`,
   downloadsDir: (u: string) => `/home/${u}/Downloads`,
   zoomDeb: (u: string) => `/home/${u}/Downloads/zoom_amd64.deb`,
   pipDeb: (u: string) => `/home/${u}/Downloads/python3-pip_24.0+dfsg-1_all.deb`,

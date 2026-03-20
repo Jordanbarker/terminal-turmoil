@@ -82,8 +82,6 @@ async function main() {
   const runner = new GameRunner("home");
   runner.storyFlags = {
     read_resume: true,
-    read_diary: true,
-    read_glassdoor: true,
   };
   console.log(`Home runner created. Username: ${runner.username}`);
   console.log(`Story flags set: ${JSON.stringify(runner.storyFlags)}`);

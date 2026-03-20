@@ -16,6 +16,7 @@ import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 import { useComputerTransitions } from "./useComputerTransitions";
 import { CommandContext } from "../engine/commands/types";
+import { applyRedirection } from "../engine/commands/redirection";
 
 // ---------------------------------------------------------------------------
 // Module-scope helpers (no React dependencies)
@@ -57,28 +58,6 @@ function buildCommandContext(
     snowflakeContext: createDefaultContext(store.username),
     setSnowflakeState: store.setSnowflakeState,
   };
-}
-
-/** Apply output redirection: write command output to a file and return updated FS + result. */
-function applyRedirection(
-  redirectFile: string,
-  redirectAppend: boolean,
-  lastResult: import("../engine/commands/types").CommandResult,
-  currentCwd: string,
-  homeDir: string,
-  currentFs: VirtualFS,
-): { result: import("../engine/commands/types").CommandResult; fs: VirtualFS } {
-  const absPath = resolvePath(redirectFile, currentCwd, homeDir);
-  let content = lastResult.output;
-  if (redirectAppend) {
-    const existing = currentFs.readFile(absPath);
-    if (existing.content !== undefined) {
-      content = existing.content + "\n" + content;
-    }
-  }
-  const writeResult = currentFs.writeFile(absPath, content);
-  const newFs = writeResult.fs ?? currentFs;
-  return { result: { ...lastResult, output: "" }, fs: newFs };
 }
 
 // Ensure all builtins are registered

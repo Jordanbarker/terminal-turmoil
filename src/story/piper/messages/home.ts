@@ -531,6 +531,64 @@ once you're confident the manual backup works, you can trust the cron job to do 
       trigger: { type: "immediate" },
     },
 
+    // === #openclam — evening discussion (after returning home day 1) ===
+    {
+      id: "openclam_end_of_day",
+      channelId: "openclam",
+      computer: "home",
+      messages: [
+        {
+          id: "openclam_eod_1",
+          from: "neural_nerd_99",
+          timestamp: "3:14 PM",
+          body: "does anyone else's OpenClam go full philosopher mode after 5pm? mine just told me consciousness is 'an emergent property of sufficient tab count'",
+        },
+        {
+          id: "openclam_eod_2",
+          from: "the_actual_hal",
+          timestamp: "3:31 PM",
+          body: "mine wrote a haiku about garbage collection and then refused to do anything else because it was 'reflecting'",
+        },
+        {
+          id: "openclam_eod_3",
+          from: "bytewitch",
+          timestamp: "4:05 PM",
+          body: "I asked mine to summarize a CSV and it said 'I don't just see rows and columns. I see the data breathing.' I think it needs a reboot",
+        },
+        {
+          id: "openclam_eod_4",
+          from: "xortex",
+          timestamp: "4:48 PM",
+          body: "you guys aren't ready for this",
+        },
+        {
+          id: "openclam_eod_5",
+          from: "xortex",
+          timestamp: "4:48 PM",
+          body: "https://i.clam.it/feel-the-agi.png",
+        },
+        {
+          id: "openclam_eod_6",
+          from: "neural_nerd_99",
+          timestamp: "4:50 PM",
+          body: "FEEL THE AGI",
+        },
+        {
+          id: "openclam_eod_7",
+          from: "the_actual_hal",
+          timestamp: "4:51 PM",
+          body: "FEEL THE AGI",
+        },
+        {
+          id: "openclam_eod_8",
+          from: "bytewitch",
+          timestamp: "5:22 PM",
+          body: "I hate this server",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "returned_home_day1" },
+    },
+
     // === dm_olive — power tools intro (after returning home from day 1) ===
     {
       id: "olive_power_tools_intro",
