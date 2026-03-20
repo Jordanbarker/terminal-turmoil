@@ -7,6 +7,9 @@ import { resolvePath } from "../../../lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { GameEvent } from "../../mail/delivery";
+import { isCommandAvailable } from "../availability";
+import { getAvailableCommands } from "../registry";
+import { COMMAND_PATHS } from "./which";
 
 const MAX_SUBSTITUTION_DEPTH = 5;
 
@@ -21,23 +24,309 @@ const SESSION_FIELDS = [
   "promptSession",
 ] as const;
 
-interface Line {
-  text: string;
-  lineNumber: number;
-}
+// ---------------------------------------------------------------------------
+// Script node types
+// ---------------------------------------------------------------------------
 
-/** Parse script content into executable lines, stripping comments/shebangs/blanks. */
-function parseScript(content: string): Line[] {
-  const lines: Line[] = [];
+type ScriptNode =
+  | { type: "command"; text: string; lineNumber: number }
+  | { type: "assignment"; name: string; value: string; lineNumber: number }
+  | { type: "function"; name: string; body: ScriptNode[]; lineNumber: number }
+  | { type: "if"; condition: string; thenBody: ScriptNode[]; elseBody: ScriptNode[]; lineNumber: number };
+
+// ---------------------------------------------------------------------------
+// Parsing
+// ---------------------------------------------------------------------------
+
+/** Join lines ending with `\` (line continuation) and strip comments/blanks. */
+function preprocessLines(content: string): { text: string; lineNumber: number }[] {
   const rawLines = content.split("\n");
+  const joined: { text: string; lineNumber: number }[] = [];
+  let accumulator = "";
+  let startLine = -1;
+
   for (let i = 0; i < rawLines.length; i++) {
     const trimmed = rawLines[i].trim();
+
+    if (accumulator) {
+      accumulator += " " + trimmed;
+      if (trimmed.endsWith("\\")) {
+        accumulator = accumulator.slice(0, -1);
+      } else {
+        joined.push({ text: accumulator, lineNumber: startLine });
+        accumulator = "";
+      }
+      continue;
+    }
+
     if (!trimmed) continue;
-    if (trimmed.startsWith("#")) continue; // comments and shebangs
-    lines.push({ text: rawLines[i], lineNumber: i + 1 });
+    if (trimmed.startsWith("#")) continue;
+
+    if (trimmed.endsWith("\\")) {
+      accumulator = trimmed.slice(0, -1);
+      startLine = i + 1;
+    } else {
+      joined.push({ text: trimmed, lineNumber: i + 1 });
+    }
   }
-  return lines;
+
+  if (accumulator) {
+    joined.push({ text: accumulator, lineNumber: startLine });
+  }
+
+  return joined;
 }
+
+/** Parse preprocessed lines into a tree of ScriptNodes. */
+function parseNodes(lines: { text: string; lineNumber: number }[]): ScriptNode[] {
+  const nodes: ScriptNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const { text, lineNumber } = lines[i];
+
+    // Function definition: funcname() {
+    const funcMatch = text.match(/^(\w+)\(\)\s*\{$/);
+    if (funcMatch) {
+      const name = funcMatch[1];
+      // Collect body lines until matching }
+      const bodyLines: { text: string; lineNumber: number }[] = [];
+      let depth = 1;
+      i++;
+      while (i < lines.length && depth > 0) {
+        const t = lines[i].text;
+        if (t === "}") {
+          depth--;
+          if (depth === 0) { i++; break; }
+        }
+        // Track nested braces
+        if (t.match(/\{\s*$/) || t.match(/^\w+\(\)\s*\{$/)) depth++;
+        bodyLines.push(lines[i]);
+        i++;
+      }
+      nodes.push({ type: "function", name, body: parseNodes(bodyLines), lineNumber });
+      continue;
+    }
+
+    // if CONDITION; then
+    const ifMatch = text.match(/^if\s+(.+?);\s*then$/);
+    if (ifMatch) {
+      const condition = ifMatch[1];
+      const { thenBody, elseBody, endIndex } = collectIfBody(lines, i + 1);
+      nodes.push({
+        type: "if",
+        condition,
+        thenBody: parseNodes(thenBody),
+        elseBody: parseNodes(elseBody),
+        lineNumber,
+      });
+      i = endIndex;
+      continue;
+    }
+
+    // if CONDITION (then on next line)
+    const ifMatch2 = text.match(/^if\s+(.+)$/);
+    if (ifMatch2 && i + 1 < lines.length && lines[i + 1].text.trim() === "then") {
+      const condition = ifMatch2[1];
+      const { thenBody, elseBody, endIndex } = collectIfBody(lines, i + 2);
+      nodes.push({
+        type: "if",
+        condition,
+        thenBody: parseNodes(thenBody),
+        elseBody: parseNodes(elseBody),
+        lineNumber,
+      });
+      i = endIndex;
+      continue;
+    }
+
+    // Variable assignment: NAME=VALUE (not inside a command like `command -v`)
+    const assignMatch = text.match(/^([A-Za-z_]\w*)=(.*)$/);
+    if (assignMatch) {
+      nodes.push({ type: "assignment", name: assignMatch[1], value: assignMatch[2], lineNumber });
+      i++;
+      continue;
+    }
+
+    // Everything else is a command
+    nodes.push({ type: "command", text, lineNumber });
+    i++;
+  }
+
+  return nodes;
+}
+
+/** Collect then/else body lines for an if block, handling nesting. Returns index after fi. */
+function collectIfBody(
+  lines: { text: string; lineNumber: number }[],
+  start: number,
+): { thenBody: { text: string; lineNumber: number }[]; elseBody: { text: string; lineNumber: number }[]; endIndex: number } {
+  const thenBody: { text: string; lineNumber: number }[] = [];
+  const elseBody: { text: string; lineNumber: number }[] = [];
+  let collecting = thenBody;
+  let depth = 1;
+  let i = start;
+
+  while (i < lines.length) {
+    const t = lines[i].text;
+
+    // Track nested if depth
+    if (t.match(/^if\s+/)) depth++;
+
+    if (t === "fi" || t === "fi;") {
+      depth--;
+      if (depth === 0) {
+        return { thenBody, elseBody, endIndex: i + 1 };
+      }
+    }
+
+    if ((t === "else" || t === "else;") && depth === 1) {
+      collecting = elseBody;
+      i++;
+      continue;
+    }
+
+    collecting.push(lines[i]);
+    i++;
+  }
+
+  return { thenBody, elseBody, endIndex: i };
+}
+
+/** Parse script content into ScriptNodes. */
+function parseScript(content: string): ScriptNode[] {
+  const lines = preprocessLines(content);
+  return parseNodes(lines);
+}
+
+// ---------------------------------------------------------------------------
+// Variable expansion
+// ---------------------------------------------------------------------------
+
+/** Expand shell variables in text, respecting quote boundaries. Does NOT touch $(...). */
+function expandVariables(
+  text: string,
+  variables: Map<string, string>,
+  positionalArgs?: string[],
+): string {
+  let result = "";
+  let inSingle = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const ch = text[i];
+
+    // Track single quotes (no expansion inside)
+    if (ch === "'" && !inSingle) {
+      inSingle = true;
+      result += ch;
+      i++;
+      continue;
+    }
+    if (ch === "'" && inSingle) {
+      inSingle = false;
+      result += ch;
+      i++;
+      continue;
+    }
+    if (inSingle) {
+      result += ch;
+      i++;
+      continue;
+    }
+
+    // Skip $(...) — command substitution handled separately
+    if (ch === "$" && i + 1 < text.length && text[i + 1] === "(") {
+      // Copy through the entire $(...) block
+      const closeIdx = findMatchingParen(text, i + 2);
+      if (closeIdx === -1) {
+        result += text.slice(i);
+        break;
+      }
+      result += text.slice(i, closeIdx + 1);
+      i = closeIdx + 1;
+      continue;
+    }
+
+    // ${VAR:-default} or ${VAR}
+    if (ch === "$" && i + 1 < text.length && text[i + 1] === "{") {
+      const closeIdx = text.indexOf("}", i + 2);
+      if (closeIdx === -1) {
+        result += ch;
+        i++;
+        continue;
+      }
+      const inner = text.slice(i + 2, closeIdx);
+      const defaultMatch = inner.match(/^(\w+):-(.*)$/);
+      if (defaultMatch) {
+        const val = variables.get(defaultMatch[1]);
+        result += val !== undefined ? val : defaultMatch[2];
+      } else {
+        result += variables.get(inner) ?? "";
+      }
+      i = closeIdx + 1;
+      continue;
+    }
+
+    // $N positional args
+    if (ch === "$" && positionalArgs && i + 1 < text.length && /[1-9]/.test(text[i + 1])) {
+      const idx = parseInt(text[i + 1]) - 1;
+      result += positionalArgs[idx] ?? "";
+      i += 2;
+      continue;
+    }
+
+    // $VAR
+    if (ch === "$" && i + 1 < text.length && /[A-Za-z_]/.test(text[i + 1])) {
+      const varMatch = text.slice(i + 1).match(/^[A-Za-z_]\w*/);
+      if (varMatch) {
+        result += variables.get(varMatch[0]) ?? "";
+        i += 1 + varMatch[0].length;
+        continue;
+      }
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Stderr redirect stripping
+// ---------------------------------------------------------------------------
+
+/** Strip `2>&1` and `2>/dev/null` from a raw command string, respecting quotes. */
+function stripStderrRedirects(raw: string): string {
+  let result = "";
+  let inSingle = false;
+  let inDouble = false;
+  let i = 0;
+
+  while (i < raw.length) {
+    const ch = raw[i];
+
+    if (ch === "'" && !inDouble) { inSingle = !inSingle; result += ch; i++; continue; }
+    if (ch === '"' && !inSingle) { inDouble = !inDouble; result += ch; i++; continue; }
+
+    if (!inSingle && !inDouble) {
+      // 2>&1
+      if (raw.slice(i, i + 4) === "2>&1") { i += 4; continue; }
+      // 2>/dev/null
+      if (raw.slice(i, i + 11) === "2>/dev/null") { i += 11; continue; }
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result.trim();
+}
+
+// ---------------------------------------------------------------------------
+// Command execution helpers
+// ---------------------------------------------------------------------------
 
 /** Find the matching closing paren for $( at position `start`, handling nesting. */
 function findMatchingParen(text: string, start: number): number {
@@ -70,8 +359,13 @@ async function expandSubstitutions(
   let i = 0;
   let fs = runningFs;
   let cwd = currentCwd;
+  let inSingle = false;
 
   while (i < text.length) {
+    if (text[i] === "'" && !inSingle) { inSingle = true; result += text[i]; i++; continue; }
+    if (text[i] === "'" && inSingle) { inSingle = false; result += text[i]; i++; continue; }
+    if (inSingle) { result += text[i]; i++; continue; }
+
     if (text[i] === "$" && i + 1 < text.length && text[i + 1] === "(") {
       const innerStart = i + 2;
       const closeIdx = findMatchingParen(text, innerStart);
@@ -107,20 +401,23 @@ async function expandSubstitutions(
   return { text: result, fs, cwd };
 }
 
-/** Execute a single line (may be a pipeline with redirection). */
+/** Execute a single line (may be a pipeline with redirection). Returns exitCode. */
 async function executeSingleLine(
   lineText: string,
   ctx: CommandContext,
   runningFs: VirtualFS,
   currentCwd: string,
   allTriggerEvents: GameEvent[],
-): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean }> {
-  const pipeline = parsePipeline(lineText);
+  functions?: Map<string, ScriptNode[]>,
+): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean; exitCode: number }> {
+  // Strip stderr redirects before parsing
+  const cleanedText = stripStderrRedirects(lineText);
+  const pipeline = parsePipeline(cleanedText);
 
   // Check for parse errors
   const parseError = pipeline.find((p) => p.error);
   if (parseError) {
-    return { output: parseError.error!, fs: runningFs, cwd: currentCwd, stopped: false };
+    return { output: parseError.error!, fs: runningFs, cwd: currentCwd, stopped: false, exitCode: 2 };
   }
 
   // Check for redirection in the last segment
@@ -151,6 +448,23 @@ async function executeSingleLine(
   for (let pi = 0; pi < pipeline.length; pi++) {
     const p = pipeline[pi];
     if (!p.command) continue;
+
+    // Handle `command -v NAME` builtin
+    if (p.command === "command" && p.flags.v && p.args.length > 0) {
+      const target = p.args[0];
+      const registeredNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
+      const isRegistered = COMMAND_PATHS[target] || registeredNames.includes(target);
+      if (functions?.has(target)) {
+        lastResult = { output: target, exitCode: 0 };
+      } else if (isRegistered && isCommandAvailable(target, ctx.activeComputer, ctx.storyFlags)) {
+        const path = COMMAND_PATHS[target] ?? `/usr/bin/${target}`;
+        lastResult = { output: path, exitCode: 0 };
+      } else {
+        lastResult = { output: "", exitCode: 1 };
+      }
+      stdin = lastResult.output;
+      continue;
+    }
 
     const subCtx: CommandContext = {
       ...ctx,
@@ -185,6 +499,7 @@ async function executeSingleLine(
         fs: lastResult.newFs ?? fs,
         cwd,
         stopped: true,
+        exitCode: 1,
       };
     }
 
@@ -210,54 +525,182 @@ async function executeSingleLine(
     fs = redir.fs;
   }
 
-  return { output: lastResult.output, fs, cwd, stopped: false };
+  return { output: lastResult.output, fs, cwd, stopped: false, exitCode: lastResult.exitCode ?? 0 };
 }
+
+// ---------------------------------------------------------------------------
+// Execution context + node executor
+// ---------------------------------------------------------------------------
+
+interface ExecContext {
+  ctx: CommandContext;
+  variables: Map<string, string>;
+  functions: Map<string, ScriptNode[]>;
+  allTriggerEvents: GameEvent[];
+  positionalArgs?: string[];
+}
+
+/** Strip matching outer quotes from a string. */
+function stripOuterQuotes(s: string): string {
+  if (s.length >= 2) {
+    if ((s[0] === '"' && s[s.length - 1] === '"') || (s[0] === "'" && s[s.length - 1] === "'")) {
+      return s.slice(1, -1);
+    }
+  }
+  return s;
+}
+
+/** Execute an array of ScriptNodes. */
+async function executeNodes(
+  nodes: ScriptNode[],
+  exec: ExecContext,
+  runningFs: VirtualFS,
+  currentCwd: string,
+): Promise<{ outputs: string[]; fs: VirtualFS; cwd: string; exitCode: number; stopped: boolean }> {
+  const outputs: string[] = [];
+  let fs = runningFs;
+  let cwd = currentCwd;
+  let exitCode = 0;
+
+  for (const node of nodes) {
+    switch (node.type) {
+      case "assignment": {
+        const rawValue = node.value;
+        const isSingleQuoted = rawValue.startsWith("'") && rawValue.endsWith("'") && rawValue.length >= 2;
+        const unquoted = stripOuterQuotes(rawValue);
+
+        if (isSingleQuoted) {
+          // Single-quoted: literal, no expansion
+          exec.variables.set(node.name, unquoted);
+        } else {
+          // Expand variables first, then command substitutions
+          const varExpanded = expandVariables(unquoted, exec.variables, exec.positionalArgs);
+          const subExpanded = await expandSubstitutions(
+            varExpanded, exec.ctx, fs, cwd, exec.allTriggerEvents, 0,
+          );
+          fs = subExpanded.fs;
+          cwd = subExpanded.cwd;
+          exec.variables.set(node.name, subExpanded.text);
+        }
+        break;
+      }
+
+      case "function": {
+        exec.functions.set(node.name, node.body);
+        break;
+      }
+
+      case "if": {
+        // Execute condition
+        const condExpanded = expandVariables(node.condition, exec.variables, exec.positionalArgs);
+        const condSub = await expandSubstitutions(
+          condExpanded, exec.ctx, fs, cwd, exec.allTriggerEvents, 0,
+        );
+        fs = condSub.fs;
+        cwd = condSub.cwd;
+
+        const condResult = await executeSingleLine(
+          condSub.text,
+          { ...exec.ctx, fs, cwd },
+          fs, cwd, exec.allTriggerEvents, exec.functions,
+        );
+        fs = condResult.fs;
+        cwd = condResult.cwd;
+
+        // Branch based on exit code
+        const body = condResult.exitCode === 0 ? node.thenBody : node.elseBody;
+        if (body.length > 0) {
+          const bodyResult = await executeNodes(body, exec, fs, cwd);
+          outputs.push(...bodyResult.outputs);
+          fs = bodyResult.fs;
+          cwd = bodyResult.cwd;
+          exitCode = bodyResult.exitCode;
+          if (bodyResult.stopped) {
+            return { outputs, fs, cwd, exitCode, stopped: true };
+          }
+        }
+        break;
+      }
+
+      case "command": {
+        // Expand variables, then command substitutions
+        let expanded = expandVariables(node.text, exec.variables, exec.positionalArgs);
+        const subExpanded = await expandSubstitutions(
+          expanded, exec.ctx, fs, cwd, exec.allTriggerEvents, 0,
+        );
+        fs = subExpanded.fs;
+        cwd = subExpanded.cwd;
+        expanded = subExpanded.text;
+
+        // Check if command name is a defined function
+        const parsed = parsePipeline(stripStderrRedirects(expanded));
+        const firstCmd = parsed[0];
+        if (firstCmd && firstCmd.command && exec.functions.has(firstCmd.command) && parsed.length === 1) {
+          const funcBody = exec.functions.get(firstCmd.command)!;
+          const funcArgs = firstCmd.args;
+          const funcExec: ExecContext = {
+            ...exec,
+            positionalArgs: funcArgs,
+          };
+          const funcResult = await executeNodes(funcBody, funcExec, fs, cwd);
+          outputs.push(...funcResult.outputs);
+          fs = funcResult.fs;
+          cwd = funcResult.cwd;
+          exitCode = funcResult.exitCode;
+          if (funcResult.stopped) {
+            return { outputs, fs, cwd, exitCode, stopped: true };
+          }
+          break;
+        }
+
+        // Normal command execution (handles command -v, redirection, etc.)
+        const result = await executeSingleLine(
+          expanded,
+          { ...exec.ctx, fs, cwd },
+          fs, cwd, exec.allTriggerEvents, exec.functions,
+        );
+
+        if (result.output) {
+          outputs.push(result.output);
+        }
+        fs = result.fs;
+        cwd = result.cwd;
+        exitCode = result.exitCode;
+
+        if (result.stopped) {
+          return { outputs, fs, cwd, exitCode, stopped: true };
+        }
+        break;
+      }
+    }
+  }
+
+  return { outputs, fs, cwd, exitCode, stopped: false };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 /** Execute a script's content. Exported for use by the registry path-execution fallback. */
 export async function executeScript(content: string, ctx: CommandContext): Promise<CommandResult> {
-  const lines = parseScript(content);
-  const allTriggerEvents: GameEvent[] = [];
-  const outputs: string[] = [];
-  let runningFs = ctx.fs;
-  let currentCwd = ctx.cwd;
-
-  for (const line of lines) {
-    // Expand command substitutions
-    const expanded = await expandSubstitutions(
-      line.text.trim(),
-      ctx,
-      runningFs,
-      currentCwd,
-      allTriggerEvents,
-      0,
-    );
-    runningFs = expanded.fs;
-    currentCwd = expanded.cwd;
-
-    const result = await executeSingleLine(
-      expanded.text,
-      { ...ctx, fs: runningFs, cwd: currentCwd },
-      runningFs,
-      currentCwd,
-      allTriggerEvents,
-    );
-
-    if (result.output) {
-      outputs.push(result.output);
-    }
-    runningFs = result.fs;
-    currentCwd = result.cwd;
-
-    if (result.stopped) break;
-  }
-
-  const combinedResult: CommandResult = {
-    output: outputs.join("\n"),
-    triggerEvents: allTriggerEvents.length > 0 ? allTriggerEvents : undefined,
+  const nodes = parseScript(content);
+  const exec: ExecContext = {
+    ctx,
+    variables: new Map(),
+    functions: new Map(),
+    allTriggerEvents: [],
   };
 
-  if (runningFs !== ctx.fs) {
-    combinedResult.newFs = runningFs;
+  const result = await executeNodes(nodes, exec, ctx.fs, ctx.cwd);
+
+  const combinedResult: CommandResult = {
+    output: result.outputs.join("\n"),
+    triggerEvents: exec.allTriggerEvents.length > 0 ? exec.allTriggerEvents : undefined,
+  };
+
+  if (result.fs !== ctx.fs) {
+    combinedResult.newFs = result.fs;
   }
 
   // Do NOT propagate newCwd — script runs in a subshell

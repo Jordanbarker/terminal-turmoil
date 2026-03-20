@@ -3,7 +3,7 @@ import { register, getAvailableCommands } from "../registry";
 import { isCommandAvailable } from "../availability";
 import { HELP_TEXTS } from "./helpTexts";
 
-const COMMAND_PATHS: Record<string, string> = {
+export const COMMAND_PATHS: Record<string, string> = {
   chip: "/opt/chip/bin/chip",
   python: "/usr/bin/python3",
   snow: "/usr/local/bin/snow",

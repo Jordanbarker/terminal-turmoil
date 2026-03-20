@@ -12,6 +12,12 @@ export function applyRedirection(
   currentFs: VirtualFS,
 ): { result: CommandResult; fs: VirtualFS } {
   const absPath = resolvePath(redirectFile, currentCwd, homeDir);
+
+  // /dev/null: suppress output without writing
+  if (absPath === "/dev/null") {
+    return { result: { ...lastResult, output: "" }, fs: currentFs };
+  }
+
   let content = lastResult.output;
   if (redirectAppend) {
     const existing = currentFs.readFile(absPath);

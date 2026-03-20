@@ -253,3 +253,137 @@ describe("sh alias", () => {
     expect(result.output).toContain("hello world");
   });
 });
+
+describe("shell features", () => {
+  function scriptCtx(content: string, overrides?: Partial<CommandContext>): CommandContext {
+    const base = createTestFS();
+    const root = base.root;
+    const playerDir = (root.children.home as DirectoryNode).children.player as DirectoryNode;
+    const newPlayerDir = {
+      ...playerDir,
+      children: {
+        ...playerDir.children,
+        "shell.sh": {
+          type: "file" as const,
+          name: "shell.sh",
+          content,
+          permissions: "rwxr-xr-x",
+          hidden: false,
+        },
+      },
+    };
+    const newHome = {
+      ...(root.children.home as DirectoryNode),
+      children: { ...(root.children.home as DirectoryNode).children, player: newPlayerDir },
+    };
+    const newRoot = { ...root, children: { ...root.children, home: newHome } };
+    const fs = new VirtualFS(newRoot, "/home/player", "/home/player");
+    return ctx(fs, overrides);
+  }
+
+  it("assigns and expands variables", async () => {
+    const c = scriptCtx('VAR="hello"\necho $VAR');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("hello");
+  });
+
+  it("expands ${VAR:-default} when unset", async () => {
+    const c = scriptCtx('echo ${MISSING:-fallback}');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("fallback");
+  });
+
+  it("expands ${VAR:-default} when set", async () => {
+    const c = scriptCtx('MYVAR="actual"\necho ${MYVAR:-fallback}');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("actual");
+  });
+
+  it("handles line continuation with backslash", async () => {
+    const c = scriptCtx('echo hello \\\nworld');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("hello world");
+  });
+
+  it("defines and calls functions", async () => {
+    const c = scriptCtx('greet() {\necho "hi"\n}\ngreet');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("hi");
+  });
+
+  it("passes positional args to functions", async () => {
+    const c = scriptCtx('say() {\necho $1\n}\nsay hello');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("hello");
+  });
+
+  it("executes if/then/else with true condition", async () => {
+    const c = scriptCtx('if echo test > /dev/null; then\necho "yes"\nelse\necho "no"\nfi');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("yes");
+  });
+
+  it("executes if/then/else with false condition", async () => {
+    const c = scriptCtx('if fakecmd; then\necho "yes"\nelse\necho "no"\nfi');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("no");
+  });
+
+  it("handles command -v for existing command", async () => {
+    const c = scriptCtx('command -v echo > /dev/null 2>&1');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    // Should produce no output (redirected to /dev/null) and no error
+    expect(result.output.trim()).toBe("");
+  });
+
+  it("handles command -v for missing command", async () => {
+    const c = scriptCtx('if command -v nonexistent_cmd > /dev/null 2>&1; then\necho "found"\nelse\necho "missing"\nfi');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("missing");
+  });
+
+  it("redirects to /dev/null suppressing output", async () => {
+    const c = scriptCtx('echo "hidden" > /dev/null\necho "visible"');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output).not.toContain("hidden");
+    expect(result.output).toContain("visible");
+  });
+
+  it("handles function containing if/then/else (check_env pattern)", async () => {
+    const c = scriptCtx(
+      'check() {\nif command -v $1 > /dev/null 2>&1; then\necho "[OK]  $1"\nelse\necho "[!!]  $1 not found"\nfi\n}\ncheck echo\ncheck nonexistent_cmd',
+    );
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output).toContain("[OK]  echo");
+    expect(result.output).toContain("[!!]  nonexistent_cmd not found");
+  });
+
+  it("expands variables with command substitution in assignment", async () => {
+    const c = scriptCtx('DIR="backup-$(date +%Y-%m-%d)"\necho $DIR');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("backup-2026-02-23");
+  });
+
+  it("strips 2>&1 from commands", async () => {
+    const c = scriptCtx('echo "test" 2>&1');
+    const result = await executeAsync("bash", ["shell.sh"], {}, c);
+    expect(result.output.trim()).toBe("test");
+  });
+});
+
+describe("date format strings", () => {
+  it("formats +%Y-%m-%d", async () => {
+    const result = await executeAsync("date", ["+%Y-%m-%d"], {}, ctx());
+    expect(result.output).toBe("2026-02-23");
+  });
+
+  it("formats +%H:%M:%S", async () => {
+    const result = await executeAsync("date", ["+%H:%M:%S"], {}, ctx());
+    expect(result.output).toBe("08:15:00");
+  });
+
+  it("returns default output without format", async () => {
+    const result = await executeAsync("date", [], {}, ctx());
+    expect(result.output).toBe("Mon Feb 23 08:15:00 UTC 2026");
+  });
+});
