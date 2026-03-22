@@ -144,6 +144,17 @@ describe("getSuggestion", () => {
     it("completes path after pattern argument (grep)", () => {
       expect(getSuggestion("grep pattern no", createCtx())).toBe("grep pattern notes.txt");
     });
+    it("completes file path for bash", () => {
+      expect(getSuggestion("bash no", createCtx())).toBe("bash notes.txt");
+    });
+
+    it("completes file path for sh", () => {
+      expect(getSuggestion("sh no", createCtx())).toBe("sh notes.txt");
+    });
+
+    it("suggests -c subcommand for bash", () => {
+      expect(getSuggestion("bash -", createCtx())).toBe("bash -c");
+    });
   });
 
   describe("priority", () => {

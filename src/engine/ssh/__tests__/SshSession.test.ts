@@ -136,16 +136,15 @@ describe("SshSession", () => {
     it("skips verification when host is already in known_hosts", () => {
       const fs = createTestFS("nexacorp-ws01.nexacorp.internal ssh-ed25519 AAAAC3");
       const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren");
-      session.enter();
+      const result = session.enter();
 
       // enter() should not write the fingerprint prompt
       expect(term.write).not.toHaveBeenCalledWith(
         expect.stringContaining("authenticity")
       );
 
-      // handleInput should immediately return with ssh_connect
-      const result = session.handleInput("");
-      expect(result).not.toBeNull();
+      // enter() should return the exit result directly for known hosts
+      expect(result).toBeDefined();
       expect(result!.type).toBe("exit");
       expect(result!.triggerEvents).toContainEqual({
         type: "objective_completed",

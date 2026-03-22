@@ -5,11 +5,13 @@ import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createHomeFilesystem } from "../story/filesystem/home";
 import { checkEmailDeliveries, seedDeliveredEmails, GameEvent } from "../engine/mail/delivery";
+import { getReadEmailIds } from "../engine/mail/mailUtils";
+import { getEmailDefinitions } from "../engine/mail/emails";
 import { seedImmediatePiper, checkPiperDeliveries } from "../engine/piper/delivery";
 import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getCoderConnectionSequence, coderBanner } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, coderBanner, getHomeWelcome, UNLOCK_BOX } from "../lib/ascii";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { ComputerId } from "../state/types";
 
@@ -39,7 +41,9 @@ export function useComputerTransitions(deps: TransitionDeps) {
         setTimeout(() => {
           term.clear();
           const s = useGameStore.getState();
-          s.setCurrentChapter("chapter-2");
+          if (s.currentChapter === "chapter-1") {
+            s.setCurrentChapter("chapter-2");
+          }
 
           // Build NexaCorp filesystem directly and init computer state
           const nexaFs = buildFs(username, "nexacorp", s.storyFlags, s.deliveredEmailIds);
@@ -82,6 +86,22 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
   const runCoderTransition = useCallback((term: Terminal) => {
     const store = useGameStore.getState();
+    const isSubsequent = !!store.computerState.devcontainer || !!store.storyFlags.devcontainer_visited;
+
+    if (isSubsequent) {
+      // Subsequent visit — no animation, just repurpose tab
+      const entry = store.computerState.devcontainer!;
+      const newCwd = entry.fs.cwd;
+      store.setTabComputer(store.activeTabId, "devcontainer", newCwd);
+      activeComputerRef.current = "devcontainer";
+      cwdRef.current = newCwd;
+      term.writeln("");
+      coderBanner.forEach((line) => term.writeln(line));
+      writePrompt(term);
+      return;
+    }
+
+    // First-time visit — full connection animation
     store.setGamePhase("transitioning");
 
     const lines = getCoderConnectionSequence();
@@ -94,22 +114,15 @@ export function useComputerTransitions(deps: TransitionDeps) {
         clearInterval(interval);
 
         const s = useGameStore.getState();
-        s.setStoryFlag("devcontainer_visited", true);
-        s.addToast("dbt and snow commands unlocked on NexaCorp!");
-
-        // Build or restore devcontainer FS
-        let newFs: VirtualFS;
-        let newCwd: string;
-        const previousEntry = s.computerState.devcontainer;
-        if (previousEntry) {
-          newFs = previousEntry.fs;
-          newCwd = newFs.cwd;
-        } else {
-          const username = s.username;
-          const root = createDevcontainerFilesystem(username);
-          newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-          newCwd = newFs.cwd;
+        if (!s.storyFlags.devcontainer_visited) {
+          s.setStoryFlag("devcontainer_visited", true);
+          s.addToast("dbt and snow commands unlocked on NexaCorp!");
         }
+
+        const username = s.username;
+        const root = createDevcontainerFilesystem(username, s.storyFlags);
+        const newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+        const newCwd = newFs.cwd;
 
         s.initComputer("devcontainer", newFs);
 
@@ -175,13 +188,30 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
         // Rebuild home FS
         const username = s.username;
+        const prevHomeFs = s.computerState.home?.fs;
+
+        // Capture read email IDs before rebuilding FS
+        const readIds = prevHomeFs
+          ? getReadEmailIds(prevHomeFs, getEmailDefinitions(username, "home").map((d) => d.email))
+          : new Set<string>();
+
         const root = createHomeFilesystem(username);
         let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
 
-        // Re-seed previously delivered emails
+        // Re-seed previously delivered emails, preserving read state
         const allDelivered = s.deliveredEmailIds;
         if (allDelivered.length > 0) {
-          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username);
+          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds);
+        }
+
+        // Preserve known_hosts from previous FS
+        if (prevHomeFs) {
+          const knownHostsPath = `/home/${username}/.ssh/known_hosts`;
+          const prev = prevHomeFs.readFile(knownHostsPath);
+          if (prev.content) {
+            const result = newFs.writeFile(knownHostsPath, prev.content);
+            if (result.fs) newFs = result.fs;
+          }
         }
 
         s.initComputer("home", newFs);
@@ -250,5 +280,114 @@ export function useComputerTransitions(deps: TransitionDeps) {
     }, BOOT_LINE_INTERVAL_MS);
   }, [cwdRef, activeComputerRef, writePrompt]);
 
-  return { runSshTransition, runCoderTransition, runExitToNexacorp, runExitToHome };
+  const runShutdownTransition = useCallback((term: Terminal) => {
+    const store = useGameStore.getState();
+    store.setGamePhase("transitioning");
+
+    // Black screen pause (simulating overnight)
+    term.clear();
+    setTimeout(() => {
+      const s = useGameStore.getState();
+      const username = s.username;
+
+      // Capture read email IDs before rebuilding FS
+      const prevHomeFs = s.computerState.home?.fs;
+      const readIds = prevHomeFs
+        ? getReadEmailIds(prevHomeFs, getEmailDefinitions(username, "home").map((d) => d.email))
+        : new Set<string>();
+
+      // Rebuild home FS for Day 2
+      const root = createHomeFilesystem(username);
+      let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+      const allDelivered = s.deliveredEmailIds;
+      if (allDelivered.length > 0) {
+        newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds);
+      }
+
+      // Preserve known_hosts from previous FS
+      if (prevHomeFs) {
+        const knownHostsPath = `/home/${username}/.ssh/known_hosts`;
+        const prev = prevHomeFs.readFile(knownHostsPath);
+        if (prev.content) {
+          const result = newFs.writeFile(knownHostsPath, prev.content);
+          if (result.fs) newFs = result.fs;
+        }
+      }
+
+      s.initComputer("home", newFs);
+
+      // Set Day 2 state
+      s.setStoryFlag("day1_shutdown", true);
+      s.setCurrentChapter("chapter-3");
+
+      // Repurpose current tab to home
+      const homeCwd = newFs.cwd;
+      s.setTabComputer(s.activeTabId, "home", homeCwd);
+      activeComputerRef.current = "home";
+      cwdRef.current = homeCwd;
+
+      // Run delivery cascade for day1_shutdown
+      const latest = useGameStore.getState();
+      const homeFs = latest.computerState.home?.fs ?? newFs;
+      const shutdownEvent: GameEvent = { type: "command_executed", detail: "shutdown" };
+      const emailResult = checkEmailDeliveries(
+        homeFs,
+        shutdownEvent,
+        [...latest.deliveredEmailIds],
+        "home"
+      );
+      if (emailResult.newDeliveries.length > 0) {
+        latest.setComputerFs("home", emailResult.fs);
+        latest.addDeliveredEmails(emailResult.newDeliveries);
+      }
+
+      const latestForPiper = useGameStore.getState();
+      const newPiperIds = checkPiperDeliveries(
+        shutdownEvent,
+        [...latestForPiper.deliveredPiperIds],
+        username,
+        "home",
+        latestForPiper.storyFlags
+      );
+      if (newPiperIds.length > 0) {
+        latestForPiper.addDeliveredPiperMessages(newPiperIds);
+
+        // Process piper_delivered story flag triggers
+        const storyFlagTriggers = getTriggersForComputer("home", username);
+        const latestFlags = useGameStore.getState().storyFlags;
+        let currentFlags = { ...latestFlags };
+        for (const id of newPiperIds) {
+          const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+          const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, currentFlags);
+          for (const flagResult of flagResults) {
+            useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+            currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
+          }
+        }
+      }
+
+      // Cinematic boot sequence
+      useGameStore.getState().setGamePhase("booting");
+      const bootLines = getHomeBootSequence();
+      let j = 0;
+      const bootInterval = setInterval(() => {
+        if (j < bootLines.length) {
+          term.writeln(bootLines[j]);
+          j++;
+        } else {
+          clearInterval(bootInterval);
+
+          // Show Day 2 welcome banner
+          const day2Welcome = getHomeWelcome(2);
+          day2Welcome.forEach((line) => term.writeln(line));
+          UNLOCK_BOX.forEach((line) => term.writeln(line));
+
+          useGameStore.getState().setGamePhase("playing");
+          writePrompt(term);
+        }
+      }, BOOT_LINE_INTERVAL_MS);
+    }, 2500);
+  }, [cwdRef, activeComputerRef, writePrompt]);
+
+  return { runSshTransition, runCoderTransition, runExitToNexacorp, runExitToHome, runShutdownTransition };
 }

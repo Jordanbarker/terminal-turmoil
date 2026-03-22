@@ -170,19 +170,8 @@ set linenumbers
 set mouse
 `),
         ".ssh": dir(".ssh", {
-          "id_ed25519.pub": file("id_ed25519.pub", `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7vG4k3fR2pLxQ9mMzJYcKs8kT0vN regenerated 2026-02-12 after wipe
-`),
           "known_hosts": file("known_hosts", ""),
           "config": file("config", ""),
-          "README": file("README", `SSH keys regenerated 2026-02-12 after full system wipe.
-Old keys are gone (no backup — lesson learned).
-
-TODO:
-  - [x] Add new key to GitHub
-  - [x] Add new key to personal VPS
-  - [ ] Update AWS IAM key pair
-  - [ ] Re-authorize GitLab CI deploy key
-`),
         }, "rwx--xr-x"),
         ".cache": dir(".cache", {
           synthetica: dir("synthetica", {

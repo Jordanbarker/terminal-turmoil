@@ -144,7 +144,13 @@ export function runTests(ctx: CommandContext): CommandResult {
  */
 export function runBuild(ctx: CommandContext, selectedModel?: string): CommandResult {
   const runResult = runModels(ctx, selectedModel);
-  if (runResult.output.startsWith("Runtime Error")) return runResult;
+  if (runResult.output.startsWith("Runtime Error")) return {
+    ...runResult,
+    triggerEvents: [
+      ...(runResult.triggerEvents || []),
+      { type: "command_executed" as const, detail: "dbt_build" },
+    ],
+  };
 
   const testResult = runTests(ctx);
 

@@ -41,8 +41,6 @@ export interface AppliedEffects {
   piperNotifications: number;
   suppressPrompt: boolean;
   transitionTo?: ComputerId;
-  /** Open a new tab on this computer (subsequent visit — no animation) */
-  openTab?: ComputerId;
   incrementalLines?: IncrementalLine[];
 }
 
@@ -97,18 +95,13 @@ export function computeEffects(
 
   // Computer transitions
   if (result.transitionTo) {
-    // `exit` always uses transitionTo (closes connection, doesn't open new tab)
-    // `coder` uses openTab if target exists (subsequent visit — instant)
+    effects.transitionTo = result.transitionTo;
+    effects.suppressPrompt = true;
+    // Only early-return for first-time transitions (skip event processing)
+    // exit and subsequent coder visits still need to run event processing below
     const isExit = applyCtx.parsedCommand === "exit";
-    if (!isExit && applyCtx.targetComputerExists) {
-      // Subsequent visit — produce openTab, continue to event processing below
-      effects.openTab = result.transitionTo;
-      effects.suppressPrompt = true;
-    } else {
-      // First-time transition OR exit — full transition handler
-      effects.transitionTo = result.transitionTo;
-      effects.suppressPrompt = true;
-      return effects;
+    if (!isExit && !applyCtx.targetComputerExists) {
+      return effects; // First-time transition — early return
     }
   }
 
@@ -143,6 +136,8 @@ export function computeEffects(
     if (result.gameAction.type === "listSaves") {
       effects.output += computeListSavesOutput();
     } else if (result.gameAction.type === "newGame") {
+      effects.suppressPrompt = true;
+    } else if (result.gameAction.type === "shutdown") {
       effects.suppressPrompt = true;
     } else if (result.gameAction.type === "save" || result.gameAction.type === "load") {
       effects.suppressPrompt = result.gameAction.type === "load";

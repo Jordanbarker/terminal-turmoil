@@ -1,16 +1,18 @@
 your absolutely right!
 Pick a side, Sarah or Erik
-id_ed25519.pub — IT recycled jchen's keypair "why do I have jchen's key?"   
-work todo list / kanban board
 uv repos, uv install command error
 note about deleting old data to keep snowflake bill cheap
 note about solem not performing, pip
 journal
+Slippery slope, bad guy used chip's permissions slowly and it escalated
+dynamic growth on logs after day to day progression
 
 Good ending: 
 Bad ending: logoff - they know where you are
 
-Day 2: df command 
+Day 2: 
+    df command 
+    printenv
 
 Check dataset sizes: ls -lh /data/training_set/
 Count dataset records: wc -l dataset.csv

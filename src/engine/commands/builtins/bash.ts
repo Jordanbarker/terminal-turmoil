@@ -727,6 +727,13 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
 
   // bash script.sh — read file and execute
   const filePath = resolvePath(args[0], ctx.cwd, ctx.homeDir);
+
+  // Intercept auto_apply.py on home PC
+  if (ctx.activeComputer === "home" && filePath.endsWith("/auto_apply.py")) {
+    const { simulateAutoApply } = await import("./python");
+    return simulateAutoApply(args.slice(1));
+  }
+
   const fileResult = ctx.fs.readFile(filePath);
   if (fileResult.error) {
     return { output: `bash: ${args[0]}: No such file or directory`, exitCode: 1 };

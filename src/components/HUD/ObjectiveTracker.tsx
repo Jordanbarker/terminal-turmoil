@@ -24,9 +24,73 @@ function ObjectiveItem({ obj, className }: { obj: ResolvedObjective; className?:
   );
 }
 
-interface GroupNode {
+export interface GroupNode {
   parent: ResolvedObjective;
   children: ResolvedObjective[];
+}
+
+export type RenderItem =
+  | { type: "single"; obj: ResolvedObjective }
+  | { type: "group"; group: GroupNode };
+
+/**
+ * When a parent is optional, all its children are inherently optional —
+ * putting them all in `required` suppresses the nested "── Optional ──" divider.
+ */
+export function splitGroupChildren(
+  children: ResolvedObjective[],
+  parentIsOptional: boolean
+): { required: ResolvedObjective[]; optional: ResolvedObjective[] } {
+  if (parentIsOptional) {
+    return { required: children, optional: [] };
+  }
+  return {
+    required: children.filter((c) => !c.optional),
+    optional: children.filter((c) => c.optional),
+  };
+}
+
+export function buildObjectiveTree(visible: ResolvedObjective[]): {
+  required: RenderItem[];
+  optional: RenderItem[];
+  childrenByParent: Map<string, ResolvedObjective[]>;
+} {
+  const parentIds = new Set(
+    visible.filter((o) => o.group).map((o) => o.group!)
+  );
+  const childrenByParent = new Map<string, ResolvedObjective[]>();
+  const groupedChildIds = new Set<string>();
+
+  for (const obj of visible) {
+    if (obj.group && parentIds.has(obj.group)) {
+      const children = childrenByParent.get(obj.group) ?? [];
+      children.push(obj);
+      childrenByParent.set(obj.group, children);
+      groupedChildIds.add(obj.id);
+    }
+  }
+
+  const renderItems: RenderItem[] = [];
+  for (const obj of visible) {
+    if (groupedChildIds.has(obj.id)) continue;
+    if (parentIds.has(obj.id) && childrenByParent.has(obj.id)) {
+      renderItems.push({
+        type: "group",
+        group: { parent: obj, children: childrenByParent.get(obj.id)! },
+      });
+    } else {
+      renderItems.push({ type: "single", obj });
+    }
+  }
+
+  const required = renderItems.filter(
+    (item) => !(item.type === "single" ? item.obj : item.group.parent).optional
+  );
+  const optional = renderItems.filter(
+    (item) => (item.type === "single" ? item.obj : item.group.parent).optional
+  );
+
+  return { required, optional, childrenByParent };
 }
 
 const depthClass = ["", "pl-4", "pl-8"] as const;
@@ -66,8 +130,8 @@ function ObjectiveGroup({
   depth?: number;
 }) {
   const childDepth = Math.min(depth + 1, 2);
-  const requiredChildren = group.children.filter((c) => !c.optional);
-  const optionalChildren = group.children.filter((c) => c.optional);
+  const { required: requiredChildren, optional: optionalChildren } =
+    splitGroupChildren(group.children, group.parent.optional);
 
   return (
     <>
@@ -127,47 +191,7 @@ export default function ObjectiveTracker() {
   const visible = objectives.filter((o) => o.visible);
   const done = visible.filter((o) => o.completed).length;
 
-  // Build tree: identify parents (objectives referenced by a child's group field)
-  const parentIds = new Set(
-    visible.filter((o) => o.group).map((o) => o.group!)
-  );
-  const childrenByParent = new Map<string, ResolvedObjective[]>();
-  const groupedChildIds = new Set<string>();
-
-  for (const obj of visible) {
-    if (obj.group && parentIds.has(obj.group)) {
-      const children = childrenByParent.get(obj.group) ?? [];
-      children.push(obj);
-      childrenByParent.set(obj.group, children);
-      groupedChildIds.add(obj.id);
-    }
-  }
-
-  // Build render items in original order, skipping grouped children (they render under parent)
-  type RenderItem =
-    | { type: "single"; obj: ResolvedObjective }
-    | { type: "group"; group: GroupNode };
-
-  const renderItems: RenderItem[] = [];
-  for (const obj of visible) {
-    if (groupedChildIds.has(obj.id)) continue;
-    if (parentIds.has(obj.id) && childrenByParent.has(obj.id)) {
-      renderItems.push({
-        type: "group",
-        group: { parent: obj, children: childrenByParent.get(obj.id)! },
-      });
-    } else {
-      renderItems.push({ type: "single", obj });
-    }
-  }
-
-  // Split into required/optional at top level
-  const required = renderItems.filter(
-    (item) => !(item.type === "single" ? item.obj : item.group.parent).optional
-  );
-  const optional = renderItems.filter(
-    (item) => (item.type === "single" ? item.obj : item.group.parent).optional
-  );
+  const { required, optional, childrenByParent } = buildObjectiveTree(visible);
 
   function renderItem(item: RenderItem) {
     if (item.type === "group") {

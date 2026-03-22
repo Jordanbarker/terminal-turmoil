@@ -254,14 +254,14 @@ export const CHAPTERS: ChapterDefinition[] = [
       {
         id: "help_oscar_logs",
         description: "Help Oscar with logs",
-        check: { source: "storyFlag", key: "oscar_searched_logs" },
+        check: { source: "completedObjective", key: "oscar_access_reported" },
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "read_onboarding" },
       },
       {
         id: "meet_auri",
         description: "Meet Auri",
-        check: { source: "storyFlag", key: "ran_dbt" },
+        check: { source: "completedObjective", key: "auri_dbt_reported" },
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "piper_unlocked" },
       },
@@ -284,7 +284,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       {
         id: "help_auri_pipeline",
         description: "Get familiar with the data pipeline",
-        check: { source: "completedObjective", key: "pipeline_tools_accepted" },
+        check: { source: "storyFlag", key: "ran_dbt" },
         hidden: true,
         visibleWhen: { source: "completedObjective", key: "handoff_reviewed" },
         group: "meet_auri",
@@ -303,6 +303,14 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "ran_dbt" },
         hidden: true,
         visibleWhen: { source: "completedObjective", key: "clone_analytics_repo" },
+        group: "meet_auri",
+      },
+      {
+        id: "check_auri_dbt",
+        description: "Check in with Auri about the build",
+        check: { source: "completedObjective", key: "auri_dbt_reported" },
+        hidden: true,
+        visibleWhen: { source: "completedObjective", key: "run_dbt" },
         group: "meet_auri",
       },
       // Closing Time quest group
@@ -327,6 +335,22 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "returned_home_day1" },
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "read_end_of_day" },
+        group: "closing_time",
+      },
+      {
+        id: "read_piper_home",
+        description: "Read your Piper messages at home",
+        check: { source: "storyFlag", key: "read_piper_day1_home" },
+        optional: true,
+        hidden: true,
+        visibleWhen: { source: "storyFlag", key: "returned_home_day1" },
+      },
+      {
+        id: "shutdown_day1",
+        description: "Shut down your PC",
+        check: { source: "storyFlag", key: "day1_shutdown" },
+        hidden: true,
+        visibleWhen: { source: "storyFlag", key: "returned_home_day1" },
         group: "closing_time",
       },
       {
@@ -357,7 +381,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "reply_oscar_logs",
-        description: "Report your findings to Oscar",
+        description: "Report system log findings to Oscar",
         check: { source: "completedObjective", key: "oscar_log_findings_shared" },
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "oscar_searched_logs" },
@@ -414,6 +438,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "completedObjective", key: "oscar_access_reported" },
         hidden: true,
         visibleWhen: { source: "completedObjective", key: "processing_tools_accepted" },
+        group: "help_oscar_logs",
       },
       {
         id: "explore_jchen",
@@ -510,6 +535,17 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "used_find_home" },
         visibleWhen: { source: "storyFlag", key: "used_sort_uniq_home" },
         group: "olive_power_tools",
+      },
+    ],
+  },
+  {
+    id: "chapter-3",
+    title: "Getting the Hang of This",
+    objectives: [
+      {
+        id: "ssh_to_work_day2",
+        description: "SSH to NexaCorp to start your second day",
+        check: { source: "storyFlag", key: "ssh_day2" },
       },
     ],
   },

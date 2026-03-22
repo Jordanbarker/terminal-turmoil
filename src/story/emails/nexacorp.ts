@@ -259,7 +259,7 @@ on the data side.
     },
     trigger: {
       type: "after_story_flag",
-      flag: "ran_dbt",
+      flag: "auri_dbt_reported",
       requiredFlags: ["read_team_info", "oscar_access_completed"],
     },
   },

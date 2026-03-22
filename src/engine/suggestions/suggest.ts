@@ -41,7 +41,7 @@ export function getSuggestion(
   const spaceIdx = input.indexOf(" ");
   if (spaceIdx !== -1) {
     const cmd = input.slice(0, spaceIdx);
-    const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree", "pdftotext"];
+    const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree", "pdftotext", "bash", "sh"];
     if (pathCommands.includes(cmd)) {
       const rest = input.slice(spaceIdx + 1);
       const lastSpaceInRest = rest.lastIndexOf(" ");
@@ -75,6 +75,12 @@ export function getSuggestion(
     if (cmd === "apt") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["install"];
+      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
+      if (match) return cmd + " " + match;
+    }
+    if (cmd === "bash" || cmd === "sh") {
+      const partial = input.slice(spaceIdx + 1);
+      const subs = ["-c"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }

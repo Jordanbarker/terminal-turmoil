@@ -83,12 +83,10 @@ describe("checkPiperDeliveries", () => {
     expect(result).not.toContain("alex_checkin");
   });
 
-  it("delivers olive_tree_tip after replying to olive_linux_basics", () => {
-    const event: GameEvent = {
-      type: "objective_completed",
-      detail: "piper_reply:olive_linux_basics",
-    };
-    const result = checkPiperDeliveries(event, ["olive_linux_basics"], USERNAME, "home");
+  it("delivers olive_tree_tip after basic_tools_unlocked flag is set", () => {
+    const event: GameEvent = { type: "command_executed", detail: "ls" };
+    const storyFlags = { basic_tools_unlocked: true } as Record<string, string | boolean>;
+    const result = checkPiperDeliveries(event, ["olive_linux_basics"], USERNAME, "home", storyFlags as never);
     expect(result).toContain("olive_tree_tip");
   });
 

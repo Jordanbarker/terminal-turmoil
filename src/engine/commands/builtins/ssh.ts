@@ -14,7 +14,7 @@ const ssh: CommandHandler = (args, _flags, ctx) => {
     return { output: `ssh: connect to host ${args[0]}: Connection refused` };
   }
 
-  if (ctx.storyFlags?.returned_home_day1) {
+  if (ctx.storyFlags?.returned_home_day1 && !ctx.storyFlags?.day1_shutdown) {
     return { output: `ssh: connect to host ${args[0]}: Connection timed out` };
   }
 

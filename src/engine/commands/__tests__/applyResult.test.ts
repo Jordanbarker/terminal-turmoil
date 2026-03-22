@@ -322,11 +322,10 @@ describe("computeEffects", () => {
         })
       );
       expect(effects.transitionTo).toBe("nexacorp");
-      expect(effects.openTab).toBeUndefined();
       expect(effects.suppressPrompt).toBe(true);
     });
 
-    it("produces openTab for subsequent visit (targetComputerExists = true)", () => {
+    it("produces transitionTo for subsequent visit (targetComputerExists = true)", () => {
       const result: CommandResult = {
         output: "",
         transitionTo: "nexacorp",
@@ -339,12 +338,11 @@ describe("computeEffects", () => {
           targetComputerExists: true,
         })
       );
-      expect(effects.openTab).toBe("nexacorp");
-      expect(effects.transitionTo).toBeUndefined();
+      expect(effects.transitionTo).toBe("nexacorp");
       expect(effects.suppressPrompt).toBe(true);
     });
 
-    it("exit command always produces transitionTo (never openTab)", () => {
+    it("exit command produces transitionTo", () => {
       const result: CommandResult = {
         output: "",
         transitionTo: "nexacorp",
@@ -358,11 +356,9 @@ describe("computeEffects", () => {
         })
       );
       expect(effects.transitionTo).toBe("nexacorp");
-      expect(effects.openTab).toBeUndefined();
     });
 
-    it("processes events for openTab transitions", () => {
-      const triggerEvent = { type: "command_executed" as const, detail: "ssh" };
+    it("subsequent visit processes events", () => {
       const result: CommandResult = {
         output: "",
         transitionTo: "nexacorp",
@@ -375,11 +371,11 @@ describe("computeEffects", () => {
           targetComputerExists: true,
         })
       );
-      // openTab transitions should still generate events (unlike first-time which returns early)
+      // Subsequent transitions should still generate events (unlike first-time which returns early)
       expect(effects.events.length).toBeGreaterThan(0);
     });
 
-    it("openTab transitions still process trigger events from result", () => {
+    it("subsequent visit processes trigger events from result", () => {
       const customEvent = { type: "file_read" as const, detail: "some_trigger" };
       const result: CommandResult = {
         output: "",
@@ -394,7 +390,7 @@ describe("computeEffects", () => {
           targetComputerExists: true,
         })
       );
-      expect(effects.openTab).toBe("nexacorp");
+      expect(effects.transitionTo).toBe("nexacorp");
       expect(effects.events).toContainEqual(customEvent);
       expect(effects.events).toContainEqual({ type: "command_executed", detail: "ssh" });
     });
@@ -414,7 +410,6 @@ describe("computeEffects", () => {
         })
       );
       expect(effects.transitionTo).toBe("nexacorp");
-      expect(effects.openTab).toBeUndefined();
       expect(effects.events).toEqual([]);
     });
   });

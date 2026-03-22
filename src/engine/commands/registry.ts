@@ -87,6 +87,12 @@ async function executePathCommand(pathStr: string, ctx: CommandContext): Promise
   if (perms[2] !== "x") {
     return { output: `bash: ${pathStr}: Permission denied`, exitCode: 126 };
   }
+  // Intercept auto_apply.py on home PC
+  if (ctx.activeComputer === "home" && absPath.endsWith("/auto_apply.py")) {
+    const { simulateAutoApply } = await import("./builtins/python");
+    return simulateAutoApply([]);
+  }
+
   const content = node.type === "file" ? node.content : "";
   // Lazy import to avoid circular dependency at module load time
   const { executeScript } = await import("./builtins/bash");

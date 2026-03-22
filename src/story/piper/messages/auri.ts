@@ -262,10 +262,12 @@ Then inside the container:
         {
           label: "I'll check them out.",
           messageBody: "Sure — I'll look at the _chip_internal models and let you know what I find.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_dbt_reported" }],
         },
         {
           label: "The pipeline ran clean, no issues.",
           messageBody: "Everything built and passed. I'll take a look at those _chip_internal models too.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_dbt_reported" }],
         },
       ],
     },

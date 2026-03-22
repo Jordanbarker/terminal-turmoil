@@ -35,7 +35,7 @@ const pythonHandler: AsyncCommandHandler = async (args, flags, ctx) => {
   return { output: "", interactiveSession: { type: "pythonRepl" } };
 };
 
-function simulateAutoApply(scriptArgs: string[]): CommandResult {
+export function simulateAutoApply(scriptArgs: string[]): CommandResult {
   const triggerEvents = [{ type: "command_executed" as const, detail: "ran_auto_apply" }];
 
   if (scriptArgs.includes("--status")) {
@@ -133,3 +133,4 @@ async function runCode(code: string): Promise<{ output: string }> {
 
 const description = "Run Python scripts or start an interactive Python REPL";
 registerAsync("python", pythonHandler, description, HELP_TEXTS.python);
+registerAsync("python3", pythonHandler, description, HELP_TEXTS.python);

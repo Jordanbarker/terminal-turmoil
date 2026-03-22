@@ -1,6 +1,6 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { getEmailDefinitions } from "./emails";
-import { deliverEmail, getMailEntries } from "./mailUtils";
+import { deliverEmail, deliverEmailAsRead, getMailEntries } from "./mailUtils";
 import { ComputerId, PLAYER, StoryFlags } from "../../state/types";
 import { matchesCommonTrigger } from "../narrative/triggerMatcher";
 
@@ -59,7 +59,8 @@ export function seedDeliveredEmails(
   fs: VirtualFS,
   deliveredIds: string[],
   computer: ComputerId,
-  username: string
+  username: string,
+  readEmailIds: Set<string> = new Set()
 ): VirtualFS {
   const defs = getEmailDefinitions(username, computer);
   const existing = getMailEntries(fs);
@@ -72,7 +73,8 @@ export function seedDeliveredEmails(
     if (triggers.every((t) => t.type === "immediate")) continue;
     if (!deliveredIds.includes(def.email.id)) continue;
 
-    const result = deliverEmail(currentFs, def.email, nextSeq);
+    const deliver = readEmailIds.has(def.email.id) ? deliverEmailAsRead : deliverEmail;
+    const result = deliver(currentFs, def.email, nextSeq);
     currentFs = result.fs;
     nextSeq++;
   }

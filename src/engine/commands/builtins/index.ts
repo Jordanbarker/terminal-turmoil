@@ -54,5 +54,7 @@ import "./chip";
 import "./piper";
 // Version control
 import "./git";
+// System
+import "./shutdown";
 // Shell scripting
 import "./bash";

@@ -26,6 +26,7 @@ export const STORY_FLAG_NAMES = [
   "read_handoff_notes",
   "chip_unlocked",
   "ran_dbt",
+  "auri_dbt_reported",
   "found_data_filtering",
   "read_nexacorp_offer",
   "commands_unlocked",
@@ -97,6 +98,11 @@ export const STORY_FLAG_NAMES = [
   "used_sort_uniq_home",
   "used_find_home",
 
+  // Day 1 → Day 2 transition
+  "day1_shutdown",
+  "read_piper_day1_home",
+  "ssh_day2",
+
   // Salary negotiation
   "accepted_at_180k",
 ] as const;
@@ -152,6 +158,11 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "file_read", path: p.myCommandsTxt(username), flag: "used_history_redirect", value: true },
     { event: "command_executed", detail: "uniq", flag: "used_sort_uniq_home", value: true },
     { event: "command_executed", detail: "find", flag: "used_find_home",      value: true },
+
+    // Day 1 → Day 2 transition
+    { event: "command_executed", detail: "shutdown", flag: "day1_shutdown", value: true },
+    { event: "command_executed", detail: "piper", flag: "read_piper_day1_home", value: true },
+    { event: "command_executed", detail: "ssh_nexacorp", flag: "ssh_day2", value: true },
   ];
 }
 
@@ -162,6 +173,7 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.systemLogBak, flag: "oscar_checked_backups", value: true },
     { event: "command_executed", detail: "diff", flag: "oscar_diffed_logs", value: true },
     { event: "objective_completed", detail: "oscar_access_reported", flag: "oscar_access_completed", value: true },
+    { event: "objective_completed", detail: "auri_dbt_reported", flag: "auri_dbt_reported", value: true },
     { event: "command_executed", detail: "head", flag: "auri_used_head", value: true },
     { event: "command_executed", detail: "tail", flag: "auri_used_tail", value: true },
     { event: "command_executed", detail: "wc", flag: "auri_used_wc", value: true },
@@ -173,6 +185,7 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.chenHandoffTodo, flag: "auri_read_todo", value: true },
     { event: "file_read", path: p.onboarding, flag: "read_onboarding", value: true },
     { event: "file_read", detail: "oscar_coder_setup", flag: "coder_unlocked", value: true, toast: "coder command unlocked! Try: coder ssh ai" },
+    { event: "objective_completed", detail: "pipeline_tools_accepted", flag: "coder_unlocked", value: true, toast: "coder command unlocked! Try: coder ssh ai" },
     { event: "file_read", path: p.teamInfo, flag: "read_team_info", value: true },
     { event: "file_read", path: p.handoffNotes, flag: "read_handoff_notes", value: true },
     { event: "file_read", detail: "chip_intro", flag: "chip_unlocked", value: true, toast: "chip command unlocked!" },

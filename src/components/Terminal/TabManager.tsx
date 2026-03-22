@@ -7,7 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import TabBar from "./TabBar";
 import { useGameStore } from "../../state/gameStore";
 import { useTerminal } from "../../hooks/useTerminal";
-import { nexacorpLogo, homeWelcome, UNLOCK_BOX } from "../../lib/ascii";
+import { nexacorpLogo, homeWelcome, coderBanner, UNLOCK_BOX } from "../../lib/ascii";
 import { seedImmediatePiper } from "../../engine/piper/delivery";
 import { ComputerId } from "../../state/types";
 
@@ -101,11 +101,18 @@ export default function TabManager() {
     const store = useGameStore.getState();
     if (!store.storyFlags.tabs_unlocked) return;
 
-    if (key === "c" || key === "C") {
+    // Normalize: Ctrl held throughout sequence emits control chars
+    // e.g. Ctrl+C → \x03, Ctrl+X → \x18. Map ASCII 1-26 → lowercase a-z.
+    const code = key.charCodeAt(0);
+    const normalized = code > 0 && code < 27
+      ? String.fromCharCode(code + 96)
+      : key.toLowerCase();
+
+    if (normalized === "c") {
       // Create new tab on same computer
       const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
       if (activeTab) store.addTab(activeTab.computerId, activeTab.cwd);
-    } else if (key === "x" || key === "X") {
+    } else if (normalized === "x") {
       // Close current tab (with canClose check)
       if (store.tabs.length > 1) {
         const canClose = canCloseRef.current();
@@ -134,12 +141,12 @@ export default function TabManager() {
         }
         store.removeTab(store.activeTabId);
       }
-    } else if (key === "n" || key === "N") {
+    } else if (normalized === "n") {
       // Next tab
       const idx = store.tabs.findIndex((t) => t.id === store.activeTabId);
       const nextIdx = (idx + 1) % store.tabs.length;
       store.setActiveTab(store.tabs[nextIdx].id);
-    } else if (key === "p" || key === "P") {
+    } else if (normalized === "p") {
       // Previous tab
       const idx = store.tabs.findIndex((t) => t.id === store.activeTabId);
       const prevIdx = (idx - 1 + store.tabs.length) % store.tabs.length;
@@ -240,7 +247,12 @@ export default function TabManager() {
           splashShownRef.current = true;
           const store = useGameStore.getState();
 
-          const splash = tab.computerId === "home" ? homeWelcome : nexacorpLogo;
+          const splash =
+            tab.computerId === "home"
+              ? homeWelcome
+              : tab.computerId === "devcontainer"
+                ? coderBanner
+                : nexacorpLogo;
           splash.forEach((line) => instance.term.writeln(line));
 
           // Seed immediate piper messages for home

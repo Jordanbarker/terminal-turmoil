@@ -106,7 +106,7 @@ export function useTerminal() {
   );
 
   // Compose transition functions
-  const { runSshTransition, runCoderTransition, runExitToNexacorp, runExitToHome } = useComputerTransitions({
+  const { runSshTransition, runCoderTransition, runExitToNexacorp, runExitToHome, runShutdownTransition } = useComputerTransitions({
     cwdRef,
     activeComputerRef,
     writePrompt,
@@ -170,7 +170,7 @@ export function useTerminal() {
 
   /** Execute the computed effects from applyResult. Returns true if prompt should be suppressed. */
   const executeEffects = useCallback(
-    (term: Terminal, effects: AppliedEffects) => {
+    (term: Terminal, effects: AppliedEffects, tabId?: string) => {
       const computerId = activeComputerRef.current;
 
       if (effects.clearScreen) {
@@ -191,10 +191,14 @@ export function useTerminal() {
             i++;
             setTimeout(writeNext, i < lines.length ? lines[i].delayMs : 0);
           } else {
-            writeNotifications(term, effects);
             busyRef.current = false;
             busyTabIdRef.current = null;
-            writePrompt(term);
+            if (effects.gameAction?.type === "shutdown") {
+              runShutdownTransition(term);
+            } else {
+              writeNotifications(term, effects);
+              writePrompt(term);
+            }
           }
         };
         writeNext();
@@ -222,15 +226,6 @@ export function useTerminal() {
         return true;
       }
 
-      // Subsequent visit — open new tab instantly (no animation)
-      if (effects.openTab) {
-        const store = useGameStore.getState();
-        const targetFs = store.computerState[effects.openTab]?.fs;
-        const homeDir = targetFs?.homeDir ?? `/home/${store.username}`;
-        store.addTab(effects.openTab, homeDir);
-        return true;
-      }
-
       // Start sessions — defer notifications until session exits
       if (effects.startSession) {
         if (effects.emailNotifications > 0 || effects.piperNotifications > 0) {
@@ -239,7 +234,7 @@ export function useTerminal() {
             piper: effects.piperNotifications,
           };
         }
-        sessionRouter.startSession(term, effects.startSession);
+        sessionRouter.startSession(term, effects.startSession, tabId);
         return true;
       }
 
@@ -282,7 +277,7 @@ export function useTerminal() {
 
       return effects.suppressPrompt;
     },
-    [sessionRouter, getPrompt, runCoderTransition, runExitToNexacorp, runExitToHome, applyStateEffects, writeNotifications, writePrompt]
+    [sessionRouter, getPrompt, runCoderTransition, runExitToNexacorp, runExitToHome, runShutdownTransition, applyStateEffects, writeNotifications, writePrompt]
   );
 
   const handleInput = useCallback(
@@ -393,9 +388,12 @@ export function useTerminal() {
         const computerId = activeComputerRef.current;
         const hasAsyncCmd = pipeline.some((p) => isAsyncCommand(p.command));
 
+        // Capture tab ID at submission time (before async enqueue)
+        const submittingTabId = useGameStore.getState().activeTabId;
+
         // Gate input while command is queued/executing
         busyRef.current = true;
-        busyTabIdRef.current = useGameStore.getState().activeTabId;
+        busyTabIdRef.current = submittingTabId;
         if (hasAsyncCmd) {
           term.write(colorize("Loading...", ansi.dim));
         }
@@ -427,7 +425,7 @@ export function useTerminal() {
               fs: runningFs,
               targetComputerExists: targetComputer ? !!latestStore.computerState[targetComputer] : undefined,
             });
-            return executeEffects(term, effects);
+            return executeEffects(term, effects, submittingTabId);
           };
 
           let stdin: string | undefined;
@@ -489,6 +487,15 @@ export function useTerminal() {
             lastResult = redir.result;
             runningFs = redir.fs;
           }
+
+          // Append command to .bash_history in the virtual filesystem
+          const historyPath = `${homeDir}/.bash_history`;
+          const existing = runningFs.readFile(historyPath);
+          const prev = existing.content ?? "";
+          const suffix = prev.endsWith("\n") || prev === "" ? "" : "\n";
+          const historyUpdated = prev + suffix + result.input + "\n";
+          const histWrite = runningFs.writeFile(historyPath, historyUpdated);
+          if (histWrite.fs) runningFs = histWrite.fs;
 
           // Write final FS to store once
           if (runningFs !== initialFs) {

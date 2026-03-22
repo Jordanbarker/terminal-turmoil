@@ -35,6 +35,7 @@ const ls: CommandHandler = (args, flags, ctx) => {
   const errors: string[] = [];
   const fileEntries: FSNode[] = [];
   const dirs: { label: string; entries: FSNode[] }[] = [];
+  const visitedDirs: string[] = [];
 
   for (const target of targets) {
     const absolutePath = resolvePath(target, ctx.cwd, ctx.homeDir);
@@ -56,6 +57,9 @@ const ls: CommandHandler = (args, flags, ctx) => {
       }
       entries.sort((a, b) => a.name.localeCompare(b.name));
       dirs.push({ label: target, entries });
+      if (args.length > 0) {
+        visitedDirs.push(absolutePath);
+      }
     }
   }
 
@@ -96,7 +100,13 @@ const ls: CommandHandler = (args, flags, ctx) => {
     sections.push(lines.join("\n"));
   }
 
-  return { output: sections.join("\n\n"), exitCode: errors.length > 0 ? 1 : 0 };
+  return {
+    output: sections.join("\n\n"),
+    exitCode: errors.length > 0 ? 1 : 0,
+    ...(visitedDirs.length > 0 && {
+      triggerEvents: visitedDirs.map((p) => ({ type: "directory_visit" as const, detail: p })),
+    }),
+  };
 };
 
 register("ls", ls, "List directory contents", HELP_TEXTS.ls);

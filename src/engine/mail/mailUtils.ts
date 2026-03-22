@@ -158,3 +158,25 @@ export function deliverEmail(fs: VirtualFS, email: Email, seq: number): { fs: Vi
   const result = fs.writeFile(`${getNewDir(user)}/${filename}`, content);
   return { fs: result.fs ?? fs };
 }
+
+export function deliverEmailAsRead(fs: VirtualFS, email: Email, seq: number): { fs: VirtualFS } {
+  const user = usernameFromHomeDir(fs.homeDir);
+  const filename = `${String(seq).padStart(3, "0")}_${slugify(email.subject)}`;
+  const content = formatEmailContent(email, true);
+  const result = fs.writeFile(`${getCurDir(user)}/${filename}`, content);
+  return { fs: result.fs ?? fs };
+}
+
+export function getReadEmailIds(fs: VirtualFS, emails: { id: string; subject: string }[]): Set<string> {
+  const readIds = new Set<string>();
+  const entries = getMailEntries(fs);
+  const readSubjects = new Set(
+    entries.filter((e) => e.dir === "cur").map((e) => e.parsed.subject)
+  );
+  for (const email of emails) {
+    if (readSubjects.has(email.subject)) {
+      readIds.add(email.id);
+    }
+  }
+  return readIds;
+}

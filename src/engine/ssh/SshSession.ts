@@ -28,7 +28,7 @@ export class SshSession implements ISession {
     this.homeDir = homeDir;
   }
 
-  enter(): void {
+  enter(): SessionResult | void {
     // Check if host is already in known_hosts
     const knownHostsPath = `${this.homeDir}/.ssh/known_hosts`;
     const knownHosts = this.fs.readFile(knownHostsPath);
@@ -36,9 +36,14 @@ export class SshSession implements ISession {
       knownHosts.content !== undefined &&
       knownHosts.content.includes(this.host)
     ) {
-      // Already trusted — skip verification, emit connect immediately
-      // (no terminal output — the transition handler takes over)
-      return;
+      // Already trusted — return exit result directly so the caller
+      // can process the transition without waiting for handleInput.
+      return {
+        type: "exit",
+        triggerEvents: [
+          { type: "objective_completed", detail: "ssh_connect" },
+        ],
+      };
     }
 
     this.terminal.write(
@@ -49,21 +54,6 @@ export class SshSession implements ISession {
   }
 
   handleInput(data: string): SessionResult | null {
-    // If host already known, exit immediately with connect event
-    const knownHostsPath = `${this.homeDir}/.ssh/known_hosts`;
-    const knownHosts = this.fs.readFile(knownHostsPath);
-    if (
-      knownHosts.content !== undefined &&
-      knownHosts.content.includes(this.host)
-    ) {
-      return {
-        type: "exit",
-        triggerEvents: [
-          { type: "objective_completed", detail: "ssh_connect" },
-        ],
-      };
-    }
-
     for (let i = 0; i < data.length; i++) {
       const char = data[i];
       const code = char.charCodeAt(0);

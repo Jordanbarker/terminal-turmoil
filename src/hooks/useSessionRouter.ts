@@ -297,9 +297,9 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
   /** Start a new session from an AppliedEffects startSession descriptor. */
   const startSession = useCallback(
-    (term: Terminal, session: SessionToStart): void => {
+    (term: Terminal, session: SessionToStart, tabId?: string): void => {
       const computerId = activeComputerRef.current;
-      sessionTabIdRef.current = useGameStore.getState().activeTabId;
+      sessionTabIdRef.current = tabId ?? useGameStore.getState().activeTabId;
 
       if (session.type === "editor") {
         const store = useGameStore.getState();
@@ -376,7 +376,23 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         );
         sessionRef.current = sshSession;
         sessionTypeRef.current = "ssh";
-        sshSession.enter();
+        const enterResult = sshSession.enter();
+        if (enterResult && enterResult.type === "exit") {
+          // Known host — process exit immediately without waiting for input
+          sessionRef.current = null;
+          sessionTypeRef.current = null;
+          sessionTabIdRef.current = null;
+          if (enterResult.triggerEvents?.length) {
+            const shouldTransition = processTriggerEvents(term, enterResult.triggerEvents, true);
+            if (shouldTransition) {
+              pendingNotificationsRef.current = null;
+              runSshTransition(term);
+              return;
+            }
+          }
+          writePrompt(term);
+          return;
+        }
       } else if (session.type === "chip") {
         const chipSession = new ChipSession(term, session.info, (topics) => {
           const value = topics.join(",");

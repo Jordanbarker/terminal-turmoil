@@ -2,7 +2,7 @@ import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
 import { getNexacorpEmailDefinitions } from "../emails/nexacorp";
 import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { StoryFlags, PLAYER } from "../../state/types";
-import { generateSystemLog, generateSystemLogBak } from "./logs";
+import { generateSystemLog, generateSystemLogBak, generateAccessLog } from "./logs";
 import { file, binaryFile, dir } from "../../engine/filesystem/builders";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
@@ -693,6 +693,19 @@ __pycache__/
 `),
         }),
       }),
+      ".bash_history": file(".bash_history", `ls
+cd Desktop
+cat welcome.txt
+cd ~/Documents
+ls
+cat handbook.pdf
+cd ~/scripts
+ls
+python3 hello.py
+cd /srv/engineering
+ls
+cat onboarding/day1_checklist.md
+mail`),
       Desktop: dir("Desktop", {
         "welcome.txt": file("welcome.txt", `Hey ${username}! Welcome to NexaCorp.
 
@@ -865,27 +878,7 @@ PEOPLE & CULTURE
 [2026-02-03 03:22:18] chip_service_account: updating fct_system_events.sql — added event_type filter
 [2026-02-03 03:22:18] chip_service_account: updating fct_support_tickets.sql — added resolved_by filter
 `),
-      "access.log": file("access.log", `chip_service_account read /home/jchen/.ssh/id_rsa
-oscar read /var/log/system.log
-chip_service_account read /srv/leadership/board_minutes_q4.pdf
-edward read /srv/engineering/team-info.md
-chip_service_account read /home/oscar/.ssh/id_rsa
-sarah read /srv/engineering/api-docs.md
-chip_service_account read /home/jchen/.ssh/id_rsa
-dana read /srv/operations/runbook.md
-chip_service_account read /home/sarah/.ssh/id_rsa
-chip_service_account read /srv/leadership/board_minutes_q4.pdf
-edward read /home/edward/Desktop/welcome.txt
-chip_service_account read /home/edward/.ssh/id_rsa
-chip_service_account read /home/jchen/.ssh/id_rsa
-sarah read /home/sarah/projects/api-refactor/auth.py
-chip_service_account read /srv/leadership/investor_update_feb.pdf
-chip_service_account read /home/oscar/.ssh/id_rsa
-auri read /home/auri/nexacorp-analytics/dbt_project.yml
-chip_service_account read /home/oscar/.ssh/id_rsa
-chip_service_account read /srv/leadership/board_minutes_q4.pdf
-oscar read /var/log/chip-activity.log
-`),
+      "access.log": file("access.log", generateAccessLog()),
     }),
   }),
   etc: dir("etc", {
@@ -1183,7 +1176,7 @@ Flagship Product: Chip
 `),
       "standup_notes.md": file("standup_notes.md", `=== Async Standup Notes ===
 
---- Thu Feb 20 ---
+--- Fri Feb 20 ---
 Sarah: Wrapping up the auth middleware refactor. PR should be
   up today. Tests are green locally, crossing fingers for CI.
 Oscar: Got paged at 2am for a disk alert. Cleaned it up. Also
@@ -1197,7 +1190,7 @@ Auri: Holding the fort on data pipelines. dim_employees might
   second data person.
 Soham: Deep in architectural decisions for the integrations dashboard. Exploring a few patterns for the API abstraction layer. Blocked on a dependency — pinged Sarah about it.
 
---- Wed Feb 19 ---
+--- Thu Feb 19 ---
 Sarah: Auth middleware is a mess. Whoever wrote this was in a
   hurry (it was me six months ago, I know).
 Oscar: Routine infra stuff. Renewed the TLS cert for staging.
@@ -1207,7 +1200,7 @@ Erik: Shipped the new nav component. Looks clean.
 Auri: dbt run is green. dbt test... I haven't run tests in a
   while. Should probably do that. Adding to my list.
 
---- Tue Feb 18 ---
+--- Wed Feb 18 ---
 Sarah: Code review day. Nothing exciting.
 Oscar: Monitoring looks clean. Chip health checks all passing.
 Auri: Chen's last models are still running. I need to actually

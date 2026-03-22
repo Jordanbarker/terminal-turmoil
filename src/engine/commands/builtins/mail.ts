@@ -21,7 +21,7 @@ function deriveReplyDate(originalDate: string): string {
   const parsed = new Date(originalDate);
   if (isNaN(parsed.getTime())) {
     // Fallback: use a fixed narrative date
-    return "Mon, 24 Feb 2026 09:00:00";
+    return "Tue, 24 Feb 2026 09:00:00";
   }
   const offsetMs = (8 + Math.floor(Math.random() * 8)) * 60 * 1000;
   const reply = new Date(parsed.getTime() + offsetMs);
@@ -137,7 +137,7 @@ const mail: CommandHandler = (args, flags, ctx) => {
     const content = [
       `From: ${username}@${fromDomain}`,
       `To: ${recipient}`,
-      `Date: ${deriveReplyDate("Mon, 24 Feb 2026 08:30:00")}`,
+      `Date: ${deriveReplyDate("Tue, 24 Feb 2026 08:30:00")}`,
       `Subject: ${subject}`,
       "",
       "(message body)",

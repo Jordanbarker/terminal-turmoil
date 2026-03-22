@@ -16,6 +16,7 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "newgame",
   "history",
   "python",
+  "python3",
   "bash",
   "sh",
 ]);
@@ -47,7 +48,7 @@ export const NEXACORP_ONLY: ReadonlySet<string> = new Set([
 
 /** Commands available in the Coder dev container. */
 export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
-  "ls", "cd", "cat", "pwd", "clear", "help", "nano", "python", "dbt",
+  "ls", "cd", "cat", "pwd", "clear", "help", "nano", "python", "python3", "dbt",
   "snow", "chip", "grep", "find", "diff", "head", "tail", "wc",
   "sort", "uniq", "echo", "whoami", "hostname", "file", "tree",
   "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
@@ -81,4 +82,5 @@ export const HOME_GATED: Record<string, StoryFlagName> = {
   head: "returned_home_day1",
   tail: "returned_home_day1",
   diff: "returned_home_day1",
+  shutdown: "returned_home_day1",
 };

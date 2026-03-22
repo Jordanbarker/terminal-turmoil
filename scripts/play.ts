@@ -65,6 +65,7 @@ export class GameRunner {
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   commandHistory: string[];
   snowflakeState: SnowflakeState;
   snowflakeContext: SessionContext;
@@ -76,6 +77,7 @@ export class GameRunner {
     this.activeComputer = computer;
     this.storyFlags = {};
     this.deliveredEmailIds = [];
+    this.deliveredPiperIds = [];
     this.commandHistory = [];
     this.snowflakeState = createInitialSnowflakeState();
     this.snowflakeContext = createDefaultContext(this.username);
@@ -420,7 +422,7 @@ export class GameRunner {
       activeComputer: this.activeComputer,
       username: this.username,
       deliveredEmailIds: this.deliveredEmailIds,
-      deliveredPiperIds: [],
+      deliveredPiperIds: this.deliveredPiperIds,
       storyFlags: this.storyFlags,
       fs: this.fs,
     });
@@ -441,6 +443,11 @@ export class GameRunner {
     // Apply email deliveries
     if (effects.newDeliveredEmailIds.length > 0) {
       this.deliveredEmailIds = [...this.deliveredEmailIds, ...effects.newDeliveredEmailIds];
+    }
+
+    // Apply piper deliveries
+    if (effects.newDeliveredPiperIds.length > 0) {
+      this.deliveredPiperIds = [...this.deliveredPiperIds, ...effects.newDeliveredPiperIds];
     }
 
     // Build output

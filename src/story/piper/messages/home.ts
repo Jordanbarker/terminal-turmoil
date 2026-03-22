@@ -140,7 +140,7 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
           id: "olive_basics_1",
           from: "Olive Borden",
           timestamp: "3:45 PM",
-          body: "alex mentioned you're getting back into the terminal. here's what you actually need to know:",
+          body: "alex mentioned you're getting into the terminal. here are some basics you need to know:",
         },
         {
           id: "olive_basics_2",
@@ -201,7 +201,7 @@ that last one is your best friend. if you forget how something works, just man i
           body: "  sudo apt install tree\n\nthen run 'tree' in any directory. use 'tree -a' to include hidden files. beats running ls over and over.",
         },
       ],
-      trigger: { type: "after_piper_reply", deliveryId: "olive_linux_basics" },
+      trigger: { type: "after_story_flag", flag: "basic_tools_unlocked" },
       replyOptions: [
         {
           label: "installing now",
@@ -227,12 +227,11 @@ that last one is your best friend. if you forget how something works, just man i
           body: "ok. want to do a few quick challenges? best way to lock this stuff in.",
         },
       ],
-      trigger: { type: "after_piper_reply", deliveryId: "olive_tree_tip" },
+      trigger: { type: "after_story_flag", flag: "apt_unlocked" },
       replyOptions: [
         {
           label: "sure, let's do it",
           messageBody: "sure, let's do it.",
-          triggerEvents: [{ type: "objective_completed", detail: "olive_challenges_accepted" }],
         },
         {
           label: "maybe later",
@@ -260,7 +259,7 @@ that last one is your best friend. if you forget how something works, just man i
           body: "'file' reads magic bytes — more reliable than file extensions. the output tells you exactly what kind of data it is.",
         },
       ],
-      trigger: { type: "after_objective", objectiveId: "olive_challenges_accepted" },
+      trigger: { type: "after_piper_reply", deliveryId: "olive_challenges_intro" },
       replyOptions: [
         {
           label: "I'm on it",

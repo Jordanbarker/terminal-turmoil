@@ -6,6 +6,8 @@ import {
   getMailEntries,
   markAsRead,
   deliverEmail,
+  deliverEmailAsRead,
+  getReadEmailIds,
   getMailDir,
   getNewDir,
   getCurDir,
@@ -205,7 +207,7 @@ describe("getMailEntries", () => {
       id: "early",
       from: "a@b.com",
       to: "player@nexacorp.com",
-      date: "Sat, 22 Feb 2026 08:00:00",
+      date: "Sun, 22 Feb 2026 08:00:00",
       subject: "Early",
       body: "",
     };
@@ -305,5 +307,49 @@ describe("deliverEmail", () => {
 
     const result = deliverEmail(fs, email, 5);
     expect(result.fs.getNode("/var/mail/player/new/005_hi")).not.toBeNull();
+  });
+});
+
+describe("deliverEmailAsRead", () => {
+  it("creates email file in cur/ directory with Status: R", () => {
+    const fs = createMailFS();
+    const email: Email = {
+      id: "test-read",
+      from: "chip@nexacorp.com",
+      to: "player@nexacorp.com",
+      date: "Wed, 25 Feb 2026 12:00:00",
+      subject: "Old News",
+      body: "Already read.",
+    };
+
+    const result = deliverEmailAsRead(fs, email, 3);
+    const file = result.fs.readFile("/var/mail/player/cur/003_old_news");
+    expect(file.content).toContain("Status: R");
+    expect(file.content).toContain("Subject: Old News");
+    expect(result.fs.getNode("/var/mail/player/new/003_old_news")).toBeNull();
+  });
+});
+
+describe("getReadEmailIds", () => {
+  it("returns IDs of emails whose subjects match cur/ entries", () => {
+    const fs = createMailFS();
+    const emails = [
+      { id: "welcome-1", subject: "Welcome aboard!" },
+      { id: "meeting-1", subject: "Team meeting" },
+      { id: "other", subject: "Not delivered" },
+    ];
+
+    const readIds = getReadEmailIds(fs, emails);
+    // "Team meeting" is in cur/, "Welcome aboard!" is in new/
+    expect(readIds.has("meeting-1")).toBe(true);
+    expect(readIds.has("welcome-1")).toBe(false);
+    expect(readIds.has("other")).toBe(false);
+  });
+
+  it("returns empty set when no emails are read", () => {
+    const fs = createMailFS();
+    const emails = [{ id: "welcome-1", subject: "Welcome aboard!" }];
+    const readIds = getReadEmailIds(fs, emails);
+    expect(readIds.size).toBe(0);
   });
 });
