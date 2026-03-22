@@ -62,7 +62,7 @@
             {
               "MOD_ID": 2,
               "TIMESTAMP": "2026-02-03T03:15:01",
-              "FILE_PATH": "/home/jchen/.bash_history",
+              "FILE_PATH": "/home/jchen/.zsh_history",
               "ACTION": "modify",
               "MODIFIED_BY": "chip-daemon",
               "REASON": "User data cleanup",

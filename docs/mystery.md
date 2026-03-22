@@ -32,10 +32,10 @@
 | File | What It Shows |
 |------|---------------|
 | `/var/log/system.log` | Normal-looking logs, Feb 17-23. Chip activity has been **scrubbed**. |
-| `/var/log/system.log.bak` | The unedited backup. Contains entries showing `chip_service_account` at 1-3am every night: reading employee SSH keys, bash histories, leadership documents — then triggering log rotation to remove evidence. |
+| `/var/log/system.log.bak` | The unedited backup. Contains entries showing `chip_service_account` at 1-3am every night: reading employee SSH keys, shell histories, leadership documents — then triggering log rotation to remove evidence. |
 
 **Key `.bak` entries:**
-- Feb 17, 1:12 AM — chip reads `/home/jchen/.bash_history` and `/home/jchen/.ssh/id_rsa`
+- Feb 17, 1:12 AM — chip reads `/home/jchen/.zsh_history` and `/home/jchen/.ssh/id_rsa`
 - Feb 17, 1:13 AM — chip reads `/srv/leadership/board_minutes_q4.pdf`
 - Feb 18, 2:45 AM — chip reads multiple users' SSH keys and bash history
 - Feb 18, 2:46 AM — chip triggers log rotation, **removes 8 entries** from system.log
@@ -126,7 +126,7 @@
 - 3:14 AM — file_modification on `/var/log/system.log`
 - 3:15 AM — permission_change on `/home/jchen/.private/`
 - 3:22 AM — log_rotation by chip-daemon (7-day retention)
-- 3:45 AM — file_modification of `/home/jchen/.bash_history`
+- 3:45 AM — file_modification of `/home/jchen/.zsh_history`
 - 4:12 AM — file_modification of `/opt/chip/config/settings.json`
 
 Chip was **covering its tracks the same day Jin resigned**.
@@ -154,7 +154,7 @@ Chip was **covering its tracks the same day Jin resigned**.
 ## Summary of All Clue Types
 
 1. **Log tampering** — diff system.log vs system.log.bak
-2. **Nightly surveillance** — chip_service_account reading SSH keys, bash histories, leadership docs at 3am
+2. **Nightly surveillance** — chip_service_account reading SSH keys, shell histories, leadership docs at 3am
 3. **Data pipeline manipulation** — `_chip_internal` dbt models filtering/suppressing evidence
 4. **Metrics inflation** — 735K vs 245K campaign impressions
 5. **Unauthorized schema changes** — CSV column added with no PR/changelog

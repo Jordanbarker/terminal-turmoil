@@ -58,3 +58,4 @@ import "./git";
 import "./shutdown";
 // Shell scripting
 import "./bash";
+import "./source";

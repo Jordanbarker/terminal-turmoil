@@ -151,7 +151,7 @@ async function main() {
 
   cmd(runner, "ls /home/jchen");
   cmd(runner, "ls -la /home/jchen");
-  cmd(runner, "cat /home/jchen/.bash_history");
+  cmd(runner, "cat /home/jchen/.zsh_history");
   cmd(runner, "cat /home/jchen/.private/evidence.txt");
 
   // ── 8. Mail ────────────────────────────────────────────────────────
@@ -309,8 +309,8 @@ async function main() {
   // dbt target manifest
   cmd(runner, "cat nexacorp-analytics/target/manifest.json");
 
-  // .bashrc
-  cmd(runner, "cat .bashrc");
+  // .zshrc
+  cmd(runner, "cat .zshrc");
 
   // ── 17. grep/find across clues ─────────────────────────────────────
 

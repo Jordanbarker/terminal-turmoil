@@ -643,7 +643,7 @@ export function createNexacorpFilesystem(username: string, storyFlags: StoryFlag
   return dir("/", {
   home: dir("home", {
     [username]: dir(username, {
-      ".bashrc": file(".bashrc", `# ~/.bashrc - NexaCorp standard config
+      ".zshrc": file(".zshrc", `# ~/.zshrc - NexaCorp standard config
 export PS1="\\u@nexacorp-ws01:\\w$ "
 alias ll='ls -la'
 alias la='ls -A'
@@ -657,11 +657,11 @@ export SNOWFLAKE_ACCOUNT=nexacorp-prod
 # NexaCorp workstation — managed by IT
 # For system issues contact infra@nexacorp.com
 `),
-      ".profile": file(".profile", `# ~/.profile — login shell config
-# Sourced on login; delegates to .bashrc for interactive settings
+      ".zprofile": file(".zprofile", `# ~/.zprofile — login shell config
+# Sourced on login; delegates to .zshrc for interactive settings
 
-if [ -f "$HOME/.bashrc" ]; then
-  . "$HOME/.bashrc"
+if [ -f "$HOME/.zshrc" ]; then
+  . "$HOME/.zshrc"
 fi
 `),
       ".gitconfig": file(".gitconfig", `[user]
@@ -693,7 +693,7 @@ __pycache__/
 `),
         }),
       }),
-      ".bash_history": file(".bash_history", `ls
+      ".zsh_history": file(".zsh_history", `ls
 cd Desktop
 cat welcome.txt
 cd ~/Documents
@@ -872,7 +872,7 @@ PEOPLE & CULTURE
 [2026-02-23 08:12:44] systemd-logind[888]: New session 4 of user ${username}.
 `),
       "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: accessing /home/jchen/ (read)
-[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.bash_history
+[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.zsh_history
 [2026-02-03 01:17:35] chip_service_account: file read /home/jchen/projects/chip-audit/notes.md
 [2026-02-03 03:22:17] chip_service_account: modifying dbt models
 [2026-02-03 03:22:18] chip_service_account: updating fct_system_events.sql — added event_type filter

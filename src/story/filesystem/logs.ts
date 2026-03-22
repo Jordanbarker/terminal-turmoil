@@ -320,18 +320,18 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
 
 const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
   17: (d) => [
-    { date: d(17, 1, 12, 44), msg: "chip_service_account: accessing /home/jchen/.bash_history (read)", chipOnly: true },
+    { date: d(17, 1, 12, 44), msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
     { date: d(17, 1, 12, 46), msg: "chip_service_account: accessing /home/jchen/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(17, 1, 13, 2),  msg: "chip_service_account: accessing /srv/leadership/board_minutes_q4.pdf (read)", chipOnly: true },
   ],
   18: (d) => [
     { date: d(18, 2, 45, 11), msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
-    { date: d(18, 2, 45, 14), msg: "chip_service_account: accessing /home/sarah/.bash_history (read)", chipOnly: true },
+    { date: d(18, 2, 45, 14), msg: "chip_service_account: accessing /home/sarah/.zsh_history (read)", chipOnly: true },
     { date: d(18, 2, 46, 3),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
     { date: d(18, 2, 46, 5),  msg: "chip_service_account: cleanup /var/log/system.log — removed 8 entries", chipOnly: true },
   ],
   19: (d) => [
-    { date: d(19, 3, 1, 8),   msg: "chip_service_account: accessing /home/jchen/.bash_history (read)", chipOnly: true },
+    { date: d(19, 3, 1, 8),   msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
     { date: d(19, 3, 1, 12),  msg: "chip_service_account: accessing /home/jchen/projects/chip-audit/notes.md (read)", chipOnly: true },
     { date: d(19, 3, 2, 44),  msg: "chip_service_account: accessing /srv/leadership/investor_update_feb.pdf (read)", chipOnly: true },
     { date: d(19, 3, 3, 1),   msg: "chip_service_account: accessing /home/edward/.ssh/id_rsa (read)", chipOnly: true },
@@ -339,13 +339,13 @@ const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(19, 3, 3, 57),  msg: "chip_service_account: cleanup /var/log/system.log — removed 14 entries", chipOnly: true },
   ],
   20: (d) => [
-    { date: d(20, 1, 33, 21), msg: "chip_service_account: accessing /home/dana/.bash_history (read)", chipOnly: true },
+    { date: d(20, 1, 33, 21), msg: "chip_service_account: accessing /home/dana/.zsh_history (read)", chipOnly: true },
     { date: d(20, 1, 33, 44), msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(20, 1, 34, 8),  msg: "chip_service_account: cleanup /var/log/system.log — removed 6 entries", chipOnly: true },
   ],
   21: (d) => [
     { date: d(21, 3, 5, 33),  msg: "chip_service_account: accessing /home/sarah/.ssh/id_rsa (read)", chipOnly: true },
-    { date: d(21, 3, 5, 48),  msg: "chip_service_account: accessing /home/sarah/.bash_history (read)", chipOnly: true },
+    { date: d(21, 3, 5, 48),  msg: "chip_service_account: accessing /home/sarah/.zsh_history (read)", chipOnly: true },
     { date: d(21, 3, 6, 12),  msg: "chip_service_account: accessing /srv/leadership/board_minutes_q4.pdf (read)", chipOnly: true },
     { date: d(21, 3, 7, 1),   msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
     { date: d(21, 3, 7, 3),   msg: "chip_service_account: cleanup /var/log/system.log — removed 11 entries", chipOnly: true },
@@ -357,7 +357,7 @@ const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
   ],
   23: (d) => [
     { date: d(23, 3, 14, 22), msg: "chip_service_account: accessing /var/log/system.log (write)", chipOnly: true },
-    { date: d(23, 3, 14, 25), msg: "chip_service_account: accessing /home/jchen/.bash_history (read)", chipOnly: true },
+    { date: d(23, 3, 14, 25), msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
     { date: d(23, 3, 15, 3),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
     { date: d(23, 3, 15, 5),  msg: "chip_service_account: cleanup /var/log/system.log — removed 12 entries", chipOnly: true },
   ],
@@ -604,7 +604,7 @@ const EMPLOYEE_FILE_POOLS: Record<string, string[]> = {
     "READ /home/oscar/scripts/deploy.sh",
     "READ /srv/engineering/runbooks/incident-response.md",
     "READ /etc/nginx/nginx.conf",
-    "READ /home/oscar/.bashrc",
+    "READ /home/oscar/.zshrc",
   ],
   sarah: [
     "READ /srv/engineering/api-docs.md",

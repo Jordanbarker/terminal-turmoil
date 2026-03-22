@@ -488,8 +488,8 @@ export function useTerminal() {
             runningFs = redir.fs;
           }
 
-          // Append command to .bash_history in the virtual filesystem
-          const historyPath = `${homeDir}/.bash_history`;
+          // Append command to .zsh_history in the virtual filesystem
+          const historyPath = `${homeDir}/.zsh_history`;
           const existing = runningFs.readFile(historyPath);
           const prev = existing.content ?? "";
           const suffix = prev.endsWith("\n") || prev === "" ? "" : "\n";

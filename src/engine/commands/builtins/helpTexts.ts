@@ -327,6 +327,15 @@ export const HELP_TEXTS: Record<string, string> = {
     "  ./script.sh          Run an executable script directly",
   ].join("\n"),
 
+  source: [
+    "Usage: source FILENAME",
+    "",
+    "Execute commands from a file in the current shell.",
+    "",
+    "  source ~/.zshrc      Reload shell configuration",
+    "  . ~/.zshrc           Shorthand (POSIX dot command)",
+  ].join("\n"),
+
   help: [
     "Usage: help",
     "",

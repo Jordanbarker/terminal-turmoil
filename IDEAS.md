@@ -94,7 +94,7 @@ System Recon (Olive's Power Tools, post-day-1 home) "Now that you've seen what N
   ├───────────────────────────────────────┼───────────────────────────────────────────┼───────────────────────┤
   │ Find large files                      │ find ~ -size +1M                          │ -size predicate       │
   ├───────────────────────────────────────┼───────────────────────────────────────────┼───────────────────────┤
-  │ Check your bash history for a command │ grep "ssh" ~/.bash_history                │ Searching history     │
+  │ Check your shell history for a command │ grep "ssh" ~/.zsh_history                │ Searching history     │
   ├───────────────────────────────────────┼───────────────────────────────────────────┼───────────────────────┤
   │ Append notes to a file                │ echo "suspicious activity" >> ~/notes.txt │ Append redirection >> │
   └───────────────────────────────────────┴───────────────────────────────────────────┴───────────────────────┘

@@ -19,6 +19,9 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "python3",
   "bash",
   "sh",
+  "zsh",
+  "source",
+  ".",
 ]);
 
 /** NexaCorp commands gated behind colleague emails. */
@@ -52,7 +55,8 @@ export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "snow", "chip", "grep", "find", "diff", "head", "tail", "wc",
   "sort", "uniq", "echo", "whoami", "hostname", "file", "tree",
   "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
-  "history", "exit", "save", "load", "newgame", "git", "bash", "sh",
+  "history", "exit", "save", "load", "newgame", "git", "bash", "sh", "zsh",
+  "source", ".",
 ]);
 
 /** Home PC commands gated behind story flags. */

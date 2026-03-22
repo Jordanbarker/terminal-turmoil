@@ -44,14 +44,14 @@ describe("createFilesystem", () => {
       expect(fs.getNode(`/home/${USERNAME}`)?.type).toBe("directory");
     });
 
-    it("has .bashrc (hidden)", () => {
-      const node = fs.getNode(`/home/${USERNAME}/.bashrc`);
+    it("has .zshrc (hidden)", () => {
+      const node = fs.getNode(`/home/${USERNAME}/.zshrc`);
       expect(node?.type).toBe("file");
       expect(node?.hidden).toBe(true);
     });
 
-    it("has .profile (hidden)", () => {
-      const node = fs.getNode(`/home/${USERNAME}/.profile`);
+    it("has .zprofile (hidden)", () => {
+      const node = fs.getNode(`/home/${USERNAME}/.zprofile`);
       expect(node?.type).toBe("file");
       expect(node?.hidden).toBe(true);
     });

@@ -750,3 +750,4 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
 const description = "Execute shell scripts";
 registerAsync("bash", bashHandler, description, HELP_TEXTS.bash);
 registerAsync("sh", bashHandler, description, HELP_TEXTS.bash);
+registerAsync("zsh", bashHandler, description, HELP_TEXTS.bash);

@@ -12,7 +12,7 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
           id: "alex_checkin_1",
           from: "Alex Rivera",
           timestamp: "2:23 PM",
-          body: "hey stranger. saw you were online at 3am last night. please tell me that was productive insomnia and not \"let me just tweak my bashrc one more time\" insomnia",
+          body: "hey stranger. saw you were online at 3am last night. please tell me that was productive insomnia and not \"let me just tweak my zshrc one more time\" insomnia",
         },
         {
           id: "alex_checkin_2",
@@ -24,8 +24,8 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
       trigger: { type: "immediate" },
       replyOptions: [
         {
-          label: "it was the bashrc thing",
-          messageBody: "...it was the bashrc thing. but I also applied to a few places! so, progress.",
+          label: "it was the zshrc thing",
+          messageBody: "...it was the zshrc thing. but I also applied to a few places! so, progress.",
         },
         {
           label: "slowly but I'll get there",

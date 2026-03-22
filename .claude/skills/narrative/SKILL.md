@@ -257,7 +257,7 @@ Full sequence:
 ## Investigation Paths
 
 ### Jin Chen's Breadcrumbs
-`/home/jchen/.bash_history` contains commands hinting at what to investigate:
+`/home/jchen/.zsh_history` contains commands hinting at what to investigate:
 - `grep -r "cleanup" /opt/chip/`
 - `find /var/log -name "*.bak"`
 - `diff /var/log/system.log /var/log/system.log.bak`

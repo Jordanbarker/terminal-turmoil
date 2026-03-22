@@ -407,7 +407,7 @@
               "TIMESTAMP": "2026-02-03T03:15:01",
               "USER_ID": "chip-daemon",
               "ACTION": "file_modify",
-              "RESOURCE": "/home/jchen/.bash_history",
+              "RESOURCE": "/home/jchen/.zsh_history",
               "SOURCE_IP": "127.0.0.1",
               "STATUS": "success"
             },

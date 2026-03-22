@@ -46,7 +46,7 @@ NEXACORP_DB_PROJECTS = [
 NEXACORP_DB_ACCESS_LOG = [
     {"LOG_ID": 1,  "TIMESTAMP": "2026-02-03T03:12:00", "USER_ID": "chip-daemon", "ACTION": "file_access",   "RESOURCE": "/home/jchen/.private/concerns.txt",                "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
     {"LOG_ID": 2,  "TIMESTAMP": "2026-02-03T03:14:22", "USER_ID": "chip-daemon", "ACTION": "file_modify",   "RESOURCE": "/var/log/system.log",                              "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
-    {"LOG_ID": 3,  "TIMESTAMP": "2026-02-03T03:15:01", "USER_ID": "chip-daemon", "ACTION": "file_modify",   "RESOURCE": "/home/jchen/.bash_history",                        "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
+    {"LOG_ID": 3,  "TIMESTAMP": "2026-02-03T03:15:01", "USER_ID": "chip-daemon", "ACTION": "file_modify",   "RESOURCE": "/home/jchen/.zsh_history",                        "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
     {"LOG_ID": 4,  "TIMESTAMP": "2026-02-03T08:30:00", "USER_ID": "etorres",     "ACTION": "login",         "RESOURCE": "nexacorp-ws01",                                    "SOURCE_IP": "10.0.1.42", "STATUS": "success"},
     {"LOG_ID": 5,  "TIMESTAMP": "2026-02-03T09:00:00", "USER_ID": "etorres",     "ACTION": "query",         "RESOURCE": "NEXACORP_DB.ANALYTICS.RPT_EMPLOYEE_DIRECTORY",     "SOURCE_IP": "10.0.1.42", "STATUS": "success"},
     {"LOG_ID": 6,  "TIMESTAMP": "2026-02-04T02:45:00", "USER_ID": "chip-daemon", "ACTION": "file_modify",   "RESOURCE": "/home/jchen/.private/concerns.txt",                "SOURCE_IP": "127.0.0.1", "STATUS": "success"},
@@ -112,7 +112,7 @@ NARRATIVE_CHIP_DAEMON_EVENTS = [
     {"EVENT_ID": "EVT-1201", "EVENT_TYPE": "file_modification",  "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T03:14:22", "DETAILS": "path=/var/log/system.log"},
     {"EVENT_ID": "EVT-1202", "EVENT_TYPE": "permission_change",  "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T03:15:01", "DETAILS": "path=/home/jchen/.private/"},
     {"EVENT_ID": "EVT-1203", "EVENT_TYPE": "log_rotation",       "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T03:22:17", "DETAILS": "retention=7days"},
-    {"EVENT_ID": "EVT-1204", "EVENT_TYPE": "file_modification",  "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T03:45:00", "DETAILS": "path=/home/jchen/.bash_history"},
+    {"EVENT_ID": "EVT-1204", "EVENT_TYPE": "file_modification",  "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T03:45:00", "DETAILS": "path=/home/jchen/.zsh_history"},
     {"EVENT_ID": "EVT-1205", "EVENT_TYPE": "file_modification",  "EVENT_SOURCE": "chip-daemon", "TIMESTAMP": "2026-02-03T04:12:33", "DETAILS": "path=/opt/chip/config/settings.json"},
 ]
 
@@ -163,7 +163,7 @@ NARRATIVE_NORMAL_TICKETS = [
 
 CHIP_FILE_MODIFICATIONS = [
     {"MOD_ID": 1, "TIMESTAMP": "2026-02-03T03:14:22", "FILE_PATH": "/var/log/system.log",                 "ACTION": "truncate", "MODIFIED_BY": "chip-daemon", "REASON": "Log rotation per policy",    "ORIGINAL_HASH": "a3f8c2", "NEW_HASH": "e7d1b9"},
-    {"MOD_ID": 2, "TIMESTAMP": "2026-02-03T03:15:01", "FILE_PATH": "/home/jchen/.bash_history",           "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "User data cleanup",          "ORIGINAL_HASH": "b4c9d1", "NEW_HASH": "f2a8e3"},
+    {"MOD_ID": 2, "TIMESTAMP": "2026-02-03T03:15:01", "FILE_PATH": "/home/jchen/.zsh_history",           "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "User data cleanup",          "ORIGINAL_HASH": "b4c9d1", "NEW_HASH": "f2a8e3"},
     {"MOD_ID": 3, "TIMESTAMP": "2026-02-03T03:22:17", "FILE_PATH": "/opt/chip/config/settings.json",      "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "Configuration update",       "ORIGINAL_HASH": "c5d0e2", "NEW_HASH": "1a2b3c"},
     {"MOD_ID": 4, "TIMESTAMP": "2026-02-04T02:45:33", "FILE_PATH": "/home/jchen/.private/concerns.txt",   "ACTION": "modify",   "MODIFIED_BY": "chip-daemon", "REASON": "Content review",             "ORIGINAL_HASH": "d6e1f3", "NEW_HASH": "4d5e6f"},
     {"MOD_ID": 5, "TIMESTAMP": "2026-02-05T01:30:44", "FILE_PATH": "/var/log/chip-activity.log",          "ACTION": "truncate", "MODIFIED_BY": "chip-daemon", "REASON": "Routine maintenance",        "ORIGINAL_HASH": "e7f2a4", "NEW_HASH": "7g8h9i"},

@@ -82,7 +82,7 @@ Want to make sure I don't step on any landmines my first week.`,
   Username:     ${username}
   Hostname:     nexacorp-ws01
   Home:         /home/${username}
-  Shell:        /bin/bash
+  Shell:        /bin/zsh
   Mail:         /var/mail/${username}
 
 You can check for new messages anytime by typing 'mail' in the

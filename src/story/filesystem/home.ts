@@ -98,7 +98,7 @@ Glassdoor
 LinkedIn
 Company website
 `),
-        ".bashrc": file(".bashrc", `# ~/.bashrc
+        ".zshrc": file(".zshrc", `# ~/.zshrc
 
 export PS1="\\u@home:\\w$ "
 alias ll='ls -la'
@@ -111,7 +111,7 @@ alias apply='python3 ~/scripts/auto_apply.py'
 # Added 2026-02-10
 alias research='cat ~/scripts/data/glassdoor_reviews.json'
 `),
-        ".bash_history": file(".bash_history", `top -bn1 | head -20
+        ".zsh_history": file(".zsh_history", `top -bn1 | head -20
 ps aux | grep synthetica
 find / -name "synthetica*" 2>/dev/null
 cat .cache/synthetica/.heartbeat
@@ -121,7 +121,7 @@ netstat -tulpn | grep ESTABLISHED
 sudo apt install build-essential git curl wget
 ssh-keygen -t ed25519 -C "ren@home"
 git clone https://github.com/ren/dotfiles.git
-cp dotfiles/.bashrc ~/
+cp dotfiles/.zshrc ~/
 cp dotfiles/.nanorc ~/
 pip install selenium beautifulsoup4 requests
 python3 -c "import selenium; print(selenium.__version__)"
@@ -274,7 +274,7 @@ long time. How many heartbeats is that at 5-minute intervals? 48. Forty-
 eight snapshots of my system, shipped off to whoever's on the other end
 of that endpoint.
 
-And there's stuff I'll never know. Did it copy files? Read my bash
+And there's stuff I'll never know. Did it copy files? Read my shell
 history? The pipe config targeted browser cookies, but there could have
 been other collectors I didn't find before I wiped. That's the worst
 part — I destroyed the evidence when I destroyed the infection.
@@ -431,7 +431,7 @@ Recovery checklist:
   [x] Fresh Ubuntu 24.04 LTS install
   [x] Basic packages (build-essential, git, curl, python3, pip)
   [x] SSH keys regenerated (ed25519)
-  [x] Cloned dotfiles repo, restored .bashrc and .nanorc
+  [x] Cloned dotfiles repo, restored .zshrc and .nanorc
   [x] Reinstalled job search scripts (auto_apply, scraper)
   [x] Recreated scripts/data/ from memory + Indeed history
   [x] Set up backup script (~/scripts/backup.sh) — NEVER AGAIN
@@ -708,7 +708,7 @@ data.tar.zst\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00`,
           "dotfiles-main.zip": binaryFile("dotfiles-main.zip",
 `PK\x03\x04\x14\x00\x00\x00\x08\x00\xB7\x8A
 dotfiles-main/\x00\x00\x00\x00\x00\x00\x00\x00
-dotfiles-main/.bashrc\x00\x00\x55\x54\x09\x00\x03
+dotfiles-main/.zshrc\x00\x00\x55\x54\x09\x00\x03
 dotfiles-main/.nanorc\x00\x00\x55\x54\x09\x00\x03
 dotfiles-main/.gitconfig\x00\x00\x55\x54\x09\x00
 PK\x05\x06\x00\x00\x00\x00\x04\x00\x04\x00`,
@@ -1641,8 +1641,8 @@ HOME_URL="https://www.ubuntu.com/"
 SUPPORT_URL="https://help.ubuntu.com/"
 BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
 `),
-      passwd: file("passwd", `root:x:0:0:root:/root:/bin/bash
-${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/bin/bash
+      passwd: file("passwd", `root:x:0:0:root:/root:/bin/zsh
+${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/bin/zsh
 nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
 `),
     }),

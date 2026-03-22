@@ -287,7 +287,7 @@
       ["EVT-1201", "file_modification", "chip-daemon", "2026-02-03 03:14:22", "path=/var/log/system.log"],
       ["EVT-1202", "permission_change", "chip-daemon", "2026-02-03 03:15:01", "path=/home/jchen/.private/"],
       ["EVT-1203", "log_rotation", "chip-daemon", "2026-02-03 03:22:17", "retention=7days"],
-      ["EVT-1204", "file_modification", "chip-daemon", "2026-02-03 03:45:00", "path=/home/jchen/.bash_history"],
+      ["EVT-1204", "file_modification", "chip-daemon", "2026-02-03 03:45:00", "path=/home/jchen/.zsh_history"],
       ["EVT-1205", "file_modification", "chip-daemon", "2026-02-03 04:12:33", "path=/opt/chip/config/settings.json"]
     ]
   },

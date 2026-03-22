@@ -675,7 +675,7 @@
               "EVENT_TYPE": "file_modification",
               "EVENT_SOURCE": "chip-daemon",
               "TIMESTAMP": "2026-02-03T03:45:00",
-              "DETAILS": "path=/home/jchen/.bash_history"
+              "DETAILS": "path=/home/jchen/.zsh_history"
             },
             {
               "EVENT_ID": "EVT-1205",
