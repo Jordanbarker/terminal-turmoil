@@ -644,7 +644,17 @@ export function createNexacorpFilesystem(username: string, storyFlags: StoryFlag
   home: dir("home", {
     [username]: dir(username, {
       ".zshrc": file(".zshrc", `# ~/.zshrc - NexaCorp standard config
-export PS1="\\u@nexacorp-ws01:\\w$ "
+PROMPT='%n@nexacorp-ws01:%~%# '
+bindkey -e
+
+setopt HIST_IGNORE_DUPS SHARE_HISTORY AUTO_CD
+
+HISTFILE=~/.zsh_history
+HISTSIZE=1000
+SAVEHIST=1000
+
+autoload -Uz compinit && compinit
+
 alias ll='ls -la'
 alias la='ls -A'
 alias l='ls -CF'
@@ -660,7 +670,7 @@ export SNOWFLAKE_ACCOUNT=nexacorp-prod
       ".zprofile": file(".zprofile", `# ~/.zprofile — login shell config
 # Sourced on login; delegates to .zshrc for interactive settings
 
-if [ -f "$HOME/.zshrc" ]; then
+if [[ -f "$HOME/.zshrc" ]]; then
   . "$HOME/.zshrc"
 fi
 `),

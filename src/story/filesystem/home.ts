@@ -100,7 +100,17 @@ Company website
 `),
         ".zshrc": file(".zshrc", `# ~/.zshrc
 
-export PS1="\\u@home:\\w$ "
+PROMPT='%n@home:%~%# '
+bindkey -e
+
+setopt HIST_IGNORE_DUPS SHARE_HISTORY AUTO_CD
+
+HISTFILE=~/.zsh_history
+HISTSIZE=1000
+SAVEHIST=1000
+
+autoload -Uz compinit && compinit
+
 alias ll='ls -la'
 alias py='python3'
 
