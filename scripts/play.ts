@@ -26,6 +26,7 @@ import { CommandResult } from "../src/engine/commands/types";
 import { VirtualFS } from "../src/engine/filesystem/VirtualFS";
 import { createHomeFilesystem } from "../src/story/filesystem/home";
 import { createNexacorpFilesystem } from "../src/story/filesystem/nexacorp";
+import { createDevcontainerFilesystem } from "../src/story/filesystem/devcontainer";
 import { SnowflakeState } from "../src/engine/snowflake/state";
 import { createInitialSnowflakeState } from "../src/engine/snowflake/seed/initial_data";
 import { createDefaultContext, SessionContext } from "../src/engine/snowflake/session/context";
@@ -371,12 +372,22 @@ export class GameRunner {
   /** Switch to a different computer (instant transition). */
   switchComputer(to: ComputerId): void {
     this.activeComputer = to;
-    const root = to === "home"
-      ? createHomeFilesystem(this.username)
-      : createNexacorpFilesystem(this.username, this.storyFlags);
+    let root;
+    switch (to) {
+      case "home":
+        root = createHomeFilesystem(this.username);
+        break;
+      case "devcontainer":
+        root = createDevcontainerFilesystem(this.username, this.storyFlags);
+        break;
+      default:
+        root = createNexacorpFilesystem(this.username, this.storyFlags);
+        break;
+    }
     const homeDir = `/home/${this.username}`;
     this.fs = new VirtualFS(root, homeDir, homeDir);
     this.cwd = homeDir;
+    this.snowflakeState = createInitialSnowflakeState({ includeDay2: !!this.storyFlags.day1_shutdown });
     this.snowflakeContext = createDefaultContext(this.username);
   }
 
@@ -623,8 +634,8 @@ async function main() {
 
       if (trimmed.startsWith(":switch ")) {
         const target = trimmed.slice(8).trim() as ComputerId;
-        if (target !== "home" && target !== "nexacorp") {
-          console.log("Usage: :switch home|nexacorp");
+        if (target !== "home" && target !== "nexacorp" && target !== "devcontainer") {
+          console.log("Usage: :switch home|nexacorp|devcontainer");
         } else {
           runner.switchComputer(target);
           console.log(`Switched to ${target} (${COMPUTERS[target].promptHostname})`);

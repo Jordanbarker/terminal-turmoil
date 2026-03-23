@@ -1,33 +1,28 @@
 import { SnowflakeState, SnowflakeData } from "../state";
 import { Database, Schema, Table, Column, Row, createSchema } from "../types";
+import { generateAccessLogRows, LogOptions } from "../../../story/filesystem/logs";
 
-import nexacorpDbJson from "../../../story/data/snowflake/nexacorp_db.json";
 import nexacorpProdJson from "../../../story/data/snowflake/nexacorp_prod.json";
-import chipAnalyticsJson from "../../../story/data/snowflake/chip_analytics.json";
 
 // ── Date columns per table (for reconstituting Date objects from JSON strings) ──
 const DATE_COLUMNS: Record<string, Set<string>> = {
   EMPLOYEES: new Set(["HIRE_DATE", "TERMINATION_DATE"]),
+  EMPLOYEE_DIRECTORY: new Set(["HIRE_DATE"]),
   PROJECTS: new Set(["START_DATE"]),
   ACCESS_LOG: new Set(["TIMESTAMP"]),
   SYSTEM_EVENTS: new Set(["TIMESTAMP"]),
   AI_MODEL_METRICS: new Set(["METRIC_DATE"]),
   DEPARTMENT_BUDGETS: new Set(["APPROVED_DATE"]),
   SUPPORT_TICKETS: new Set(["SUBMITTED_DATE", "RESOLVED_DATE"]),
-  FILE_MODIFICATIONS: new Set(["TIMESTAMP"]),
-  DIRECTIVE_LOG: new Set(["TIMESTAMP"]),
-  SUPPRESSED_ALERTS: new Set(["TIMESTAMP"]),
 };
 
 /**
  * Create the initial SnowflakeState with narrative game data.
  */
-export function createInitialSnowflakeState(): SnowflakeState {
+export function createInitialSnowflakeState(opts?: LogOptions): SnowflakeState {
   const data: SnowflakeData = {
     databases: {
-      NEXACORP_DB: loadDatabase(nexacorpDbJson as unknown as JsonDatabase),
-      NEXACORP_PROD: loadDatabase(nexacorpProdJson as unknown as JsonDatabase),
-      CHIP_ANALYTICS: loadDatabase(chipAnalyticsJson as unknown as JsonDatabase),
+      NEXACORP_PROD: loadDatabase(nexacorpProdJson as unknown as JsonDatabase, opts),
     },
     warehouses: {
       NEXACORP_WH: {
@@ -59,12 +54,24 @@ interface JsonDatabase {
   schemas: Record<string, JsonSchema>;
 }
 
-function loadDatabase(json: JsonDatabase): Database {
+function loadDatabase(json: JsonDatabase, opts?: LogOptions): Database {
   const schemas: Record<string, Schema> = {};
   for (const [schemaName, schemaJson] of Object.entries(json.schemas)) {
     const schema = createSchema(schemaName);
     for (const [tableName, tableJson] of Object.entries(schemaJson.tables)) {
       const dateCols = DATE_COLUMNS[tableName] || new Set<string>();
+
+      // ACCESS_LOG rows are generated from the shared access event source
+      if (tableName === "ACCESS_LOG") {
+        schema.tables[tableName] = {
+          name: tableJson.name,
+          columns: tableJson.columns,
+          rows: generateAccessLogRows(opts),
+          createdAt: new Date(tableJson.createdAt),
+        };
+        continue;
+      }
+
       const rows: Row[] = tableJson.rows.map((row) => hydrateRow(row, dateCols));
       schema.tables[tableName] = {
         name: tableJson.name,

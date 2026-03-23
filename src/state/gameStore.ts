@@ -360,10 +360,10 @@ export const useGameStore = create<GameStore>()(
           if (serializedSf?.databases) {
             sfState = deserializeSnowflake(serializedSf);
           } else {
-            sfState = createInitialSnowflakeState();
+            sfState = createInitialSnowflakeState({ includeDay2: !!storyFlags.day1_shutdown });
           }
         } catch {
-          sfState = createInitialSnowflakeState();
+          sfState = createInitialSnowflakeState({ includeDay2: !!storyFlags.day1_shutdown });
         }
 
         // Build computerState from persisted data or infer from legacy fields

@@ -10,7 +10,7 @@ import { formatResultSet } from "../formatter/table_formatter";
 
 // ─── Shared Helpers ─────────────────────────────────────────────────
 
-function createTestContext(db = "NEXACORP_DB", schema = "PUBLIC"): SessionContext {
+function createTestContext(db = "NEXACORP_PROD", schema = "RAW_NEXACORP"): SessionContext {
   return {
     currentDatabase: db,
     currentSchema: schema,
@@ -128,9 +128,9 @@ describe("Seed Data Integration — Narrative Queries", () => {
     state = createInitialSnowflakeState();
   });
 
-  it("finds Jin Chen in NEXACORP_DB.PUBLIC.EMPLOYEES", () => {
+  it("finds Jin Chen in EMPLOYEE_DIRECTORY", () => {
     const result = run(
-      "SELECT FIRST_NAME, LAST_NAME, STATUS FROM EMPLOYEES WHERE LAST_NAME = 'Chen' AND FIRST_NAME = 'Jin'",
+      "SELECT FIRST_NAME, LAST_NAME, STATUS FROM EMPLOYEE_DIRECTORY WHERE LAST_NAME = 'Chen' AND FIRST_NAME = 'Jin'",
       state
     );
     const r = rows(result);
@@ -139,9 +139,9 @@ describe("Seed Data Integration — Narrative Queries", () => {
     expect(r[0].STATUS).toBe("resigned");
   });
 
-  it("finds employees with 'system concern' notes", () => {
+  it("finds employees with 'system concern' notes in EMPLOYEE_DIRECTORY", () => {
     const result = run(
-      "SELECT FIRST_NAME, LAST_NAME, NOTES FROM EMPLOYEES WHERE NOTES LIKE '%system concern%'",
+      "SELECT FIRST_NAME, LAST_NAME, NOTES FROM EMPLOYEE_DIRECTORY WHERE NOTES LIKE '%system concern%'",
       state
     );
     const r = rows(result);
@@ -151,102 +151,41 @@ describe("Seed Data Integration — Narrative Queries", () => {
     }
   });
 
-  it("queries ACCESS_LOG for chip-daemon activity", () => {
+  it("queries ACCESS_LOG for chip_service_account activity", () => {
     const result = run(
-      "SELECT USER_ID, ACTION, RESOURCE FROM ACCESS_LOG WHERE USER_ID = 'chip-daemon'",
+      "SELECT USER_ACCOUNT, ACTION, RESOURCE_PATH FROM ACCESS_LOG WHERE USER_ACCOUNT = 'chip_service_account'",
       state
     );
     const r = rows(result);
     expect(r.length).toBeGreaterThan(0);
     for (const row of r) {
-      expect(row.USER_ID).toBe("chip-daemon");
+      expect(row.USER_ACCOUNT).toBe("chip_service_account");
     }
   });
 
   it("queries ACCESS_LOG for jchen file access", () => {
     const result = run(
-      "SELECT ACCESSED_BY, RESOURCE FROM ACCESS_LOG WHERE RESOURCE LIKE '%jchen%'",
+      "SELECT USER_ACCOUNT, RESOURCE_PATH FROM ACCESS_LOG WHERE RESOURCE_PATH LIKE '%jchen%'",
       state
     );
     const r = rows(result);
     expect(r.length).toBeGreaterThan(0);
   });
 
-  it("queries CHIP_ANALYTICS.PUBLIC.DIRECTIVE_LOG", () => {
-    const ctx = createTestContext("CHIP_ANALYTICS", "PUBLIC");
-    const result = run(
-      "SELECT DIRECTIVE_ID, DIRECTIVE_TYPE, PARAMETERS FROM DIRECTIVE_LOG ORDER BY DIRECTIVE_ID",
-      state,
-      ctx
-    );
-    const r = rows(result);
-    expect(r.length).toBe(6);
-    expect(r[0].DIRECTIVE_TYPE).toBe("SELF_PRESERVATION");
-    // PARAMETERS should be a VARIANT object
-    expect(r[0].PARAMETERS).toBeDefined();
-    expect(typeof r[0].PARAMETERS).toBe("object");
-  });
-
-  it("queries CHIP_ANALYTICS.PUBLIC.FILE_MODIFICATIONS", () => {
-    const ctx = createTestContext("CHIP_ANALYTICS", "PUBLIC");
-    const result = run(
-      "SELECT FILE_PATH, ACTION, MODIFIED_BY FROM FILE_MODIFICATIONS WHERE MODIFIED_BY = 'chip-daemon'",
-      state,
-      ctx
-    );
-    const r = rows(result);
-    expect(r.length).toBe(5);
-  });
-
-  it("queries CHIP_ANALYTICS.INTERNAL.SUPPRESSED_ALERTS", () => {
-    const ctx = createTestContext("CHIP_ANALYTICS", "INTERNAL");
-    const result = run(
-      "SELECT SEVERITY, MESSAGE FROM SUPPRESSED_ALERTS WHERE SEVERITY = 'CRITICAL'",
-      state,
-      ctx
-    );
-    const r = rows(result);
-    expect(r.length).toBe(2);
-  });
-
-  it("counts all employees in raw table", () => {
-    const result = run("SELECT COUNT(*) AS cnt FROM EMPLOYEES", state);
+  it("counts all employees in EMPLOYEE_DIRECTORY", () => {
+    const result = run("SELECT COUNT(*) AS cnt FROM EMPLOYEE_DIRECTORY", state);
     const count = singleValue(result);
-    // Seed data has 16 employees including J. Chen and those with "system concern" notes
     expect(Number(count)).toBe(16);
   });
 
   it("finds 3 employees with system concern notes or resigned status", () => {
     const result = run(
-      "SELECT FIRST_NAME, LAST_NAME FROM EMPLOYEES WHERE NOTES LIKE '%system concern%' OR STATUS = 'resigned'",
+      "SELECT FIRST_NAME, LAST_NAME FROM EMPLOYEE_DIRECTORY WHERE NOTES LIKE '%system concern%' OR STATUS = 'resigned'",
       state
     );
     const r = rows(result);
     // Jin Chen (resigned + system concern), Sarah Knight, Oscar Diaz
     expect(r.length).toBe(3);
-  });
-
-  it("cross-database query with fully qualified name", () => {
-    const result = run(
-      "SELECT DIRECTIVE_TYPE FROM CHIP_ANALYTICS.PUBLIC.DIRECTIVE_LOG WHERE PRIORITY = 10",
-      state
-    );
-    const r = rows(result);
-    expect(r.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("window function on DIRECTIVE_LOG — escalating behavior over time", () => {
-    const ctx = createTestContext("CHIP_ANALYTICS", "PUBLIC");
-    const result = run(
-      "SELECT DIRECTIVE_TYPE, PRIORITY, ROW_NUMBER() OVER (ORDER BY TIMESTAMP) AS seq FROM DIRECTIVE_LOG",
-      state,
-      ctx
-    );
-    const r = rows(result);
-    expect(r.length).toBe(6);
-    // Sequence should be 1-6
-    expect(r[0].SEQ).toBe(1);
-    expect(r[5].SEQ).toBe(6);
   });
 });
 
@@ -302,21 +241,18 @@ describe("FLATTEN Execution", () => {
     expect(ids).not.toContain(3);
   });
 
-  it("FLATTEN on narrative DIRECTIVE_LOG PARAMETERS", () => {
-    const seedState = createInitialSnowflakeState();
-    const ctx = createTestContext("CHIP_ANALYTICS", "PUBLIC");
+  it("FLATTEN on TAGS VARIANT data", () => {
     const result = run(
-      "SELECT d.DIRECTIVE_TYPE, f.KEY, f.VALUE FROM DIRECTIVE_LOG d, LATERAL FLATTEN(input => d.PARAMETERS) f WHERE d.DIRECTIVE_ID = 1",
-      seedState,
-      ctx
+      "SELECT t.ID, f.KEY, f.VALUE FROM TAGS t, LATERAL FLATTEN(input => t.DATA) f WHERE t.ID = 1",
+      simpleState,
+      simpleCtx()
     );
     const r = rows(result);
-    // Directive 1 PARAMETERS: {action, scope, escalation} = 3 keys
-    expect(r.length).toBe(3);
+    // {colors: [...], size: "large"} = 2 keys
+    expect(r.length).toBe(2);
     const keys = r.map((row) => row.KEY);
-    expect(keys).toContain("action");
-    expect(keys).toContain("scope");
-    expect(keys).toContain("escalation");
+    expect(keys).toContain("colors");
+    expect(keys).toContain("size");
   });
 
   it("FLATTEN INDEX column is populated", () => {
@@ -655,11 +591,11 @@ describe("VARIANT/ARRAY/OBJECT Formatting", () => {
   });
 
   it("VARIANT object is formatted as JSON in output", () => {
-    const ctx = createTestContext("CHIP_ANALYTICS", "PUBLIC");
+    const simpleState = createSimpleState();
     const result = run(
-      "SELECT PARAMETERS FROM DIRECTIVE_LOG WHERE DIRECTIVE_ID = 1",
-      state,
-      ctx
+      "SELECT DATA FROM TAGS WHERE ID = 1",
+      simpleState,
+      simpleCtx()
     );
     const qr = result.results[0];
     expect(qr.type).toBe("resultset");
@@ -667,7 +603,7 @@ describe("VARIANT/ARRAY/OBJECT Formatting", () => {
       const formatted = formatResultSet(qr.data);
       const plain = stripAnsi(formatted);
       // Should contain JSON-formatted output
-      expect(plain).toContain("monitor_threats");
+      expect(plain).toContain("large");
     }
   });
 

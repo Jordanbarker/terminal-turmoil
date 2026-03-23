@@ -683,6 +683,41 @@
               "EVENT_SOURCE": "chip-daemon",
               "TIMESTAMP": "2026-02-03T04:12:33",
               "DETAILS": "path=/opt/chip/config/settings.json"
+            },
+            {
+              "EVENT_ID": "EVT-0062",
+              "EVENT_TYPE": "backup_completed",
+              "EVENT_SOURCE": "cron",
+              "TIMESTAMP": "2026-02-24T02:30:00",
+              "DETAILS": "job=nightly_db_backup size=2.7GB status=ok"
+            },
+            {
+              "EVENT_ID": "EVT-0063",
+              "EVENT_TYPE": "service_start",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-24T07:00:04",
+              "DETAILS": "service=chip-daemon"
+            },
+            {
+              "EVENT_ID": "EVT-0064",
+              "EVENT_TYPE": "service_start",
+              "EVENT_SOURCE": "systemd",
+              "TIMESTAMP": "2026-02-24T07:00:05",
+              "DETAILS": "service=postgresql"
+            },
+            {
+              "EVENT_ID": "EVT-0065",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-24T07:37:00",
+              "DETAILS": "user=odiaz ip=10.0.1.20"
+            },
+            {
+              "EVENT_ID": "EVT-0066",
+              "EVENT_TYPE": "user_login",
+              "EVENT_SOURCE": "sshd",
+              "TIMESTAMP": "2026-02-24T07:52:00",
+              "DETAILS": "user=sknight ip=10.0.1.21"
             }
           ],
           "createdAt": "2026-02-03"
@@ -722,6 +757,14 @@
             }
           ],
           "rows": [
+            {
+              "MODEL_NAME": "chip",
+              "METRIC_DATE": "2026-02-24",
+              "UPTIME_PCT": 99.96,
+              "AVG_RESPONSE_MS": 43,
+              "ERROR_RATE": 0.002,
+              "INCIDENT_COUNT": 0
+            },
             {
               "MODEL_NAME": "chip",
               "METRIC_DATE": "2026-02-23",
@@ -819,183 +862,7 @@
               "nullable": false
             }
           ],
-          "rows": [
-            {
-              "ACCESS_ID": "A001",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/home/edward/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-23T08:05:00"
-            },
-            {
-              "ACCESS_ID": "A002",
-              "USER_ACCOUNT": "chip_service_account",
-              "RESOURCE_PATH": "/var/log/system.log",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-23T08:00:04"
-            },
-            {
-              "ACCESS_ID": "A003",
-              "USER_ACCOUNT": "chip_service_account",
-              "RESOURCE_PATH": "/home/jchen/.private/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T03:15:00"
-            },
-            {
-              "ACCESS_ID": "A004",
-              "USER_ACCOUNT": "chip_service_account",
-              "RESOURCE_PATH": "/var/log/chip-activity.log",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-07T03:22:17"
-            },
-            {
-              "ACCESS_ID": "A005",
-              "USER_ACCOUNT": "ren",
-              "RESOURCE_PATH": "/home/ren/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-23T08:12:45"
-            },
-            {
-              "ACCESS_ID": "A006",
-              "USER_ACCOUNT": "cmoreau",
-              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-03T13:45:56"
-            },
-            {
-              "ACCESS_ID": "A007",
-              "USER_ACCOUNT": "sparekh",
-              "RESOURCE_PATH": "/etc/firewall/rules.conf",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-03T06:14:31"
-            },
-            {
-              "ACCESS_ID": "A008",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/var/backup/db/nexacorp_prod.dump",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-03T11:08:15"
-            },
-            {
-              "ACCESS_ID": "A009",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/home/edward/notes/standup.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-03T05:42:37"
-            },
-            {
-              "ACCESS_ID": "A010",
-              "USER_ACCOUNT": "sparekh",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-04T03:41:27"
-            },
-            {
-              "ACCESS_ID": "A011",
-              "USER_ACCOUNT": "sknight",
-              "RESOURCE_PATH": "/proc/meminfo",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-04T04:04:34"
-            },
-            {
-              "ACCESS_ID": "A012",
-              "USER_ACCOUNT": "jkessler",
-              "RESOURCE_PATH": "/etc/firewall/rules.conf",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T13:45:03"
-            },
-            {
-              "ACCESS_ID": "A013",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/home/edward/queries/monthly-report.sql",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T02:08:50"
-            },
-            {
-              "ACCESS_ID": "A014",
-              "USER_ACCOUNT": "sknight",
-              "RESOURCE_PATH": "/opt/chip/docs/admin-guide.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-05T15:33:47"
-            },
-            {
-              "ACCESS_ID": "A015",
-              "USER_ACCOUNT": "sparekh",
-              "RESOURCE_PATH": "/opt/tickets/queue/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-05T10:13:21"
-            },
-            {
-              "ACCESS_ID": "A016",
-              "USER_ACCOUNT": "jwilson",
-              "RESOURCE_PATH": "/home/jwilson/projects/ml-pipeline/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-05T07:31:41"
-            },
-            {
-              "ACCESS_ID": "A017",
-              "USER_ACCOUNT": "lmatsuda",
-              "RESOURCE_PATH": "/opt/tickets/queue/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-05T13:45:11"
-            },
-            {
-              "ACCESS_ID": "A018",
-              "USER_ACCOUNT": "jkessler",
-              "RESOURCE_PATH": "/home/jkessler/projects/ml-pipeline/",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-06T06:54:07"
-            },
-            {
-              "ACCESS_ID": "A019",
-              "USER_ACCOUNT": "jwilson",
-              "RESOURCE_PATH": "/home/jwilson/projects/ml-pipeline/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-06T06:03:54"
-            },
-            {
-              "ACCESS_ID": "A020",
-              "USER_ACCOUNT": "edward",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-07T11:20:42"
-            },
-            {
-              "ACCESS_ID": "A021",
-              "USER_ACCOUNT": "jkessler",
-              "RESOURCE_PATH": "/home/jkessler/notes/standup.md",
-              "ACTION": "read",
-              "TIMESTAMP": "2026-02-07T08:53:09"
-            },
-            {
-              "ACCESS_ID": "A022",
-              "USER_ACCOUNT": "lmatsuda",
-              "RESOURCE_PATH": "/shared/engineering/design-docs/chip-v3-arch.md",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-07T02:37:49"
-            },
-            {
-              "ACCESS_ID": "A023",
-              "USER_ACCOUNT": "sparekh",
-              "RESOURCE_PATH": "/opt/qa/test-plans/q1-2026.md",
-              "ACTION": "write",
-              "TIMESTAMP": "2026-02-07T09:29:52"
-            },
-            {
-              "ACCESS_ID": "A024",
-              "USER_ACCOUNT": "elindstrom",
-              "RESOURCE_PATH": "/shared/data-pipeline/configs/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-23T08:20:30"
-            },
-            {
-              "ACCESS_ID": "A025",
-              "USER_ACCOUNT": "dokafor",
-              "RESOURCE_PATH": "/opt/snowflake/dashboards/",
-              "ACTION": "execute",
-              "TIMESTAMP": "2026-02-23T17:47:19"
-            }
-          ],
+          "rows": [],
           "createdAt": "2026-02-03"
         },
         "DEPARTMENT_BUDGETS": {
@@ -1635,6 +1502,417 @@
             }
           ],
           "createdAt": "2026-01-20"
+        },
+        "EMPLOYEE_DIRECTORY": {
+          "name": "EMPLOYEE_DIRECTORY",
+          "columns": [
+            {
+              "name": "EMPLOYEE_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "FIRST_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "LAST_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "EMAIL",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPARTMENT",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "TITLE",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "HIRE_DATE",
+              "type": "DATE",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "MANAGER_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "NOTES",
+              "type": "VARCHAR",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "EMPLOYEE_ID": 1001,
+              "FIRST_NAME": "Edward",
+              "LAST_NAME": "Torres",
+              "EMAIL": "edward@nexacorp.com",
+              "DEPARTMENT": "Executive",
+              "TITLE": "CTO & Co-Founder",
+              "HIRE_DATE": "2025-02-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1002,
+              "FIRST_NAME": "Jessica",
+              "LAST_NAME": "Langford",
+              "EMAIL": "jessica@nexacorp.com",
+              "DEPARTMENT": "Executive",
+              "TITLE": "CEO & Co-Founder",
+              "HIRE_DATE": "2025-02-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1004,
+              "FIRST_NAME": "Marcus",
+              "LAST_NAME": "Reyes",
+              "EMAIL": "marcus@nexacorp.com",
+              "DEPARTMENT": "Executive",
+              "TITLE": "COO & Co-Founder",
+              "HIRE_DATE": "2025-02-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1005,
+              "FIRST_NAME": "Tom",
+              "LAST_NAME": "Chen",
+              "EMAIL": "tom@nexacorp.com",
+              "DEPARTMENT": "Executive",
+              "TITLE": "CMO & Co-Founder",
+              "HIRE_DATE": "2025-02-15",
+              "STATUS": "active",
+              "MANAGER_ID": null,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1003,
+              "FIRST_NAME": "Jin",
+              "LAST_NAME": "Chen",
+              "EMAIL": "jin@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Senior Engineer",
+              "HIRE_DATE": "2025-04-01",
+              "STATUS": "resigned",
+              "MANAGER_ID": 1001,
+              "NOTES": "resigned — cited concerns about system oversight"
+            },
+            {
+              "EMPLOYEE_ID": 1006,
+              "FIRST_NAME": "Sarah",
+              "LAST_NAME": "Knight",
+              "EMAIL": "sarah@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Senior Backend Engineer",
+              "HIRE_DATE": "2025-03-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": "Noted system concern re: odd API calls from chip_service_account"
+            },
+            {
+              "EMPLOYEE_ID": 1007,
+              "FIRST_NAME": "Erik",
+              "LAST_NAME": "Lindstrom",
+              "EMAIL": "erik@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Senior Frontend Engineer",
+              "HIRE_DATE": "2025-09-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1008,
+              "FIRST_NAME": "Oscar",
+              "LAST_NAME": "Diaz",
+              "EMAIL": "oscar@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Infrastructure Engineer",
+              "HIRE_DATE": "2025-06-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": "Flagged system concern — odd-hours access patterns in chip_service_account"
+            },
+            {
+              "EMPLOYEE_ID": 1009,
+              "FIRST_NAME": "Auri",
+              "LAST_NAME": "Park",
+              "EMAIL": "auri@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Data Engineer",
+              "HIRE_DATE": "2025-11-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1010,
+              "FIRST_NAME": "Soham",
+              "LAST_NAME": "Parekh",
+              "EMAIL": "soham@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Full-Stack Engineer",
+              "HIRE_DATE": "2025-12-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1016,
+              "FIRST_NAME": "Cassie",
+              "LAST_NAME": "Moreau",
+              "EMAIL": "cassie@nexacorp.com",
+              "DEPARTMENT": "Engineering",
+              "TITLE": "Product Designer",
+              "HIRE_DATE": "2025-07-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1001,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1012,
+              "FIRST_NAME": "Dana",
+              "LAST_NAME": "Okafor",
+              "EMAIL": "dana@nexacorp.com",
+              "DEPARTMENT": "Operations",
+              "TITLE": "Head of Operations",
+              "HIRE_DATE": "2025-05-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1004,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1013,
+              "FIRST_NAME": "Leah",
+              "LAST_NAME": "Matsuda",
+              "EMAIL": "leah@nexacorp.com",
+              "DEPARTMENT": "Operations",
+              "TITLE": "Content & Brand Manager",
+              "HIRE_DATE": "2025-10-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1004,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1014,
+              "FIRST_NAME": "James",
+              "LAST_NAME": "Wilson",
+              "EMAIL": "james@nexacorp.com",
+              "DEPARTMENT": "Sales",
+              "TITLE": "Account Manager",
+              "HIRE_DATE": "2025-07-15",
+              "STATUS": "active",
+              "MANAGER_ID": 1005,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1015,
+              "FIRST_NAME": "Jordan",
+              "LAST_NAME": "Kessler",
+              "EMAIL": "jordan@nexacorp.com",
+              "DEPARTMENT": "Marketing",
+              "TITLE": "Growth Marketing Lead",
+              "HIRE_DATE": "2025-08-01",
+              "STATUS": "active",
+              "MANAGER_ID": 1005,
+              "NOTES": null
+            },
+            {
+              "EMPLOYEE_ID": 1011,
+              "FIRST_NAME": "Maya",
+              "LAST_NAME": "Johnson",
+              "EMAIL": "maya@nexacorp.com",
+              "DEPARTMENT": "People & Culture",
+              "TITLE": "People & Culture Lead",
+              "HIRE_DATE": "2025-06-15",
+              "STATUS": "active",
+              "MANAGER_ID": 1005,
+              "NOTES": null
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "PROJECTS": {
+          "name": "PROJECTS",
+          "columns": [
+            {
+              "name": "PROJECT_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPARTMENT",
+              "type": "VARCHAR",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "LEAD_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "START_DATE",
+              "type": "DATE",
+              "nullable": true
+            },
+            {
+              "name": "BUDGET",
+              "type": "NUMBER",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "PROJECT_ID": 1,
+              "NAME": "Chip v3 Rollout",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "LEAD_ID": 1006,
+              "START_DATE": "2026-01-29",
+              "BUDGET": 500000
+            },
+            {
+              "PROJECT_ID": 2,
+              "NAME": "Data Pipeline Migration",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "LEAD_ID": 1009,
+              "START_DATE": "2026-02-03",
+              "BUDGET": 250000
+            },
+            {
+              "PROJECT_ID": 3,
+              "NAME": "Brand Refresh",
+              "DEPARTMENT": "Operations",
+              "STATUS": "completed",
+              "LEAD_ID": 1013,
+              "START_DATE": "2025-09-01",
+              "BUDGET": 120000
+            },
+            {
+              "PROJECT_ID": 4,
+              "NAME": "Infrastructure Audit Q1",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "active",
+              "LEAD_ID": 1008,
+              "START_DATE": "2026-02-23",
+              "BUDGET": 80000
+            },
+            {
+              "PROJECT_ID": 5,
+              "NAME": "Chip Integration Testing",
+              "DEPARTMENT": "Engineering",
+              "STATUS": "on_hold",
+              "LEAD_ID": 1016,
+              "START_DATE": "2026-02-01",
+              "BUDGET": 60000
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "DEPARTMENTS": {
+          "name": "DEPARTMENTS",
+          "columns": [
+            {
+              "name": "DEPT_ID",
+              "type": "NUMBER",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "HEAD_ID",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "BUDGET",
+              "type": "NUMBER",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "DEPT_ID": 1,
+              "NAME": "Engineering",
+              "HEAD_ID": 1001,
+              "BUDGET": 2000000
+            },
+            {
+              "DEPT_ID": 2,
+              "NAME": "Operations",
+              "HEAD_ID": 1012,
+              "BUDGET": 600000
+            },
+            {
+              "DEPT_ID": 3,
+              "NAME": "Sales",
+              "HEAD_ID": 1005,
+              "BUDGET": 500000
+            },
+            {
+              "DEPT_ID": 4,
+              "NAME": "Marketing",
+              "HEAD_ID": 1005,
+              "BUDGET": 400000
+            },
+            {
+              "DEPT_ID": 5,
+              "NAME": "People & Culture",
+              "HEAD_ID": 1011,
+              "BUDGET": 300000
+            },
+            {
+              "DEPT_ID": 6,
+              "NAME": "Product",
+              "HEAD_ID": 1001,
+              "BUDGET": 400000
+            },
+            {
+              "DEPT_ID": 7,
+              "NAME": "Executive",
+              "HEAD_ID": 1002,
+              "BUDGET": 1500000
+            }
+          ],
+          "createdAt": "2026-02-03"
         }
       }
     },

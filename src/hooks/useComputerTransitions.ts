@@ -10,6 +10,7 @@ import { getEmailDefinitions } from "../engine/mail/emails";
 import { seedImmediatePiper, checkPiperDeliveries } from "../engine/piper/delivery";
 import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
+import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
 import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, coderBanner, getHomeWelcome, UNLOCK_BOX } from "../lib/ascii";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
@@ -45,9 +46,16 @@ export function useComputerTransitions(deps: TransitionDeps) {
             s.setCurrentChapter("chapter-2");
           }
 
+          // On Day 2, rebuild SnowflakeState with extended data
+          if (s.storyFlags.day1_shutdown) {
+            const newSfState = createInitialSnowflakeState({ includeDay2: true });
+            s.setSnowflakeState(newSfState);
+          }
+
           // Build NexaCorp filesystem directly and init computer state
           const nexaFs = buildFs(username, "nexacorp", s.storyFlags, s.deliveredEmailIds);
-          const finalFs = syncToVirtualFS(s.snowflakeState, nexaFs);
+          const sfState = useGameStore.getState().snowflakeState;
+          const finalFs = syncToVirtualFS(sfState, nexaFs);
           s.initComputer("nexacorp", finalFs);
           const newCwd = finalFs.cwd;
 

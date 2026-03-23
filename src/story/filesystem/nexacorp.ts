@@ -2,7 +2,7 @@ import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
 import { getNexacorpEmailDefinitions } from "../emails/nexacorp";
 import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { StoryFlags, PLAYER } from "../../state/types";
-import { generateSystemLog, generateSystemLogBak, generateAccessLog } from "./logs";
+import { generateSystemLog, generateSystemLogBak, generateAccessLog, generateAuthLog, generateAuthLogBak, generateChipActivityLog, LogOptions } from "./logs";
 import { file, binaryFile, dir } from "../../engine/filesystem/builders";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
@@ -111,6 +111,12 @@ sources:
         description: "IT support ticket tracking"
       - name: CAMPAIGN_METRICS
         description: "Marketing campaign performance data"
+      - name: EMPLOYEE_DIRECTORY
+        description: "Detailed employee directory with titles and managers"
+      - name: PROJECTS
+        description: "Active and completed project tracking"
+      - name: DEPARTMENTS
+        description: "Department structure and budgets"
 `),
         "_staging__models.yml": file("_staging__models.yml", `version: 2
 
@@ -167,6 +173,30 @@ models:
     columns:
       - name: campaign_id
         tests:
+          - not_null
+
+  - name: stg_raw_nexacorp__employee_directory
+    description: "Standardized employee directory with titles and managers"
+    columns:
+      - name: employee_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_raw_nexacorp__projects
+    description: "Standardized project tracking data"
+    columns:
+      - name: project_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_raw_nexacorp__departments
+    description: "Standardized department structure"
+    columns:
+      - name: dept_id
+        tests:
+          - unique
           - not_null
 `),
         "stg_raw_nexacorp__employees.sql": file("stg_raw_nexacorp__employees.sql", `-- stg_raw_nexacorp__employees.sql
@@ -263,6 +293,45 @@ select
     spend,
     report_date
 from {{ source('raw_nexacorp', 'CAMPAIGN_METRICS') }}
+`),
+        "stg_raw_nexacorp__employee_directory.sql": file("stg_raw_nexacorp__employee_directory.sql", `-- stg_raw_nexacorp__employee_directory.sql
+-- Standardize employee directory with titles and managers
+
+select
+    employee_id,
+    first_name,
+    last_name,
+    email,
+    department,
+    title,
+    hire_date,
+    status,
+    manager_id,
+    notes
+from {{ source('raw_nexacorp', 'EMPLOYEE_DIRECTORY') }}
+`),
+        "stg_raw_nexacorp__projects.sql": file("stg_raw_nexacorp__projects.sql", `-- stg_raw_nexacorp__projects.sql
+-- Standardize project tracking data
+
+select
+    project_id,
+    name,
+    department,
+    status,
+    lead_id,
+    start_date,
+    budget
+from {{ source('raw_nexacorp', 'PROJECTS') }}
+`),
+        "stg_raw_nexacorp__departments.sql": file("stg_raw_nexacorp__departments.sql", `-- stg_raw_nexacorp__departments.sql
+-- Standardize department structure
+
+select
+    dept_id,
+    name,
+    head_id,
+    budget
+from {{ source('raw_nexacorp', 'DEPARTMENTS') }}
 `),
       }),
       intermediate: dir("intermediate", {
@@ -670,6 +739,7 @@ inactive,Inactive,false
 
 export function createNexacorpFilesystem(username: string, storyFlags: StoryFlags = {}): DirectoryNode {
   const overBudget = !!storyFlags.accepted_at_180k;
+  const logOpts: LogOptions = { includeDay2: !!storyFlags.day1_shutdown };
 
   return dir("/", {
   home: dir("home", {
@@ -897,29 +967,12 @@ PEOPLE & CULTURE
       }),
     }),
     log: dir("log", {
-      "system.log": file("system.log", generateSystemLog(username)),
-      "chip-activity.log": file("chip-activity.log", `[2026-02-23 08:00:03] Chip service started
-[2026-02-23 08:00:04] Routine maintenance: OK
-[2026-02-23 08:00:04] Log rotation: OK
-[2026-02-23 08:00:05] Monitoring: all systems nominal
-[2026-02-23 08:12:45] New user detected: ${username}
-[2026-02-23 08:12:45] Deploying onboarding materials...
-[2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!
-`),
-      "system.log.bak": file("system.log.bak", generateSystemLogBak(username)),
-      "auth.log": file("auth.log", `[2026-02-23 07:15:22] sshd[1048]: Accepted publickey for edward from 10.0.1.10 port 59211 ssh2: RSA SHA256:...
-[2026-02-23 07:15:22] systemd-logind[888]: New session 3 of user edward.
-[2026-02-23 08:12:44] sshd[1049]: Accepted publickey for ${username} from 10.0.1.25 port 51234 ssh2: RSA SHA256:...
-[2026-02-23 08:12:44] systemd-logind[888]: New session 4 of user ${username}.
-`),
-      "auth.log.bak": file("auth.log.bak", `[2026-02-03 01:17:33] chip_service_account: accessing /home/jchen/ (read)
-[2026-02-03 01:17:34] chip_service_account: file read /home/jchen/.zsh_history
-[2026-02-03 01:17:35] chip_service_account: file read /home/jchen/projects/chip-audit/notes.md
-[2026-02-03 03:22:17] chip_service_account: modifying dbt models
-[2026-02-03 03:22:18] chip_service_account: updating fct_system_events.sql — added event_type filter
-[2026-02-03 03:22:18] chip_service_account: updating fct_support_tickets.sql — added resolved_by filter
-`),
-      "access.log": file("access.log", generateAccessLog()),
+      "system.log": file("system.log", generateSystemLog(username, logOpts)),
+      "chip-activity.log": file("chip-activity.log", generateChipActivityLog(username, logOpts)),
+      "system.log.bak": file("system.log.bak", generateSystemLogBak(username, logOpts)),
+      "auth.log": file("auth.log", generateAuthLog(username, logOpts)),
+      "auth.log.bak": file("auth.log.bak", generateAuthLogBak(username, logOpts)),
+      "access.log": file("access.log", generateAccessLog(logOpts)),
     }),
   }),
   etc: dir("etc", {

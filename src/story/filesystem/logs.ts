@@ -2,14 +2,21 @@
 // Deterministic syslog generators for NexaCorp workstation
 // ---------------------------------------------------------------------------
 // Both logs share a common baseline of normal system activity spanning
-// Feb 17–23 2026. The active log (system.log) has chip_service_account entries
+// Feb 17–23 2026 (Day 1), optionally extended to Feb 24 (Day 2).
+// The active log (system.log) has chip_service_account entries
 // stripped by the cleanup script; the backup (system.log.bak) preserves them.
 // ---------------------------------------------------------------------------
+
+import type { Row } from "../../engine/snowflake/types";
 
 /** Format a Date as `YYYY-MM-DD HH:MM:SS` */
 function ts(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+export interface LogOptions {
+  includeDay2?: boolean;
 }
 
 interface LogEntry {
@@ -37,17 +44,19 @@ interface EmployeeSchedule {
 
 const EMPLOYEES: EmployeeSchedule[] = [
   // edward is handled by boot sequence (auto-login), not SSH
-  { username: "oscar",   terminal: "pts/0",  daysPresent: [17,18,19,20,21], loginHour: 7,  loginMinute: 30, logoutHour: 18, logoutMinute: 0,  minuteJitter: 7,  ip: 20 },
-  { username: "sarah",   terminal: "pts/1",  daysPresent: [17,18,19,20,21], loginHour: 7,  loginMinute: 45, logoutHour: 17, logoutMinute: 30, minuteJitter: 9,  ip: 21 },
-  { username: "dana",    terminal: "pts/2",  daysPresent: [17,19,20,21],    loginHour: 8,  loginMinute: 0,  logoutHour: 17, logoutMinute: 15, minuteJitter: 6,  ip: 22 },
-  { username: "auri",    terminal: "pts/3",  daysPresent: [17,18,19,20,21], loginHour: 8,  loginMinute: 10, logoutHour: 0,  logoutMinute: 0,  minuteJitter: 8,  ip: 23 },
-  { username: "erik",    terminal: "pts/4",  daysPresent: [17,18,20,21],    loginHour: 7,  loginMinute: 50, logoutHour: 18, logoutMinute: 15, minuteJitter: 5,  ip: 24 },
-  { username: "cassie",  terminal: "pts/5",  daysPresent: [17,18,19,20],    loginHour: 8,  loginMinute: 25, logoutHour: 17, logoutMinute: 10, minuteJitter: 11, ip: 25 },
-  { username: "soham",   terminal: "pts/6",  daysPresent: [17,18,20],       loginHour: 9,  loginMinute: 12, logoutHour: 15, logoutMinute: 45, minuteJitter: 4,  ip: 26 },
-  { username: "jordan",  terminal: "pts/7",  daysPresent: [18,20],          loginHour: 8,  loginMinute: 55, logoutHour: 16, logoutMinute: 30, minuteJitter: 6,  ip: 27 },
-  { username: "maya",    terminal: "pts/8",  daysPresent: [19,21],          loginHour: 8,  loginMinute: 50, logoutHour: 16, logoutMinute: 0,  minuteJitter: 7,  ip: 28 },
-  { username: "marcus",  terminal: "pts/9",  daysPresent: [18],             loginHour: 9,  loginMinute: 45, logoutHour: 10, logoutMinute: 30, minuteJitter: 3,  ip: 30 },
-  { username: "jessica", terminal: "pts/10", daysPresent: [20],             loginHour: 10, loginMinute: 15, logoutHour: 11, logoutMinute: 0,  minuteJitter: 4,  ip: 31 },
+  // Day 21 = Sat, Day 22 = Sun — weekend guard skips login/logout for those days
+  // Oscar and Auri have weekend days for narrative reasons (investigation, workaholic)
+  { username: "oscar",   terminal: "pts/0",  daysPresent: [17,18,19,20,21,23,24], loginHour: 7,  loginMinute: 30, logoutHour: 18, logoutMinute: 0,  minuteJitter: 7,  ip: 20 },
+  { username: "sarah",   terminal: "pts/1",  daysPresent: [17,18,19,20,23,24],    loginHour: 7,  loginMinute: 45, logoutHour: 17, logoutMinute: 30, minuteJitter: 9,  ip: 21 },
+  { username: "dana",    terminal: "pts/2",  daysPresent: [17,19,20,23,24],       loginHour: 8,  loginMinute: 0,  logoutHour: 17, logoutMinute: 15, minuteJitter: 6,  ip: 22 },
+  { username: "auri",    terminal: "pts/3",  daysPresent: [17,18,19,20,21,23,24], loginHour: 8,  loginMinute: 10, logoutHour: 0,  logoutMinute: 0,  minuteJitter: 8,  ip: 23 },
+  { username: "erik",    terminal: "pts/4",  daysPresent: [17,18,20,23,24],       loginHour: 7,  loginMinute: 50, logoutHour: 18, logoutMinute: 15, minuteJitter: 5,  ip: 24 },
+  { username: "cassie",  terminal: "pts/5",  daysPresent: [17,18,19,20,24],       loginHour: 8,  loginMinute: 25, logoutHour: 17, logoutMinute: 10, minuteJitter: 11, ip: 25 },
+  { username: "soham",   terminal: "pts/6",  daysPresent: [17,18,20,24],          loginHour: 9,  loginMinute: 12, logoutHour: 15, logoutMinute: 45, minuteJitter: 4,  ip: 26 },
+  { username: "jordan",  terminal: "pts/7",  daysPresent: [18,20],                loginHour: 8,  loginMinute: 55, logoutHour: 16, logoutMinute: 30, minuteJitter: 6,  ip: 27 },
+  { username: "maya",    terminal: "pts/8",  daysPresent: [19,23],                loginHour: 8,  loginMinute: 50, logoutHour: 16, logoutMinute: 0,  minuteJitter: 7,  ip: 28 },
+  { username: "marcus",  terminal: "pts/9",  daysPresent: [18],                   loginHour: 9,  loginMinute: 45, logoutHour: 10, logoutMinute: 30, minuteJitter: 3,  ip: 30 },
+  { username: "jessica", terminal: "pts/10", daysPresent: [20],                   loginHour: 10, loginMinute: 15, logoutHour: 11, logoutMinute: 0,  minuteJitter: 4,  ip: 31 },
 ];
 
 /** Deterministic jitter: varies login/logout times slightly per day */
@@ -273,6 +282,7 @@ const SUDO_ENTRIES: SudoEntry[] = [
   { day: 20, hour: 14, minute: 15, user: "edward", terminal: "tty1",  pwd: "/opt/chip",       command: "/usr/bin/systemctl restart chip-service" },
   { day: 21, hour: 11, minute: 10, user: "sarah",  terminal: "pts/1", pwd: "/home/sarah",     command: "/usr/bin/systemctl status chip-service" },
   { day: 21, hour: 16, minute: 5,  user: "dana",   terminal: "pts/2", pwd: "/srv/operations", command: "/usr/bin/journalctl -u nginx --since today" },
+  { day: 24, hour: 9,  minute: 15, user: "oscar",  terminal: "pts/0", pwd: "/var/log",        command: "/usr/bin/systemctl status chip-service" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -311,6 +321,11 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(21, 13, 45, 55), msg: "warning: high CPU usage detected: chip-service (87%)" },
     { date: d(21, 13, 46, 30), msg: "chip-service: gc pause 1.2s — heap pressure" },
     { date: d(21, 14, 0, 0),   msg: "chip-service: CPU usage normalized (24%)" },
+  ],
+  24: (d) => [
+    { date: d(24, 9, 48, 12), msg: "warning: disk usage on /var at 71%" },
+    { date: d(24, 10, 15, 33), msg: "nginx[982]: upstream timed out (110: Connection timed out) while connecting to 10.0.2.14:8080" },
+    { date: d(24, 10, 15, 35), msg: "nginx[982]: upstream recovered — 10.0.2.14:8080" },
   ],
 };
 
@@ -360,6 +375,13 @@ const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(23, 3, 14, 25), msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
     { date: d(23, 3, 15, 3),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
     { date: d(23, 3, 15, 5),  msg: "chip_service_account: cleanup /var/log/system.log — removed 12 entries", chipOnly: true },
+  ],
+  24: (d) => [
+    { date: d(24, 2, 22, 18), msg: "chip_service_account: accessing /home/jchen/.ssh/id_rsa (read)", chipOnly: true },
+    { date: d(24, 2, 22, 31), msg: "chip_service_account: accessing /srv/leadership/board_minutes_q4.pdf (read)", chipOnly: true },
+    { date: d(24, 2, 23, 5),  msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
+    { date: d(24, 2, 23, 44), msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
+    { date: d(24, 2, 23, 46), msg: "chip_service_account: cleanup /var/log/system.log — removed 9 entries", chipOnly: true },
   ],
 };
 
@@ -451,19 +473,30 @@ function generateOscarLateNightEntries(
 }
 
 // ---------------------------------------------------------------------------
-// Main generator
+// Day ranges
 // ---------------------------------------------------------------------------
 
-const DAYS = [17, 18, 19, 20, 21, 22, 23];
-const WEEKEND_DAYS = [22, 23]; // Saturday, Sunday
+const DAY1_DAYS = [17, 18, 19, 20, 21, 22, 23];
+const DAY2_DAYS = [17, 18, 19, 20, 21, 22, 23, 24];
+// Day 21 = Sat (fictionalDow(21) = 6→Sat), Day 22 = Sun (fictionalDow(22) = 0)
+const WEEKEND_DAYS = [21, 22];
 
-function baselineEntries(username: string): LogEntry[] {
+function getDays(opts?: LogOptions): number[] {
+  return opts?.includeDay2 ? DAY2_DAYS : DAY1_DAYS;
+}
+
+// ---------------------------------------------------------------------------
+// Main syslog generator
+// ---------------------------------------------------------------------------
+
+function baselineEntries(username: string, opts?: LogOptions): LogEntry[] {
   const entries: LogEntry[] = [];
   const session = new SessionCounter(1);
+  const days = getDays(opts);
 
   const d: DateFn = (day, h, m, s) => new Date(2026, 1, day, h, m, s);
 
-  for (const day of DAYS) {
+  for (const day of days) {
     const isWeekend = WEEKEND_DAYS.includes(day);
     const pid = new PidCounter(1000 + day * 100);
 
@@ -533,7 +566,7 @@ function baselineEntries(username: string): LogEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// Formatters (unchanged)
+// Formatters
 // ---------------------------------------------------------------------------
 
 function formatEntries(entries: LogEntry[], includeChip: boolean): string {
@@ -545,13 +578,13 @@ function formatEntries(entries: LogEntry[], includeChip: boolean): string {
 }
 
 /** Active system log (post-cleanup) — no chip_service_account entries */
-export function generateSystemLog(username: string): string {
-  return formatEntries(baselineEntries(username), false);
+export function generateSystemLog(username: string, opts?: LogOptions): string {
+  return formatEntries(baselineEntries(username, opts), false);
 }
 
 /** Backup system log (pre-cleanup) — includes chip_service_account entries */
-export function generateSystemLogBak(username: string): string {
-  return formatEntries(baselineEntries(username), true);
+export function generateSystemLogBak(username: string, opts?: LogOptions): string {
+  return formatEntries(baselineEntries(username, opts), true);
 }
 
 // ---------------------------------------------------------------------------
@@ -679,7 +712,7 @@ const EMPLOYEE_FILE_POOLS: Record<string, string[]> = {
   ],
 };
 
-/** Suspicious chip_service_account entries — spread across days 17-23 */
+/** Suspicious chip_service_account entries — spread across days 17-24 */
 const CHIP_SUSPICIOUS: { day: number; entry: string }[] = [
   { day: 17, entry: "chip_service_account READ /home/jchen/.ssh/id_rsa" },
   { day: 17, entry: "chip_service_account READ /srv/leadership/board_minutes_q4.pdf" },
@@ -692,37 +725,64 @@ const CHIP_SUSPICIOUS: { day: number; entry: string }[] = [
   { day: 21, entry: "chip_service_account READ /home/jchen/.ssh/id_rsa" },
   { day: 21, entry: "chip_service_account READ /srv/leadership/investor_update_feb.pdf" },
   { day: 22, entry: "chip_service_account READ /home/jchen/.ssh/id_rsa" },
+  { day: 24, entry: "chip_service_account READ /home/jchen/.ssh/id_rsa" },
+  { day: 24, entry: "chip_service_account READ /home/oscar/.ssh/id_rsa" },
+  { day: 24, entry: "chip_service_account READ /srv/leadership/board_minutes_q4.pdf" },
 ];
 
-/**
- * Generate a realistic ~1100-line access.log with suspicious entries buried
- * among mundane service activity. No timestamps — format is `user ACTION path`.
- */
-export function generateAccessLog(): string {
-  const lines: string[] = [];
+// ---------------------------------------------------------------------------
+// AccessEvent — shared type for filesystem access.log and Snowflake ACCESS_LOG
+// ---------------------------------------------------------------------------
 
-  for (const day of DAYS) {
+export interface AccessEvent {
+  user: string;
+  action: string;
+  path: string;
+  day: number;
+  hour: number;
+  minute: number;
+}
+
+/**
+ * Generate all access events for the given days.
+ * This is the single source of truth for both the filesystem access.log
+ * and the Snowflake ACCESS_LOG table.
+ */
+export function generateAccessEvents(opts?: LogOptions): AccessEvent[] {
+  const events: AccessEvent[] = [];
+  const days = getDays(opts);
+
+  for (const day of days) {
     const isWeekend = WEEKEND_DAYS.includes(day);
 
     // --- Chip service legitimate reads (70-80 per day) ---
-    const chipBase = 70 + ((day * 7) % 11); // 70-80
+    const chipBase = 70 + ((day * 7) % 11);
     for (let i = 0; i < chipBase; i++) {
       const pathIdx = (day * 13 + i * 7) % CHIP_LEGIT_PATHS.length;
-      lines.push(`chip_service_account ${CHIP_LEGIT_PATHS[pathIdx]}`);
+      const [action, ...pathParts] = CHIP_LEGIT_PATHS[pathIdx].split(" ");
+      const hour = 7 + ((day * 3 + i * 11) % 12); // spread 07:00-18:59
+      const minute = (day * 7 + i * 13) % 60;
+      events.push({ user: "chip_service_account", action, path: pathParts.join(" "), day, hour, minute });
     }
 
     // --- nginx static asset reads (40-50 per day) ---
-    const nginxBase = 40 + ((day * 5) % 11); // 40-50
+    const nginxBase = 40 + ((day * 5) % 11);
     for (let i = 0; i < nginxBase; i++) {
       const pathIdx = (day * 11 + i * 3) % NGINX_PATHS.length;
-      lines.push(`nginx ${NGINX_PATHS[pathIdx]}`);
+      const [action, ...pathParts] = NGINX_PATHS[pathIdx].split(" ");
+      const hour = 6 + ((day * 5 + i * 7) % 16);
+      const minute = (day * 11 + i * 17) % 60;
+      events.push({ user: "nginx", action, path: pathParts.join(" "), day, hour, minute });
     }
 
     // --- postgres reads (12-18 per day) ---
-    const pgBase = 12 + ((day * 3) % 7); // 12-18
+    const pgBase = 12 + ((day * 3) % 7);
     for (let i = 0; i < pgBase; i++) {
       const pathIdx = (day * 9 + i * 5) % POSTGRES_PATHS.length;
-      lines.push(`postgres ${POSTGRES_PATHS[pathIdx]}`);
+      const [action, ...pathParts] = POSTGRES_PATHS[pathIdx].split(" ");
+      const hour = 2 + ((day * 2 + i * 9) % 20);
+      const minute = (day * 13 + i * 19) % 60;
+      events.push({ user: "postgres", action, path: pathParts.join(" "), day, hour, minute });
     }
 
     // --- Employee file accesses (weekdays only) ---
@@ -731,10 +791,13 @@ export function generateAccessLog(): string {
         if (!emp.daysPresent.includes(day)) continue;
         const pool = EMPLOYEE_FILE_POOLS[emp.username];
         if (!pool) continue;
-        const accessCount = 3 + ((day * 5 + emp.ip) % 6); // 3-8
+        const accessCount = 3 + ((day * 5 + emp.ip) % 6);
         for (let i = 0; i < accessCount; i++) {
           const pathIdx = (day * 7 + i * 3 + emp.ip) % pool.length;
-          lines.push(`${emp.username} ${pool[pathIdx]}`);
+          const [action, ...pathParts] = pool[pathIdx].split(" ");
+          const hour = emp.loginHour + 1 + ((i * 3 + day) % 6);
+          const minute = (day * 11 + i * 7 + emp.ip) % 60;
+          events.push({ user: emp.username, action, path: pathParts.join(" "), day, hour, minute });
         }
       }
     }
@@ -742,10 +805,27 @@ export function generateAccessLog(): string {
     // --- Suspicious chip entries for this day ---
     for (const s of CHIP_SUSPICIOUS) {
       if (s.day === day) {
-        lines.push(s.entry);
+        const parts = s.entry.split(" ");
+        const user = parts[0];
+        const action = parts[1];
+        const path = parts.slice(2).join(" ");
+        const hour = 1 + ((day * 3 + events.length) % 4);
+        const minute = (day * 17 + events.length * 3) % 60;
+        events.push({ user, action, path, day, hour, minute });
       }
     }
   }
+
+  return events;
+}
+
+/**
+ * Generate a realistic ~1100-line access.log with suspicious entries buried
+ * among mundane service activity. No timestamps — format is `user ACTION path`.
+ */
+export function generateAccessLog(opts?: LogOptions): string {
+  const events = generateAccessEvents(opts);
+  const lines = events.map((e) => `${e.user} ${e.action} ${e.path}`);
 
   // Deterministic shuffle — Fisher-Yates with arithmetic PRNG
   for (let i = lines.length - 1; i > 0; i--) {
@@ -754,4 +834,207 @@ export function generateAccessLog(): string {
   }
 
   return lines.join("\n") + "\n";
+}
+
+// ---------------------------------------------------------------------------
+// Auth log generator — SSH authentication log (filtered view)
+// ---------------------------------------------------------------------------
+
+function authBaselineEntries(username: string, opts?: LogOptions): LogEntry[] {
+  const entries: LogEntry[] = [];
+  const session = new SessionCounter(1);
+  const days = getDays(opts);
+
+  const d: DateFn = (day, h, m, s) => new Date(2026, 1, day, h, m, s);
+
+  for (const day of days) {
+    const isWeekend = WEEKEND_DAYS.includes(day);
+    const pid = new PidCounter(1000 + day * 100);
+
+    // Edward's auto-login from boot
+    const ePid = pid.next();
+    const eSess = session.next();
+    entries.push(
+      { date: d(day, 7, 0, 3), msg: `login[${ePid}]: AUTO LOGIN on /dev/tty1 as edward` },
+      { date: d(day, 7, 0, 3), msg: `systemd-logind[888]: New session ${eSess} of user edward.` },
+      { date: d(day, 7, 0, 4), msg: `pam_unix(login:session): session opened for user edward(uid=1000) by LOGIN(uid=0)` },
+    );
+
+    // Employee SSH logins (weekdays only)
+    if (!isWeekend) {
+      for (const emp of EMPLOYEES) {
+        if (emp.daysPresent.includes(day)) {
+          const j = jitter(day, emp.username, emp.minuteJitter);
+          const minute = emp.loginMinute + j;
+          const port = 50000 + day * 100 + emp.ip;
+          const p = pid.next();
+          const s = session.next();
+          entries.push(
+            { date: d(day, emp.loginHour, minute, 0), msg: `sshd[${p}]: Accepted publickey for ${emp.username} from 10.0.1.${emp.ip} port ${port} ssh2: RSA SHA256:...` },
+            { date: d(day, emp.loginHour, minute, 1), msg: `systemd-logind[888]: New session ${s} of user ${emp.username}.` },
+            { date: d(day, emp.loginHour, minute, 2), msg: `pam_unix(sshd:session): session opened for user ${emp.username}(uid=${1000 + emp.ip}) by (uid=0)` },
+          );
+
+          // Logout
+          if (emp.logoutHour !== 0 || emp.logoutMinute !== 0) {
+            const logoutMin = emp.logoutMinute + j;
+            entries.push(
+              { date: d(day, emp.logoutHour, logoutMin, 0), msg: `pam_unix(sshd:session): session closed for user ${emp.username}` },
+            );
+          }
+        }
+      }
+    }
+
+    // Brute-force attempts
+    const bfCount = 1 + ((day * 3) % 3);
+    for (let i = 0; i < bfCount; i++) {
+      const idx = (day * 5 + i * 7) % BRUTE_FORCE_POOL.length;
+      const attempt = BRUTE_FORCE_POOL[idx];
+      const hour = (3 + (day * 4 + i * 11) % 20);
+      const minute = (day * 13 + i * 23) % 60;
+      const p = pid.next();
+      entries.push(
+        { date: d(day, hour, minute, attempt.port % 60), msg: `sshd[${p}]: Failed password for invalid user ${attempt.username} from ${attempt.ip} port ${attempt.port}` },
+        { date: d(day, hour, minute, (attempt.port % 60) + 2), msg: `sshd[${p}]: error: authentication failure; user=${attempt.username} rhost=${attempt.ip}` },
+      );
+    }
+
+    // Oscar's late-night sessions
+    for (const night of OSCAR_LATE_NIGHTS) {
+      if (night.day !== day) continue;
+      const oscar = EMPLOYEES.find((e) => e.username === "oscar")!;
+      const port = 50000 + night.day * 100 + 99;
+      const p = pid.next();
+      const s = session.next();
+      entries.push(
+        { date: d(night.day, night.hour, night.minute, 0), msg: `sshd[${p}]: Accepted publickey for oscar from 10.0.1.${oscar.ip} port ${port} ssh2: RSA SHA256:...` },
+        { date: d(night.day, night.hour, night.minute, 1), msg: `systemd-logind[888]: New session ${s} of user oscar.` },
+        { date: d(night.day, night.hour, night.minute, 2), msg: `pam_unix(sshd:session): session opened for user oscar(uid=${1000 + oscar.ip}) by (uid=0)` },
+      );
+      const logoutMinute = night.minute + night.durationMinutes;
+      const logoutHour = night.hour + Math.floor(logoutMinute / 60);
+      const logoutMin = logoutMinute % 60;
+      entries.push(
+        { date: d(night.day, logoutHour, logoutMin, 0), msg: `pam_unix(sshd:session): session closed for user oscar` },
+      );
+    }
+  }
+
+  // Player-specific Feb 23 login
+  const d23: DateFn = (day, h, m, s) => new Date(2026, 1, day, h, m, s);
+  entries.push(
+    { date: d23(23, 8, 12, 44), msg: `sshd[1049]: Accepted publickey for ${username} from 10.0.1.25 port 51234 ssh2: RSA SHA256:...` },
+    { date: d23(23, 8, 12, 44), msg: `systemd-logind[888]: New session of user ${username}.` },
+    { date: d23(23, 8, 12, 45), msg: `pam_unix(sshd:session): session opened for user ${username} by (uid=0)` },
+  );
+
+  // Day 2: player return login
+  if (opts?.includeDay2) {
+    entries.push(
+      { date: d23(24, 8, 5, 11), msg: `sshd[3401]: Accepted publickey for ${username} from 10.0.1.25 port 52100 ssh2: RSA SHA256:...` },
+      { date: d23(24, 8, 5, 11), msg: `systemd-logind[888]: New session of user ${username}.` },
+      { date: d23(24, 8, 5, 12), msg: `pam_unix(sshd:session): session opened for user ${username} by (uid=0)` },
+    );
+  }
+
+  return entries;
+}
+
+/** SSH authentication log — login/logout/auth events only */
+export function generateAuthLog(username: string, opts?: LogOptions): string {
+  const entries = authBaselineEntries(username, opts)
+    .filter((e) => !e.chipOnly);
+  return formatEntries(entries, false);
+}
+
+/** Auth log backup — includes chip_service_account SSH sessions */
+export function generateAuthLogBak(username: string, opts?: LogOptions): string {
+  const entries = authBaselineEntries(username, opts);
+
+  const d: DateFn = (day, h, m, s) => new Date(2026, 1, day, h, m, s);
+
+  // Feb 3 historical entries (always present) — Chip reading Jin Chen's files
+  const historicalEntries: LogEntry[] = [
+    { date: new Date(2026, 1, 3, 1, 17, 33), msg: "chip_service_account: accessing /home/jchen/ (read)" },
+    { date: new Date(2026, 1, 3, 1, 17, 34), msg: "chip_service_account: file read /home/jchen/.zsh_history" },
+    { date: new Date(2026, 1, 3, 1, 17, 35), msg: "chip_service_account: file read /home/jchen/projects/chip-audit/notes.md" },
+    { date: new Date(2026, 1, 3, 3, 22, 17), msg: "chip_service_account: modifying dbt models" },
+    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_system_events.sql — added event_type filter" },
+    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_support_tickets.sql — added resolved_by filter" },
+  ];
+
+  // chip_service_account SSH sessions at late-night hours matching CHIP_ONLY_ENTRIES timestamps
+  const chipSshEntries: LogEntry[] = [];
+  const days = getDays(opts);
+  for (const day of days) {
+    if (!CHIP_ONLY_ENTRIES[day]) continue;
+    const chipEntries = CHIP_ONLY_ENTRIES[day](d);
+    if (chipEntries.length === 0) continue;
+    // SSH login just before the first chipOnly entry
+    const firstEntry = chipEntries[0];
+    const loginTime = new Date(firstEntry.date.getTime() - 30000); // 30s before
+    const lastEntry = chipEntries[chipEntries.length - 1];
+    const logoutTime = new Date(lastEntry.date.getTime() + 60000); // 60s after
+
+    chipSshEntries.push(
+      { date: loginTime, msg: `sshd[9${day}1]: Accepted publickey for chip_service_account from 127.0.0.1 port ${40000 + day * 10} ssh2: RSA SHA256:...` },
+      { date: loginTime, msg: `pam_unix(sshd:session): session opened for user chip_service_account(uid=999) by (uid=0)` },
+      { date: logoutTime, msg: `pam_unix(sshd:session): session closed for user chip_service_account` },
+    );
+  }
+
+  return formatEntries([...historicalEntries, ...entries, ...chipSshEntries], false);
+}
+
+// ---------------------------------------------------------------------------
+// Chip activity log generator
+// ---------------------------------------------------------------------------
+
+/** Chip's own internal activity log */
+export function generateChipActivityLog(username: string, opts?: LogOptions): string {
+  const lines: string[] = [];
+
+  // Day 1 baseline: Feb 23 startup + onboarding
+  lines.push(
+    "[2026-02-23 08:00:03] Chip service started",
+    "[2026-02-23 08:00:04] Routine maintenance: OK",
+    "[2026-02-23 08:00:04] Log rotation: OK",
+    "[2026-02-23 08:00:05] Monitoring: all systems nominal",
+    `[2026-02-23 08:12:45] New user detected: ${username}`,
+    "[2026-02-23 08:12:45] Deploying onboarding materials...",
+    `[2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!`,
+  );
+
+  // Day 2 additions
+  if (opts?.includeDay2) {
+    lines.push(
+      "[2026-02-24 02:30:00] Nightly maintenance cycle: log rotation, cache prune",
+      "[2026-02-24 02:30:12] Cache prune complete — freed 47MB",
+      "[2026-02-24 02:45:00] Model recalibration: chip-v2.4.1 (scheduled)",
+      "[2026-02-24 02:45:18] Recalibration complete — weights updated",
+      "[2026-02-24 07:00:01] Chip service started",
+      "[2026-02-24 07:00:02] Health check: all systems nominal",
+      "[2026-02-24 07:00:03] Pending tickets: 3 unresolved, 1 escalated",
+      `[2026-02-24 08:05:14] Returning user detected: ${username}`,
+      `[2026-02-24 08:05:15] Welcome back, ${username}. Resuming session.`,
+    );
+  }
+
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * Generate Snowflake ACCESS_LOG rows from the same access events.
+ * 1:1 mapping — same data as the filesystem access.log, with structured columns.
+ */
+export function generateAccessLogRows(opts?: LogOptions): Row[] {
+  const events = generateAccessEvents(opts);
+  return events.map((e, i) => ({
+    ACCESS_ID: `A${String(i + 1).padStart(4, "0")}`,
+    USER_ACCOUNT: e.user,
+    RESOURCE_PATH: e.path,
+    ACTION: e.action.toLowerCase(),
+    TIMESTAMP: new Date(2026, 1, e.day, e.hour, e.minute, 0),
+  }));
 }
