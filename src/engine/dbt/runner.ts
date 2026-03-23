@@ -1,14 +1,15 @@
 import { CommandContext, CommandResult, IncrementalLine } from "../commands/types";
-import { DbtDebugInfo, DbtRunSummary } from "./types";
-import { findDbtProject, parseProjectConfig, discoverModels, discoverResources } from "./project";
+import { DbtDebugInfo, DbtRunSummary, DbtTestResult, ModelRunResult } from "./types";
 import {
-  MODEL_RESULTS,
-  STANDARD_MODEL_ORDER,
-  CHIP_INTERNAL_MODELS,
-  TEST_RESULTS,
-  MODEL_PREVIEW_DATA,
-  COMPILED_SQL,
-} from "./data";
+  findDbtProject,
+  parseProjectConfig,
+  discoverModels,
+  discoverResources,
+  parseMaterializationConfig,
+  buildMaterializationMap,
+  parseGenericTests,
+} from "./project";
+import { STANDARD_MODEL_ORDER, CHIP_INTERNAL_MODELS } from "./data";
 import {
   formatRunHeader,
   formatModelRun,
@@ -19,7 +20,12 @@ import {
   formatCompiledSql,
 } from "./output";
 import { DBT_DEFAULT_LINE_DELAY_MS, jitterDelay } from "../../lib/timing";
-import { materializeModels } from "./materialize";
+import { parseSourceMap, parseMacros, compileSql, extractRefs } from "./compiler";
+import { executeModel, executeTest, queryModel, getModelRowCount } from "./executor";
+import { createDefaultContext } from "../snowflake/session/context";
+import { execute as executeSql } from "../snowflake/executor/executor";
+import { isFile, isDirectory } from "../filesystem/types";
+import { SnowflakeState } from "../snowflake/state";
 
 function loadProject(ctx: CommandContext): { projectRoot: string } | { error: string } {
   const projectRoot = findDbtProject(ctx.fs, ctx.cwd);
@@ -27,6 +33,77 @@ function loadProject(ctx: CommandContext): { projectRoot: string } | { error: st
     return { error: "Runtime Error\n  Could not find dbt_project.yml." };
   }
   return { projectRoot };
+}
+
+/**
+ * Read a model's raw SQL from the VFS. Searches all model paths.
+ */
+function readModelSql(ctx: CommandContext, projectRoot: string, modelName: string, modelPaths: string[]): string | null {
+  for (const modelPath of modelPaths) {
+    const result = findModelFile(ctx, projectRoot + "/" + modelPath, modelName);
+    if (result) return result;
+  }
+  return null;
+}
+
+function findModelFile(ctx: CommandContext, dirPath: string, modelName: string): string | null {
+  const node = ctx.fs.getNode(dirPath);
+  if (!node || !isDirectory(node)) return null;
+
+  for (const [name, child] of Object.entries(node.children)) {
+    if (isFile(child) && name === modelName + ".sql") {
+      return child.content;
+    }
+  }
+
+  for (const [name, child] of Object.entries(node.children)) {
+    if (isDirectory(child)) {
+      const result = findModelFile(ctx, dirPath + "/" + name, modelName);
+      if (result) return result;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Read a test's raw SQL from the VFS.
+ */
+function readTestSql(ctx: CommandContext, projectRoot: string, testName: string): string | null {
+  const testPath = projectRoot + "/tests/" + testName + ".sql";
+  const node = ctx.fs.getNode(testPath);
+  if (node && isFile(node)) return node.content;
+  return null;
+}
+
+/**
+ * Resolve all transitive upstream dependencies for a model.
+ * Returns dependency names in no particular order (caller sorts).
+ */
+function resolveDependencies(
+  ctx: CommandContext,
+  projectRoot: string,
+  modelPaths: string[],
+  targetModel: string,
+  allModels: string[],
+): string[] {
+  const deps = new Set<string>();
+  const queue = [targetModel];
+
+  while (queue.length > 0) {
+    const model = queue.pop()!;
+    const sql = readModelSql(ctx, projectRoot, model, modelPaths);
+    if (!sql) continue;
+
+    for (const ref of extractRefs(sql)) {
+      if (!deps.has(ref) && ref !== targetModel && allModels.includes(ref)) {
+        deps.add(ref);
+        queue.push(ref);
+      }
+    }
+  }
+
+  return Array.from(deps);
 }
 
 /**
@@ -40,66 +117,142 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
   if (!configContent.content) return { output: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
+  if (!ctx.snowflakeState) {
+    return { output: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
+  }
+
+  // Parse compilation context
+  const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
+  const macros = parseMacros(ctx.fs, project.projectRoot);
+  const matConfig = parseMaterializationConfig(configContent.content);
+  const materializationMap = buildMaterializationMap(ctx.fs, project.projectRoot, config, matConfig);
+
   // Discover models from filesystem
   const discoveredModels = discoverModels(ctx.fs, project.projectRoot, config);
 
-  let modelsToRun: string[];
+  let modelsToDisplay: string[];
+  let modelsToExecute: string[];
   if (selectModel) {
-    // If selecting a specific model, run it even if it's in _chip_internal
-    if (MODEL_RESULTS[selectModel]) {
-      modelsToRun = [selectModel];
+    if (discoveredModels.includes(selectModel)) {
+      modelsToDisplay = [selectModel];
+      // Also execute upstream dependencies silently
+      const deps = resolveDependencies(ctx, project.projectRoot, config.modelPaths, selectModel, discoveredModels);
+      modelsToExecute = [...deps, selectModel];
     } else {
       return { output: `Selector error: model '${selectModel}' not found` };
     }
   } else {
     // Default: run discovered models excluding _chip_internal
-    modelsToRun = discoveredModels.filter((m) => !CHIP_INTERNAL_MODELS.includes(m));
+    modelsToDisplay = discoveredModels.filter((m) => !CHIP_INTERNAL_MODELS.includes(m));
+    modelsToExecute = [...modelsToDisplay];
   }
 
-  // Sort in dependency order based on STANDARD_MODEL_ORDER
-  modelsToRun.sort((a, b) => {
+  const sortByOrder = (list: string[]) => list.sort((a, b) => {
     const ai = STANDARD_MODEL_ORDER.indexOf(a);
     const bi = STANDARD_MODEL_ORDER.indexOf(b);
-    // Unknown models go to the end
     return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
   });
+  sortByOrder(modelsToDisplay);
+  sortByOrder(modelsToExecute);
 
-  const sourceCount = 6; // hardcoded source count
-  const seedCount = discoverResources(ctx.fs, project.projectRoot, config).filter((r) => r.type === "seed").length;
-  const lines: IncrementalLine[] = [{ text: formatRunHeader(modelsToRun.length, TEST_RESULTS.length, sourceCount, seedCount), delayMs: DBT_DEFAULT_LINE_DELAY_MS }];
+  // Count tests for header
+  const allResources = discoverResources(ctx.fs, project.projectRoot, config);
+  const testCount = allResources.filter((r) => r.type === "test").length;
+  const sourceCount = allResources.filter((r) => r.type === "source").length;
+  const seedCount = allResources.filter((r) => r.type === "seed").length;
+  const lines: IncrementalLine[] = [{ text: formatRunHeader(modelsToDisplay.length, testCount, sourceCount, seedCount), delayMs: DBT_DEFAULT_LINE_DELAY_MS }];
 
   let pass = 0;
   let error = 0;
-  for (let i = 0; i < modelsToRun.length; i++) {
-    const name = modelsToRun[i];
-    const result = MODEL_RESULTS[name];
-    if (result) {
-      const isEphemeral = result.materialization === "ephemeral";
-      const jitteredMs = isEphemeral ? DBT_DEFAULT_LINE_DELAY_MS : jitterDelay(result.executionTime * 1000);
-      const executionTime = isEphemeral ? result.executionTime : jitteredMs / 1000;
-      lines.push({ text: formatModelRun(i + 1, modelsToRun.length, name, result, executionTime), delayMs: jitteredMs });
-      if (result.status === "success") pass++;
-      else error++;
+  let skip = 0;
+  let runningState = ctx.snowflakeState;
+  const sessionCtx = createDefaultContext();
+  const ephemeralSqlMap = new Map<string, string>();
+  const failedModels = new Set<string>();
+  const displaySet = new Set(modelsToDisplay);
+  let displayIdx = 0;
+
+  for (let i = 0; i < modelsToExecute.length; i++) {
+    const name = modelsToExecute[i];
+    const isDisplayed = displaySet.has(name);
+    const rawSql = readModelSql(ctx, project.projectRoot, name, config.modelPaths);
+    if (!rawSql) {
+      if (isDisplayed) {
+        error++;
+        displayIdx++;
+        const result: ModelRunResult = { status: "error", materialization: "table", executionTime: 0 };
+        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+      }
+      failedModels.add(name);
+      continue;
+    }
+
+    // DAG-aware skip: check if any upstream dependency failed
+    const refDeps = extractRefs(rawSql);
+    const failedUpstream = refDeps.find((d) => failedModels.has(d));
+    if (failedUpstream) {
+      failedModels.add(name);
+      if (isDisplayed) {
+        skip++;
+        displayIdx++;
+        const result: ModelRunResult = { status: "error", materialization: "table", executionTime: 0 };
+        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+      }
+      continue;
+    }
+
+    const materialization = materializationMap.get(name) ?? "table";
+    const compiled = compileSql(rawSql, sourceMap, macros, ephemeralSqlMap, materializationMap);
+
+    if (materialization === "ephemeral") {
+      ephemeralSqlMap.set(name, compiled);
+      if (isDisplayed) {
+        pass++;
+        displayIdx++;
+        const result: ModelRunResult = { status: "success", materialization: "ephemeral", executionTime: 0 };
+        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+      }
+      continue;
+    }
+
+    const execResult = executeModel(compiled, name, materialization, runningState, sessionCtx);
+
+    if (execResult.status === "success") {
+      runningState = execResult.newState;
+      if (isDisplayed) {
+        pass++;
+        displayIdx++;
+        const jitteredMs = jitterDelay(300);
+        const executionTime = jitteredMs / 1000;
+        const result: ModelRunResult = {
+          status: "success",
+          materialization,
+          executionTime,
+          rowsAffected: execResult.rowsAffected,
+        };
+        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
+      }
+    } else {
+      failedModels.add(name);
+      if (isDisplayed) {
+        error++;
+        displayIdx++;
+        const jitteredMs = jitterDelay(300);
+        const executionTime = jitteredMs / 1000;
+        const result: ModelRunResult = { status: "error", materialization, executionTime };
+        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
+      }
     }
   }
 
-  const summary: DbtRunSummary = { pass, warn: 0, error, skip: 0, total: modelsToRun.length };
+  const summary: DbtRunSummary = { pass, warn: 0, error, skip, total: modelsToDisplay.length };
   lines.push({ text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS });
   lines.push({ text: formatSummary(summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
 
-  // Materialize successful non-ephemeral models into Snowflake state
-  if (ctx.snowflakeState) {
-    const successfulModels = modelsToRun.filter((m) => {
-      const r = MODEL_RESULTS[m];
-      return r && r.status === "success" && r.materialization !== "ephemeral";
-    });
-    if (successfulModels.length > 0) {
-      const newState = materializeModels(ctx.snowflakeState, successfulModels);
-      ctx.setSnowflakeState?.(newState);
-    }
-  }
+  // Write final state
+  ctx.setSnowflakeState?.(runningState);
 
-  const hasChipInternal = modelsToRun.some((m) => CHIP_INTERNAL_MODELS.includes(m));
+  const hasChipInternal = modelsToDisplay.some((m) => CHIP_INTERNAL_MODELS.includes(m));
   return {
     output: lines.map((l) => l.text).join("\n"),
     ...(hasChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
@@ -114,22 +267,72 @@ export function runTests(ctx: CommandContext): CommandResult {
   const project = loadProject(ctx);
   if ("error" in project) return { output: project.error };
 
+  const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
+  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  const config = parseProjectConfig(configContent.content);
+
+  if (!ctx.snowflakeState) {
+    return { output: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
+  }
+
+  const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
+  const macros = parseMacros(ctx.fs, project.projectRoot);
+  const matConfig = parseMaterializationConfig(configContent.content);
+  const materializationMap = buildMaterializationMap(ctx.fs, project.projectRoot, config, matConfig);
+
+  const sessionCtx = createDefaultContext();
+  const allResources = discoverResources(ctx.fs, project.projectRoot, config);
+  const testResources = allResources.filter((r) => r.type === "test");
+
   const lines: IncrementalLine[] = [];
   let pass = 0;
   let warn = 0;
   let error = 0;
 
-  for (let i = 0; i < TEST_RESULTS.length; i++) {
-    const result = TEST_RESULTS[i];
-    const jitteredMs = jitterDelay(result.time * 1000);
-    const time = jitteredMs / 1000;
-    lines.push({ text: formatTestRun(i + 1, TEST_RESULTS.length, result, time), delayMs: jitteredMs });
-    if (result.status === "pass") pass++;
-    else if (result.status === "warn") warn++;
-    else error++;
+  for (let i = 0; i < testResources.length; i++) {
+    const test = testResources[i];
+    let testSql: string | null = null;
+
+    // Singular tests (from tests/ directory)
+    testSql = readTestSql(ctx, project.projectRoot, test.name);
+
+    if (testSql) {
+      // Compile the test SQL
+      const compiled = compileSql(testSql, sourceMap, macros, undefined, materializationMap);
+      const result = executeTest(compiled, ctx.snowflakeState, sessionCtx);
+      const jitteredMs = jitterDelay(100);
+      const time = jitteredMs / 1000;
+
+      const testResult: DbtTestResult = {
+        name: test.name,
+        status: result.status === "error" ? "fail" : result.status,
+        time,
+      };
+      lines.push({ text: formatTestRun(i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
+
+      if (result.status === "pass") pass++;
+      else if (result.status === "warn") warn++;
+      else error++;
+    } else {
+      // Generic tests (unique/not_null from YAML)
+      const genericResult = runGenericTest(test.name, ctx.snowflakeState, sessionCtx);
+      const jitteredMs = jitterDelay(80);
+      const time = jitteredMs / 1000;
+
+      const testResult: DbtTestResult = {
+        name: test.name,
+        status: genericResult.status === "error" ? "fail" : genericResult.status,
+        time,
+      };
+      lines.push({ text: formatTestRun(i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
+
+      if (genericResult.status === "pass") pass++;
+      else if (genericResult.status === "warn") warn++;
+      else error++;
+    }
   }
 
-  const summary: DbtRunSummary = { pass, warn, error, skip: 0, total: TEST_RESULTS.length };
+  const summary: DbtRunSummary = { pass, warn, error, skip: 0, total: testResources.length };
   lines.push({ text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS });
   lines.push({ text: formatSummary(summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
 
@@ -140,11 +343,90 @@ export function runTests(ctx: CommandContext): CommandResult {
 }
 
 /**
+ * Run a generic test (unique_MODEL_COLUMN or not_null_MODEL_COLUMN).
+ */
+function runGenericTest(
+  testName: string,
+  state: SnowflakeState,
+  sessionCtx: ReturnType<typeof createDefaultContext>,
+): { status: "pass" | "warn" | "error" } {
+  // Parse test name: unique_MODEL_COLUMN or not_null_MODEL_COLUMN
+  let testType: string;
+  let rest: string;
+
+  if (testName.startsWith("unique_")) {
+    testType = "unique";
+    rest = testName.slice("unique_".length);
+  } else if (testName.startsWith("not_null_")) {
+    testType = "not_null";
+    rest = testName.slice("not_null_".length);
+  } else {
+    return { status: "error" };
+  }
+
+  // Split rest into model name and column: the column is the last segment after the LAST underscore
+  // But model names contain underscores, so find the model by checking ANALYTICS tables/views
+  const { modelName, columnName } = parseGenericTestName(rest, state);
+  if (!modelName || !columnName) return { status: "error" };
+
+  const fqTable = `NEXACORP_PROD.ANALYTICS.${modelName.toUpperCase()}`;
+
+  let sql: string;
+  if (testType === "unique") {
+    sql = `SELECT ${columnName}, COUNT(*) AS cnt FROM ${fqTable} GROUP BY ${columnName} HAVING COUNT(*) > 1`;
+  } else {
+    sql = `SELECT ${columnName} FROM ${fqTable} WHERE ${columnName} IS NULL`;
+  }
+
+  const result = executeTest(sql, state, sessionCtx);
+  return { status: result.status === "error" ? "error" : result.status };
+}
+
+/**
+ * Parse a generic test name (e.g., "dim_employees_employee_id") into model + column.
+ * Tries to find a matching table/view in ANALYTICS schema.
+ */
+function parseGenericTestName(
+  rest: string,
+  state: SnowflakeState,
+): { modelName: string | null; columnName: string | null } {
+  // Try progressively longer model name prefixes
+  const parts = rest.split("_");
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const candidateModel = parts.slice(0, i).join("_");
+    const candidateColumn = parts.slice(i).join("_");
+    const upper = candidateModel.toUpperCase();
+    // Check if this model exists as a table or view
+    if (state.getTable("NEXACORP_PROD", "ANALYTICS", upper) ||
+        state.getView("NEXACORP_PROD", "ANALYTICS", upper)) {
+      return { modelName: candidateModel, columnName: candidateColumn };
+    }
+  }
+
+  // Fallback: assume last part is column, rest is model
+  const lastUnderscore = rest.lastIndexOf("_");
+  if (lastUnderscore === -1) return { modelName: null, columnName: null };
+  return {
+    modelName: rest.slice(0, lastUnderscore),
+    columnName: rest.slice(lastUnderscore + 1),
+  };
+}
+
+/**
  * Run models then tests (dbt build).
  */
 export function runBuild(ctx: CommandContext, selectedModel?: string): CommandResult {
-  const runResult = runModels(ctx, selectedModel);
-  if (runResult.output.startsWith("Runtime Error")) return {
+  let latestState = ctx.snowflakeState;
+  const wrappedCtx: CommandContext = {
+    ...ctx,
+    setSnowflakeState: (s: SnowflakeState) => {
+      latestState = s;
+      ctx.setSnowflakeState?.(s);
+    },
+  };
+
+  const runResult = runModels(wrappedCtx, selectedModel);
+  if (runResult.output.startsWith("Runtime Error") || runResult.output.startsWith("Error:")) return {
     ...runResult,
     triggerEvents: [
       ...(runResult.triggerEvents || []),
@@ -152,7 +434,7 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
     ],
   };
 
-  const testResult = runTests(ctx);
+  const testResult = runTests({ ...wrappedCtx, snowflakeState: latestState });
 
   const combinedLines = [...(runResult.incrementalLines || []), { text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS }, ...(testResult.incrementalLines || [])];
   return {
@@ -230,10 +512,21 @@ export function compileModel(ctx: CommandContext, modelName?: string): CommandRe
     return { output: "Usage: dbt compile --select MODEL_NAME" };
   }
 
-  const sql = COMPILED_SQL[modelName];
-  if (!sql) {
+  const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
+  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  const config = parseProjectConfig(configContent.content);
+
+  const rawSql = readModelSql(ctx, project.projectRoot, modelName, config.modelPaths);
+  if (!rawSql) {
     return { output: `Selector error: model '${modelName}' not found` };
   }
+
+  const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
+  const macros = parseMacros(ctx.fs, project.projectRoot);
+  const matConfig = parseMaterializationConfig(configContent.content);
+  const materializationMap = buildMaterializationMap(ctx.fs, project.projectRoot, config, matConfig);
+
+  const sql = compileSql(rawSql, sourceMap, macros, undefined, materializationMap);
 
   // Write compiled SQL to target/compiled/ (create dir if needed)
   let fs = ctx.fs;
@@ -264,22 +557,57 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
     return { output: "Usage: dbt show --select MODEL_NAME" };
   }
 
-  const preview = MODEL_PREVIEW_DATA[modelName];
-  if (!preview) {
+  if (!ctx.snowflakeState) {
     return { output: `Selector error: model '${modelName}' not found` };
   }
 
-  // dbt show defaults to --limit 5
-  const SHOW_LIMIT = 5;
-  const displayRows = preview.rows.slice(0, SHOW_LIMIT);
+  const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
+  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  const config = parseProjectConfig(configContent.content);
 
-  // Get total rows from MODEL_RESULTS if available
-  const result = MODEL_RESULTS[modelName];
-  const totalRows = result?.rowsAffected ?? preview.rows.length;
+  // Check model exists in VFS
+  const rawSql = readModelSql(ctx, project.projectRoot, modelName, config.modelPaths);
+  if (!rawSql) {
+    return { output: `Selector error: model '${modelName}' not found` };
+  }
+
+  const sessionCtx = createDefaultContext();
+  const SHOW_LIMIT = 5;
+
+  // Try to query the materialized table/view
+  const resultSet = queryModel(modelName, ctx.snowflakeState, sessionCtx, SHOW_LIMIT);
+  if (!resultSet) {
+    // Model hasn't been run yet — compile and execute ad-hoc
+    const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
+    const macros = parseMacros(ctx.fs, project.projectRoot);
+    const matConfig = parseMaterializationConfig(configContent.content);
+    const materializationMap = buildMaterializationMap(ctx.fs, project.projectRoot, config, matConfig);
+    const compiled = compileSql(rawSql, sourceMap, macros, undefined, materializationMap);
+
+    // Execute the compiled SQL directly
+    const { results: adHocResults } = executeSql(compiled, ctx.snowflakeState, sessionCtx);
+    const rs = adHocResults.find((r: { type: string }) => r.type === "resultset");
+    if (!rs || rs.type !== "resultset") {
+      return { output: `Error: Could not preview model '${modelName}'. Run \`dbt run\` first.` };
+    }
+
+    const adHocColumns = rs.data.columns.map((c: { name: string }) => c.name);
+    const adHocRows = rs.data.rows.slice(0, SHOW_LIMIT).map((row: unknown[]) => row.map((v) => String(v ?? "")));
+
+    const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
+    return {
+      output: formatShowOutput(modelName, adHocColumns, adHocRows, rs.data.rowCount),
+      ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
+    };
+  }
+
+  const columns = resultSet.columns.map((c) => c.name);
+  const displayRows = resultSet.rows.slice(0, SHOW_LIMIT).map((row) => row.map((v) => String(v ?? "")));
+  const totalRows = getModelRowCount(modelName, ctx.snowflakeState, sessionCtx) ?? resultSet.rowCount;
 
   const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
   return {
-    output: formatShowOutput(modelName, preview.columns, displayRows, totalRows),
+    output: formatShowOutput(modelName, columns, displayRows, totalRows),
     ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
   };
 }

@@ -10,6 +10,8 @@ export interface EvalContext {
   currentWarehouse: string;
   /** Optional callback to execute a sub-select and return result rows */
   executeSubquery?: (query: AST.SelectStatement, outerRow: Row) => Row[];
+  /** Tracks view expansion depth to prevent infinite recursion */
+  viewDepth?: number;
 }
 
 /**

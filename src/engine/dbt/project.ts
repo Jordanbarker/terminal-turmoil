@@ -1,6 +1,7 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { isFile, isDirectory } from "../filesystem/types";
 import { DbtProjectConfig, DbtResource } from "./types";
+import { MaterializationMap } from "./compiler";
 
 /**
  * Walk up from cwd looking for dbt_project.yml.
@@ -55,6 +56,91 @@ export function discoverModels(
   }
 
   return models;
+}
+
+/**
+ * Parse folder-based materialization config from dbt_project.yml content.
+ * Returns a mapping of folder name → materialization type.
+ */
+export function parseMaterializationConfig(content: string): Record<string, "view" | "table" | "ephemeral"> {
+  const config: Record<string, "view" | "table" | "ephemeral"> = {};
+  const lines = content.split("\n");
+  let currentFolder = "";
+
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+    const indent = line.length - trimmed.length;
+
+    // Folder names appear at indent 4 under "models: > project_name:"
+    if (indent === 4 && /^\w+:/.test(trimmed)) {
+      currentFolder = trimmed.replace(/:.*/, "");
+      continue;
+    }
+
+    // Materialization config at indent 6
+    if (indent === 6 && trimmed.startsWith("+materialized:") && currentFolder) {
+      const mat = trimmed.replace(/\+materialized:\s*/, "").trim();
+      if (mat === "view" || mat === "table" || mat === "ephemeral") {
+        config[currentFolder] = mat;
+      }
+    }
+  }
+
+  return config;
+}
+
+/**
+ * Determine materialization for a model based on its path within the models/ directory.
+ */
+export function getMaterialization(
+  modelName: string,
+  modelPath: string,
+  matConfig: Record<string, "view" | "table" | "ephemeral">,
+): "view" | "table" | "ephemeral" {
+  for (const [folder, mat] of Object.entries(matConfig)) {
+    if (modelPath.includes("/" + folder + "/")) return mat;
+  }
+  return "table"; // default
+}
+
+/**
+ * Build a MaterializationMap for all models based on their paths.
+ */
+export function buildMaterializationMap(
+  fs: VirtualFS,
+  projectRoot: string,
+  config: DbtProjectConfig,
+  matConfig: Record<string, "view" | "table" | "ephemeral">,
+): MaterializationMap {
+  const map: MaterializationMap = new Map();
+
+  for (const modelPath of config.modelPaths) {
+    const fullPath = projectRoot + "/" + modelPath;
+    walkForMaterialization(fs, fullPath, fullPath, matConfig, map);
+  }
+
+  return map;
+}
+
+function walkForMaterialization(
+  fs: VirtualFS,
+  dirPath: string,
+  modelsRoot: string,
+  matConfig: Record<string, "view" | "table" | "ephemeral">,
+  map: MaterializationMap,
+): void {
+  const node = fs.getNode(dirPath);
+  if (!node || !isDirectory(node)) return;
+
+  for (const [name, child] of Object.entries(node.children)) {
+    if (isFile(child) && name.endsWith(".sql")) {
+      const modelName = name.replace(/\.sql$/, "");
+      const relativePath = dirPath.slice(modelsRoot.length);
+      map.set(modelName, getMaterialization(modelName, relativePath + "/" + name, matConfig));
+    } else if (isDirectory(child)) {
+      walkForMaterialization(fs, dirPath + "/" + name, modelsRoot, matConfig, map);
+    }
+  }
 }
 
 function walkForSql(fs: VirtualFS, dirPath: string, models: string[]): void {

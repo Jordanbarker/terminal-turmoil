@@ -30,7 +30,11 @@ interface EventActionResult {
 
 /** Maps objective_completed event details to special actions. New events go here. */
 const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResult> = {
-  ssh_connect: () => ({ shouldTransition: true, skipDefault: true }),
+  ssh_connect: () => {
+    const store = useGameStore.getState();
+    store.setStoryFlag("first_ssh_connect", true);
+    return { shouldTransition: true, skipDefault: true };
+  },
   search_tools_accepted: (ctx) => {
     const store = useGameStore.getState();
     store.setStoryFlag("search_tools_unlocked", true);

@@ -52,6 +52,20 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "read_nexacorp_offer" },
       },
+      {
+        id: "read_chip_setup",
+        description: "Read Chip's setup email",
+        check: { source: "storyFlag", key: "ssh_unlocked" },
+        hidden: true,
+        visibleWhen: { source: "completedObjective", key: "accepted_nexacorp" },
+      },
+      {
+        id: "first_ssh_connect",
+        description: "SSH into NexaCorp to start work",
+        check: { source: "storyFlag", key: "first_ssh_connect" },
+        hidden: true,
+        visibleWhen: { source: "storyFlag", key: "ssh_unlocked" },
+      },
 
       // Quest 1: Olive's Terminal Challenges
       {

@@ -135,11 +135,11 @@ The cron job has been disabled until the issue is fixed.
 I really enjoyed our conversation and I'll cut right to it: we'd like to offer you the AI Engineer position
 at NexaCorp. The details:
 
-  Role:      AI Engineer
-  Salary:    $135,000/year
-  Start:     Monday, February 23
-  Location:  Remote
-  Reports to: Me (Edward Torres, CTO & Co-Founder)
+  Role:       AI Engineer
+  Salary:     $135,000/year
+  Start:      Monday, February 23
+  Location:   Remote
+  Reports to: Edward Torres
 
 I know this is quick, but we're in a bit of a crunch.
 We need someone who can start right away and hit the ground running, and we think you're the right person for the job.

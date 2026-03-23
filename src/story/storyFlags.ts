@@ -30,6 +30,7 @@ export const STORY_FLAG_NAMES = [
   "found_data_filtering",
   "read_nexacorp_offer",
   "commands_unlocked",
+  "first_ssh_connect",
   "ssh_unlocked",
   "apt_unlocked",
   "basic_tools_unlocked",

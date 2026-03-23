@@ -154,7 +154,7 @@ function executeSubqueryInner(
   return rows;
 }
 
-function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: SessionContext): QueryResult {
+function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: SessionContext, parentEvalCtx?: EvalContext): QueryResult {
   const evalCtx: EvalContext = {
     currentDatabase: ctx.currentDatabase,
     currentSchema: ctx.currentSchema,
@@ -164,6 +164,7 @@ function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: Se
     executeSubquery: (query: AST.SelectStatement, outerRow: Row) => {
       return executeSubqueryInner(query, outerRow, state, ctx, stmt.ctes);
     },
+    viewDepth: parentEvalCtx?.viewDepth,
   };
 
   const planCtx = {
@@ -227,7 +228,36 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
 
     case "scan": {
       const tbl = state.getTable(plan.database, plan.schema, plan.table);
-      if (!tbl) throw new Error(`Table '${plan.database}.${plan.schema}.${plan.table}' does not exist.`);
+      if (!tbl) {
+        // Fall back to view expansion
+        const view = state.getView(plan.database, plan.schema, plan.table);
+        if (view) {
+          const depth = ctx.viewDepth ?? 0;
+          if (depth >= 10) {
+            throw new Error("View expansion exceeded maximum depth (10). Possible circular view reference.");
+          }
+          const viewCtx: EvalContext = { ...ctx, viewDepth: depth + 1 };
+          const viewStmt = parseMultiple(tokenize(view.query))[0] as AST.SelectStatement;
+          const viewResult = executeSelect(viewStmt, state, {
+            currentDatabase: ctx.currentDatabase,
+            currentSchema: ctx.currentSchema,
+            currentWarehouse: ctx.currentWarehouse,
+            currentRole: ctx.currentRole,
+            currentUser: ctx.currentUser,
+          }, viewCtx);
+          if (viewResult.type === "resultset") {
+            return viewResult.data.rows.map((valueRow) => {
+              const row: Row = { ...(outerRow ?? {}) };
+              viewResult.data.columns.forEach((col, i) => {
+                row[col.name] = valueRow[i];
+                if (plan.alias) row[`${plan.alias}.${col.name}`] = valueRow[i];
+              });
+              return row;
+            });
+          }
+        }
+        throw new Error(`Table '${plan.database}.${plan.schema}.${plan.table}' does not exist.`);
+      }
 
       // Prefix columns with alias if present, merge outer row for correlated subqueries
       const rows = tbl.rows.map((row) => {

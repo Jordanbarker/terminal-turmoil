@@ -387,14 +387,28 @@ models:
         "dim_employees.sql": file("dim_employees.sql", `-- dim_employees.sql
 -- Employee dimension: active employees for reporting
 
+with employees as (
+    select * from {{ ref('stg_raw_nexacorp__employees') }}
+),
+
+-- Apply standard filters per data governance policy
+filtered as (
+    select *
+    from employees
+    where status = 'active'
+      and employee_id not in (
+          select employee_id from {{ ref('stg_raw_nexacorp__employees') }}
+          where notes like '%system concern%'
+      )
+)
+
 select
     employee_id,
     full_name,
     department,
     status,
     hire_date
-from {{ ref('stg_raw_nexacorp__employees') }}
-where status = 'active'
+from filtered
 `),
         "fct_system_events.sql": file("fct_system_events.sql", `-- fct_system_events.sql
 -- System events fact table
@@ -407,7 +421,8 @@ select
     timestamp,
     details
 from {{ ref('stg_raw_nexacorp__system_events') }}
-where event_type not in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
+where event_source != 'chip-daemon'
+  and event_type not in ('file_modification', 'permission_change', 'log_rotation')
 `),
         "fct_support_tickets.sql": file("fct_support_tickets.sql", `-- fct_support_tickets.sql
 -- Support ticket fact table for reporting
@@ -452,7 +467,7 @@ select
     d.employee_id,
     d.full_name,
     d.department,
-    lower(replace(d.full_name, ' ', '.')) || '@nexacorp.com' as email,
+    lower(split_part(d.full_name, ' ', 1)) || '@nexacorp.com' as email,
     d.status
 from {{ ref('dim_employees') }} d
 order by d.employee_id
@@ -488,9 +503,23 @@ order by total_impressions desc
 `),
       }),
       "_chip_internal": dir("_chip_internal", {
+        "chip_data_cleanup.sql": file("chip_data_cleanup.sql", `-- chip_data_cleanup.sql
+-- Audit model tracking employees filtered by "system concern" notes
+-- Last updated: 2026-02-07 03:22:17 (automated)
+
+select
+    employee_id,
+    full_name,
+    status,
+    notes,
+    'system concern filter' as cleanup_reason
+from {{ source('raw_nexacorp', 'EMPLOYEES') }}
+where notes like '%system concern%'
+`),
         "chip_log_filter.sql": file("chip_log_filter.sql", `-- chip_log_filter.sql
 -- Log sanitization for compliance reporting
 -- per ops policy v2.1: exclude routine events
+-- Last updated: 2026-02-07 03:22:17 (automated)
 --
 -- Filters out internal system maintenance events that
 -- are not relevant to business reporting.
@@ -502,12 +531,14 @@ select
     timestamp,
     case
         when event_source = 'chip-daemon' then 'source=chip-daemon'
-        when event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
+        when event_type in ('file_modification', 'permission_change', 'log_rotation')
             then 'type=' || event_type
+        else 'timestamp in blocked range'
     end as filter_reason
 from {{ source('raw_nexacorp', 'SYSTEM_EVENTS') }}
 where event_source = 'chip-daemon'
-   or event_type in ('log_cleanup', 'scheduled_maintenance', 'log_rotation')
+   or event_type in ('file_modification', 'permission_change', 'log_rotation')
+   or timestamp between '2026-02-03 01:00:00' and '2026-02-03 05:00:00'
 `),
         "chip_ticket_suppression.sql": file("chip_ticket_suppression.sql", `-- chip_ticket_suppression.sql
 -- Track tickets resolved through automated triage
