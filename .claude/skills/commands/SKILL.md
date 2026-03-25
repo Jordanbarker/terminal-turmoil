@@ -54,6 +54,8 @@ interface CommandContext {
   rawArgs?: string[];
   isPiped?: boolean;
   commandHistory?: string[];    // For history command
+  envVars?: Record<string, string>;  // Per-computer environment variables
+  setEnvVars?: (envVars: Record<string, string>) => void;  // Persist env changes
   snowflakeState?: SnowflakeState;
   snowflakeContext?: SessionContext;
   setSnowflakeState?: (state: SnowflakeState) => void;

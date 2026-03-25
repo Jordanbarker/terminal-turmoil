@@ -61,7 +61,11 @@ export function formatModelRun(
   const dotCount = Math.max(2, 60 - modelName.length);
   const dots = ".".repeat(dotCount);
 
-  return `${prefix}${colorize(dots, ansi.dim)}${suffix}`;
+  const line = `${prefix}${colorize(dots, ansi.dim)}${suffix}`;
+  if (result.status === "error" && result.message) {
+    return `${line}\n  ${colorize(result.message, ansi.red)}`;
+  }
+  return line;
 }
 
 /**

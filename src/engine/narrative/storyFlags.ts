@@ -15,6 +15,7 @@ export function checkStoryFlagTriggers(
 
   for (const trigger of triggers) {
     if (trigger.event === event.type) {
+      if (trigger.requiredFlags?.some(f => !currentFlags[f])) continue;
       const matchDetail = trigger.path ?? trigger.detail;
       if (matchDetail && event.detail === matchDetail) {
         if (currentFlags[trigger.flag] === undefined) {

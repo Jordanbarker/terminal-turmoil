@@ -62,6 +62,19 @@ function formatStatusShort(status: StatusResult): string {
   return lines.join("\n");
 }
 
+/**
+ * Format a UTC timestamp as git-style date with -0700 (Pacific) offset.
+ * The stored timestamp stays UTC; we shift the display by -7h.
+ */
+function formatGitDate(ts: number): string {
+  const OFFSET_MS = 7 * 60 * 60 * 1000;
+  const d = new Date(ts - OFFSET_MS);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${d.getUTCDate()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())} ${d.getUTCFullYear()} -0700`;
+}
+
 export function formatLog(commits: GitCommit[], oneline: boolean, graph: boolean, plain: boolean): string {
   if (commits.length === 0) return "";
 
@@ -76,7 +89,7 @@ export function formatLog(commits: GitCommit[], oneline: boolean, graph: boolean
       const hashStr = plain ? `commit ${commit.hash}` : colorize(`commit ${commit.hash}`, ansi.yellow);
       lines.push(`${graphPrefix}${hashStr}`);
       lines.push(`Author: ${commit.author}`);
-      lines.push(`Date:   ${new Date(commit.timestamp).toLocaleDateString()}`);
+      lines.push(`Date:   ${formatGitDate(commit.timestamp)}`);
       lines.push("");
       lines.push(`    ${commit.message}`);
       lines.push("");

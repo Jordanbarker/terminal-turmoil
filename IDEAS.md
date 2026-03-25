@@ -10,6 +10,28 @@ dynamic growth on logs after day to day progression
 Good ending: 
 Bad ending: logoff - they know where you are
 
+ - echo $VAR expansion in interactive commands (requires input pipeline changes)
+ - unset command: removes shell variables or functions from the current session.
+ - export FOO=bar
+
+$ echo "Hello World"            # print to screen
+$ echo "Hello" > output.txt     # write to file (overwrites)
+$ echo "More" >> output.txt     # append to file
+
+$ grep "error" app.log                  # find lines containing "error"
+$ grep -i "error" app.log               # case-insensitive
+$ grep -r "TODO" ./src                  # search recursively through all files in src/
+$ grep -n "error" app.log               # show line numbers
+$ grep -v "debug" app.log               # show lines that do NOT match
+
+$ find . -name "*.log"                      # find all .log files from here
+$ find /var/log -name "*.log" -mtime -7     # logs modified in last 7 days
+$ find . -type d -name "node_modules"       # find directories named node_modules
+$ find . -size +100M                        # files larger than 100MB
+
+$ curl https://api.github.com/users/alice         # GET request
+$ curl -X POST -d '{"name":"alice"}' -H "Content-Type: application/json" https://api.example.com/users
+
 Day 2: 
     df command 
     printenv

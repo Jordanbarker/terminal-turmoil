@@ -58,7 +58,7 @@ export default function TabManager() {
   const gamePhase = useGameStore((s) => s.gamePhase);
   const storyFlags = useGameStore((s) => s.storyFlags);
 
-  const { handleInput, getPrompt, startSession, canCloseCurrentSession } = useTerminal();
+  const { handleInput, getPrompt, startSession, canCloseCurrentSession, cleanupTab, resizeActiveSession } = useTerminal();
 
   // Store callbacks in refs to avoid stale closures in xterm onData
   const handleInputRef = useRef(handleInput);
@@ -66,11 +66,15 @@ export default function TabManager() {
   const getPromptRef = useRef(getPrompt);
   const gamePhaseRef = useRef(gamePhase);
   const canCloseRef = useRef(canCloseCurrentSession);
+  const cleanupTabRef = useRef(cleanupTab);
+  const resizeActiveSessionRef = useRef(resizeActiveSession);
   handleInputRef.current = handleInput;
   startSessionRef.current = startSession;
   getPromptRef.current = getPrompt;
   gamePhaseRef.current = gamePhase;
   canCloseRef.current = canCloseCurrentSession;
+  cleanupTabRef.current = cleanupTab;
+  resizeActiveSessionRef.current = resizeActiveSession;
 
   const tabInstancesRef = useRef<Map<string, TabInstance>>(new Map());
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -124,6 +128,7 @@ export default function TabManager() {
               clearTimeout(forceCloseTimerRef.current);
               forceCloseTimerRef.current = null;
             }
+            cleanupTabRef.current(store.activeTabId);
             store.removeTab(store.activeTabId);
           } else {
             // First attempt — warn and arm force-close
@@ -139,6 +144,7 @@ export default function TabManager() {
           }
           return;
         }
+        cleanupTabRef.current(store.activeTabId);
         store.removeTab(store.activeTabId);
       }
     } else if (normalized === "n") {
@@ -221,6 +227,7 @@ export default function TabManager() {
     // Remove instances for deleted tabs
     for (const [id, instance] of instances) {
       if (!currentIds.has(id)) {
+        cleanupTabRef.current(id);
         instance.onDataDisposable.dispose();
         instance.term.dispose();
         if (instance.containerEl.parentNode) {
@@ -302,6 +309,7 @@ export default function TabManager() {
       if (isActive) {
         instance.fitAddon.fit();
         instance.term.focus();
+        resizeActiveSessionRef.current();
       }
     }
   }, [activeTabId]);
@@ -352,6 +360,7 @@ export default function TabManager() {
   }, []);
 
   const handleCloseTab = useCallback((tabId: string) => {
+    cleanupTabRef.current(tabId);
     useGameStore.getState().removeTab(tabId);
   }, []);
 

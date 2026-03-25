@@ -69,8 +69,11 @@ interface StoryFlagTrigger {
   flag: StoryFlagName;   // must be a valid STORY_FLAG_NAMES entry
   value: string | boolean;
   toast?: string;
+  requiredFlags?: StoryFlagName[];  // All must be truthy in currentFlags for trigger to fire
 }
 ```
+
+**`requiredFlags`**: Optional array of flags that must all be truthy before the trigger fires. Used to gate Day 2 quest triggers so they only fire in the correct story context (e.g., `dbt_test_warn` only sets `dbt_test_failed_day2` if `pulled_day2_updates` is already set). Checked in `checkStoryFlagTriggers()` before event matching.
 
 ### Types (`engine/narrative/types.ts`)
 
@@ -134,6 +137,19 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `ran_dbt` | `command_executed` | detail: `dbt_build` | `true` |
 | `found_data_filtering` | `file_read` | multiple model SQL files under `models/` | `true` |
 | `found_data_filtering` | `file_read` | detail: `found_data_filtering` | `true` |
+| `found_inflated_metrics` | `command_executed` | detail: `queried_campaign_metrics` | `true` |
+| `pulled_day2_updates` | `command_executed` | detail: `git_pull_origin_main` | `true` | requires: `ssh_day2` |
+| `dbt_test_failed_day2` | `command_executed` | detail: `dbt_test_warn` | `true` | requires: `pulled_day2_updates` |
+| `investigated_null_data` | `command_executed` | detail: `queried_campaign_metrics` | `true` | requires: `dbt_test_failed_day2` |
+| `created_fix_branch` | `command_executed` | detail: `git_checkout_b` | `true` | requires: `dbt_test_failed_day2` |
+| `fixed_campaign_model` | `command_executed` | detail: `dbt_test_all_pass` | `true` | requires: `dbt_test_failed_day2` |
+| `pushed_fix_branch` | `command_executed` | detail: `git_push` | `true` | requires: `fixed_campaign_model` |
+
+### NexaCorp Day 2 Flags (`getNexacorpStoryFlagTriggers()`)
+
+| Flag | Event | Detail | Value |
+|------|-------|--------|-------|
+| `reported_fix_to_auri` | `objective_completed` | `reported_fix_to_auri` | `true` |
 
 ## Objectives System
 
@@ -174,6 +190,9 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
   - `explore_jchen` (concrete check) → 2 children: discover_tampering, find_directives
   - `olive_power_tools` (allVisibleChildren) → 5 children: olive_pt_grep/wc/redirect/sort_uniq/find
   - Ungrouped: read_welcome_email, read_onboarding, meet_the_team, review_handoff, help_auri_pipeline, run_dbt, head_home, find_filtering, investigate_ops_data
+- **chapter-3** ("Getting the Hang of This"): Day 2 content:
+  - `fix_pipeline_quest` (allVisibleChildren) → 7 children: pull_day2_updates, discover_test_failure, investigate_null_data, create_fix_branch, fix_the_model, push_fix, report_to_auri
+  - Ungrouped: ssh_to_work_day2
 
 ### Objective Resolution (`objectives.ts`)
 

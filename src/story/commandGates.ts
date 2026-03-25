@@ -22,6 +22,9 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "zsh",
   "source",
   ".",
+  "printenv",
+  "env",
+  "export",
 ]);
 
 /** NexaCorp commands gated behind colleague emails. */
@@ -38,15 +41,18 @@ export const NEXACORP_GATED: Record<string, StoryFlagName> = {
   chip: "chip_unlocked",
   piper: "piper_unlocked",
   chmod: "chmod_unlocked",
-  dbt: "devcontainer_visited",
-  snow: "devcontainer_visited",
   sudo: "apt_unlocked",
   apt: "apt_unlocked",
 };
 
 /** Commands that should never be available on the home PC. */
 export const NEXACORP_ONLY: ReadonlySet<string> = new Set([
-  "snow", "dbt", "coder", "chip",
+  "coder", "chip",
+]);
+
+/** Commands only available inside the dev container. */
+export const DEVCONTAINER_ONLY: ReadonlySet<string> = new Set([
+  "git", "snow", "dbt",
 ]);
 
 /** Commands available in the Coder dev container. */
@@ -57,6 +63,7 @@ export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
   "history", "exit", "save", "load", "newgame", "git", "bash", "sh", "zsh",
   "source", ".",
+  "printenv", "env", "export",
 ]);
 
 /** Home PC commands gated behind story flags. */

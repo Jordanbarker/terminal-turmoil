@@ -4,6 +4,7 @@ import { CommandContext } from "../types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { DirectoryNode } from "../../filesystem/types";
 import { HELP_TEXTS } from "../builtins/helpTexts";
+import { stripAnsi } from "../../../lib/ansi";
 
 // Import builtins to trigger registration
 import "../builtins/ls";
@@ -21,6 +22,7 @@ import "../builtins/python";
 import "../builtins/snow";
 import "../builtins/wc";
 import "../builtins/df";
+import "../builtins/git";
 
 function createTestFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -127,8 +129,9 @@ describe("ls", () => {
 
   it("shows long format with -l including sizes", () => {
     const result = execute("ls", [], { l: true }, ctx());
-    expect(result.output).toContain("rw-r--r--");
-    expect(result.output).toContain("rwxr-xr-x");
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("rw-r--r--");
+    expect(plain).toContain("rwxr-xr-x");
     // "hello world" = 11 bytes
     expect(result.output).toContain("11");
     // directories = 4096 bytes
@@ -167,7 +170,7 @@ describe("ls", () => {
 
   it("shows long format for a single file arg", () => {
     const result = execute("ls", ["notes.txt"], { l: true }, ctx());
-    expect(result.output).toContain("rw-r--r--");
+    expect(stripAnsi(result.output)).toContain("rw-r--r--");
     expect(result.output).toContain("11");
     expect(result.output).toContain("notes.txt");
   });
@@ -685,8 +688,28 @@ describe("--help", () => {
   });
 
   it("snow --help returns help text", () => {
-    const result = execute("snow", [], { help: true }, ctx());
+    const result = execute("snow", [], { help: true }, { ...ctx(), activeComputer: "devcontainer" });
     expect(result.output).toBe(HELP_TEXTS.snow);
+  });
+
+  describe("git commit -am", () => {
+    it("stages and commits with combined -am flag", () => {
+      let fs = createTestFS();
+      // init a repo
+      const init = execute("git", [], {}, { ...ctx(fs), rawArgs: ["init"] });
+      fs = init.newFs ?? fs;
+      // stage and commit existing files
+      const add = execute("git", [], {}, { ...ctx(fs), rawArgs: ["add", "-A"] });
+      fs = add.newFs ?? fs;
+      const c1 = execute("git", [], {}, { ...ctx(fs), rawArgs: ["commit", "-m", "initial"] });
+      fs = c1.newFs ?? fs;
+      // modify a tracked file
+      fs = fs.writeFile("/home/player/notes.txt", "updated content");
+      // commit with combined -am
+      const result = execute("git", [], {}, { ...ctx(fs), rawArgs: ["commit", "-am", "quick fix"] });
+      expect(stripAnsi(result.output)).toContain("quick fix");
+      expect(result.newFs).toBeDefined();
+    });
   });
 
   const gameCommands = ["save", "load", "newgame", "help"] as const;

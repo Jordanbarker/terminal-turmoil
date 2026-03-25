@@ -33,6 +33,10 @@ export function colorize(text: string, ...codes: string[]): string {
   return codes.join("") + text + ansi.reset;
 }
 
+export function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 const CSV_PALETTE = [
   ansi.red,
   ansi.yellow,

@@ -447,7 +447,7 @@ export function deleteBranch(fs: VirtualFS, root: string, name: string, force: b
 
 export function gitCheckout(
   fs: VirtualFS, root: string, target: string, createBranch: boolean
-): { fs: VirtualFS; output: string; error?: string } {
+): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
   const index = readIndex(fs, root);
@@ -465,7 +465,7 @@ export function gitCheckout(
       fs = writeOrFail(fs, `${root}/.git/refs/heads/${target}`, hash);
     }
     fs = writeOrFail(fs, `${root}/.git/HEAD`, `ref: refs/heads/${target}`);
-    return { fs, output: `Switched to a new branch '${target}'` };
+    return { fs, output: `Switched to a new branch '${target}'`, triggerEvents: [{ type: "command_executed", detail: "git_checkout_b" }] };
   }
 
   // Switch to existing branch
@@ -816,8 +816,37 @@ export function gitPush(
 
   return {
     fs, output,
-    triggerEvents: [{ type: "command_executed", detail: `git_push_origin_${targetBranch}` }],
+    triggerEvents: [
+      { type: "command_executed", detail: `git_push_origin_${targetBranch}` },
+      { type: "command_executed", detail: "git_push" },
+    ],
   };
+}
+
+// ── tree diff helper ────────────────────────────────────────────────
+
+function diffTrees(
+  oldTree: Record<string, string>,
+  newTree: Record<string, string>
+): { path: string; insertions: number; deletions: number }[] {
+  const allPaths = new Set([...Object.keys(oldTree), ...Object.keys(newTree)]);
+  const changes: { path: string; insertions: number; deletions: number }[] = [];
+  for (const path of allPaths) {
+    const oldContent = oldTree[path];
+    const newContent = newTree[path];
+    if (oldContent === newContent) continue;
+    const oldLines = oldContent ? oldContent.split("\n").length : 0;
+    const newLines = newContent ? newContent.split("\n").length : 0;
+    const ins = Math.max(0, newLines - oldLines);
+    const del = Math.max(0, oldLines - newLines);
+    // Ensure both show non-zero for modified files (content differs but same line count)
+    if (oldContent && newContent && ins === 0 && del === 0) {
+      changes.push({ path, insertions: 1, deletions: 1 });
+    } else {
+      changes.push({ path, insertions: ins, deletions: del });
+    }
+  }
+  return changes.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 // ── git pull ─────────────────────────────────────────────────────────
@@ -878,10 +907,35 @@ export function gitPull(
       }
     }
 
-    const fileCount = newCommits.length > 0 ? Object.keys(newCommits[newCommits.length - 1].tree).length : 0;
+    const oldTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+    const newTree = newCommits[newCommits.length - 1].tree;
+    const changes = diffTrees(oldTree, newTree);
+
+    const maxPathLen = Math.max(...changes.map(c => c.path.length), 0);
+    const maxTotal = Math.max(...changes.map(c => c.insertions + c.deletions), 0);
+    const barWidth = Math.min(maxTotal, 40);
+
+    const fileLines = changes.map(c => {
+      const total = c.insertions + c.deletions;
+      const scale = maxTotal > 0 ? barWidth / maxTotal : 0;
+      const plusCount = Math.round(c.insertions * scale);
+      const minusCount = Math.round(c.deletions * scale);
+      const bar = "+".repeat(plusCount) + "-".repeat(minusCount);
+      return ` ${c.path.padEnd(maxPathLen)} | ${String(total).padStart(3)} ${bar}`;
+    });
+
+    const totalIns = changes.reduce((s, c) => s + c.insertions, 0);
+    const totalDel = changes.reduce((s, c) => s + c.deletions, 0);
+    const summaryParts = [`${changes.length} file${changes.length !== 1 ? "s" : ""} changed`];
+    if (totalIns > 0) summaryParts.push(`${totalIns} insertion${totalIns !== 1 ? "s" : ""}(+)`);
+    if (totalDel > 0) summaryParts.push(`${totalDel} deletion${totalDel !== 1 ? "s" : ""}(-)`);
+
+    const header = `From ${remoteUrl}\n   ${(headHash ?? "0000000").slice(0, 7)}..${(lastHash ?? "0000000").slice(0, 7)}  ${targetBranch} -> origin/${targetBranch}\nFast-forward`;
+    const output = [header, ...fileLines, ` ${summaryParts.join(", ")}`].join("\n");
+
     return {
       fs,
-      output: `From ${remoteUrl}\n   ${(headHash ?? "0000000").slice(0, 7)}..${(lastHash ?? "0000000").slice(0, 7)}  ${targetBranch} -> origin/${targetBranch}\nFast-forward\n ${fileCount} file${fileCount !== 1 ? "s" : ""} changed`,
+      output,
       triggerEvents: [{ type: "command_executed", detail: `git_pull_origin_${targetBranch}` }],
     };
   }

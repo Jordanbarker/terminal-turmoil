@@ -10,6 +10,28 @@ function getSize(entry: FSNode): number {
   return isFile(entry) ? entry.content.length : 4096;
 }
 
+function colorName(e: FSNode): string {
+  if (isDirectory(e)) return colorize(e.name, ansi.bold, ansi.blue);
+  if (e.permissions[2] === "x") return colorize(e.name, ansi.bold, ansi.green);
+  return e.name;
+}
+
+function colorPermissions(typeChar: string, perms: string): string {
+  const tc = typeChar === "d" ? colorize(typeChar, ansi.blue) : typeChar;
+  const colored = perms
+    .split("")
+    .map((ch) => {
+      switch (ch) {
+        case "r": return colorize(ch, ansi.yellow);
+        case "w": return colorize(ch, ansi.red);
+        case "x": return colorize(ch, ansi.green);
+        default: return colorize(ch, ansi.dim);
+      }
+    })
+    .join("");
+  return tc + colored;
+}
+
 function formatLongEntries(entries: FSNode[], humanReadable: boolean): string[] {
   const sizes = entries.map((e) => formatSize(getSize(e), humanReadable));
   const maxWidth = Math.max(...sizes.map((s) => s.length));
@@ -18,10 +40,8 @@ function formatLongEntries(entries: FSNode[], humanReadable: boolean): string[] 
     const typeChar = isDirectory(e) ? "d" : "-";
     const perms = e.permissions;
     const sizeStr = sizes[i].padStart(maxWidth);
-    const name = isDirectory(e)
-      ? colorize(e.name, ansi.bold, ansi.blue)
-      : e.name;
-    return `${typeChar}${perms}  ${sizeStr}  ${name}`;
+    const name = colorName(e);
+    return `${colorPermissions(typeChar, perms)}  ${sizeStr}  ${name}`;
   });
 }
 
@@ -73,9 +93,7 @@ const ls: CommandHandler = (args, flags, ctx) => {
     if (longFormat) {
       sections.push(formatLongEntries(fileEntries, humanReadable).join("\n"));
     } else {
-      const formatted = fileEntries.map((e) =>
-        isDirectory(e) ? colorize(e.name, ansi.bold, ansi.blue) : e.name
-      );
+      const formatted = fileEntries.map((e) => colorName(e));
       const separator = ctx.isPiped ? "\n" : "  ";
       sections.push(formatted.join(separator));
     }
@@ -90,9 +108,7 @@ const ls: CommandHandler = (args, flags, ctx) => {
       if (longFormat) {
         lines.push(formatLongEntries(dir.entries, humanReadable).join("\n"));
       } else {
-        const formatted = dir.entries.map((e) =>
-          isDirectory(e) ? colorize(e.name, ansi.bold, ansi.blue) : e.name
-        );
+        const formatted = dir.entries.map((e) => colorName(e));
         const separator = ctx.isPiped ? "\n" : "  ";
         lines.push(formatted.join(separator));
       }

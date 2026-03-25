@@ -92,7 +92,7 @@ Three databases: `NEXACORP_DB` (operational), `NEXACORP_PROD` (analytics), `CHIP
 | `ACCESS_LOG` | 25 | Chip accessing `/home/jchen/` after departure |
 | `DEPARTMENT_BUDGETS` | 16 | Normal business data (red herring) |
 | `SUPPORT_TICKETS` | 15 | 11 normal + 4 suspicious (self-closed by `chip_service_account`) |
-| `CAMPAIGN_METRICS` | 6 | Marketing campaign data |
+| `CAMPAIGN_METRICS` | 6 (Day 1), 8 (Day 2) | Marketing campaign data. Day 2 adds 2 rows for `partner_referral_q2` with NULL clicks/conversions |
 
 ### `NEXACORP_PROD.ANALYTICS` (dbt-Materialized Tables/Views)
 
@@ -146,8 +146,8 @@ nexacorp-analytics/
 | Subcommand | Action |
 |------------|--------|
 | `dbt run` | Run 17 standard models, show progress + summary. Supports `--select model_name`. |
-| `dbt test` | Run tests dynamically against materialized tables. |
-| `dbt build` | Run models then tests (combined). State threaded from models to tests. |
+| `dbt test` | Run tests dynamically against materialized tables. Emits `dbt_test_warn` or `dbt_test_all_pass` triggerEvents. |
+| `dbt build` | Run models then tests (combined). State threaded from models to tests. Merges triggerEvents from both run and test phases plus `dbt_build`. |
 | `dbt ls` / `dbt list` | List resource names. Supports `--resource-type` (model, test, source, seed). `_chip_internal` excluded by default. |
 | `dbt debug` | Show connection info. Reveals `chip_service_account` as Snowflake user. |
 | `dbt compile --select model` | Show compiled SQL with refs resolved to table names. |

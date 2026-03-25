@@ -13,6 +13,7 @@ import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_da
 import { serializeSnowflake, deserializeSnowflake, SerializedSnowflake } from "../engine/snowflake/serialization";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { seedDeliveredEmails } from "../engine/mail/delivery";
+import { getDefaultEnv, initEnvForComputer } from "../story/env";
 
 const MAX_HISTORY = 500;
 
@@ -29,7 +30,6 @@ export interface TabState {
 
 interface GameStore {
   username: string;
-  commandHistory: string[];
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
@@ -39,14 +39,14 @@ interface GameStore {
   storyFlags: StoryFlags;
   hasSeenIntro: boolean;
   toasts: Toast[];
-  computerState: Partial<Record<ComputerId, { fs: VirtualFS }>>;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>;
   tabs: TabState[];
   activeTabId: string;
   activeSnowSession: string | null;
 
   // Actions
   setUsername: (username: string) => void;
-  pushHistory: (command: string) => void;
+  pushHistory: (computerId: ComputerId, command: string) => void;
   completeObjective: (id: string) => void;
   setGamePhase: (phase: GamePhase) => void;
   addDeliveredEmails: (ids: string[]) => void;
@@ -68,6 +68,7 @@ interface GameStore {
   setTabCwd: (tabId: string, cwd: string) => void;
   setActiveSnowSession: (tabId: string | null) => void;
   setTabComputer: (tabId: string, computerId: ComputerId, cwd: string) => void;
+  setComputerEnv: (computer: ComputerId, envVars: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
 }
 
@@ -106,7 +107,6 @@ function createInitialState(username = PLAYER.username) {
   const initialTabId = nextTabId();
   return {
     username,
-    commandHistory: ["nano terminal_notes.txt"],
     currentChapter: "chapter-1",
     completedObjectives: [] as string[],
     deliveredEmailIds: [] as string[],
@@ -116,7 +116,7 @@ function createInitialState(username = PLAYER.username) {
     storyFlags: {} as StoryFlags,
     hasSeenIntro: false,
     toasts: [] as Toast[],
-    computerState: { home: { fs } } as Partial<Record<ComputerId, { fs: VirtualFS }>>,
+    computerState: { home: { fs, commandHistory: ["nano terminal_notes.txt"], envVars: initEnvForComputer("home", username, fs) } } as Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>,
     tabs: [{ id: initialTabId, computerId: "home" as ComputerId, cwd: fs.cwd }] as TabState[],
     activeTabId: initialTabId,
     activeSnowSession: null as string | null,
@@ -141,13 +141,20 @@ export const useGameStore = create<GameStore>()(
         }
         set({
           username,
-          computerState: { ...state.computerState, [computerId]: { fs: finalFs } },
+          computerState: { ...state.computerState, [computerId]: { ...state.computerState[computerId], fs: finalFs } },
         });
       },
-      pushHistory: (command) =>
-        set((state) => ({
-          commandHistory: [...state.commandHistory, command].slice(-MAX_HISTORY),
-        })),
+      pushHistory: (computerId, command) =>
+        set((state) => {
+          const cs = state.computerState[computerId];
+          if (!cs) return {};
+          return {
+            computerState: {
+              ...state.computerState,
+              [computerId]: { ...cs, commandHistory: [...cs.commandHistory, command].slice(-MAX_HISTORY) },
+            },
+          };
+        }),
       completeObjective: (id) =>
         set((state) => ({
           completedObjectives: [...state.completedObjectives, id],
@@ -187,11 +194,11 @@ export const useGameStore = create<GameStore>()(
         })),
       setComputerFs: (computer, fs) =>
         set((state) => ({
-          computerState: { ...state.computerState, [computer]: { fs } },
+          computerState: { ...state.computerState, [computer]: { ...state.computerState[computer], fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: state.computerState[computer]?.envVars ?? getDefaultEnv(computer, state.username) } },
         })),
       initComputer: (computer, fs) =>
         set((state) => ({
-          computerState: { ...state.computerState, [computer]: { fs } },
+          computerState: { ...state.computerState, [computer]: { fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: initEnvForComputer(computer, state.username, fs) } },
         })),
       addTab: (computerId, cwd) => {
         const state = get();
@@ -207,15 +214,16 @@ export const useGameStore = create<GameStore>()(
         set((state) => {
           const newTabs = state.tabs.filter((t) => t.id !== tabId);
           if (newTabs.length === 0) return {}; // Can't remove last tab
+          const updates: Partial<typeof state> = { tabs: newTabs };
+          if (state.activeSnowSession === tabId) {
+            updates.activeSnowSession = null;
+          }
           if (state.activeTabId === tabId) {
             const idx = state.tabs.findIndex((t) => t.id === tabId);
             const newActive = newTabs[Math.min(idx, newTabs.length - 1)];
-            return {
-              tabs: newTabs,
-              activeTabId: newActive.id,
-            };
+            updates.activeTabId = newActive.id;
           }
-          return { tabs: newTabs };
+          return updates;
         }),
       setActiveTab: (tabId) =>
         set((state) => {
@@ -231,6 +239,10 @@ export const useGameStore = create<GameStore>()(
       setTabComputer: (tabId, computerId, cwd) =>
         set((state) => ({
           tabs: state.tabs.map((t) => t.id === tabId ? { ...t, computerId, cwd } : t),
+        })),
+      setComputerEnv: (computer, envVars) =>
+        set((state) => ({
+          computerState: { ...state.computerState, [computer]: { ...state.computerState[computer]!, envVars } },
         })),
       removeComputer: (computer) =>
         set((state) => {
@@ -262,20 +274,32 @@ export const useGameStore = create<GameStore>()(
         const activeComp = data.activeComputer ?? "nexacorp";
 
         // Build computerState from v5 computerStates or infer from legacy fields
-        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS }>> = {};
+        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>> = {};
         if (data.computerStates) {
           for (const [id, cs] of Object.entries(data.computerStates)) {
             try {
-              loadedComputerState[id as ComputerId] = { fs: deserializeFS(cs.fs) };
+              const loadedFs = deserializeFS(cs.fs);
+              loadedComputerState[id as ComputerId] = {
+                fs: loadedFs,
+                commandHistory: cs.commandHistory ?? [],
+                envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, data.username, loadedFs),
+              };
             } catch { /* skip corrupted entries */ }
           }
+          // Legacy v5 saves without per-computer history: assign flat commandHistory to active computer
+          if (data.version < 6 && data.commandHistory?.length) {
+            const target = loadedComputerState[activeComp];
+            if (target && target.commandHistory.length === 0) {
+              target.commandHistory = data.commandHistory;
+            }
+          }
         } else {
-          loadedComputerState[activeComp] = { fs };
+          loadedComputerState[activeComp] = { fs, commandHistory: data.commandHistory ?? [], envVars: initEnvForComputer(activeComp, data.username, fs) };
           if (stashedFs) {
             if (activeComp === "devcontainer") {
-              loadedComputerState.nexacorp = { fs: stashedFs };
+              loadedComputerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", data.username, stashedFs) };
             } else if (activeComp === "nexacorp") {
-              loadedComputerState.devcontainer = { fs: stashedFs };
+              loadedComputerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", data.username, stashedFs) };
             }
           }
         }
@@ -305,11 +329,11 @@ export const useGameStore = create<GameStore>()(
           completedObjectives: data.completedObjectives,
           deliveredEmailIds: data.deliveredEmailIds,
           deliveredPiperIds: data.deliveredPiperIds ?? [],
-          commandHistory: data.commandHistory,
           storyFlags: data.storyFlags ?? {},
           computerState: loadedComputerState,
           tabs,
           activeTabId,
+          activeSnowSession: null,
         });
         return true;
       },
@@ -317,16 +341,15 @@ export const useGameStore = create<GameStore>()(
     {
       name: "terminal-turmoil-save",
       partialize: (state) => {
-        // Serialize all computer FS entries
-        const serializedComputerState: Record<string, { fs: SerializedFS }> = {};
+        // Serialize all computer FS entries (including per-computer history)
+        const serializedComputerState: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string> }> = {};
         for (const [id, cs] of Object.entries(state.computerState)) {
-          if (cs) serializedComputerState[id] = { fs: serializeFS(cs.fs) };
+          if (cs) serializedComputerState[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-MAX_HISTORY), envVars: cs.envVars };
         }
         // Persist tab layout
         const activeTabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
         return {
           username: state.username,
-          commandHistory: state.commandHistory.slice(-MAX_HISTORY),
           currentChapter: state.currentChapter,
           completedObjectives: state.completedObjectives,
           deliveredEmailIds: state.deliveredEmailIds,
@@ -367,17 +390,30 @@ export const useGameStore = create<GameStore>()(
         }
 
         // Build computerState from persisted data or infer from legacy fields
-        const computerState: Partial<Record<ComputerId, { fs: VirtualFS }>> = {};
-        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS }> | undefined;
+        const computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>> = {};
+        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string> }> | undefined;
+        const legacyCommandHistory = (p.commandHistory as string[]) ?? [];
         if (serializedCS) {
           for (const [id, cs] of Object.entries(serializedCS)) {
             try {
-              computerState[id as ComputerId] = { fs: deserializeFS(cs.fs) };
+              const restoredFs = deserializeFS(cs.fs);
+              computerState[id as ComputerId] = {
+                fs: restoredFs,
+                commandHistory: cs.commandHistory ?? [],
+                envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, username, restoredFs),
+              };
             } catch { /* skip corrupted entries */ }
+          }
+          // Legacy: if no per-computer history found, assign flat history to first computer
+          if (legacyCommandHistory.length > 0 && Object.values(computerState).every((cs) => cs!.commandHistory.length === 0)) {
+            const firstKey = Object.keys(computerState)[0] as ComputerId | undefined;
+            if (firstKey && computerState[firstKey]) {
+              computerState[firstKey]!.commandHistory = legacyCommandHistory;
+            }
           }
           // Sync snowflake to nexacorp if present
           if (computerState.nexacorp) {
-            computerState.nexacorp = { fs: syncToVirtualFS(sfState, computerState.nexacorp.fs) };
+            computerState.nexacorp = { ...computerState.nexacorp, fs: syncToVirtualFS(sfState, computerState.nexacorp.fs) };
           }
         } else {
           // Legacy save — build computerState from serializedFs + stashed FS
@@ -399,7 +435,7 @@ export const useGameStore = create<GameStore>()(
           if (legacyComputer === "nexacorp") {
             legacyFs = syncToVirtualFS(sfState, legacyFs);
           }
-          computerState[legacyComputer] = { fs: legacyFs };
+          computerState[legacyComputer] = { fs: legacyFs, commandHistory: legacyCommandHistory, envVars: initEnvForComputer(legacyComputer, username, legacyFs) };
 
           // Reconstruct stashed FS if present
           const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
@@ -407,9 +443,9 @@ export const useGameStore = create<GameStore>()(
             if (serializedStashedFs?.root) {
               const stashedFs = deserializeFS(serializedStashedFs);
               if (legacyComputer === "devcontainer") {
-                computerState.nexacorp = { fs: stashedFs };
+                computerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", username, stashedFs) };
               } else if (legacyComputer === "nexacorp") {
-                computerState.devcontainer = { fs: stashedFs };
+                computerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", username, stashedFs) };
               }
             }
           } catch { /* skip corrupted stashed fs */ }
@@ -442,7 +478,6 @@ export const useGameStore = create<GameStore>()(
         return {
           ...currentState,
           username,
-          commandHistory: (p.commandHistory as string[]) ?? currentState.commandHistory,
           currentChapter: (p.currentChapter as string) ?? currentState.currentChapter,
           completedObjectives: (p.completedObjectives as string[]) ?? currentState.completedObjectives,
           deliveredEmailIds: (p.deliveredEmailIds as string[]) ?? currentState.deliveredEmailIds,

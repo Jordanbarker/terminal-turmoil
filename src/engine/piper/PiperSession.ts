@@ -72,6 +72,17 @@ export class PiperSession implements ISession {
     return true;
   }
 
+  /** Re-evaluate visible channels/replies from current info and redraw. */
+  refresh(): void {
+    if (this.isAnimating) return;
+    if (this.view === "channels") {
+      this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
+    } else {
+      this.refreshReplyOptions();
+    }
+    this.redraw();
+  }
+
   enter(): void {
     this.channelItems = getVisibleChannels(this.info.deliveredPiperIds, this.username, this.computerId);
     this.terminal.write(`\x1b[?1049h\x1b[H\x1b[J\x1b[?25l${this.buildChannelListView()}`);

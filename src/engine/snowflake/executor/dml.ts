@@ -5,7 +5,7 @@ import { QueryResult } from "../formatter/result_types";
 import { evaluate, toBool, EvalContext } from "./evaluator";
 import { SessionContext } from "../session/context";
 import { execute as executeSql } from "./executor";
-import { resolveThreePart } from "./resolve";
+import { resolveThreePart, tableNotFoundError } from "./resolve";
 
 export function executeDML(stmt: AST.Statement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const evalCtx = sessionToEvalCtx(ctx);
@@ -22,7 +22,7 @@ export function executeDML(stmt: AST.Statement, state: SnowflakeState, ctx: Sess
 function executeInsert(stmt: AST.InsertStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
   const tbl = state.getTable(db, schema, table);
-  if (!tbl) return { result: { type: "error", message: `Table '${stmt.table.join(".")}' does not exist.` }, state };
+  if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
   const columns = stmt.columns ?? tbl.columns.map((c) => c.name);
 
@@ -71,7 +71,7 @@ function executeInsert(stmt: AST.InsertStatement, state: SnowflakeState, ctx: Se
 function executeUpdate(stmt: AST.UpdateStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
   const tbl = state.getTable(db, schema, table);
-  if (!tbl) return { result: { type: "error", message: `Table '${stmt.table.join(".")}' does not exist.` }, state };
+  if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
   const predicate = (row: Row): boolean => {
     if (!stmt.where) return true;
@@ -101,7 +101,7 @@ function executeUpdate(stmt: AST.UpdateStatement, state: SnowflakeState, ctx: Se
 function executeDelete(stmt: AST.DeleteStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
   const tbl = state.getTable(db, schema, table);
-  if (!tbl) return { result: { type: "error", message: `Table '${stmt.table.join(".")}' does not exist.` }, state };
+  if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
   let affected = 0;
   const predicate = (row: Row): boolean => {
@@ -131,7 +131,7 @@ function executeDelete(stmt: AST.DeleteStatement, state: SnowflakeState, ctx: Se
 function executeMerge(stmt: AST.MergeStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.target, ctx);
   const tbl = state.getTable(db, schema, table);
-  if (!tbl) return { result: { type: "error", message: `Table '${stmt.target.join(".")}' does not exist.` }, state };
+  if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.target.join(".")) }, state };
 
   // Get source rows
   let sourceRows: Row[] = [];

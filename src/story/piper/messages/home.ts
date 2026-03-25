@@ -836,5 +836,65 @@ once you're confident the manual backup works, you can trust the cron job to do 
       ],
       trigger: { type: "immediate" },
     },
+
+    // === #bubble_buddies — day 2: Alex meets a dog ===
+    {
+      id: "bubble_buddies_day2_nova",
+      channelId: "bubble_buddies",
+      computer: "home",
+      messages: [
+        {
+          id: "bb_day2_1",
+          from: "Alex Rivera",
+          timestamp: "10:42 AM",
+          body: `you guys I met this cutie today named nova and she looks JUST like ${username}'s dog\n\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⠭⠄⠙⠀⠀⠏⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀⠀⠀⠀⠉⣻⣿⣿⣿⣿\n⣿⣿⠋⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⡿⠋⠀⠀⠀⠀⠀⠻⣿⣿\n⣿⣿⠀⠀⠀⠊⠀⠀⠴⠖⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⡀⠀⠀⠠⣀⡉⠀⠀⠀⠀⠀⣿⣿\n⡟⣀⣤⠍⠀⠀⠀⠶⡚⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⠀⠀⠀⠄⠈⠀⠀⢰⣄⠀⠀⣿\n⣿⣿⣿⣿⡿⠀⠀⠒⠋⠀⠀⠀⠀⠀⠀⠀⠐⠀⠀⢻⣿⣿⠀⠈⠤⢄⡀⠀⢀⣤⣿⣿⣿⣿\n⣿⣿⣿⣿⣷⠄⠀⠀⠀⠀⠀⠀⠀⠉⢀⡄⢁⠀⠀⣾⣿⣿⣷⠀⠄⡀⢸⠀⢢⣾⣿⣿⣿⣿\n⣿⣿⣿⣿⣥⡤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⣦⠀⡇⠀⢻⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⡿⠄⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣿⣿⣿⣿⣿⣿⣿⣿⣿⣄⠀⣈⢿⣿⣿⣿⣿\n⣿⣿⣿⣿⡏⠞⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⢀⠐⠒⠶⣱⠀⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⠃⣤⠋⠀⠀⠀⣀⣤⣾⣿⡇⠀⢮⢿⣿⣿⣿⣿⣦⠀⠤⠀⠐⡉⠀⠀⠻⣿⣿⣿\n⣿⣿⣿⣿⢸⠂⠀⠀⣴⡔⡾⣿⣿⣿⣿⡀⠀⣿⣆⠉⠛⠿⠿⠟⠀⠛⠟⠀⠀⠀⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⠀⣠⠀⠀⣿⣾⣿⣿⣿⣿⣿⣿⣄⠀⠀⢻⣿⣷⢿⣿⡀⠀⠀⠠⠀⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⠀⡇⠀⠀⢀⣏⠋⢃⡟⣥⣿⣿⣿⣿⡀⠀⣿⣿⣿⣿⣤⠀⡀⠐⢻⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣧⣿⠀⠀⢸⠁⠀⣿⣿⢿⣿⡟⣿⣿⣿⣿⣤⣄⣤⣿⣦⠀⠀⣆⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⢸⡏⣿⣿⡇⣿⣿⣼⣿⣿⣿⣿⡇⠹⠀⣸⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⡄⣆⠀⣧⠀⡄⣿⡟⣿⣿⣿⡈⣿⣿⣧⢹⢃⠀⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⡈⣿⡀⠀⡇⣿⣿⣿⣿⣿⣿⣠⣃⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿`,
+        },
+        {
+          id: "bb_day2_2",
+          from: "Dev Nakamura",
+          timestamp: "10:44 AM",
+          body: "oh no. oh no she's perfect",
+        },
+        {
+          id: "bb_day2_3",
+          from: "Priya Mehta",
+          timestamp: "10:45 AM",
+          body: "I would literally die for nova",
+        },
+        {
+          id: "bb_day2_4",
+          from: "Olive Borden",
+          timestamp: "10:46 AM",
+          body: "alex please tell me you got her number. or her owner's number. either works",
+        },
+        {
+          id: "bb_day2_5",
+          from: "Alex Rivera",
+          timestamp: "10:47 AM",
+          body: "I took like 40 photos. she kept doing the head tilt thing",
+        },
+        {
+          id: "bb_day2_6",
+          from: "Dev Nakamura",
+          timestamp: "10:48 AM",
+          body: "the head tilt is a biological weapon and I will not be taking questions",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "day1_shutdown" },
+      replyOptions: [
+        {
+          label: "she's adorable",
+          messageBody: "ok wow she really does look like my dog. that's adorable",
+        },
+        {
+          label: "demand more photos",
+          messageBody: "40 photos is not enough. I need a minimum of 200",
+        },
+        {
+          label: "set up a playdate",
+          messageBody: "we need to set up a playdate immediately. this is non-negotiable",
+        },
+      ],
+    },
   ];
 }

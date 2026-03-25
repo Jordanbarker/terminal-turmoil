@@ -17,6 +17,7 @@ import { checkPiperDeliveries } from "../engine/piper/delivery";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
 import { ComputerId } from "../state/types";
+import { PiperSessionInfo } from "../engine/piper/types";
 
 interface EventActionContext {
   term: Terminal;
@@ -75,6 +76,12 @@ const EVENT_ACTIONS: Record<string, (ctx: EventActionContext) => EventActionResu
   },
 };
 
+interface SessionEntry {
+  session: ISession;
+  type: string;
+  piperInfo?: PiperSessionInfo;
+}
+
 interface SessionRouterDeps {
   activeComputerRef: React.MutableRefObject<ComputerId>;
   writePrompt: (term: Terminal) => void;
@@ -86,20 +93,40 @@ interface SessionRouterDeps {
 export function useSessionRouter(deps: SessionRouterDeps) {
   const { activeComputerRef, writePrompt, getPrompt, runSshTransition, pendingNotificationsRef } = deps;
 
-  const sessionRef = useRef<ISession | null>(null);
-  const sessionTypeRef = useRef<string | null>(null);
-  const sessionTabIdRef = useRef<string | null>(null);
-  const piperInfoRef = useRef<import("../engine/piper/types").PiperSessionInfo | null>(null);
+  const sessionMapRef = useRef<Map<string, SessionEntry>>(new Map());
 
   const hasActiveSession = useCallback(() => {
-    return sessionRef.current !== null;
+    const activeTabId = useGameStore.getState().activeTabId;
+    return sessionMapRef.current.has(activeTabId);
+  }, []);
+
+  /** Refresh piper session state from the store (other tabs may have progressed). */
+  const refreshPiperSession = useCallback(() => {
+    const activeTabId = useGameStore.getState().activeTabId;
+    const entry = sessionMapRef.current.get(activeTabId);
+    if (!entry || entry.type !== "piper" || !entry.piperInfo) return;
+
+    const store = useGameStore.getState();
+    const sessionIds = new Set(entry.piperInfo.deliveredPiperIds);
+    const newFromStore = store.deliveredPiperIds.filter(id => !sessionIds.has(id));
+    const flagsChanged = entry.piperInfo.storyFlags !== store.storyFlags;
+    if (newFromStore.length > 0) {
+      entry.piperInfo.deliveredPiperIds.push(...newFromStore);
+    }
+    if (flagsChanged) {
+      entry.piperInfo.storyFlags = store.storyFlags;
+    }
+    if (newFromStore.length > 0 || flagsChanged) {
+      (entry.session as PiperSession).refresh();
+    }
   }, []);
 
   /** Sync piper IDs from the live session back to game state. */
-  const syncPiperIds = useCallback(() => {
-    if (!piperInfoRef.current) return;
+  const syncPiperIds = useCallback((tabId: string) => {
+    const entry = sessionMapRef.current.get(tabId);
+    if (!entry?.piperInfo) return;
     const store = useGameStore.getState();
-    const newIds = piperInfoRef.current.deliveredPiperIds.filter(
+    const newIds = entry.piperInfo.deliveredPiperIds.filter(
       (id) => !store.deliveredPiperIds.includes(id)
     );
     if (newIds.length > 0) {
@@ -139,6 +166,25 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           if (actionResult.skipDefault) continue;
         }
 
+        // Wire objective_completed events to store
+        if (event.type === "objective_completed") {
+          useGameStore.getState().completeObjective(event.detail);
+        }
+      }
+
+      // Process story flag triggers first so deliveries see updated flags
+      const triggers = getTriggersForComputer(computerId, useGameStore.getState().username);
+      for (const event of events) {
+        const latestFlags = useGameStore.getState().storyFlags;
+        const flagResults = checkStoryFlagTriggers(event, triggers, latestFlags);
+        for (const flagResult of flagResults) {
+          useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+          if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+        }
+      }
+
+      // Check email deliveries (now sees updated story flags)
+      for (const event of events) {
         const store = useGameStore.getState();
         const currentFs = store.computerState[computerId]!.fs;
 
@@ -172,23 +218,6 @@ export function useSessionRouter(deps: SessionRouterDeps) {
             term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
           }
         }
-
-        // Wire objective_completed events to store
-        if (event.type === "objective_completed") {
-          useGameStore.getState().completeObjective(event.detail);
-        }
-      }
-
-      // Process story flag triggers from session events
-      const store = useGameStore.getState();
-      const triggers = getTriggersForComputer(computerId, store.username);
-      for (const event of events) {
-        const latestFlags = useGameStore.getState().storyFlags;
-        const flagResults = checkStoryFlagTriggers(event, triggers, latestFlags);
-        for (const flagResult of flagResults) {
-          useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
-          if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
-        }
       }
 
       return shouldTransition;
@@ -199,13 +228,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
   /** Route input to the active session. Returns true if input was consumed. */
   const routeInput = useCallback(
     (term: Terminal, data: string): boolean => {
-      if (!sessionRef.current) return false;
-
-      // Only route input to the session from the tab that owns it
       const activeTabId = useGameStore.getState().activeTabId;
-      if (activeTabId !== sessionTabIdRef.current) return false;
+      const entry = sessionMapRef.current.get(activeTabId);
+      if (!entry) return false;
 
-      const result = sessionRef.current.handleInput(data);
+      // Refresh piper state from store before routing input (other tabs may have progressed)
+      refreshPiperSession();
+
+      const result = entry.session.handleInput(data);
       if (!result) return true; // still waiting (prompt session)
 
       const computerId = activeComputerRef.current;
@@ -217,8 +247,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
       // Sync piper IDs mid-session BEFORE processing trigger events,
       // so processTriggerEvents sees already-delivered IDs and doesn't re-deliver them
-      if (sessionTypeRef.current === "piper") {
-        syncPiperIds();
+      if (entry.type === "piper") {
+        syncPiperIds(activeTabId);
       }
 
       // Process mid-session events without terminal notifications (session owns the screen)
@@ -229,10 +259,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       if (result.type !== "exit") return true; // continue
 
       // Session exited — clean up
-      const type = sessionTypeRef.current;
-      sessionRef.current = null;
-      sessionTypeRef.current = null;
-      sessionTabIdRef.current = null;
+      const type = entry.type;
+      sessionMapRef.current.delete(activeTabId);
 
       // Mark intro as seen when player exits nano (not when it opens)
       if (type === "editor" && computerId === "home") {
@@ -251,8 +279,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
 
       // Final piper ID sync on exit
       if (type === "piper") {
-        syncPiperIds();
-        piperInfoRef.current = null;
+        syncPiperIds(activeTabId);
       }
 
       if (result.output) {
@@ -296,14 +323,21 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       }
       return true;
     },
-    [activeComputerRef, processTriggerEvents, syncPiperIds, writePrompt, getPrompt, runSshTransition]
+    [activeComputerRef, processTriggerEvents, syncPiperIds, refreshPiperSession, writePrompt, getPrompt, runSshTransition]
   );
 
   /** Start a new session from an AppliedEffects startSession descriptor. */
   const startSession = useCallback(
     (term: Terminal, session: SessionToStart, tabId?: string): void => {
       const computerId = activeComputerRef.current;
-      sessionTabIdRef.current = tabId ?? useGameStore.getState().activeTabId;
+      const targetTabId = tabId ?? useGameStore.getState().activeTabId;
+
+      // Defensive: if this tab already has a session, exit its alt-buffer before replacing
+      const existing = sessionMapRef.current.get(targetTabId);
+      if (existing) {
+        term.write("\x1b[?1049l"); // exit any stale alt-buffer
+        sessionMapRef.current.delete(targetTabId);
+      }
 
       if (session.type === "editor") {
         const store = useGameStore.getState();
@@ -323,8 +357,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           },
           trigger
         );
-        sessionRef.current = editorSession;
-        sessionTypeRef.current = "editor";
+        sessionMapRef.current.set(targetTabId, { session: editorSession, type: "editor" });
         editorSession.enter();
       } else if (session.type === "snow-sql") {
         const store = useGameStore.getState();
@@ -333,8 +366,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           writePrompt(term);
           return;
         }
-        const tabId = store.activeTabId;
-        store.setActiveSnowSession(tabId);
+        const snowTabId = store.activeTabId;
+        store.setActiveSnowSession(snowTabId);
         const snowSqlSession = new SnowSqlSession(
           term,
           store.snowflakeState,
@@ -342,8 +375,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           (newState) => useGameStore.getState().setSnowflakeState(newState),
           () => useGameStore.getState().setActiveSnowSession(null)
         );
-        sessionRef.current = snowSqlSession;
-        sessionTypeRef.current = "snow-sql";
+        sessionMapRef.current.set(targetTabId, { session: snowSqlSession, type: "snow-sql" });
         snowSqlSession.enter();
       } else if (session.type === "prompt") {
         const store = useGameStore.getState();
@@ -354,17 +386,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           currentFs,
           store.username
         );
-        sessionRef.current = promptSession;
-        sessionTypeRef.current = "prompt";
+        sessionMapRef.current.set(targetTabId, { session: promptSession, type: "prompt" });
         promptSession.enter();
       } else if (session.type === "pythonRepl") {
         const pythonSession = new PythonReplSession(term);
-        sessionRef.current = pythonSession;
-        sessionTypeRef.current = "pythonRepl";
+        sessionMapRef.current.set(targetTabId, { session: pythonSession, type: "pythonRepl" });
         pythonSession.enter().then(() => {
           if (!pythonSession.isReady()) {
-            sessionRef.current = null;
-            sessionTypeRef.current = null;
+            sessionMapRef.current.delete(targetTabId);
             writePrompt(term);
           }
         });
@@ -378,14 +407,11 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           session.info.username,
           currentFs.homeDir
         );
-        sessionRef.current = sshSession;
-        sessionTypeRef.current = "ssh";
+        sessionMapRef.current.set(targetTabId, { session: sshSession, type: "ssh" });
         const enterResult = sshSession.enter();
         if (enterResult && enterResult.type === "exit") {
           // Known host — process exit immediately without waiting for input
-          sessionRef.current = null;
-          sessionTypeRef.current = null;
-          sessionTabIdRef.current = null;
+          sessionMapRef.current.delete(targetTabId);
           if (enterResult.triggerEvents?.length) {
             const shouldTransition = processTriggerEvents(term, enterResult.triggerEvents, true);
             if (shouldTransition) {
@@ -402,8 +428,7 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           const value = topics.join(",");
           useGameStore.getState().setStoryFlag("used_chip_topics", value);
         });
-        sessionRef.current = chipSession;
-        sessionTypeRef.current = "chip";
+        sessionMapRef.current.set(targetTabId, { session: chipSession, type: "chip" });
         chipSession.enter();
       } else if (session.type === "piper") {
         const store = useGameStore.getState();
@@ -411,10 +436,8 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           ...session.info,
           deliveredPiperIds: [...store.deliveredPiperIds],
         };
-        piperInfoRef.current = piperInfo;
         const piperSession = new PiperSession(term, piperInfo, store.username);
-        sessionRef.current = piperSession;
-        sessionTypeRef.current = "piper";
+        sessionMapRef.current.set(targetTabId, { session: piperSession, type: "piper", piperInfo });
         piperSession.enter();
       }
     },
@@ -422,12 +445,32 @@ export function useSessionRouter(deps: SessionRouterDeps) {
   );
 
   const canCloseCurrentSession = useCallback((): boolean => {
-    if (!sessionRef.current) return true;
-    // Only the tab that owns the session needs to check canClose
     const activeTabId = useGameStore.getState().activeTabId;
-    if (activeTabId !== sessionTabIdRef.current) return true;
-    return sessionRef.current.canClose?.() ?? true;
+    const entry = sessionMapRef.current.get(activeTabId);
+    if (!entry) return true;
+    return entry.session.canClose?.() ?? true;
   }, []);
 
-  return { hasActiveSession, routeInput, startSession, canCloseCurrentSession };
+  /**
+   * Remove the session entry for a tab being closed.
+   * NOTE: This only deletes the map entry — it does NOT write \x1b[?1049l to exit the
+   * alt-buffer. This is safe because cleanupTab is always called immediately before
+   * store.removeTab() / term.dispose(), which destroys the xterm instance entirely.
+   */
+  const cleanupTab = useCallback((tabId: string) => {
+    const store = useGameStore.getState();
+    if (store.activeSnowSession === tabId) {
+      store.setActiveSnowSession(null);
+    }
+    sessionMapRef.current.delete(tabId);
+  }, []);
+
+  /** Notify the active tab's session (if any) that the terminal was resized. */
+  const resizeActiveSession = useCallback(() => {
+    const tabId = useGameStore.getState().activeTabId;
+    const entry = sessionMapRef.current.get(tabId);
+    entry?.session.resize?.();
+  }, []);
+
+  return { hasActiveSession, routeInput, startSession, canCloseCurrentSession, refreshPiperSession, cleanupTab, resizeActiveSession };
 }

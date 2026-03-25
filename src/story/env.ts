@@ -1,0 +1,151 @@
+import { ComputerId } from "../state/types";
+import { COMPUTERS } from "./player";
+
+/**
+ * Returns default environment variables for a given computer.
+ * These represent what a login shell would have before sourcing user configs.
+ */
+export function getDefaultEnv(computerId: ComputerId, username: string): Record<string, string> {
+  const home = `/home/${username}`;
+  const hostname = COMPUTERS[computerId].hostname;
+
+  const base: Record<string, string> = {
+    SHELL: "/bin/zsh",
+    TERM: "xterm-256color",
+    USER: username,
+    HOME: home,
+    LOGNAME: username,
+    HOSTNAME: hostname,
+    LANG: "en_US.UTF-8",
+    SHLVL: "1",
+    OLDPWD: home,
+    EDITOR: "nano",
+    PAGER: "less",
+    MAIL: `/var/mail/${username}`,
+    HISTFILE: `${home}/.zsh_history`,
+    _: "/usr/bin/printenv",
+  };
+
+  if (computerId === "home") {
+    return {
+      ...base,
+      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      XDG_SESSION_TYPE: "tty",
+      XDG_RUNTIME_DIR: "/run/user/1000",
+      XDG_DATA_HOME: `${home}/.local/share`,
+      XDG_CONFIG_HOME: `${home}/.config`,
+      DISPLAY: ":0",
+    };
+  }
+
+  if (computerId === "nexacorp") {
+    return {
+      ...base,
+      PATH: `${home}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`,
+      SNOWFLAKE_ACCOUNT: "nexacorp.us-east-1",
+      SNOWFLAKE_USER: username,
+      SNOWFLAKE_ROLE: "ANALYST",
+      SNOWFLAKE_WAREHOUSE: "ANALYTICS_WH",
+      SNOWFLAKE_DATABASE: "NEXACORP_PROD",
+      SNOWFLAKE_SCHEMA: "RAW_NEXACORP",
+      DBT_PROFILES_DIR: `${home}/.dbt`,
+      DBT_PROJECT_DIR: `${home}/nexacorp-analytics`,
+      NEXACORP_ENV: "production",
+      NEXACORP_TEAM: "data-engineering",
+    };
+  }
+
+  // devcontainer
+  return {
+    ...base,
+    HOSTNAME: "a1b2c3d4e5f6",
+    LANG: "C.UTF-8",
+    PATH: `/opt/coder/bin:${home}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`,
+    container: "docker",
+    DEBIAN_FRONTEND: "noninteractive",
+    CODER_WORKSPACE: "ai",
+    CODER_AGENT: "main",
+    CODER_URL: "https://coder.nexacorp.internal",
+    SNOWFLAKE_ACCOUNT: "nexacorp.us-east-1",
+    SNOWFLAKE_USER: username,
+    SNOWFLAKE_ROLE: "ANALYST",
+    SNOWFLAKE_WAREHOUSE: "ANALYTICS_WH",
+    SNOWFLAKE_DATABASE: "NEXACORP_PROD",
+    SNOWFLAKE_SCHEMA: "RAW_NEXACORP",
+    DBT_PROFILES_DIR: `${home}/.dbt`,
+    DBT_PROJECT_DIR: `${home}/nexacorp-analytics`,
+  };
+}
+
+/**
+ * Parses environment variable assignments from shell config file content.
+ * Extracts `export VAR=VALUE` and plain `VAR=VALUE` assignments.
+ * Skips comments, aliases, setopt, bindkey, autoload, function calls, conditionals.
+ */
+export function parseEnvAssignments(content: string): Record<string, string> {
+  const vars: Record<string, string> = {};
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+
+    // Skip empty lines, comments, and non-assignment constructs
+    if (
+      !trimmed ||
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("alias ") ||
+      trimmed.startsWith("setopt ") ||
+      trimmed.startsWith("bindkey ") ||
+      trimmed.startsWith("autoload ") ||
+      trimmed.startsWith("if ") ||
+      trimmed.startsWith("fi") ||
+      trimmed.startsWith("then") ||
+      trimmed.startsWith("else") ||
+      trimmed.startsWith("function ") ||
+      trimmed.startsWith("source ") ||
+      trimmed.startsWith(". ")
+    ) {
+      continue;
+    }
+
+    // Match `export VAR=VALUE` or `export VAR="VALUE"` or `export VAR='VALUE'`
+    const exportMatch = trimmed.match(/^export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (exportMatch) {
+      vars[exportMatch[1]] = stripQuotes(exportMatch[2]);
+      continue;
+    }
+
+    // Match plain `VAR=VALUE` (only if it looks like a standalone assignment)
+    const assignMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (assignMatch) {
+      vars[assignMatch[1]] = stripQuotes(assignMatch[2]);
+    }
+  }
+
+  return vars;
+}
+
+function stripQuotes(value: string): string {
+  if ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+/**
+ * Initializes env vars for a computer: defaults + .zshrc exports merged.
+ */
+export function initEnvForComputer(
+  computerId: ComputerId,
+  username: string,
+  fs: { readFile: (path: string) => { content?: string; error?: string } }
+): Record<string, string> {
+  const env = getDefaultEnv(computerId, username);
+  const home = `/home/${username}`;
+  const zshrcResult = fs.readFile(`${home}/.zshrc`);
+  if (zshrcResult.content) {
+    const parsed = parseEnvAssignments(zshrcResult.content);
+    Object.assign(env, parsed);
+  }
+  return env;
+}

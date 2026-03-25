@@ -1,4 +1,4 @@
-import { registerAsync } from "../registry";
+import { registerAsync, registerAlias } from "../registry";
 import { AsyncCommandHandler, CommandContext, CommandResult } from "../types";
 import { parsePipeline, parseInput } from "../parser";
 import { execute, executeAsync, isAsyncCommand } from "../registry";
@@ -10,6 +10,7 @@ import { GameEvent } from "../../mail/delivery";
 import { isCommandAvailable } from "../availability";
 import { getAvailableCommands } from "../registry";
 import { COMMAND_PATHS } from "./which";
+import { stripAnsi } from "../../../lib/ansi";
 
 const MAX_SUBSTITUTION_DEPTH = 5;
 
@@ -462,7 +463,7 @@ async function executeSingleLine(
       } else {
         lastResult = { output: "", exitCode: 1 };
       }
-      stdin = lastResult.output;
+      stdin = stripAnsi(lastResult.output);
       continue;
     }
 
@@ -515,7 +516,7 @@ async function executeSingleLine(
       cwd = lastResult.newCwd;
     }
 
-    stdin = lastResult.output;
+    stdin = stripAnsi(lastResult.output);
   }
 
   // Apply redirection
@@ -749,5 +750,5 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
 
 const description = "Execute shell scripts";
 registerAsync("bash", bashHandler, description, HELP_TEXTS.bash);
-registerAsync("sh", bashHandler, description, HELP_TEXTS.bash);
-registerAsync("zsh", bashHandler, description, HELP_TEXTS.bash);
+registerAlias("sh", "bash");
+registerAlias("zsh", "bash");

@@ -88,9 +88,8 @@ function createState(): SaveableState {
     completedObjectives: ["obj-1"],
     deliveredEmailIds: ["email-1"],
     deliveredPiperIds: [],
-    commandHistory: ["ls", "cd docs", "cat readme.md"],
     storyFlags: {},
-    computerState: { nexacorp: { fs } },
+    computerState: { nexacorp: { fs, commandHistory: ["ls", "cd docs", "cat readme.md"], envVars: { USER: "player", HOME: "/home/player" } } },
     tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
     activeTabIndex: 0,
   };
@@ -136,7 +135,7 @@ describe("createSaveData", () => {
 
   it("truncates command history to 500 entries", () => {
     const state = createState();
-    state.commandHistory = Array.from({ length: 600 }, (_, i) => `cmd-${i}`);
+    state.computerState.nexacorp!.commandHistory = Array.from({ length: 600 }, (_, i) => `cmd-${i}`);
     const data = createSaveData(state, "Test");
     expect(data.commandHistory).toHaveLength(500);
     expect(data.commandHistory[0]).toBe("cmd-100");
@@ -156,6 +155,12 @@ describe("createSaveData", () => {
     expect(data.computerStates).toBeDefined();
     expect(data.computerStates!.nexacorp).toBeDefined();
     expect(data.computerStates!.nexacorp.fs.root).toBeDefined();
+  });
+
+  it("serializes envVars in computerStates", () => {
+    const state = createState();
+    const data = createSaveData(state, "Test");
+    expect(data.computerStates!.nexacorp.envVars).toEqual({ USER: "player", HOME: "/home/player" });
   });
 
   it("serializes tabs and activeTabIndex", () => {
@@ -283,11 +288,40 @@ describe("migrateSaveData", () => {
       storyFlags: {},
     };
     const migrated = migrateSaveData(v4Data);
-    expect(migrated.version).toBe(5);
+    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
     expect(migrated.computerStates).toBeDefined();
     expect(migrated.computerStates!.nexacorp).toBeDefined();
     expect(migrated.tabs).toEqual([{ computerId: "nexacorp", cwd: "/home/player" }]);
     expect(migrated.activeTabIndex).toBe(0);
+  });
+
+  it("migrates v6 to v7 (no-op, envVars initialized on load)", () => {
+    const fs = createMinimalFS();
+    const v6Data: SaveData = {
+      version: 6,
+      timestamp: Date.now(),
+      label: "v6 save",
+      username: "player",
+      gamePhase: "playing",
+      currentChapter: "chapter-2",
+      completedObjectives: [],
+      deliveredEmailIds: [],
+      deliveredPiperIds: [],
+      commandHistory: [],
+      cwd: "/home/player",
+      fs: serializeFS(fs),
+      activeComputer: "nexacorp",
+      storyFlags: {},
+      computerStates: {
+        nexacorp: { fs: serializeFS(fs), commandHistory: ["ls"] },
+      },
+      tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
+      activeTabIndex: 0,
+    };
+    const migrated = migrateSaveData(v6Data);
+    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
+    // envVars not present in v6 data — will be initialized from defaults on load
+    expect(migrated.computerStates!.nexacorp.envVars).toBeUndefined();
   });
 
   it("migrates v4 with stashedFs", () => {
@@ -310,7 +344,7 @@ describe("migrateSaveData", () => {
       stashedFs: serializeFS(fs),
     };
     const migrated = migrateSaveData(v4Data);
-    expect(migrated.version).toBe(5);
+    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
     expect(migrated.computerStates!.devcontainer).toBeDefined();
     expect(migrated.computerStates!.nexacorp).toBeDefined();
   });
@@ -325,11 +359,10 @@ describe("multi-tab round-trip", () => {
       completedObjectives: [],
       deliveredEmailIds: [],
       deliveredPiperIds: [],
-      commandHistory: [],
       storyFlags: {},
       computerState: {
-        nexacorp: { fs: createMinimalFS() },
-        devcontainer: { fs: createMinimalFS() },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
+        devcontainer: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
       },
       tabs: [
         { computerId: "nexacorp", cwd: "/home/player" },
@@ -362,11 +395,10 @@ describe("multi-tab round-trip", () => {
       completedObjectives: [],
       deliveredEmailIds: [],
       deliveredPiperIds: [],
-      commandHistory: [],
       storyFlags: {},
       computerState: {
-        nexacorp: { fs: createMinimalFS() },
-        devcontainer: { fs: createBareFS() },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
+        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {} },
       },
       tabs: [
         { computerId: "nexacorp", cwd: "/home/player" },
@@ -425,9 +457,8 @@ describe("multi-tab round-trip", () => {
       completedObjectives: [],
       deliveredEmailIds: [],
       deliveredPiperIds: [],
-      commandHistory: [],
       storyFlags: {},
-      computerState: { nexacorp: { fs: createMinimalFS() } },
+      computerState: { nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} } },
       tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
       activeTabIndex: 0,
     };
@@ -449,12 +480,11 @@ describe("multi-tab round-trip", () => {
       completedObjectives: [],
       deliveredEmailIds: [],
       deliveredPiperIds: [],
-      commandHistory: [],
       storyFlags: {},
       computerState: {
-        home: { fs: createMinimalFS() },
-        nexacorp: { fs: createMinimalFS() },
-        devcontainer: { fs: createBareFS() },
+        home: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
+        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {} },
       },
       tabs: [
         { computerId: "home", cwd: "/home/player" },

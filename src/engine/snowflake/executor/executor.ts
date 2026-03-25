@@ -17,6 +17,7 @@ import { executeDML } from "./dml";
 import { executeShow, executeDescribe, executeUse } from "./show_describe";
 import { executeCopyInto } from "./copy_staging";
 import { SessionContext } from "../session/context";
+import { tableNotFoundError } from "./resolve";
 
 export interface ExecutionResult {
   results: QueryResult[];
@@ -256,7 +257,7 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
             });
           }
         }
-        throw new Error(`Table '${plan.database}.${plan.schema}.${plan.table}' does not exist.`);
+        throw new Error(tableNotFoundError(`${plan.database}.${plan.schema}.${plan.table}`));
       }
 
       // Prefix columns with alias if present, merge outer row for correlated subqueries

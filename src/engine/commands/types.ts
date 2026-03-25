@@ -30,6 +30,8 @@ export interface CommandContext {
   snowflakeContext?: SessionContext;
   setSnowflakeState?: (state: SnowflakeState) => void;
   elevated?: boolean;
+  envVars?: Record<string, string>;
+  setEnvVars?: (envVars: Record<string, string>) => void;
 }
 
 export interface EditorSessionInfo {

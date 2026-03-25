@@ -9,6 +9,7 @@ import { getReadEmailIds } from "../engine/mail/mailUtils";
 import { getEmailDefinitions } from "../engine/mail/emails";
 import { seedImmediatePiper, checkPiperDeliveries } from "../engine/piper/delivery";
 import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
+import { gitClone } from "../engine/git/repo";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
@@ -42,6 +43,12 @@ export function useComputerTransitions(deps: TransitionDeps) {
         setTimeout(() => {
           term.clear();
           const s = useGameStore.getState();
+
+          // Close all non-active home tabs
+          const homeTabs = s.tabs.filter(
+            (t) => t.computerId === "home" && t.id !== s.activeTabId
+          );
+          for (const t of homeTabs) s.removeTab(t.id);
           if (s.currentChapter === "chapter-1") {
             s.setCurrentChapter("chapter-2");
           }
@@ -72,6 +79,42 @@ export function useComputerTransitions(deps: TransitionDeps) {
             state.addDeliveredPiperMessages(piperIds);
           }
 
+          // Track whether new Piper messages were delivered during transition
+          let hadNewPiper = false;
+
+          // On Day 2 SSH, set ssh_day2 flag and run delivery cascade
+          if (state.storyFlags.day1_shutdown) {
+            state.setStoryFlag("ssh_day2", true);
+
+            // Deliver Piper messages triggered by ssh_day2 (e.g. auri_day2_morning)
+            const sshState = useGameStore.getState();
+            const sshEvent: GameEvent = { type: "command_executed", detail: "ssh_nexacorp" };
+            const newPiperIds = checkPiperDeliveries(
+              sshEvent,
+              [...sshState.deliveredPiperIds],
+              sshState.username,
+              "nexacorp",
+              sshState.storyFlags
+            );
+            if (newPiperIds.length > 0) {
+              hadNewPiper = true;
+              sshState.addDeliveredPiperMessages(newPiperIds);
+
+              // Process piper_delivered story flag triggers (4th pass pattern)
+              const storyFlagTriggers = getTriggersForComputer("nexacorp", sshState.username);
+              const latestFlags = useGameStore.getState().storyFlags;
+              let currentFlags = { ...latestFlags };
+              for (const id of newPiperIds) {
+                const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+                const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, currentFlags);
+                for (const flagResult of flagResults) {
+                  useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+                  currentFlags = { ...currentFlags, [flagResult.flag]: flagResult.value };
+                }
+              }
+            }
+          }
+
           // Boot sequence
           state.setGamePhase("booting");
           const bootLines = getBootSequence(username);
@@ -84,6 +127,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
               clearInterval(bootInterval);
               term.writeln("");
               nexacorpLogo.forEach((line) => term.writeln(line));
+              if (hadNewPiper) {
+                term.writeln("");
+                term.writeln(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
+              }
               useGameStore.getState().setGamePhase("playing");
             }
           }, BOOT_LINE_INTERVAL_MS);
@@ -98,7 +145,26 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
     if (isSubsequent) {
       // Subsequent visit — no animation, just repurpose tab
-      const entry = store.computerState.devcontainer!;
+      let entry = store.computerState.devcontainer;
+
+      if (!entry) {
+        // State was removed (e.g. exit to home) — rebuild silently
+        const username = store.username;
+        // Build base FS with dbt_project_cloned suppressed — gitClone will recreate it with .git
+        const rebuildFlags = { ...store.storyFlags, dbt_project_cloned: false };
+        const root = createDevcontainerFilesystem(username, rebuildFlags);
+        let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+
+        // Re-clone the repo so git history is preserved
+        if (store.storyFlags.dbt_project_cloned) {
+          const cloneResult = gitClone(newFs, `/home/${username}`, "nexacorp/nexacorp-analytics", username);
+          if (!cloneResult.error) newFs = cloneResult.fs;
+        }
+
+        store.initComputer("devcontainer", newFs);
+        entry = useGameStore.getState().computerState.devcontainer!;
+      }
+
       const newCwd = entry.fs.cwd;
       store.setTabComputer(store.activeTabId, "devcontainer", newCwd);
       activeComputerRef.current = "devcontainer";
@@ -266,7 +332,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
         if (newPiperIds.length > 0) {
           latestForPiper.addDeliveredPiperMessages(newPiperIds);
           term.writeln("");
-          term.write(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
+          term.writeln(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
 
           // Process piper_delivered story flag triggers (mirrors processDeliveries 4th pass)
           const storyFlagTriggers = getTriggersForComputer("home", username);
@@ -293,6 +359,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
     store.setGamePhase("transitioning");
 
     // Black screen pause (simulating overnight)
+    term.write("\x1b[?25l"); // hide cursor during animation
     term.clear();
     setTimeout(() => {
       const s = useGameStore.getState();
@@ -318,6 +385,16 @@ export function useComputerTransitions(deps: TransitionDeps) {
         const prev = prevHomeFs.readFile(knownHostsPath);
         if (prev.content) {
           const result = newFs.writeFile(knownHostsPath, prev.content);
+          if (result.fs) newFs = result.fs;
+        }
+      }
+
+      // Preserve .zsh_history from previous FS
+      if (prevHomeFs) {
+        const historyPath = `/home/${username}/.zsh_history`;
+        const prevHistory = prevHomeFs.readFile(historyPath);
+        if (prevHistory.content) {
+          const result = newFs.writeFile(historyPath, prevHistory.content);
           if (result.fs) newFs = result.fs;
         }
       }
@@ -390,8 +467,8 @@ export function useComputerTransitions(deps: TransitionDeps) {
           day2Welcome.forEach((line) => term.writeln(line));
           UNLOCK_BOX.forEach((line) => term.writeln(line));
 
+          term.write("\x1b[?25h"); // restore cursor
           useGameStore.getState().setGamePhase("playing");
-          writePrompt(term);
         }
       }, BOOT_LINE_INTERVAL_MS);
     }, 2500);

@@ -36,6 +36,7 @@ export const PIPER_DELIVERY_IDS = [
   "openclam_history",
   "openclam_end_of_day",
   "bubble_buddies_history",
+  "bubble_buddies_day2_nova",
   // NexaCorp deliveries
   "general_edward_welcome",
   "eng_sarah_welcome",
@@ -64,6 +65,10 @@ export const PIPER_DELIVERY_IDS = [
   "jordan_snowsql_tips",
   "auri_dbt_results",
   "auri_filtering_reaction",
+  "auri_day2_morning",
+  "auri_test_failure_reaction",
+  "auri_fix_pushed",
+  "auri_fix_pushed_reply",
   "jordan_metrics_followup",
   "dana_schema_followup",
   "general_tom_wins",

@@ -29,18 +29,17 @@ export interface SaveableState {
   completedObjectives: string[];
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
-  commandHistory: string[];
   storyFlags: StoryFlags;
-  computerState: Partial<Record<ComputerId, { fs: VirtualFS }>>;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>;
   tabs: TabLike[];
   activeTabIndex: number;
 }
 
 export function createSaveData(state: SaveableState, label: string): SaveData {
-  // Serialize all computer FS entries
-  const computerStates: Record<string, { fs: SerializedFS }> = {};
+  // Serialize all computer FS entries (including per-computer history)
+  const computerStates: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string> }> = {};
   for (const [id, cs] of Object.entries(state.computerState)) {
-    if (cs) computerStates[id] = { fs: serializeFS(cs.fs) };
+    if (cs) computerStates[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-500), envVars: cs.envVars };
   }
 
   // Derive active computer and FS from tabs (for backward compat with older save readers)
@@ -59,7 +58,7 @@ export function createSaveData(state: SaveableState, label: string): SaveData {
     completedObjectives: [...state.completedObjectives],
     deliveredEmailIds: [...state.deliveredEmailIds],
     deliveredPiperIds: [...state.deliveredPiperIds],
-    commandHistory: state.commandHistory.slice(-500),
+    commandHistory: Object.values(state.computerState).flatMap((cs) => cs?.commandHistory ?? []).slice(-500),
     cwd: activeTab?.cwd ?? `/home/${state.username}`,
     fs: activeSerializedFs!,
     activeComputer,
@@ -180,6 +179,22 @@ export function migrateSaveData(data: SaveData): SaveData {
       tabs: [{ computerId: active, cwd: data.cwd }],
       activeTabIndex: 0,
     };
+  }
+  if (data.version < 6) {
+    // Migrate per-computer commandHistory into computerStates
+    if (data.computerStates) {
+      const active = data.activeComputer ?? "nexacorp";
+      for (const [id, cs] of Object.entries(data.computerStates)) {
+        if (!cs.commandHistory) {
+          cs.commandHistory = id === active ? (data.commandHistory ?? []) : [];
+        }
+      }
+    }
+    data = { ...data, version: 6 };
+  }
+  if (data.version < 7) {
+    // v7 adds envVars to computerStates — initialized from defaults on load if missing
+    data = { ...data, version: 7 };
   }
   return data;
 }

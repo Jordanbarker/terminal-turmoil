@@ -58,7 +58,7 @@ describe("isCommandAvailable", () => {
     });
 
     it("blocks commands not in the home set and not unlocked via NexaCorp", () => {
-      const blocked = ["grep", "find", "dbt", "snow", "diff", "wc", "chmod"];
+      const blocked = ["grep", "find", "diff", "wc", "chmod"];
       for (const cmd of blocked) {
         expect(isCommandAvailable(cmd, "home")).toBe(false);
       }
@@ -74,6 +74,16 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("wc", "home", flags)).toBe(true);
       expect(isCommandAvailable("sort", "home", flags)).toBe(true);
       expect(isCommandAvailable("uniq", "home", flags)).toBe(true);
+    });
+
+    it("blocks devcontainer-only commands on home", () => {
+      expect(isCommandAvailable("git", "home")).toBe(false);
+      expect(isCommandAvailable("snow", "home")).toBe(false);
+      expect(isCommandAvailable("dbt", "home")).toBe(false);
+      // Even with all flags
+      expect(isCommandAvailable("git", "home", { devcontainer_visited: true })).toBe(false);
+      expect(isCommandAvailable("snow", "home", { devcontainer_visited: true })).toBe(false);
+      expect(isCommandAvailable("dbt", "home", { devcontainer_visited: true })).toBe(false);
     });
 
     it("does not unlock power tools on home without returned_home_day1 flag", () => {
@@ -104,8 +114,6 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("chip", "nexacorp")).toBe(false);
       expect(isCommandAvailable("piper", "nexacorp")).toBe(false);
       expect(isCommandAvailable("chmod", "nexacorp")).toBe(false);
-      expect(isCommandAvailable("dbt", "nexacorp")).toBe(false);
-      expect(isCommandAvailable("snow", "nexacorp")).toBe(false);
       expect(isCommandAvailable("sudo", "nexacorp")).toBe(false);
       expect(isCommandAvailable("apt", "nexacorp")).toBe(false);
     });
@@ -146,10 +154,11 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("piper", "nexacorp", { piper_unlocked: true })).toBe(true);
     });
 
-    it("unlocks dbt and snow with devcontainer_visited flag", () => {
-      const flags = { devcontainer_visited: true };
-      expect(isCommandAvailable("dbt", "nexacorp", flags)).toBe(true);
-      expect(isCommandAvailable("snow", "nexacorp", flags)).toBe(true);
+    it("blocks devcontainer-only commands on nexacorp", () => {
+      const allFlags = { devcontainer_visited: true, coder_unlocked: true };
+      expect(isCommandAvailable("git", "nexacorp", allFlags)).toBe(false);
+      expect(isCommandAvailable("snow", "nexacorp", allFlags)).toBe(false);
+      expect(isCommandAvailable("dbt", "nexacorp", allFlags)).toBe(false);
     });
 
     it("blocks sudo and apt on nexacorp (no root access)", () => {

@@ -239,7 +239,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
         displayIdx++;
         const jitteredMs = jitterDelay(300);
         const executionTime = jitteredMs / 1000;
-        const result: ModelRunResult = { status: "error", materialization, executionTime };
+        const result: ModelRunResult = { status: "error", materialization, executionTime, message: execResult.message };
         lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
       }
     }
@@ -336,9 +336,21 @@ export function runTests(ctx: CommandContext): CommandResult {
   lines.push({ text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS });
   lines.push({ text: formatSummary(summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
 
+  const triggerEvents: { type: "command_executed"; detail: string }[] = [];
+  if (error > 0) {
+    triggerEvents.push({ type: "command_executed", detail: "dbt_test_fail" });
+  }
+  if (warn > 0) {
+    triggerEvents.push({ type: "command_executed", detail: "dbt_test_warn" });
+  }
+  if (error === 0) {
+    triggerEvents.push({ type: "command_executed", detail: "dbt_test_all_pass" });
+  }
+
   return {
     output: lines.map((l) => l.text).join("\n"),
     ...(!ctx.isPiped && { incrementalLines: lines }),
+    ...(triggerEvents.length > 0 && { triggerEvents }),
   };
 }
 
@@ -379,7 +391,7 @@ function runGenericTest(
   }
 
   const result = executeTest(sql, state, sessionCtx);
-  return { status: result.status === "error" ? "error" : result.status };
+  return { status: result.status === "pass" ? "pass" : "error" };
 }
 
 /**
@@ -442,6 +454,7 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
     ...(!ctx.isPiped && { incrementalLines: combinedLines }),
     triggerEvents: [
       ...(runResult.triggerEvents || []),
+      ...(testResult.triggerEvents || []),
       { type: "command_executed" as const, detail: "dbt_build" },
     ],
   };

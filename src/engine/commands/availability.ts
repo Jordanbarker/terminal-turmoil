@@ -1,8 +1,8 @@
 import { ComputerId, StoryFlags } from "../../state/types";
-import { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS, NEXACORP_ONLY } from "../../story/commandGates";
+import { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS, NEXACORP_ONLY, DEVCONTAINER_ONLY } from "../../story/commandGates";
 
 // Re-export for convenience
-export { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS, NEXACORP_ONLY };
+export { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS, NEXACORP_ONLY, DEVCONTAINER_ONLY };
 
 /** Returns true if the command is available on the given computer. */
 export function isCommandAvailable(commandName: string, computer: ComputerId, storyFlags?: StoryFlags): boolean {
@@ -10,10 +10,12 @@ export function isCommandAvailable(commandName: string, computer: ComputerId, st
     return DEVCONTAINER_COMMANDS.has(commandName);
   }
   if (computer === "nexacorp") {
+    if (DEVCONTAINER_ONLY.has(commandName)) return false;
     const requiredFlag = NEXACORP_GATED[commandName];
     if (requiredFlag && !storyFlags?.[requiredFlag]) return false;
     return true;
   }
+  if (DEVCONTAINER_ONLY.has(commandName)) return false;
   const homeFlag = HOME_GATED[commandName];
   if (homeFlag) {
     if (!storyFlags?.[homeFlag]) return false;

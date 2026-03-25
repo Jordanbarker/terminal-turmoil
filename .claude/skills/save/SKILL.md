@@ -31,7 +31,7 @@ src/hooks/useTerminal.ts                 # gameAction handler (save/load/listSav
 Full snapshot of all game state:
 ```ts
 {
-  version: number;        // SAVE_FORMAT_VERSION (currently 5) for migrations
+  version: number;        // SAVE_FORMAT_VERSION (currently 7) for migrations
   timestamp: number;      // Date.now() at save time
   label: string;          // Display label
   username, gamePhase, currentChapter, completedObjectives,
@@ -41,7 +41,7 @@ Full snapshot of all game state:
   storyFlags: StoryFlags;      // Record<string, string | boolean>
   stashedFs?: SerializedFS;    // Legacy stashed FS (v3+, superseded by computerStates)
   stashedCwd?: string;         // Legacy stashed cwd (v3+, superseded by tabs)
-  computerStates?: Record<string, { fs: SerializedFS }>;  // Per-computer FS (v5+)
+  computerStates?: Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string> }>;  // Per-computer state (v5+ FS, v6+ history, v7+ envVars)
   tabs?: SavedTabState[];      // Tab layout: {computerId, cwd}[] (v5+)
   activeTabIndex?: number;     // Index of active tab in tabs[] (v5+)
 }
@@ -111,7 +111,7 @@ Zustand auto-save key: `terminal-turmoil-save`
 ### Store state (auto-persisted via Zustand `partialize`)
 | Field | What it tracks |
 |-------|---------------|
-| `serializedComputerState` | Per-computer serialized filesystems |
+| `serializedComputerState` | Per-computer serialized filesystems, command history, and env vars |
 | `persistedTabs` / `persistedActiveTabIndex` | Tab layout and active tab position |
 | `username` | Player's chosen username |
 | `gamePhase` | `"login" \| "booting" \| "playing" \| "transitioning"` |
@@ -155,6 +155,8 @@ function migrateSaveData(data: SaveData): SaveData {
   if (data.version < 3) { /* no-op structural bump */ }
   if (data.version < 4) { /* add deliveredPiperIds */ }
   if (data.version < 5) { /* infer computerStates from fs+stashedFs, create tabs from activeComputer+cwd */ }
+  if (data.version < 6) { /* migrate per-computer commandHistory into computerStates */ }
+  if (data.version < 7) { /* no-op: envVars initialized from defaults on load if missing */ }
   return data;
 }
 ```

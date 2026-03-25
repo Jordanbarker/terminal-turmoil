@@ -66,6 +66,13 @@ export class EditorSession implements ISession {
     return !this.state.modified;
   }
 
+  resize(): void {
+    this.config.rows = this.terminal.rows;
+    this.config.cols = this.terminal.cols;
+    this.ensureCursorVisible();
+    this.render();
+  }
+
   /** Enter the alternate screen buffer and render initial state. */
   enter(): void {
     this.terminal.write("\x1b[?1049h"); // Enter alt buffer

@@ -1,4 +1,4 @@
-import { registerAsync } from "../registry";
+import { registerAsync, registerAlias } from "../registry";
 import { AsyncCommandHandler, CommandResult } from "../types";
 import { getPyodide } from "../../python/pyodideLoader";
 import { resolvePath } from "../../../lib/pathUtils";
@@ -133,4 +133,4 @@ async function runCode(code: string): Promise<{ output: string }> {
 
 const description = "Run Python scripts or start an interactive Python REPL";
 registerAsync("python", pythonHandler, description, HELP_TEXTS.python);
-registerAsync("python3", pythonHandler, description, HELP_TEXTS.python);
+registerAlias("python3", "python");

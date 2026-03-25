@@ -9,7 +9,7 @@ const shutdown: CommandHandler = (args, flags, ctx) => {
 
   // After Day 1 shutdown, command is no longer available
   if (ctx.storyFlags?.day1_shutdown) {
-    return { output: "shutdown: command not found\n" };
+    return { output: "Not now — there's still work to be done.\n" };
   }
 
   // shutdown -h now → immediate

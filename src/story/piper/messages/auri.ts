@@ -317,6 +317,139 @@ Then inside the container:
       ],
     },
 
+    // === DM Auri: Day 2 morning (after SSH to work) ===
+    {
+      id: "auri_day2_morning",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_d2m_1",
+          from: "Auri Park",
+          timestamp: "9:05 AM",
+          body: "Morning! Hope day one wasn't too overwhelming.",
+        },
+        {
+          id: "auri_d2m_2",
+          from: "Auri Park",
+          timestamp: "9:05 AM",
+          body: "I pushed a schema test for campaign conversion_rate last night — been meaning to add coverage there for weeks. Can you pull the latest and run a build to make sure everything's green?",
+        },
+        {
+          id: "auri_d2m_3",
+          from: "Auri Park",
+          timestamp: "9:06 AM",
+          body: "cd into your nexacorp-analytics repo, `git pull`, then `dbt build`.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "ssh_day2" },
+      replyOptions: [
+        {
+          label: "On it!",
+          messageBody: "On it! I'll pull and run a build now.",
+          triggerEvents: [
+            { type: "objective_completed", detail: "read_auri_day2_morning" },
+          ],
+        },
+      ],
+    },
+
+    // === DM Auri: Test failure reaction (after dbt test fails on Day 2) ===
+    {
+      id: "auri_test_failure_reaction",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_tfr_1",
+          from: "Auri Park",
+          timestamp: "9:25 AM",
+          body: "Wait — did the conversion_rate test fail?",
+        },
+        {
+          id: "auri_tfr_2",
+          from: "Auri Park",
+          timestamp: "9:25 AM",
+          body: "That shouldn't happen... unless there's campaign data coming through with NULL clicks or conversions.",
+        },
+        {
+          id: "auri_tfr_3",
+          from: "Auri Park",
+          timestamp: "9:26 AM",
+          body: "Can you check the raw data? Try querying CAMPAIGN_METRICS in snow sql — look for rows where CLICKS IS NULL.",
+        },
+        {
+          id: "auri_tfr_4",
+          from: "Auri Park",
+          timestamp: "9:26 AM",
+          body: "The fix goes in models/marts/rpt_campaign_performance.sql. The model needs to handle NULLs in the conversion_rate calculation. And make a branch before you change anything — we don't push to main directly.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "dbt_test_failed_day2" },
+      replyOptions: [
+        {
+          label: "I'll check it out.",
+          messageBody: "I'll dig into the raw data and see what's going on.",
+        },
+        {
+          label: "What causes NULLs in campaign data?",
+          messageBody: "On it. Quick question though — what causes NULLs in campaign data?",
+        },
+      ],
+    },
+
+    // === DM Auri: Fix pushed congrats (after pushing the fix branch) ===
+    {
+      id: "auri_fix_pushed",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_fp_1",
+          from: "Auri Park",
+          timestamp: "10:00 AM",
+          body: "I saw the push — nice work! That was a clean fix.",
+        },
+        {
+          id: "auri_fp_2",
+          from: "Auri Park",
+          timestamp: "10:00 AM",
+          body: "This is exactly the kind of thing that slips through when there's no test coverage. Good thing we caught it before the marketing team's weekly review.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "pushed_fix_branch" },
+      replyOptions: [
+        {
+          label: "Happy to help!",
+          messageBody: "Happy to help! Glad we caught it early.",
+          triggerEvents: [{ type: "objective_completed", detail: "reported_fix_to_auri" }],
+        },
+        {
+          label: "Where did those NULLs come from?",
+          messageBody: "Thanks! Any idea where those NULLs came from though? Seems like a data source issue.",
+          triggerEvents: [{ type: "objective_completed", detail: "reported_fix_to_auri" }],
+        },
+      ],
+    },
+
+    // Auri follow-up after player asks about NULLs
+    {
+      id: "auri_fix_pushed_reply",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_fpr_1",
+          from: "Auri Park",
+          timestamp: "10:05 AM",
+          body: "Probably just an upstream source gap — it happens when a new campaign platform gets integrated and not all fields map cleanly. The marketing team adds new ad channels faster than the ingestion pipeline gets updated.",
+        },
+        {
+          id: "auri_fpr_2",
+          from: "Auri Park",
+          timestamp: "10:05 AM",
+          body: "The important thing is the model handles it now. NULLs in raw data are a when-not-if kind of thing.",
+        },
+      ],
+      trigger: { type: "after_piper_reply", deliveryId: "auri_fix_pushed" },
+    },
+
     // Auri explains chmod (after dana_ops_accepted)
     {
       id: "auri_chmod_help",

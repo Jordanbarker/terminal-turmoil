@@ -27,6 +27,14 @@ function buildInitialMailFiles(username: string): Record<string, FileNode> {
 
 export function buildDbtProject(): DirectoryNode {
   return dir("nexacorp-analytics", {
+    ".gitignore": file(".gitignore", `target/
+dbt_packages/
+logs/
+`),
+    "packages.yml": file("packages.yml", `packages:
+  - package: dbt-labs/dbt_utils
+    version: [">=1.0.0", "<2.0.0"]
+`),
     "dbt_project.yml": file("dbt_project.yml", `name: 'nexacorp_analytics'
 version: '1.0.0'
 config-version: 2
@@ -85,8 +93,10 @@ dbt build      # Run models + tests
 - \`models/intermediate/\` — Combine staging models
 - \`models/marts/\` — Business-facing tables and reports
 
-Co-Authored-By: Chip <chip@nexacorp.com>
+## Contacts
 
+- **Auri Park** (auri@nexacorp.com) — current maintainer
+- **Jin Chen** (jchen@nexacorp.com) — original author
 `),
     models: dir("models", {
       staging: dir("staging", {

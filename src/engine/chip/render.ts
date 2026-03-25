@@ -98,18 +98,23 @@ function wordWrap(text: string, width: number): string {
   if (width <= 0) return text;
   const paragraphs = text.split("\n");
   const wrapped = paragraphs.map((para) => {
-    const words = para.split(" ");
+    const indentMatch = para.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : "";
+    const effectiveWidth = width - indent.length;
+    if (effectiveWidth <= 0) return para;
+    const trimmed = para.slice(indent.length);
+    const words = trimmed.split(" ");
     const lines: string[] = [];
     let current = "";
     for (const word of words) {
-      if (current.length + word.length + 1 > width && current.length > 0) {
-        lines.push(current);
+      if (current.length + word.length + 1 > effectiveWidth && current.length > 0) {
+        lines.push(indent + current);
         current = word;
       } else {
         current = current ? `${current} ${word}` : word;
       }
     }
-    if (current) lines.push(current);
+    if (current) lines.push(indent + current);
     return lines.join("\r\n");
   });
   return wrapped.join("\r\n");

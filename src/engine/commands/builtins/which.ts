@@ -33,6 +33,8 @@ export const COMMAND_PATHS: Record<string, string> = {
   hostname: "/usr/bin/hostname",
   whoami: "/usr/bin/whoami",
   man: "/usr/bin/man",
+  printenv: "/usr/bin/printenv",
+  env: "/usr/bin/env",
 };
 
 const which: CommandHandler = (args, _flags, ctx) => {

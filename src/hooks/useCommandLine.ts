@@ -23,10 +23,9 @@ export function useCommandLine(deps: CommandLineDeps) {
   const cursorPos = useRef(0);
   const ghostLengthRef = useRef(0);
 
-  const {
-    commandHistory,
-    pushHistory,
-  } = useGameStore();
+  const pushHistory = useGameStore((s) => s.pushHistory);
+  const computerId = activeComputerRef.current;
+  const commandHistory = useGameStore((s) => s.computerState[computerId]?.commandHistory ?? []);
 
   const historyRef = useRef(commandHistory);
   const historyIndexRef = useRef(-1);
@@ -105,7 +104,7 @@ export function useCommandLine(deps: CommandLineDeps) {
 
         if (input.trim()) {
           term.write("\r\n");
-          pushHistory(input);
+          pushHistory(activeComputerRef.current, input);
           historyIndexRef.current = -1;
           return { type: "submit", input };
         }

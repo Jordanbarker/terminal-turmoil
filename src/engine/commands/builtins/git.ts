@@ -38,9 +38,16 @@ function parseGitArgs(rawArgs: string[]): { positional: string[]; flags: Record<
         flags[key] = rawArgs[i + 1];
         i += 2;
       } else {
-        // Handle combined flags like -rD or single boolean flags
-        for (const ch of key) {
-          flags[ch] = true;
+        // Handle combined flags like -am "msg" or -rD
+        for (let j = 0; j < key.length; j++) {
+          const ch = key[j];
+          if (valueFlags.has(ch) && i + 1 < rawArgs.length) {
+            flags[ch] = rawArgs[i + 1];
+            i += 1;
+            break; // value flag must be last in a combined group
+          } else {
+            flags[ch] = true;
+          }
         }
         i++;
       }
@@ -144,12 +151,12 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     }
 
     case "checkout": {
-      const target = subArgs[0];
-      if (!target) return { output: "error: you must specify a branch to checkout" };
       const createBranch = !!flags["b"];
+      const target = subArgs[0] || (createBranch ? String(flags["b"]) : undefined);
+      if (!target) return { output: "error: you must specify a branch to checkout" };
       const result = gitCheckout(ctx.fs, root, target, createBranch);
       if (result.error) return { output: result.error, exitCode: 1 };
-      return { output: result.output, newFs: result.fs };
+      return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 
     case "diff": {

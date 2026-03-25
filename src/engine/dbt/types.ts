@@ -17,6 +17,7 @@ export interface ModelRunResult {
   materialization: "view" | "table" | "ephemeral";
   executionTime: number;
   rowsAffected?: number;
+  message?: string;
 }
 
 export interface DbtTestResult {

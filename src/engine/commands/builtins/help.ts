@@ -8,21 +8,28 @@ const HIDDEN_COMMANDS = new Set(["help"]);
 const help: CommandHandler = (_args, _flags, ctx) => {
   const commands = getAvailableCommands(ctx.activeComputer, ctx.storyFlags);
   const gameCommands = commands
-    .filter((c) => !META_COMMANDS.has(c.name) && !HIDDEN_COMMANDS.has(c.name))
+    .filter(
+      (c) =>
+        !META_COMMANDS.has(c.name) &&
+        !HIDDEN_COMMANDS.has(c.name) &&
+        !(c.name === "shutdown" && ctx.storyFlags?.day1_shutdown)
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
   const metaCommands = commands.filter((c) => META_COMMANDS.has(c.name));
-  const maxLen = Math.max(...commands.map((c) => c.name.length));
+  const formatName = (cmd: { name: string; aliases?: string[] }) =>
+    cmd.aliases?.length ? `${cmd.name} (${cmd.aliases.join(", ")})` : cmd.name;
+  const maxLen = Math.max(...commands.map((c) => formatName(c).length));
 
   const lines = [
     colorize("Available commands:", ansi.bold, ansi.yellow),
     "",
     ...gameCommands.map(
       (cmd) =>
-        `  ${colorize(cmd.name.padEnd(maxLen + 2), ansi.green)}${cmd.description}`
+        `  ${colorize(formatName(cmd).padEnd(maxLen + 2), ansi.green)}${cmd.description}`
     ),
     ...metaCommands.map(
       (cmd) =>
-        `  ${colorize(cmd.name.padEnd(maxLen + 2), ansi.cyan)}${cmd.description}`
+        `  ${colorize(formatName(cmd).padEnd(maxLen + 2), ansi.cyan)}${cmd.description}`
     ),
     "",
     `Use ${colorize("man <command>", ansi.green)} for detailed usage.`,

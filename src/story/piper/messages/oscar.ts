@@ -375,7 +375,7 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_proc_3",
           from: "Oscar Diaz",
           timestamp: "10:39 AM",
-          body: `uniq — filter out adjacent duplicate lines
+          body: `uniq — filter adjacent duplicate lines
   uniq filename.txt              Remove adjacent duplicates
   uniq -c filename.txt           Count occurrences
   uniq -d filename.txt           Show only duplicates`,

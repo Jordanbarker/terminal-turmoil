@@ -1,5 +1,5 @@
 import { CommandHandler } from "../types";
-import { register } from "../registry";
+import { register, getPrimaryName, getAliasesFor } from "../registry";
 import { isCommandAvailable } from "../availability";
 import { colorize, ansi } from "../../../lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
@@ -10,25 +10,33 @@ const man: CommandHandler = (args, _flags, ctx) => {
   }
 
   const cmd = args[0];
+  const primaryName = getPrimaryName(cmd);
+  const isAlias = cmd !== primaryName;
 
   if (!isCommandAvailable(cmd, ctx.activeComputer, ctx.storyFlags)) {
     return { output: `No manual entry for ${cmd}` };
   }
 
-  const helpText = HELP_TEXTS[cmd];
+  const helpText = HELP_TEXTS[primaryName];
 
   if (!helpText) {
     return { output: `No manual entry for ${cmd}` };
   }
 
+  const cmdAliases = getAliasesFor(primaryName);
+  const aliasNote = cmdAliases.length > 0
+    ? ` (also: ${cmdAliases.join(", ")})`
+    : "";
+
   const lines = [
-    colorize(`${cmd.toUpperCase()}(1)`, ansi.bold) + "                  User Commands                  " + colorize(`${cmd.toUpperCase()}(1)`, ansi.bold),
+    ...(isAlias ? [colorize(`\`${cmd}\` is an alias for \`${primaryName}\``, ansi.dim), ""] : []),
+    colorize(`${primaryName.toUpperCase()}(1)`, ansi.bold) + "                  User Commands                  " + colorize(`${primaryName.toUpperCase()}(1)`, ansi.bold),
     "",
     colorize("NAME", ansi.bold),
-    `       ${cmd} - ${getCommandDescription(cmd)}`,
+    `       ${primaryName}${aliasNote} - ${getCommandDescription(primaryName)}`,
     "",
     colorize("SYNOPSIS", ansi.bold),
-    ...helpText.split("\n").filter((l) => l.startsWith("Usage:")).map((l) => `       ${l.replace("Usage: ", "")}`),
+    ...helpText.split("\n").filter((l) => l.startsWith("Usage:")).map((l) => `       ${l.replace(/^Usage:\s*/, "")}`),
     "",
     colorize("DESCRIPTION", ansi.bold),
     ...helpText.split("\n").filter((l) => !l.startsWith("Usage:") && l.trim()).map((l) => `       ${l}`),
@@ -79,6 +87,13 @@ function getCommandDescription(cmd: string): string {
     ssh: "remote login program",
     snow: "Snowflake command-line client",
     chip: "NexaCorp AI assistant",
+    source: "execute commands from a file in the current shell",
+    python: "run Python scripts or start an interactive REPL",
+    bash: "execute shell scripts",
+    dbt: "data build tool",
+    git: "the stupid content tracker",
+    piper: "team messaging",
+    man: "an interface to the system reference manuals",
   };
   return descriptions[cmd] ?? cmd;
 }

@@ -4,7 +4,7 @@ import { useGameStore } from "../state/gameStore";
 import { parseInput, parsePipeline } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand, commandReadsFiles } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
-import { colorize, ansi } from "../lib/ansi";
+import { colorize, ansi, stripAnsi } from "../lib/ansi";
 import { nexacorpLogo } from "../lib/ascii";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createDefaultContext } from "../engine/snowflake/session/context";
@@ -28,7 +28,7 @@ const computerQueues: Partial<Record<ComputerId, Promise<void>>> = {};
 
 function enqueueCommand(computerId: ComputerId, fn: () => void | Promise<void>): Promise<void> {
   const prev = computerQueues[computerId] ?? Promise.resolve();
-  const next = prev.then(fn).catch(() => {}); // ensure chain continues if a command throws
+  const next = prev.then(fn).catch((err) => { console.error("[enqueueCommand]", err); });
   computerQueues[computerId] = next;
   return next;
 }
@@ -53,7 +53,9 @@ function buildCommandContext(
     stdin,
     rawArgs,
     isPiped,
-    commandHistory: store.commandHistory,
+    commandHistory: store.computerState[computerId]?.commandHistory ?? [],
+    envVars: store.computerState[computerId]?.envVars ?? {},
+    setEnvVars: (env: Record<string, string>) => store.setComputerEnv(computerId, env),
     snowflakeState: store.snowflakeState,
     snowflakeContext: createDefaultContext(store.username),
     setSnowflakeState: store.setSnowflakeState,
@@ -95,7 +97,7 @@ export function useTerminal() {
       ? "~" + displayCwd.slice(homeDir.length)
       : displayCwd;
     const hostname = COMPUTERS[activeComputerRef.current].promptHostname;
-    return `${colorize(`${store.username}@${hostname}`, ansi.green)}:${colorize(displayPath, ansi.blue)}$ `;
+    return `${colorize(`${store.username}@${hostname}`, ansi.bold, ansi.green)}:${colorize(displayPath, ansi.bold, ansi.blue)}$ `;
   }, []);
 
   const writePrompt = useCallback(
@@ -120,6 +122,18 @@ export function useTerminal() {
     runSshTransition,
     pendingNotificationsRef,
   });
+
+  // Refresh piper session when switching back to its tab (picks up state changes from other tabs)
+  useEffect(() => {
+    let prevTabId = useGameStore.getState().activeTabId;
+    const unsub = useGameStore.subscribe((state) => {
+      if (state.activeTabId !== prevTabId) {
+        prevTabId = state.activeTabId;
+        sessionRouter.refreshPiperSession();
+      }
+    });
+    return unsub;
+  }, [sessionRouter.refreshPiperSession]);
 
   const commandLine = useCommandLine({
     cwdRef,
@@ -400,6 +414,7 @@ export function useTerminal() {
 
         // Enqueue command execution to serialize FS mutations per computer
         enqueueCommand(computerId, async () => {
+          try {
           const store = useGameStore.getState();
           const initialFs = store.computerState[computerId]!.fs;
           const currentCwd = cwdRef.current;
@@ -475,7 +490,7 @@ export function useTerminal() {
               runningFs = lastResult.newFs;
             }
 
-            stdin = lastResult.output;
+            stdin = stripAnsi(lastResult.output);
           }
 
           if (allTriggerEvents.length > 0) {
@@ -507,10 +522,12 @@ export function useTerminal() {
           }
 
           const earlyReturn = applyCommandResult(lastResult, pipeline[pipeline.length - 1], runningFs);
-          busyRef.current = false;
-          busyTabIdRef.current = null;
           if (!earlyReturn) {
             writePrompt(term);
+          }
+          } finally {
+            busyRef.current = false;
+            busyTabIdRef.current = null;
           }
         });
       }
@@ -523,5 +540,7 @@ export function useTerminal() {
     getPrompt,
     startSession: sessionRouter.startSession,
     canCloseCurrentSession: sessionRouter.canCloseCurrentSession,
+    cleanupTab: sessionRouter.cleanupTab,
+    resizeActiveSession: sessionRouter.resizeActiveSession,
   };
 }

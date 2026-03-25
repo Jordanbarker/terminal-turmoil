@@ -1,26 +1,61 @@
+import { file } from "@/engine/filesystem/builders";
 import { ChipMenuItem } from "../../engine/chip/types";
 import { StoryFlags, ComputerId } from "../../state/types";
 
 const ALL_ITEMS: ChipMenuItem[] = [
   {
     id: "git_help",
-    label: "I need help with git",
+    label: "Teach me git concepts/commands",
     condition: (flags, computer) => computer === "devcontainer",
     response:
-      "To get the analytics project:\n" +
-      "  git clone nexacorp/nexacorp-analytics\n\n" +
+      "A commit is a snapshot of your project at a point in time. " +
+      "Each one has a unique hash (e.g. a3f2c1b), a message, an author, and a pointer to its parent commit." +
+      "\n" +
+      "\nStage changes" +
+      "\n  git add app.py    # stage one file" +
+      "\n  git add .         # stage everything" +
+      "\n  git add -p        # interactively pick which parts of a file to stage" +
+      "\n\n" +
+      "Commit changes" +
+      "\n  git commit -m fix/bug.    # commit with a message (-m)" +
+      "\n  git commit -ma fix/bug    # commit with a message (-m) and auto-stage (-a)" +
+      "\n\n" +
+      "Browse history" +
+      "\n git log                         # full log with author, date, message" +
+      "\n git log --oneline               # compact: one line per commit" +
+      "\n\n" +
+      "Branching" +
+      "\n git branch                          # list local branches" +
+      "\n git branch -a                       # list local + remote branches" +
+      "\n git branch -d fix/bug               # delete a branch (safe — won't delete if unmerged)" +
+      "\n git branch -D fix/bug               # force delete" +
+
+      "\n git switch main                     # switch to existing branch" +
+      "\n git switch -c fix/bug.              # create and switch to a new branch" +
+      
+      "\n git restore app.py                  # discard changes to a file" +
+
+
       "Some basics:\n" +
-      "  git status        Check what's changed\n" +
-      "  git add <file>    Stage changes\n" +
-      "  git commit -m \"\" Save your work\n" +
-      "  git log           View history\n" +
-      "  git diff          See what changed",
+      "  git status   — check what's changed\n" +
+      "  git add      — stage changes\n" +
+      "  git commit   — save your work\n" +
+      "  git log      — view history\n" +
+      "  git diff     — see what changed\n\n" +
+      "Creating a feature branch:\n" +
+      "  1. Create & switch to a branch\n" +
+      "     git checkout -b fix/my-fix\n" +
+      "  2. Stage changed files\n" +
+      "     git add <file>\n" +
+      "  3. Commit your work\n" +
+      "     git commit -m \"fix: ...\"\n" +
+      "  4. Push the branch\n" +
+      "     git push -u origin fix/my-fix",
   },
   {
     id: "clone_for_me",
     label: "Can you clone the repo for me?",
-    condition: (flags, computer) =>
-      !flags.dbt_project_cloned && computer === "devcontainer",
+    condition: (_flags, computer) => computer === "devcontainer",
     response:
       "Sure thing!\n" +
       "\n" +
@@ -101,6 +136,34 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "and help with documentation. I also handle some automated maintenance — log rotation, " +
       "monitoring, that kind of thing. If you need data from any of those systems, " +
       "just ask and I can run the query for you.",
+  },
+  {
+    id: "null_sql_help",
+    label: "How do I handle NULLs in SQL?",
+    condition: (flags) => !!flags.dbt_test_failed_day2 && !flags.fixed_campaign_model,
+    response:
+      "There are a few ways to handle NULLs in SQL:\n\n" +
+      "  COALESCE(value, 0)       Returns 0 if value is NULL\n" +
+      "  IFNULL(value, 0)         Same as COALESCE for two args\n" +
+      "  CASE WHEN ... END        Full conditional logic\n" +
+      "  WHERE col IS NOT NULL    Filter out NULL rows\n\n" +
+      "For conversion_rate, you probably want COALESCE around the\n" +
+      "columns used in the calculation — that way NULL clicks or\n" +
+      "conversions become 0 instead of making the whole result NULL.",
+  },
+  {
+    id: "push_branch_help",
+    label: "How do I push changes on a branch?",
+    condition: (flags) => !!flags.fixed_campaign_model && !flags.pushed_fix_branch,
+    response:
+      "Here's the typical git workflow for pushing a branch:\n\n" +
+      "  git add <file>               Stage your changes\n" +
+      "  git commit -m \"description\"   Commit with a message\n" +
+      "  git push -u origin <branch>   Push and set upstream\n\n" +
+      "If you haven't created a branch yet:\n" +
+      "  git checkout -b fix/my-fix    Create and switch to branch\n\n" +
+      "The -u flag on push sets the upstream tracking, so future\n" +
+      "pushes just need 'git push'.",
   },
   {
     id: "exit",

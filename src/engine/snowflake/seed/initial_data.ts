@@ -73,6 +73,14 @@ function loadDatabase(json: JsonDatabase, opts?: LogOptions): Database {
       }
 
       const rows: Row[] = tableJson.rows.map((row) => hydrateRow(row, dateCols));
+
+      if (tableName === "CAMPAIGN_METRICS" && opts?.includeDay2) {
+        rows.push(
+          { CAMPAIGN_ID: "CM-101", CAMPAIGN_NAME: "partner_referral_q2", CHANNEL: "referral", IMPRESSIONS: 42000, CLICKS: null, CONVERSIONS: null, SPEND: 6200, REPORT_DATE: "2026-03-22" },
+          { CAMPAIGN_ID: "CM-102", CAMPAIGN_NAME: "partner_referral_q2", CHANNEL: "referral", IMPRESSIONS: 38000, CLICKS: null, CONVERSIONS: null, SPEND: 5800, REPORT_DATE: "2026-03-23" },
+        );
+      }
+
       schema.tables[tableName] = {
         name: tableJson.name,
         columns: tableJson.columns,

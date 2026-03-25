@@ -124,7 +124,7 @@ Jessica Langford — CEO & Co-Founder
 
 ### Sarah Knight — Senior Backend Engineer
 **Employee ID**: 1006 | **Email**: `sarah@nexacorp.com`
-**Personality**: Experienced, pragmatic, low-drama. Quiet confidence, offers to help but doesn't push. Casual and direct — "hey" and "lmk." Been at NexaCorp since month one.
+**Personality**: Experienced, pragmatic, low-drama. Quiet confidence, offers to help but doesn't push. Casual and direct — "hey" and "lmk" Been at NexaCorp since month one.
 **Mystery angle**: Noticed odd API calls from chip_service_account and 3am load spikes — chalked it up to background jobs. Told Oscar offhand that "Jin's concerns about the logs weren't totally crazy." Won't volunteer info but will share if asked.
 
 ### Erik Lindstrom — Senior Frontend Engineer

@@ -35,14 +35,8 @@ import { getSentDir } from "../src/engine/mail/mailUtils";
 import { resolvePath } from "../src/lib/pathUtils";
 import { PromptSessionInfo, PromptOption } from "../src/engine/prompt/types";
 import { ComputerId, StoryFlags, PLAYER, COMPUTERS } from "../src/state/types";
-import { colorize, ansi } from "../src/lib/ansi";
+import { colorize, ansi, stripAnsi } from "../src/lib/ansi";
 import { execSync } from "child_process";
-
-// ── ANSI stripping ──────────────────────────────────────────────────
-
-function stripAnsi(str: string): string {
-  return str.replace(/\x1b\[[0-9;]*m/g, "");
-}
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -67,7 +61,7 @@ export class GameRunner {
   storyFlags: StoryFlags;
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
-  commandHistory: string[];
+  commandHistory: Record<ComputerId, string[]>;
   snowflakeState: SnowflakeState;
   snowflakeContext: SessionContext;
   completedObjectives: string[];
@@ -79,7 +73,7 @@ export class GameRunner {
     this.storyFlags = {};
     this.deliveredEmailIds = [];
     this.deliveredPiperIds = [];
-    this.commandHistory = [];
+    this.commandHistory = { home: [], nexacorp: [], devcontainer: [] };
     this.snowflakeState = createInitialSnowflakeState();
     this.snowflakeContext = createDefaultContext(this.username);
     this.completedObjectives = [];
@@ -106,7 +100,7 @@ export class GameRunner {
 
   /** Execute a command string and return structured output. */
   run(input: string): CommandOutput {
-    this.commandHistory.push(input);
+    this.commandHistory[this.activeComputer].push(input);
     const pipeline = parsePipeline(input);
 
     // Check for redirection in the last segment
@@ -151,7 +145,7 @@ export class GameRunner {
         stdin,
         rawArgs: p.rawArgs,
         isPiped: pi < pipeline.length - 1 || !!redirectFile,
-        commandHistory: this.commandHistory,
+        commandHistory: this.commandHistory[this.activeComputer],
         snowflakeState: this.snowflakeState,
         snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
@@ -169,7 +163,7 @@ export class GameRunner {
         this.fs = lastResult.newFs;
       }
 
-      stdin = lastResult.output;
+      stdin = stripAnsi(lastResult.output);
     }
 
     // Handle redirection
@@ -194,7 +188,7 @@ export class GameRunner {
 
   /** Run a command that may be async (e.g. dbt). */
   async runAsync(input: string): Promise<CommandOutput> {
-    this.commandHistory.push(input);
+    this.commandHistory[this.activeComputer].push(input);
     const pipeline = parsePipeline(input);
 
     // Check for redirection
@@ -238,7 +232,7 @@ export class GameRunner {
         stdin,
         rawArgs: p.rawArgs,
         isPiped: pi < pipeline.length - 1 || !!redirectFile,
-        commandHistory: this.commandHistory,
+        commandHistory: this.commandHistory[this.activeComputer],
         snowflakeState: this.snowflakeState,
         snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
@@ -254,7 +248,7 @@ export class GameRunner {
         this.fs = lastResult.newFs;
       }
 
-      stdin = lastResult.output;
+      stdin = stripAnsi(lastResult.output);
     }
 
     // Handle redirection
@@ -402,7 +396,7 @@ export class GameRunner {
       `Story flags: ${flagCount} set`,
       `Delivered emails: ${this.deliveredEmailIds.length}`,
       `Completed objectives: ${this.completedObjectives.length}`,
-      `Command history: ${this.commandHistory.length} commands`,
+      `Command history: ${this.commandHistory[this.activeComputer].length} commands`,
       `Pending prompt: ${this.pendingPrompt ? "yes" : "no"}`,
     ];
     return lines.join("\n");

@@ -2,7 +2,7 @@ import { SnowflakeState } from "../state";
 import * as AST from "../parser/ast";
 import { QueryResult, ResultSet } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
-import { resolveThreePart } from "./resolve";
+import { resolveThreePart, tableNotFoundError } from "./resolve";
 
 export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx: SessionContext): QueryResult {
   switch (stmt.objectType) {
@@ -118,7 +118,7 @@ export function executeDescribe(stmt: AST.DescribeStatement, state: SnowflakeSta
     case "TABLE": case "VIEW": {
       const [db, schema, name] = resolveThreePart(stmt.name, ctx);
       const tbl = state.getTable(db, schema, name);
-      if (!tbl) return { type: "error", message: `Table '${stmt.name.join(".")}' does not exist.` };
+      if (!tbl) return { type: "error", message: tableNotFoundError(stmt.name.join(".")) };
 
       const rs: ResultSet = {
         columns: [

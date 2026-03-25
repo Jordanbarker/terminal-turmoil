@@ -314,6 +314,6 @@ export class ChipSession implements ISession {
   }
 
   private getWidth(): number {
-    return Math.min(this.terminal.cols, 40);
+    return Math.min(this.terminal.cols, 80);
   }
 }

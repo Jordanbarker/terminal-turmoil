@@ -389,4 +389,18 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "Start an interactive session with Chip, NexaCorp's AI assistant.",
   ].join("\n"),
+
+  printenv: [
+    "Usage: printenv [VARIABLE]...",
+    "",
+    "Print the values of the specified environment VARIABLE(s).",
+    "If no VARIABLE is specified, print all environment variables.",
+  ].join("\n"),
+
+  export: [
+    "Usage: export [NAME=VALUE]...",
+    "",
+    "Set environment variables in the current shell.",
+    "With no arguments, list all exported variables.",
+  ].join("\n"),
 };

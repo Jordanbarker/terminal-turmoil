@@ -3,7 +3,7 @@ import { Column } from "../types";
 import * as AST from "../parser/ast";
 import { QueryResult, StatusMessage } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
-import { resolveThreePart } from "./resolve";
+import { resolveThreePart, tableNotFoundError } from "./resolve";
 
 export function executeDDL(stmt: AST.Statement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   switch (stmt.kind) {
@@ -74,7 +74,7 @@ function executeCreateTable(stmt: AST.CreateTableStatement, state: SnowflakeStat
   if (stmt.clone) {
     const [srcDb, srcSchema, srcTable] = resolveThreePart(stmt.clone, ctx);
     if (!state.getTable(srcDb, srcSchema, srcTable)) {
-      return { result: { type: "error", message: `Table '${stmt.clone.join(".")}' does not exist.` }, state };
+      return { result: { type: "error", message: tableNotFoundError(stmt.clone.join(".")) }, state };
     }
     return { result: ok(`Table '${table}' successfully created.`), state: state.cloneTable(srcDb, srcSchema, srcTable, db, schema, table) };
   }
@@ -133,7 +133,7 @@ function executeCreateSequence(stmt: AST.CreateSequenceStatement, state: Snowfla
 function executeAlterTable(stmt: AST.AlterTableStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
   if (!state.getTable(db, schema, table)) {
-    return { result: { type: "error", message: `Table '${stmt.table.join(".")}' does not exist.` }, state };
+    return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
   }
 
   switch (stmt.action.type) {
@@ -179,7 +179,7 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
       const [db, schema, table] = resolveThreePart(stmt.name, ctx);
       if (!state.getTable(db, schema, table)) {
         if (stmt.ifExists) return { result: ok(), state };
-        return { result: { type: "error", message: `Table '${table}' does not exist.` }, state };
+        return { result: { type: "error", message: tableNotFoundError(table) }, state };
       }
       return { result: ok(`${table} successfully dropped.`), state: state.dropTable(db, schema, table) };
     }
@@ -201,7 +201,7 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
 function executeTruncate(stmt: AST.TruncateStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
   if (!state.getTable(db, schema, table)) {
-    return { result: { type: "error", message: `Table '${stmt.table.join(".")}' does not exist.` }, state };
+    return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
   }
   return { result: { type: "status", data: { message: "Statement executed successfully.", rowsAffected: 0 } }, state: state.truncateTable(db, schema, table) };
 }

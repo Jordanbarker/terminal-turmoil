@@ -8,6 +8,7 @@ export interface StoryFlagTrigger {
   flag: StoryFlagName;
   value: string | boolean;
   toast?: string;
+  requiredFlags?: StoryFlagName[];
 }
 
 export const STORY_FLAG_NAMES = [
@@ -106,6 +107,15 @@ export const STORY_FLAG_NAMES = [
 
   // Salary negotiation
   "accepted_at_180k",
+
+  // Day 2 Quest: Fix the Broken Pipeline
+  "pulled_day2_updates",
+  "dbt_test_failed_day2",
+  "investigated_null_data",
+  "created_fix_branch",
+  "fixed_campaign_model",
+  "pushed_fix_branch",
+  "reported_fix_to_auri",
 ] as const;
 
 export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
@@ -198,6 +208,8 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.ticketExport, flag: "read_ticket_export", value: true },
     { event: "file_read", path: p.boardMinutes, flag: "read_board_minutes", value: true },
     { event: "file_read", path: p.headcountPlan, flag: "read_headcount_plan", value: true },
+    // Day 2 quest: Piper reply fires on nexacorp since dm_auri defaults there
+    { event: "objective_completed", detail: "reported_fix_to_auri", flag: "reported_fix_to_auri", value: true },
   ];
 }
 
@@ -219,5 +231,12 @@ export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTri
     { event: "file_read", path: p.dbtChipDataCleanup(username), flag: "found_data_filtering", value: true },
     { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
     { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
+    // Day 2 quest triggers
+    { event: "command_executed", detail: "git_pull_origin_main", flag: "pulled_day2_updates", value: true, requiredFlags: ["ssh_day2"] },
+    { event: "command_executed", detail: "dbt_test_fail", flag: "dbt_test_failed_day2", value: true, requiredFlags: ["pulled_day2_updates"] },
+    { event: "command_executed", detail: "queried_campaign_metrics", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+    { event: "command_executed", detail: "git_checkout_b", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+    { event: "command_executed", detail: "dbt_test_all_pass", flag: "fixed_campaign_model", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+    { event: "command_executed", detail: "git_push", flag: "pushed_fix_branch", value: true, requiredFlags: ["fixed_campaign_model"] },
   ];
 }
