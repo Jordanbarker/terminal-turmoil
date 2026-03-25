@@ -696,17 +696,19 @@ describe("--help", () => {
     it("stages and commits with combined -am flag", () => {
       let fs = createTestFS();
       // init a repo
-      const init = execute("git", [], {}, { ...ctx(fs), rawArgs: ["init"] });
+      const devCtx = (f: VirtualFS) => ({ ...ctx(f), activeComputer: "devcontainer" as const });
+      const init = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["init"] });
       fs = init.newFs ?? fs;
       // stage and commit existing files
-      const add = execute("git", [], {}, { ...ctx(fs), rawArgs: ["add", "-A"] });
+      const add = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["add", "-A"] });
       fs = add.newFs ?? fs;
-      const c1 = execute("git", [], {}, { ...ctx(fs), rawArgs: ["commit", "-m", "initial"] });
+      const c1 = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["commit", "-m", "initial"] });
       fs = c1.newFs ?? fs;
       // modify a tracked file
-      fs = fs.writeFile("/home/player/notes.txt", "updated content");
+      const write = fs.writeFile("/home/player/notes.txt", "updated content");
+      fs = write.fs ?? fs;
       // commit with combined -am
-      const result = execute("git", [], {}, { ...ctx(fs), rawArgs: ["commit", "-am", "quick fix"] });
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["commit", "-am", "quick fix"] });
       expect(stripAnsi(result.output)).toContain("quick fix");
       expect(result.newFs).toBeDefined();
     });
