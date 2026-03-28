@@ -200,9 +200,15 @@ export function getVisibleChannels(
 
     // Count unread: NPC messages only (player messages are never "unseen")
     const totalMessages = channelDefs.reduce((sum, d) => sum + d.messages.filter((m) => !m.isPlayer).length, 0);
-    const seenKey = `seen:${channel.id}`;
-    const seenCountStr = deliveredIds.find((id) => id.startsWith(seenKey));
-    const seenCount = seenCountStr ? parseInt(seenCountStr.split(":")[2] || "0", 10) : 0;
+    const seenPrefix = `seen:${channel.id}:`;
+    // Use the highest seen count (last marker) to handle stale markers in the store
+    let seenCount = 0;
+    for (const id of deliveredIds) {
+      if (id.startsWith(seenPrefix)) {
+        const n = parseInt(id.slice(seenPrefix.length) || "0", 10);
+        if (n > seenCount) seenCount = n;
+      }
+    }
     const unread = Math.max(0, totalMessages - seenCount);
 
     result.push({ channel, unread });
