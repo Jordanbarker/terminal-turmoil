@@ -10,13 +10,13 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "dana_welcome_1",
           from: "Dana Okafor",
-          timestamp: "10:00 AM",
+          timestamp: "",
           body: "Hey! I'm Dana, Operations Lead. Welcome to the team!",
         },
         {
           id: "dana_welcome_2",
           from: "Dana Okafor",
-          timestamp: "10:00 AM",
+          timestamp: "",
           body: "If you ever need access to anything operations-related or have questions about how we handle incidents, just ping me.",
         },
       ],
@@ -31,19 +31,19 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "dana_ops_1",
           from: "Dana Okafor",
-          timestamp: "11:15 AM",
+          timestamp: "",
           body: "Hey, quick ask — my ops dashboard has been throwing parse errors since yesterday.",
         },
         {
           id: "dana_ops_2",
           from: "Dana Okafor",
-          timestamp: "11:15 AM",
-          body: "The data comes from a CSV export in /srv/operations/ — ticket_export.csv. Something changed in the file format and now the dashboard chokes on it.",
+          timestamp: "",
+          body: "The data comes from a CSV export in /srv/operations/ — ops_incidents.csv. Something changed in the file format and now the dashboard chokes on it.",
         },
         {
           id: "dana_ops_3",
           from: "Dana Okafor",
-          timestamp: "11:16 AM",
+          timestamp: "",
           body: "Could you take a look and see what's different? I'd check myself but I'm buried in incident review prep.",
         },
       ],
@@ -73,14 +73,34 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "dana_ask_auri_1",
           from: "Dana Okafor",
-          timestamp: "11:20 AM",
+          timestamp: "",
           body: "Oh right — those shared dirs got locked down after a security audit last month. Ask Auri — she's dealt with file permissions before.",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "dana_ops_no_access" },
     },
 
-    // Dana resolves (after reading ticket_export.csv)
+    // Dana check-in: player reports findings (after reading ops_incidents.csv)
+    {
+      id: "dana_ops_checkin",
+      channelId: "dm_dana",
+      messages: [],
+      trigger: { type: "after_file_read", filePath: "/srv/operations/ops_incidents.csv" },
+      replyOptions: [
+        {
+          label: "The schema changed — there's a new resolution_notes column.",
+          messageBody: "I checked ops_incidents.csv — there's an extra column called resolution_notes that wasn't there before. That's probably what's breaking the parser.",
+          triggerEvents: [{ type: "objective_completed", detail: "dana_ops_reported" }],
+        },
+        {
+          label: "Looks like someone added a column without updating the docs.",
+          messageBody: "Found it — someone added a resolution_notes column to the CSV. No changelog or docs update for it though.",
+          triggerEvents: [{ type: "objective_completed", detail: "dana_ops_reported" }],
+        },
+      ],
+    },
+
+    // Dana resolves (after player reports findings)
     {
       id: "dana_ops_resolved",
       channelId: "dm_dana",
@@ -88,23 +108,23 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "dana_resolved_1",
           from: "Dana Okafor",
-          timestamp: "11:45 AM",
-          body: "Nice catch — there's a new resolution_notes column. That'd do it. The dashboard expects a fixed schema and the extra column throws the parser off.",
+          timestamp: "",
+          body: "That extra column explains everything — the dashboard expects a fixed schema and the parser chokes on any new columns.",
         },
         {
           id: "dana_resolved_2",
           from: "Dana Okafor",
-          timestamp: "11:45 AM",
-          body: "I'll update the dashboard config to handle the new column. Thanks for tracking this down!",
+          timestamp: "",
+          body: "I'll update the dashboard config to handle it. Thanks for tracking this down!",
         },
         {
           id: "dana_resolved_3",
           from: "Dana Okafor",
-          timestamp: "11:46 AM",
+          timestamp: "",
           body: "Although... weird — I don't see a PR or changelog for this schema change. Someone added that column recently but there's no record of who or why. I'll ask around.",
         },
       ],
-      trigger: { type: "after_file_read", filePath: "/srv/operations/ticket_export.csv" },
+      trigger: { type: "after_objective", objectiveId: "dana_ops_reported" },
     },
 
     // === DM Dana: Schema follow-up (after finding data filtering, if player helped with CSV) ===
@@ -115,19 +135,19 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "dana_schema_1",
           from: "Dana Okafor",
-          timestamp: "12:10 PM",
+          timestamp: "",
           body: "Hey — remember that mystery column in the ticket CSV? I dug into it more.",
         },
         {
           id: "dana_schema_2",
           from: "Dana Okafor",
-          timestamp: "12:10 PM",
+          timestamp: "",
           body: "The resolution_notes column was added by chip_service_account. Same account that's been auto-resolving tickets in our system. I found 47 tickets closed in the last month with no human reviewer.",
         },
         {
           id: "dana_schema_3",
           from: "Dana Okafor",
-          timestamp: "12:11 PM",
+          timestamp: "",
           body: "I thought it was just a schema issue but now I'm seeing a pattern. Schema changes, auto-resolved tickets, and nobody in ops approved any of it.",
         },
       ],

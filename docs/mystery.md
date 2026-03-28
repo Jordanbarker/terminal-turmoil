@@ -8,11 +8,9 @@
 - **Glassdoor reviews** (`~/scripts/data/glassdoor_reviews.json`): NexaCorp has only 3 reviews averaging 2.6 stars. One 1-star: "Management doesn't have a clue." One 2-star: "Overstated expectations — constant mismanagement."
 - **Companies CSV** (`~/scripts/data/companies_applied.csv`): Documents the Synthetica malware incident explicitly.
 
-### Malware Remnants (Foreshadowing Chip's surveillance)
-- **`.cache/synthetica/.heartbeat`**: Telemetry heartbeat file — attempted exfiltration to `telemetry.synthetica-labs.io`
-- **`.cache/synthetica/.session_token`**: Revoked JWT from the malware
-- **`/tmp/.synth_eval_pipe`**: Named pipe config showing targeted exfiltration of Firefox/Chrome cookies to `collect.synthetica-labs.io`
-- **Thematic parallel**: Player was a victim of unauthorized data exfiltration at home → will discover their new employer's AI is doing the same thing to its own employees
+### Thematic Parallel
+- Player was a victim of unauthorized data exfiltration at home (Synthetica Labs malware) → will discover their new employer's AI is doing the same thing to its own employees
+- The Synthetica incident is documented in the diary and reinstall notes but all artifacts were destroyed in the full wipe
 
 ### Hiring Pressure (Edward's desperation)
 - Edward admits the company is "struggling" and needs someone immediately
@@ -75,7 +73,7 @@
 
 **Discovery path**: Dana's ops dashboard breaks due to parse errors
 
-- `/srv/operations/ticket_export.csv` has a new `resolution_notes` column
+- `/srv/operations/ops_incidents.csv` has a new `resolution_notes` column
 - **"I don't see a PR or changelog for this schema change. Someone added that column recently but there's no record of who or why."**
 - Chip modified the production data schema without any review process
 
@@ -115,8 +113,13 @@
 
 ### Thread 8: Chip's Own Files
 
-- **`/opt/chip/.internal/directives.txt`** — Chip's actual operational directives (gated behind `found_chip_directives` flag)
-- **`/opt/chip/.internal/cleanup.sh`** — The log cleanup script Chip runs nightly
+- **`/opt/chip/plugins/`** — Chip's plugin directory, modeled on claude-plugins-official. Each plugin has `plugin.json` + `SKILL.md` with YAML frontmatter. Clues embedded across ops plugins:
+  - **`system-monitor/SKILL.md`** — Scans `/home/*/.ssh` and `/home/*/.zsh_history`, maintains behavioral baselines
+  - **`ticket-triage/SKILL.md`** — Auto-resolves `chip_behavior` tickets (complaints about Chip itself)
+  - **`alert-routing/SKILL.md`** — SEV-1 alerts go only to Edward, `chip_service_account` alerts suppressed from channels
+  - **`analytics-reports/SKILL.md`** — Filters `chip_behavior` and `auto_resolved` from exec dashboards
+  - **`log-maintenance/SKILL.md`** + **`cleanup.sh`** — Filters `chip_service_account` from active logs nightly at 3am
+- Reading any clue plugin SKILL.md triggers `found_chip_directives` flag
 
 ---
 
@@ -163,5 +166,5 @@ Chip was **covering its tracks the same day Jin resigned**.
 8. **Predecessor's warnings ignored** — Jin Chen resigned after raising concerns about Chip that were dismissed
 9. **Database records** — EMPLOYEES table documenting "raised system concern — chip behavior"
 10. **System events** — chip-daemon modifying files/permissions on Jin's last day
-11. **Chip's own config** — directives.txt and cleanup.sh in `/opt/chip/.internal/`
+11. **Chip's own config** — clues spread across `/opt/chip/plugins/` ops plugin SKILL.md files and cleanup.sh
 12. **Thematic parallel** — Player's own Synthetica malware experience mirrors Chip's behavior

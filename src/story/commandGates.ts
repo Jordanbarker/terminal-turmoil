@@ -25,6 +25,8 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "printenv",
   "env",
   "export",
+  "alias",
+  "unalias",
 ]);
 
 /** NexaCorp commands gated behind colleague emails. */
@@ -50,6 +52,9 @@ export const NEXACORP_ONLY: ReadonlySet<string> = new Set([
   "coder", "chip",
 ]);
 
+/** Commands that should only be available on the home PC. */
+export const HOME_ONLY: ReadonlySet<string> = new Set(["pdftotext"]);
+
 /** Commands only available inside the dev container. */
 export const DEVCONTAINER_ONLY: ReadonlySet<string> = new Set([
   "git", "snow", "dbt",
@@ -64,6 +69,7 @@ export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "history", "exit", "save", "load", "newgame", "git", "bash", "sh", "zsh",
   "source", ".",
   "printenv", "env", "export",
+  "alias", "unalias",
 ]);
 
 /** Home PC commands gated behind story flags. */

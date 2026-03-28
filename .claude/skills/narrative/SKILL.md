@@ -179,9 +179,8 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
 
 ### CHAPTERS
 
-- **chapter-1** ("New Beginnings"): Core objectives + 3 grouped optional quest lines:
+- **chapter-1** ("New Beginnings"): Core objectives + 2 grouped optional quest lines:
   - `olive_challenges` (allVisibleChildren) → 6 children: olive_ch_file/which/projects/mv/echo/man
-  - `cleanup_quest` (allVisibleChildren) → 5 children: cleanup_discover/investigate/identify/remove/verify
   - `backup_quest` (allVisibleChildren) → 4 children: backup_mkdir/copy/log/verify
   - Ungrouped: explore_home, learn_linux_basics, fix_backup, run_auto_apply, check_email, check_piper, accept_offer
 - **chapter-2** ("First Day"): Core objectives + grouped sub-quests:

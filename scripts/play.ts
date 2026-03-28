@@ -149,6 +149,7 @@ export class GameRunner {
         snowflakeState: this.snowflakeState,
         snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
+        deliveredPiperIds: this.deliveredPiperIds,
       };
 
       if (isAsyncCommand(p.command)) {
@@ -236,6 +237,7 @@ export class GameRunner {
         snowflakeState: this.snowflakeState,
         snowflakeContext: this.snowflakeContext,
         setSnowflakeState: (state: SnowflakeState) => { this.snowflakeState = state; },
+        deliveredPiperIds: this.deliveredPiperIds,
       };
 
       if (isAsyncCommand(p.command)) {

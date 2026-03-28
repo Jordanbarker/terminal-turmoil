@@ -71,7 +71,7 @@ export function processDeliveries(
     }
   }
 
-  // Process piper deliveries
+  // Process piper deliveries (computer-scoped)
   let piperIds = [...deliveredPiperIds];
   for (const event of events) {
     const newPiper = checkPiperDeliveries(
@@ -79,6 +79,25 @@ export function processDeliveries(
       piperIds,
       username,
       computerId,
+      currentFlags
+    );
+    if (newPiper.length > 0) {
+      piperIds = [...piperIds, ...newPiper];
+      result.newDeliveredPiperIds.push(...newPiper);
+      result.piperNotifications++;
+    }
+  }
+
+  // Cross-computer pass: story-flag triggers are global, so a flag set on one
+  // computer (e.g. ran_dbt on devcontainer) should deliver piper messages
+  // scoped to another computer (e.g. auri_dbt_results on nexacorp).
+  // Duplicates are skipped because piperIds already contains the first pass.
+  for (const event of events) {
+    const newPiper = checkPiperDeliveries(
+      event,
+      piperIds,
+      username,
+      undefined,
       currentFlags
     );
     if (newPiper.length > 0) {

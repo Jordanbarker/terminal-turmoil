@@ -5,6 +5,7 @@ import { parseInput, parsePipeline } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand, commandReadsFiles } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
 import { colorize, ansi, stripAnsi } from "../lib/ansi";
+import { expandZshPrompt } from "../lib/promptExpand";
 import { nexacorpLogo } from "../lib/ascii";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createDefaultContext } from "../engine/snowflake/session/context";
@@ -56,9 +57,12 @@ function buildCommandContext(
     commandHistory: store.computerState[computerId]?.commandHistory ?? [],
     envVars: store.computerState[computerId]?.envVars ?? {},
     setEnvVars: (env: Record<string, string>) => store.setComputerEnv(computerId, env),
+    aliases: store.computerState[computerId]?.aliases ?? {},
+    setAliases: (a: Record<string, string>) => store.setComputerAliases(computerId, a),
     snowflakeState: store.snowflakeState,
     snowflakeContext: createDefaultContext(store.username),
     setSnowflakeState: store.setSnowflakeState,
+    deliveredPiperIds: store.deliveredPiperIds,
   };
 }
 
@@ -91,12 +95,25 @@ export function useTerminal() {
 
   const getPrompt = useCallback((currentCwd?: string) => {
     const store = useGameStore.getState();
+    const computerId = activeComputerRef.current;
     const displayCwd = currentCwd || cwdRef.current;
-    const homeDir = store.computerState[activeComputerRef.current]?.fs?.homeDir ?? `/home/${store.username}`;
+    const homeDir = store.computerState[computerId]?.fs?.homeDir ?? `/home/${store.username}`;
+    const hostname = COMPUTERS[computerId].promptHostname;
+
+    // Use PROMPT env var if set, otherwise fall back to hardcoded format
+    const promptTemplate = store.computerState[computerId]?.envVars?.PROMPT;
+    if (promptTemplate) {
+      return expandZshPrompt(promptTemplate, {
+        username: store.username,
+        hostname,
+        cwd: displayCwd,
+        homeDir,
+      });
+    }
+
     const displayPath = displayCwd.startsWith(homeDir)
       ? "~" + displayCwd.slice(homeDir.length)
       : displayCwd;
-    const hostname = COMPUTERS[activeComputerRef.current].promptHostname;
     return `${colorize(`${store.username}@${hostname}`, ansi.bold, ansi.green)}:${colorize(displayPath, ansi.bold, ansi.blue)}$ `;
   }, []);
 
@@ -393,13 +410,24 @@ export function useTerminal() {
           }
         }
 
+        // Expand user-defined aliases (one level, before async detection)
+        const computerId = activeComputerRef.current;
+        const userAliases = useGameStore.getState().computerState[computerId]?.aliases ?? {};
+        for (let ai = 0; ai < pipeline.length; ai++) {
+          const p = pipeline[ai];
+          if (p.command && p.command in userAliases) {
+            const expanded = userAliases[p.command];
+            const combined = p.args.length > 0 ? expanded + " " + p.args.join(" ") : expanded;
+            pipeline[ai] = parseInput(combined);
+          }
+        }
+
         const parsed = pipeline[0];
         if (!parsed.command && pipeline.length === 1) {
           writePrompt(term);
           continue;
         }
 
-        const computerId = activeComputerRef.current;
         const hasAsyncCmd = pipeline.some((p) => isAsyncCommand(p.command));
 
         // Capture tab ID at submission time (before async enqueue)
@@ -503,14 +531,17 @@ export function useTerminal() {
             runningFs = redir.fs;
           }
 
-          // Append command to .zsh_history in the virtual filesystem
+          // Append command to .zsh_history in the virtual filesystem (HIST_IGNORE_DUPS)
           const historyPath = `${homeDir}/.zsh_history`;
           const existing = runningFs.readFile(historyPath);
           const prev = existing.content ?? "";
-          const suffix = prev.endsWith("\n") || prev === "" ? "" : "\n";
-          const historyUpdated = prev + suffix + result.input + "\n";
-          const histWrite = runningFs.writeFile(historyPath, historyUpdated);
-          if (histWrite.fs) runningFs = histWrite.fs;
+          const lastLine = prev.trimEnd().split("\n").pop() ?? "";
+          if (lastLine !== result.input) {
+            const suffix = prev.endsWith("\n") || prev === "" ? "" : "\n";
+            const historyUpdated = prev + suffix + result.input + "\n";
+            const histWrite = runningFs.writeFile(historyPath, historyUpdated);
+            if (histWrite.fs) runningFs = histWrite.fs;
+          }
 
           // Write final FS to store once
           if (runningFs !== initialFs) {

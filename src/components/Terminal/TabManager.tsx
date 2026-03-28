@@ -173,6 +173,27 @@ export default function TabManager() {
     term.open(containerEl);
     fitAddon.fit();
 
+    // Intercept raw DOM key events for Ctrl+B digit shortcuts (1-5)
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (ctrlBPrefixRef.current && e.type === 'keydown' && e.key >= '1' && e.key <= '5') {
+        if (e.ctrlKey) {
+          // Ctrl held throughout — Ctrl+digit produces no ASCII, so onData won't fire.
+          // Handle the action directly here.
+          ctrlBPrefixRef.current = false;
+          setPrefixActive(false);
+          if (ctrlBTimerRef.current) {
+            clearTimeout(ctrlBTimerRef.current);
+            ctrlBTimerRef.current = null;
+          }
+          handleCtrlBAction(e.key);
+        }
+        // When Ctrl is NOT held, onData will still fire via textarea input.
+        // Leave prefix mode active so the onData handler catches it.
+        return false; // always block xterm's keydown processing for the digit
+      }
+      return true;
+    });
+
     const onDataDisposable = term.onData((data) => {
       if (gamePhaseRef.current !== "playing") return;
 

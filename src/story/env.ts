@@ -124,6 +124,27 @@ export function parseEnvAssignments(content: string): Record<string, string> {
   return vars;
 }
 
+/**
+ * Parses alias definitions from shell config file content.
+ * Matches `alias NAME='VALUE'` and `alias NAME="VALUE"` patterns.
+ */
+export function parseAliases(content: string): Record<string, string> {
+  const aliases: Record<string, string> = {};
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("alias ")) continue;
+
+    // Match: alias NAME='VALUE' or alias NAME="VALUE" or alias NAME=VALUE
+    const match = trimmed.match(/^alias\s+([A-Za-z_][A-Za-z0-9_-]*)=(.*)$/);
+    if (match) {
+      aliases[match[1]] = stripQuotes(match[2]);
+    }
+  }
+
+  return aliases;
+}
+
 function stripQuotes(value: string): string {
   if ((value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))) {
@@ -148,4 +169,20 @@ export function initEnvForComputer(
     Object.assign(env, parsed);
   }
   return env;
+}
+
+/**
+ * Initializes aliases for a computer from its .zshrc file.
+ */
+export function initAliasesForComputer(
+  computerId: ComputerId,
+  username: string,
+  fs: { readFile: (path: string) => { content?: string; error?: string } }
+): Record<string, string> {
+  const home = `/home/${username}`;
+  const zshrcResult = fs.readFile(`${home}/.zshrc`);
+  if (zshrcResult.content) {
+    return parseAliases(zshrcResult.content);
+  }
+  return {};
 }

@@ -75,9 +75,13 @@ export function useCommandLine(deps: CommandLineDeps) {
     if (!currentFs) return;
 
     const commandNames = getAvailableCommands(computerId, store.storyFlags).map((c) => c.name);
+    const aliases = store.computerState[computerId]?.aliases ?? {};
+    const aliasNames = Object.keys(aliases);
     const suggestion = getSuggestion(input, {
       commandHistory: historyRef.current,
       commandNames,
+      aliasNames,
+      aliases,
       fs: currentFs,
       cwd: cwdRef.current,
       homeDir: currentFs.homeDir,
@@ -267,9 +271,13 @@ export function useCommandLine(deps: CommandLineDeps) {
           const cId = activeComputerRef.current;
           const curFs = store.computerState[cId]?.fs;
           const commandNames = getAvailableCommands(cId, store.storyFlags).map((c) => c.name);
+          const acceptAliases = store.computerState[cId]?.aliases ?? {};
+          const acceptAliasNames = Object.keys(acceptAliases);
           const suggestion = curFs ? getSuggestion(lineBuffer.current, {
             commandHistory: historyRef.current,
             commandNames,
+            aliasNames: acceptAliasNames,
+            aliases: acceptAliases,
             fs: curFs,
             cwd: cwdRef.current,
             homeDir: curFs.homeDir,

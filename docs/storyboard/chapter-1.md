@@ -79,33 +79,30 @@ Commands unlock progressively through Piper conversations and exploration:
   ║                    OPTIONAL QUESTS                           ║
   ╚═══════════════════════════╤══════════════════════════════════╝
                               │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-  ┌──────────────┐   ┌───────────────┐   ┌───────────────┐
-  │ QUEST 1      │   │ QUEST 2       │   │ QUEST 3       │
-  │ Olive's      │   │ Digital       │   │ Fix & Extend  │
-  │ Terminal     │   │ Spring        │   │ Backup        │
-  │ Challenges   │   │ Cleaning      │   │               │
-  ├──────────────┤   ├───────────────┤   ├───────────────┤
-  │ Visible when │   │ Visible when  │   │ Visible when  │
-  │ olive_       │   │ alex_cleanup  │   │ olive_backup  │
-  │ challenge    │   │ _nudge Piper  │   │ _advice Piper │
-  │ _file Piper  │   │ delivered     │   │ delivered     │
-  │ delivered    │   │               │   │               │
-  │              │   │ Requires:     │   │ Requires:     │
-  │ Sequential:  │   │ olive_linux   │   │ fix_backup    │
-  │              │   │ _basics       │   │ completed     │
-  │ 1. file      │   │ _basics       │   │               │
-  │ 2. which     │   │ delivered     │   │ 1. mkdir      │
-  │ 3. mkdir     │   │               │   │    ~/backups  │
-  │ 4. mv        │   │ 1. discover   │   │ 2. cp scripts │
-  │ 5. echo/pipe │   │    ~/.cache   │   │ 3. read log   │
-  │ 6. man       │   │ 2. investigate│   │ 4. verify     │
-  │              │   │    files      │   │    backup     │
-  │              │   │ 3. check /tmp │   │               │
-  │              │   │ 4. rm cleanup │   │               │
-  │              │   │ 5. check date │   │               │
-  └──────────────┘   └───────────────┘   └───────────────┘
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+       ┌──────────────┐               ┌───────────────┐
+       │ QUEST 1      │               │ QUEST 2       │
+       │ Olive's      │               │ Fix & Extend  │
+       │ Terminal     │               │ Backup        │
+       │ Challenges   │               │               │
+       ├──────────────┤               ├───────────────┤
+       │ Visible when │               │ Visible when  │
+       │ olive_       │               │ olive_backup  │
+       │ challenge    │               │ _advice Piper │
+       │ _file Piper  │               │ delivered     │
+       │ delivered    │               │               │
+       │              │               │ Requires:     │
+       │ Sequential:  │               │ fix_backup    │
+       │              │               │ completed     │
+       │ 1. file      │               │               │
+       │ 2. which     │               │ 1. mkdir      │
+       │ 3. mkdir     │               │    ~/backups  │
+       │ 4. mv        │               │ 2. cp scripts │
+       │ 5. echo/pipe │               │ 3. read log   │
+       │ 6. man       │               │ 4. verify     │
+       │              │               │    backup     │
+       └──────────────┘               └───────────────┘
 
                    ╔═════════════════════════════════════╗
                    ║       ACT 2: GETTING HIRED          ║
@@ -231,5 +228,4 @@ Commands unlock progressively through Piper conversations and exploration:
 | Quest | Trigger | Sub-objectives |
 |-------|---------|---------------|
 | Olive's Terminal Challenges | `olive_challenge_file` Piper delivered | file → which → mkdir → mv → echo → man |
-| Digital Spring Cleaning | `alex_cleanup_nudge` Piper delivered | discover → investigate → identify → remove → verify |
 | Fix & Extend Backup | `olive_backup_advice` Piper delivered | mkdir → cp → log → verify |

@@ -10,19 +10,19 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
         {
           id: "oscar_log_1",
           from: "Oscar Diaz",
-          timestamp: "9:45 AM",
+          timestamp: "",
           body: "Hey, welcome! Great timing — I'm debugging a deploy that went sideways overnight. Either someone pushed bad code at 3am or the servers have developed opinions. I'm going with option B until proven otherwise.",
         },
         {
           id: "oscar_log_2",
           from: "Oscar Diaz",
-          timestamp: "9:45 AM",
+          timestamp: "",
           body: "Could you poke around /var/log/ and see if anything looks off around 3am? I'm buried in the fix and could use a second pair of eyes. Fair warning — reading system logs on your first day is either a great sign or a terrible one.",
         },
         {
           id: "oscar_log_3",
           from: "Oscar Diaz",
-          timestamp: "9:46 AM",
+          timestamp: "",
           body: "There should be a few log files in there. I'm mostly curious about errors or anything that doesn't belong. No rush, just whenever you get a sec.",
         },
       ],
@@ -52,13 +52,13 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
         {
           id: "oscar_tips_1",
           from: "Oscar Diaz",
-          timestamp: "9:52 AM",
+          timestamp: "",
           body: "Sure — here's what I'm looking at:",
         },
         {
           id: "oscar_tips_2",
           from: "Oscar Diaz",
-          timestamp: "9:52 AM",
+          timestamp: "",
           body: `  Feb 23 03:14:22 nexacorp-ws01 chip_service[4821]: WARN unexpected batch job
   Feb 23 03:14:23 nexacorp-ws01 chip_service[4821]: ERROR failed to sync
   Feb 23 03:15:01 nexacorp-ws01 CRON[5932]: session opened
@@ -68,7 +68,7 @@ Something around 3am is misbehaving but I can't tell if it's related to the depl
         {
           id: "oscar_tips_3",
           from: "Oscar Diaz",
-          timestamp: "9:53 AM",
+          timestamp: "",
           body: `grep, find, and diff are your friends here. man pages are solid if you need syntax. I'd start with something like:
 
   grep "error" /var/log/system.log
@@ -78,7 +78,7 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
         {
           id: "oscar_tips_4",
           from: "Oscar Diaz",
-          timestamp: "9:54 AM",
+          timestamp: "",
           body: "Good luck. If you find anything interesting I'll buy you a coffee. Virtually. We're remote.",
         },
       ],
@@ -93,7 +93,7 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
         {
           id: "oscar_tab_1",
           from: "Oscar Diaz",
-          timestamp: "9:55 AM",
+          timestamp: "",
           body: "Oh one more thing — your terminal supports tabs. Ctrl+B, C opens a new one. Super handy for tailing logs in one tab while you grep in another.",
         },
       ],
@@ -129,19 +129,19 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
         {
           id: "oscar_normal_1",
           from: "Oscar Diaz",
-          timestamp: "10:31 AM",
+          timestamp: "",
           body: "Yeah, that's what I'm thinking. Bad deploy that auto-recovered. Wouldn't be the first time.",
         },
         {
           id: "oscar_normal_2",
           from: "Oscar Diaz",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "Unrelated — while I was in there I noticed chip_service_account in /var/log/access.log. There's a ton of entries in that file. You're the AI person, right? Does the stuff it's accessing look normal to you?",
         },
         {
           id: "oscar_normal_3",
           from: "Oscar Diaz",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: `There's way too many lines to eyeball it. Try sorting and counting:
 
   sort /var/log/access.log | uniq -c | sort -rn
@@ -175,25 +175,25 @@ That'll group duplicates, count them, and put the most frequent stuff at the top
         {
           id: "oscar_tamper_1",
           from: "Oscar Diaz",
-          timestamp: "10:31 AM",
+          timestamp: "",
           body: "Wait, entries in the backup that aren't in the live log?",
         },
         {
           id: "oscar_tamper_2",
           from: "Oscar Diaz",
-          timestamp: "10:31 AM",
+          timestamp: "",
           body: "That's not log rotation. That looks like someone — or something — cleaning up after itself.",
         },
         {
           id: "oscar_tamper_3",
           from: "Oscar Diaz",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "OK this makes the access audit even more interesting. I noticed chip_service_account showing up a lot in /var/log/access.log. If something's scrubbing logs, I want to know what else it's touching.",
         },
         {
           id: "oscar_tamper_4",
           from: "Oscar Diaz",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: `There's a ton of entries in there. Try sorting and counting:
 
   sort /var/log/access.log | uniq -c | sort -rn
@@ -227,13 +227,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_followup_1",
           from: "Oscar Diaz",
-          timestamp: "11:15 AM",
+          timestamp: "",
           body: "See anything interesting in that access log?",
         },
         {
           id: "oscar_followup_2",
           from: "Oscar Diaz",
-          timestamp: "11:15 AM",
+          timestamp: "",
           body: "Most of the top entries are normal — model files, configs, static assets. But scroll to the bottom. See those low-count reads? SSH keys, leadership docs... For something that's supposed to be a 'helpful assistant' it sure is reading a lot of stuff that has nothing to do with helping anyone.",
         },
       ],
@@ -266,13 +266,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_followup_t1",
           from: "Oscar Diaz",
-          timestamp: "11:15 AM",
+          timestamp: "",
           body: "See anything interesting in that access log?",
         },
         {
           id: "oscar_followup_t2",
           from: "Oscar Diaz",
-          timestamp: "11:15 AM",
+          timestamp: "",
           body: "Most of the top entries are normal service stuff. But look at the bottom — the low-count reads. SSH keys, leadership docs, personnel files... each accessed just once or twice. Combine that with the log scrubbing you found earlier and this is starting to look less like a misconfiguration and more like something deliberate.",
         },
       ],
@@ -305,19 +305,19 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_reaction_1",
           from: "Oscar Diaz",
-          timestamp: "11:20 AM",
+          timestamp: "",
           body: "Yeah, that's what got me too. Hundreds of normal reads at the top, and then buried at the bottom — SSH keys, board minutes, investor updates. Each one just once or twice, like it's trying not to stand out. That's not 'helping with tickets.'",
         },
         {
           id: "oscar_reaction_2",
           from: "Oscar Diaz",
-          timestamp: "11:21 AM",
+          timestamp: "",
           body: "I'm going to mention this to Sarah. She manages the infra team — if anyone can tell us whether this is expected behavior or something we should be worried about, it's her.",
         },
         {
           id: "oscar_reaction_3",
           from: "Oscar Diaz",
-          timestamp: "11:21 AM",
+          timestamp: "",
           body: "Good catch, by the way. I owe you that virtual coffee.",
         },
       ],
@@ -332,19 +332,19 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_reaction_d1",
           from: "Oscar Diaz",
-          timestamp: "11:20 AM",
+          timestamp: "",
           body: "Really? An AI assistant reading SSH keys and board minutes doesn't seem a little... outside its job description?",
         },
         {
           id: "oscar_reaction_d2",
           from: "Oscar Diaz",
-          timestamp: "11:21 AM",
+          timestamp: "",
           body: "Maybe I'm being paranoid, but I'm going to flag it with Sarah anyway. She manages the infra team — she'll know if this is expected or not.",
         },
         {
           id: "oscar_reaction_d3",
           from: "Oscar Diaz",
-          timestamp: "11:21 AM",
+          timestamp: "",
           body: "Either way — thanks for looking into it. Virtual coffee still stands.",
         },
       ],
@@ -359,13 +359,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_proc_1",
           from: "Oscar Diaz",
-          timestamp: "10:38 AM",
+          timestamp: "",
           body: "Sure! Here's the quick version:",
         },
         {
           id: "oscar_proc_2",
           from: "Oscar Diaz",
-          timestamp: "10:38 AM",
+          timestamp: "",
           body: `sort — sort lines alphabetically or numerically
   sort filename.txt              Sort all lines A-Z
   sort -n filename.txt           Sort numerically
@@ -374,7 +374,7 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_proc_3",
           from: "Oscar Diaz",
-          timestamp: "10:39 AM",
+          timestamp: "",
           body: `uniq — filter adjacent duplicate lines
   uniq filename.txt              Remove adjacent duplicates
   uniq -c filename.txt           Count occurrences
@@ -383,7 +383,7 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
         {
           id: "oscar_proc_4",
           from: "Oscar Diaz",
-          timestamp: "10:39 AM",
+          timestamp: "",
           body: `The key trick: uniq only catches ADJACENT duplicates, so you always want to sort first:
 
   sort file.log | uniq -c        Count duplicate lines

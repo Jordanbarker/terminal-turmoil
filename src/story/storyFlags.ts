@@ -59,7 +59,7 @@ export const STORY_FLAG_NAMES = [
   "read_end_of_day",
   "returned_home_day1",
   "chmod_unlocked",
-  "read_ticket_export",
+  "read_ops_incidents",
   "read_board_minutes",
   "read_headcount_plan",
 
@@ -77,15 +77,7 @@ export const STORY_FLAG_NAMES = [
   "used_echo_pipe",
   "used_man_command",
 
-  // Quest 2: Digital Spring Cleaning
-  "cleanup_quest_started",
-  "found_synthetica_dir",
-  "found_synthetica_cache",
-  "found_tmp_remnant",
-  "used_rm_cleanup",
-  "checked_malware_date",
-
-  // Quest 3: Fix & Extend Backup
+  // Quest 2: Fix & Extend Backup
   "backup_quest_started",
   "created_backups_dir",
   "copied_scripts_backup",
@@ -147,15 +139,7 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "command_executed", detail: "echo_pipe", flag: "used_echo_pipe", value: true },
     { event: "command_executed", detail: "man", flag: "used_man_command", value: true },
 
-    // Quest 2: Digital Spring Cleaning
-    { event: "piper_delivered", detail: "alex_cleanup_nudge", flag: "cleanup_quest_started", value: true },
-    { event: "directory_visit", path: p.syntheticaDir(username), flag: "found_synthetica_dir", value: true },
-    { event: "file_read", path: p.syntheticaHeartbeat(username), flag: "found_synthetica_cache", value: true },
-    { event: "file_read", path: p.synthEvalPipe(), flag: "found_tmp_remnant", value: true },
-    { event: "command_executed", detail: "rm", flag: "used_rm_cleanup", value: true },
-    { event: "command_executed", detail: "date", flag: "checked_malware_date", value: true },
-
-    // Quest 3: Fix & Extend Backup
+    // Quest 2: Fix & Extend Backup
     { event: "piper_delivered", detail: "olive_backup_advice", flag: "backup_quest_started", value: true },
     { event: "directory_created", path: p.backupsDir(username), flag: "created_backups_dir", value: true },
     { event: "command_executed", detail: "cp", flag: "copied_scripts_backup", value: true },
@@ -190,7 +174,12 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "command_executed", detail: "wc", flag: "auri_used_wc", value: true },
     { event: "file_read", path: p.systemLogBak, flag: "found_backup_files", value: true },
     { event: "file_read", path: p.authLogBak, flag: "found_auth_backup", value: true },
-    { event: "file_read", path: p.chipDirectives, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipPluginSdk, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipTicketTriage, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipSystemMonitor, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipAlertRouting, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipAnalyticsReports, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: p.chipLogMaintenance, flag: "found_chip_directives", value: true },
     { event: "file_read", path: p.chipCleanup, flag: "found_cleanup_script", value: true },
     { event: "directory_visit", path: p.chenHandoff, flag: "auri_listed_handoff", value: true },
     { event: "file_read", path: p.chenHandoffTodo, flag: "auri_read_todo", value: true },
@@ -205,7 +194,7 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", detail: "discovered_log_tampering", flag: "discovered_log_tampering", value: true },
     { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
     { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
-    { event: "file_read", path: p.ticketExport, flag: "read_ticket_export", value: true },
+    { event: "file_read", path: p.opsIncidents, flag: "read_ops_incidents", value: true },
     { event: "file_read", path: p.boardMinutes, flag: "read_board_minutes", value: true },
     { event: "file_read", path: p.headcountPlan, flag: "read_headcount_plan", value: true },
     // Day 2 quest: Piper reply fires on nexacorp since dm_auri defaults there

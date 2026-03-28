@@ -1349,7 +1349,7 @@ describe("uniq (additional)", () => {
 describe("date (additional)", () => {
   it("returns exact in-game date string", () => {
     const result = execute("date", [], {}, ctx());
-    expect(result.output).toBe("Mon Feb 23 08:15:00 UTC 2026");
+    expect(result.output).toBe("Mon Feb 23 08:30:00 UTC 2026");
   });
 });
 
@@ -1679,4 +1679,87 @@ describe("--help for new commands", () => {
       expect(result.output).toBe(HELP_TEXTS[cmd]);
     });
   }
+});
+
+// --- alias / unalias ---
+describe("alias", () => {
+  it("lists all aliases when called with no args", () => {
+    const result = execute("alias", [], {}, ctx(undefined, {
+      rawArgs: [],
+      aliases: { ll: "ls -la", la: "ls -A" },
+    }));
+    expect(result.output).toContain("la='ls -A'");
+    expect(result.output).toContain("ll='ls -la'");
+  });
+
+  it("returns empty output when no aliases defined", () => {
+    const result = execute("alias", [], {}, ctx(undefined, {
+      rawArgs: [],
+      aliases: {},
+    }));
+    expect(result.output).toBe("");
+  });
+
+  it("shows a single alias definition", () => {
+    const result = execute("alias", ["ll"], {}, ctx(undefined, {
+      rawArgs: ["ll"],
+      aliases: { ll: "ls -la" },
+    }));
+    expect(result.output).toBe("ll='ls -la'");
+  });
+
+  it("returns error for unknown alias name", () => {
+    const result = execute("alias", ["nope"], {}, ctx(undefined, {
+      rawArgs: ["nope"],
+      aliases: {},
+    }));
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("not found");
+  });
+
+  it("defines a new alias", () => {
+    let saved: Record<string, string> = {};
+    const result = execute("alias", ["ll=ls -la"], {}, ctx(undefined, {
+      rawArgs: ["ll='ls -la'"],
+      aliases: {},
+      setAliases: (a) => { saved = a; },
+    }));
+    expect(result.output).toBe("");
+    expect(saved).toEqual({ ll: "ls -la" });
+  });
+});
+
+describe("unalias", () => {
+  it("removes an alias", () => {
+    let saved: Record<string, string> = {};
+    const result = execute("unalias", ["ll"], {}, ctx(undefined, {
+      aliases: { ll: "ls -la", la: "ls -A" },
+      setAliases: (a) => { saved = a; },
+    }));
+    expect(result.output).toBe("");
+    expect(saved).toEqual({ la: "ls -A" });
+  });
+
+  it("returns error for unknown alias", () => {
+    const result = execute("unalias", ["nope"], {}, ctx(undefined, {
+      aliases: {},
+    }));
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("no such hash table element");
+  });
+
+  it("removes all aliases with -a", () => {
+    let saved: Record<string, string> = {};
+    const result = execute("unalias", [], { a: true }, ctx(undefined, {
+      aliases: { ll: "ls -la", la: "ls -A" },
+      setAliases: (a) => { saved = a; },
+    }));
+    expect(result.output).toBe("");
+    expect(saved).toEqual({});
+  });
+
+  it("returns error with no arguments", () => {
+    const result = execute("unalias", [], {}, ctx(undefined, { aliases: {} }));
+    expect(result.exitCode).toBe(1);
+  });
 });

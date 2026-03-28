@@ -354,10 +354,10 @@ async function playtest() {
   r = runner.run("cat /var/log/auth.log.bak");
   expectFlag(runner, "found_auth_backup", "read auth.log.bak");
 
-  r = runner.run("cat /opt/chip/.internal/directives.txt");
-  expectFlag(runner, "found_chip_directives", "read chip directives");
+  r = runner.run("cat /opt/chip/plugins/system-monitor/SKILL.md");
+  expectFlag(runner, "found_chip_directives", "read chip plugin");
 
-  r = runner.run("cat /opt/chip/.internal/cleanup.sh");
+  r = runner.run("cat /opt/chip/plugins/log-maintenance/cleanup.sh");
   expectFlag(runner, "found_cleanup_script", "read cleanup script");
 
   // ── Coder dev container & dbt ──
@@ -433,8 +433,8 @@ async function playtest() {
     warn("chmod_unlocked set manually");
   }
 
-  r = runner.run("cat /srv/operations/ticket_export.csv");
-  expectFlag(runner, "read_ticket_export", "read ticket export");
+  r = runner.run("cat /srv/operations/ops_incidents.csv");
+  expectFlag(runner, "read_ops_incidents", "read ops incidents");
 
   // ── End of day ──
   step("End of day — Edward's email");

@@ -318,8 +318,10 @@ These optional objectives allow the player to discover evidence of Chip's autono
        |              - models/staging/chip_log_filter.sql
        |              - models/staging/chip_data_cleanup.sql
        |
-  investigate_ops_data ── Read /srv/operations/ticket_export.csv
+  investigate_ops_data ── Read /srv/operations/ops_incidents.csv
                           (visible after dana_ops_accepted)
+  report_dana_ops ─────── Report findings to Dana via Piper reply
+                          (visible after read_ops_incidents)
 
   sarah_dm_mystery ──── Triggered by reading system.log.bak
                         (Sarah hints at chip_service_account anomalies)
@@ -347,7 +349,8 @@ These optional objectives allow the player to discover evidence of Chip's autono
 | `discover_tampering` | hidden, optional | `discovered_log_tampering` flag | prereq: `explore_jchen` |
 | `find_directives` | hidden, optional | `found_chip_directives` flag | prereq: `explore_jchen` |
 | `find_filtering` | hidden, optional | `found_data_filtering` flag | prereq: `run_dbt` |
-| `investigate_ops_data` | hidden, optional | `read_ticket_export` flag | `dana_ops_accepted` objective |
+| `investigate_ops_data` | hidden, optional | `read_ops_incidents` flag | `dana_ops_accepted` objective |
+| `report_dana_ops` | hidden, optional | `dana_ops_reported` objective | `read_ops_incidents` flag |
 
 ### Quest Groups
 

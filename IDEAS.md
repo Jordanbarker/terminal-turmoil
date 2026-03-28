@@ -7,6 +7,11 @@ journal
 Slippery slope, bad guy used chip's permissions slowly and it escalated
 dynamic growth on logs after day to day progression
 
+chmod to give chip security
+Day 0 - source 
+    setup alias=
+        filter out companies you've applied to in auto_apply 
+
 Good ending: 
 Bad ending: logoff - they know where you are
 

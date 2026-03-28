@@ -193,6 +193,42 @@ describe("processDeliveries", () => {
     expect(result.emailNotifications).toBe(0);
   });
 
+  it("cross-computer pass delivers nexacorp piper when flag set on devcontainer", () => {
+    const fs = createMinimalFS();
+    // ran_dbt flag is set on devcontainer, but auri_dbt_results is nexacorp-scoped
+    const events: GameEvent[] = [
+      { type: "command_executed", detail: "dbt" },
+    ];
+    const result = processDeliveries(
+      events,
+      fs,
+      "devcontainer",
+      [],
+      [],
+      "player",
+      { ran_dbt: true }
+    );
+    expect(result.newDeliveredPiperIds).toContain("auri_dbt_results");
+  });
+
+  it("cross-computer pass does not duplicate already-delivered piper messages", () => {
+    const fs = createMinimalFS();
+    const events: GameEvent[] = [
+      { type: "command_executed", detail: "dbt" },
+    ];
+    // auri_dbt_results already delivered
+    const result = processDeliveries(
+      events,
+      fs,
+      "devcontainer",
+      [],
+      ["auri_dbt_results"],
+      "player",
+      { ran_dbt: true }
+    );
+    expect(result.newDeliveredPiperIds).not.toContain("auri_dbt_results");
+  });
+
   it("home-scoped delivery ignores nexacorp-only emails", () => {
     const fs = createMinimalFS();
     // Use events that would normally trigger nexacorp email delivery

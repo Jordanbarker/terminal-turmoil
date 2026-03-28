@@ -32,6 +32,9 @@ export interface CommandContext {
   elevated?: boolean;
   envVars?: Record<string, string>;
   setEnvVars?: (envVars: Record<string, string>) => void;
+  aliases?: Record<string, string>;
+  setAliases?: (aliases: Record<string, string>) => void;
+  deliveredPiperIds?: string[];
 }
 
 export interface EditorSessionInfo {

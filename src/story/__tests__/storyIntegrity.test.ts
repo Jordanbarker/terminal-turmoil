@@ -18,6 +18,18 @@ const allEmailIds = new Set([...HOME_EMAIL_IDS, ...NEXACORP_EMAIL_IDS]);
 const allPiperDeliveries = getPiperDeliveries(TEST_USERNAME);
 const allPiperDeliveryIds = new Set(allPiperDeliveries.map((d) => d.id));
 
+// Also collect synthetic piper_reply IDs emitted by triggerEvents on reply options
+const allPiperReplyTargets = new Set(allPiperDeliveryIds);
+for (const delivery of allPiperDeliveries) {
+  for (const option of delivery.replyOptions ?? []) {
+    for (const event of option.triggerEvents ?? []) {
+      if (event.type === "objective_completed" && typeof event.detail === "string" && event.detail.startsWith("piper_reply:")) {
+        allPiperReplyTargets.add(event.detail.replace("piper_reply:", ""));
+      }
+    }
+  }
+}
+
 // All story flag triggers
 const homeTriggers = getStoryFlagTriggers(TEST_USERNAME);
 const nexacorpTriggers = getNexacorpStoryFlagTriggers(TEST_USERNAME);
@@ -84,7 +96,7 @@ describe("Story Integrity", () => {
         for (const trigger of triggers) {
           if (trigger.type === "after_piper_reply") {
             expect(
-              allPiperDeliveryIds.has(trigger.deliveryId),
+              allPiperReplyTargets.has(trigger.deliveryId),
               `Piper delivery '${def.id}' references unknown deliveryId '${trigger.deliveryId}'`
             ).toBe(true);
           }

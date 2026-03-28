@@ -278,7 +278,7 @@ export class PiperSession implements ISession {
 
     // Count messages before delivering follow-ups
     const messagesBefore = getConversationHistory(
-      this.activeChannelId, this.info.deliveredPiperIds, this.username
+      this.activeChannelId, this.info.deliveredPiperIds, this.username, this.computerId
     ).length;
 
     // Collect trigger events and deliver follow-up Piper messages
@@ -321,7 +321,7 @@ export class PiperSession implements ISession {
 
     // Count new same-channel messages
     const messagesAfter = getConversationHistory(
-      this.activeChannelId, this.info.deliveredPiperIds, this.username
+      this.activeChannelId, this.info.deliveredPiperIds, this.username, this.computerId
     ).length;
     const newMessageCount = messagesAfter - messagesBefore;
 
@@ -357,7 +357,7 @@ export class PiperSession implements ISession {
     // Render conversation with hidden messages omitted, plus typing indicator
     const width = this.getWidth();
     const header = renderPiperHeader(this.activeChannelName, width, this.activeChannelDesc);
-    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username, this.computerId);
     const visible = allMessages.slice(0, allMessages.length - this.hiddenMessageCount);
     const conversation = renderConversation(visible, width);
     const typing = renderTypingIndicator(this.animationSenderName);
@@ -409,7 +409,7 @@ export class PiperSession implements ISession {
   }
 
   private markChannelSeen(): void {
-    const messages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const messages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username, this.computerId);
     const npcMessages = messages.filter((m) => !m.isPlayer);
     const seenPrefix = `seen:${this.activeChannelId}:`;
 
@@ -442,7 +442,7 @@ export class PiperSession implements ISession {
   private buildConversationView(): string {
     const width = this.getWidth();
     const header = renderPiperHeader(this.activeChannelName, width, this.activeChannelDesc);
-    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const allMessages = getConversationHistory(this.activeChannelId, this.info.deliveredPiperIds, this.username, this.computerId);
     const messages = this.hiddenMessageCount > 0
       ? allMessages.slice(0, allMessages.length - this.hiddenMessageCount)
       : allMessages;

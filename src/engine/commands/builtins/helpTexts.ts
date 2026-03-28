@@ -403,4 +403,24 @@ export const HELP_TEXTS: Record<string, string> = {
     "Set environment variables in the current shell.",
     "With no arguments, list all exported variables.",
   ].join("\n"),
+
+  alias: [
+    "Usage: alias [name[=value] ...]",
+    "",
+    "Define or display aliases.",
+    "With no arguments, list all defined aliases.",
+    "",
+    "  alias              List all aliases",
+    "  alias name         Show definition for name",
+    "  alias name='cmd'   Define name as an alias for cmd",
+  ].join("\n"),
+
+  unalias: [
+    "Usage: unalias [-a] name ...",
+    "",
+    "Remove alias definitions.",
+    "",
+    "  unalias name       Remove the alias for name",
+    "  unalias -a         Remove all aliases",
+  ].join("\n"),
 };

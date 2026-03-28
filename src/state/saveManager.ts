@@ -30,16 +30,16 @@ export interface SaveableState {
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
   storyFlags: StoryFlags;
-  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>>;
   tabs: TabLike[];
   activeTabIndex: number;
 }
 
 export function createSaveData(state: SaveableState, label: string): SaveData {
   // Serialize all computer FS entries (including per-computer history)
-  const computerStates: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string> }> = {};
+  const computerStates: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }> = {};
   for (const [id, cs] of Object.entries(state.computerState)) {
-    if (cs) computerStates[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-500), envVars: cs.envVars };
+    if (cs) computerStates[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-500), envVars: cs.envVars, aliases: cs.aliases };
   }
 
   // Derive active computer and FS from tabs (for backward compat with older save readers)
@@ -195,6 +195,10 @@ export function migrateSaveData(data: SaveData): SaveData {
   if (data.version < 7) {
     // v7 adds envVars to computerStates — initialized from defaults on load if missing
     data = { ...data, version: 7 };
+  }
+  if (data.version < 8) {
+    // v8 adds aliases to computerStates — initialized from .zshrc on load if missing
+    data = { ...data, version: 8 };
   }
   return data;
 }

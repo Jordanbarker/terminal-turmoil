@@ -6,7 +6,7 @@ import { EditorSession } from "../engine/editor/EditorSession";
 import { PythonReplSession } from "../engine/python/PythonReplSession";
 import { SnowSqlSession } from "../engine/snowflake/session/SnowSqlSession";
 import { createDefaultContext } from "../engine/snowflake/session/context";
-import { checkEmailDeliveries } from "../engine/mail/delivery";
+import { checkEmailDeliveries, type GameEvent } from "../engine/mail/delivery";
 import { getTriggersForComputer, checkStoryFlagTriggers } from "../engine/narrative/storyFlags";
 import { colorize, ansi } from "../lib/ansi";
 import { PromptSession } from "../engine/prompt/PromptSession";
@@ -216,6 +216,45 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           latestStore.addDeliveredPiperMessages(piperNew);
           if (notify) {
             term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+          }
+
+          // Second pass: process piper_delivered events through story flag triggers
+          // (mirrors processDeliveries.ts second pass)
+          for (const id of piperNew) {
+            const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+            const latestFlags = useGameStore.getState().storyFlags;
+            const flagResults = checkStoryFlagTriggers(pdEvent, triggers, latestFlags);
+            for (const flagResult of flagResults) {
+              useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+              if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+            }
+          }
+        }
+
+        // Cross-computer pass: story-flag triggers are global, so a flag set on one
+        // computer should deliver piper messages scoped to another computer.
+        const crossLatest = useGameStore.getState();
+        const crossPiper = checkPiperDeliveries(
+          event,
+          crossLatest.deliveredPiperIds,
+          crossLatest.username,
+          undefined,  // no computer filter
+          crossLatest.storyFlags
+        );
+        if (crossPiper.length > 0) {
+          crossLatest.addDeliveredPiperMessages(crossPiper);
+          if (notify) {
+            term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+          }
+          // Process piper_delivered flag triggers for cross-computer deliveries too
+          for (const id of crossPiper) {
+            const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+            const latestFlags = useGameStore.getState().storyFlags;
+            const flagResults = checkStoryFlagTriggers(pdEvent, triggers, latestFlags);
+            for (const flagResult of flagResults) {
+              useGameStore.getState().setStoryFlag(flagResult.flag, flagResult.value);
+              if (flagResult.toast) useGameStore.getState().addToast(flagResult.toast);
+            }
           }
         }
       }

@@ -1,7 +1,7 @@
 import { CommandHandler } from "../types";
 import { register, registerAlias } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
-import { parseEnvAssignments } from "../../../story/env";
+import { parseEnvAssignments, parseAliases } from "../../../story/env";
 import { HELP_TEXTS } from "./helpTexts";
 
 const source: CommandHandler = (args, _flags, ctx) => {
@@ -17,9 +17,16 @@ const source: CommandHandler = (args, _flags, ctx) => {
   }
 
   // Parse env assignments from the sourced file and merge into env
-  const newVars = parseEnvAssignments(result.content ?? "");
+  const content = result.content ?? "";
+  const newVars = parseEnvAssignments(content);
   if (Object.keys(newVars).length > 0 && ctx.envVars && ctx.setEnvVars) {
     ctx.setEnvVars({ ...ctx.envVars, ...newVars });
+  }
+
+  // Parse aliases from the sourced file and merge
+  const newAliases = parseAliases(content);
+  if (Object.keys(newAliases).length > 0 && ctx.aliases !== undefined && ctx.setAliases) {
+    ctx.setAliases({ ...ctx.aliases, ...newAliases });
   }
 
   // Real `source` produces no output — silently succeed and trigger file_read

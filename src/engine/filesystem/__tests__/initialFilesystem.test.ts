@@ -93,7 +93,7 @@ describe("createFilesystem", () => {
       expect(fs.getNode(`/home/${USERNAME}/Documents`)?.type).toBe("directory");
       const orgChart = fs.readFile(`/home/${USERNAME}/Documents/nexacorp_org_chart.txt`);
       expect(orgChart.content).toContain("Edward Torres");
-      expect(fs.getNode(`/home/${USERNAME}/Documents/employee_handbook_2026.pdf`)?.type).toBe("file");
+      expect(fs.getNode(`/home/${USERNAME}/Documents/employee_handbook_2026.md`)?.type).toBe("file");
     });
 
     it("has scripts directory with hello.py", () => {

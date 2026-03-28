@@ -131,62 +131,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         group: "olive_challenges",
       },
 
-      // Quest 2: Digital Spring Cleaning
-      {
-        id: "cleanup_quest",
-        description: "Digital Spring Cleaning",
-        check: { source: "allVisibleChildren" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
-      },
-      {
-        id: "cleanup_discover",
-        description: "Explore ~/.cache for remnants",
-        check: { source: "storyFlag", key: "found_synthetica_dir" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
-        group: "cleanup_quest",
-      },
-      {
-        id: "cleanup_investigate",
-        description: "Investigate the suspicious files",
-        check: { source: "storyFlag", key: "found_synthetica_cache" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
-        group: "cleanup_quest",
-      },
-      {
-        id: "cleanup_identify",
-        description: "Check /tmp for remaining traces",
-        check: { source: "storyFlag", key: "found_tmp_remnant" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
-        group: "cleanup_quest",
-      },
-      {
-        id: "cleanup_remove",
-        description: "Remove the Synthetica remnants",
-        check: { source: "storyFlag", key: "used_rm_cleanup" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "found_synthetica_dir" },
-        group: "cleanup_quest",
-      },
-      {
-        id: "cleanup_verify",
-        description: "Check system date against malware timestamps",
-        check: { source: "storyFlag", key: "checked_malware_date" },
-        hidden: true,
-        optional: true,
-        visibleWhen: { source: "storyFlag", key: "cleanup_quest_started" },
-        group: "cleanup_quest",
-      },
-
-      // Quest 3: Fix & Extend Backup
+      // Quest 2: Fix & Extend Backup
       {
         id: "backup_quest",
         description: "Fix & Extend Backup",
@@ -498,10 +443,18 @@ export const CHAPTERS: ChapterDefinition[] = [
       {
         id: "investigate_ops_data",
         description: "Investigate Dana's broken dashboard",
-        check: { source: "storyFlag", key: "read_ticket_export" },
+        check: { source: "storyFlag", key: "read_ops_incidents" },
         hidden: true,
         optional: true,
         visibleWhen: { source: "completedObjective", key: "dana_ops_accepted" },
+      },
+      {
+        id: "report_dana_ops",
+        description: "Report findings to Dana",
+        check: { source: "completedObjective", key: "dana_ops_reported" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "read_ops_incidents" },
       },
 
       // Quest 4: Olive's Power Tools (visible after returning home)

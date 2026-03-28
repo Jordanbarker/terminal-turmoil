@@ -13,7 +13,7 @@ import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_da
 import { serializeSnowflake, deserializeSnowflake, SerializedSnowflake } from "../engine/snowflake/serialization";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { seedDeliveredEmails } from "../engine/mail/delivery";
-import { getDefaultEnv, initEnvForComputer } from "../story/env";
+import { getDefaultEnv, initEnvForComputer, initAliasesForComputer } from "../story/env";
 
 const MAX_HISTORY = 500;
 
@@ -39,7 +39,7 @@ interface GameStore {
   storyFlags: StoryFlags;
   hasSeenIntro: boolean;
   toasts: Toast[];
-  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>;
+  computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>>;
   tabs: TabState[];
   activeTabId: string;
   activeSnowSession: string | null;
@@ -69,6 +69,7 @@ interface GameStore {
   setActiveSnowSession: (tabId: string | null) => void;
   setTabComputer: (tabId: string, computerId: ComputerId, cwd: string) => void;
   setComputerEnv: (computer: ComputerId, envVars: Record<string, string>) => void;
+  setComputerAliases: (computer: ComputerId, aliases: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
 }
 
@@ -116,7 +117,7 @@ function createInitialState(username = PLAYER.username) {
     storyFlags: {} as StoryFlags,
     hasSeenIntro: false,
     toasts: [] as Toast[],
-    computerState: { home: { fs, commandHistory: ["nano terminal_notes.txt"], envVars: initEnvForComputer("home", username, fs) } } as Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>>,
+    computerState: { home: { fs, commandHistory: ["nano terminal_notes.txt"], envVars: initEnvForComputer("home", username, fs), aliases: initAliasesForComputer("home", username, fs) } } as Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>>,
     tabs: [{ id: initialTabId, computerId: "home" as ComputerId, cwd: fs.cwd }] as TabState[],
     activeTabId: initialTabId,
     activeSnowSession: null as string | null,
@@ -148,6 +149,10 @@ export const useGameStore = create<GameStore>()(
         set((state) => {
           const cs = state.computerState[computerId];
           if (!cs) return {};
+          // HIST_IGNORE_DUPS: skip if identical to last entry
+          if (cs.commandHistory.length > 0 && cs.commandHistory[cs.commandHistory.length - 1] === command) {
+            return {};
+          }
           return {
             computerState: {
               ...state.computerState,
@@ -194,11 +199,11 @@ export const useGameStore = create<GameStore>()(
         })),
       setComputerFs: (computer, fs) =>
         set((state) => ({
-          computerState: { ...state.computerState, [computer]: { ...state.computerState[computer], fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: state.computerState[computer]?.envVars ?? getDefaultEnv(computer, state.username) } },
+          computerState: { ...state.computerState, [computer]: { ...state.computerState[computer], fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: state.computerState[computer]?.envVars ?? getDefaultEnv(computer, state.username), aliases: state.computerState[computer]?.aliases ?? {} } },
         })),
       initComputer: (computer, fs) =>
         set((state) => ({
-          computerState: { ...state.computerState, [computer]: { fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: initEnvForComputer(computer, state.username, fs) } },
+          computerState: { ...state.computerState, [computer]: { fs, commandHistory: state.computerState[computer]?.commandHistory ?? [], envVars: initEnvForComputer(computer, state.username, fs), aliases: initAliasesForComputer(computer, state.username, fs) } },
         })),
       addTab: (computerId, cwd) => {
         const state = get();
@@ -244,6 +249,10 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           computerState: { ...state.computerState, [computer]: { ...state.computerState[computer]!, envVars } },
         })),
+      setComputerAliases: (computer, aliases) =>
+        set((state) => ({
+          computerState: { ...state.computerState, [computer]: { ...state.computerState[computer]!, aliases } },
+        })),
       removeComputer: (computer) =>
         set((state) => {
           const { [computer]: _, ...rest } = state.computerState;
@@ -274,7 +283,7 @@ export const useGameStore = create<GameStore>()(
         const activeComp = data.activeComputer ?? "nexacorp";
 
         // Build computerState from v5 computerStates or infer from legacy fields
-        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>> = {};
+        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>> = {};
         if (data.computerStates) {
           for (const [id, cs] of Object.entries(data.computerStates)) {
             try {
@@ -283,6 +292,7 @@ export const useGameStore = create<GameStore>()(
                 fs: loadedFs,
                 commandHistory: cs.commandHistory ?? [],
                 envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, data.username, loadedFs),
+                aliases: cs.aliases ?? initAliasesForComputer(id as ComputerId, data.username, loadedFs),
               };
             } catch { /* skip corrupted entries */ }
           }
@@ -294,12 +304,12 @@ export const useGameStore = create<GameStore>()(
             }
           }
         } else {
-          loadedComputerState[activeComp] = { fs, commandHistory: data.commandHistory ?? [], envVars: initEnvForComputer(activeComp, data.username, fs) };
+          loadedComputerState[activeComp] = { fs, commandHistory: data.commandHistory ?? [], envVars: initEnvForComputer(activeComp, data.username, fs), aliases: initAliasesForComputer(activeComp, data.username, fs) };
           if (stashedFs) {
             if (activeComp === "devcontainer") {
-              loadedComputerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", data.username, stashedFs) };
+              loadedComputerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", data.username, stashedFs), aliases: initAliasesForComputer("nexacorp", data.username, stashedFs) };
             } else if (activeComp === "nexacorp") {
-              loadedComputerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", data.username, stashedFs) };
+              loadedComputerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", data.username, stashedFs), aliases: initAliasesForComputer("devcontainer", data.username, stashedFs) };
             }
           }
         }
@@ -342,9 +352,9 @@ export const useGameStore = create<GameStore>()(
       name: "terminal-turmoil-save",
       partialize: (state) => {
         // Serialize all computer FS entries (including per-computer history)
-        const serializedComputerState: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string> }> = {};
+        const serializedComputerState: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }> = {};
         for (const [id, cs] of Object.entries(state.computerState)) {
-          if (cs) serializedComputerState[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-MAX_HISTORY), envVars: cs.envVars };
+          if (cs) serializedComputerState[id] = { fs: serializeFS(cs.fs), commandHistory: cs.commandHistory.slice(-MAX_HISTORY), envVars: cs.envVars, aliases: cs.aliases };
         }
         // Persist tab layout
         const activeTabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
@@ -390,8 +400,8 @@ export const useGameStore = create<GameStore>()(
         }
 
         // Build computerState from persisted data or infer from legacy fields
-        const computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string> }>> = {};
-        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string> }> | undefined;
+        const computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>> = {};
+        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string>; aliases?: Record<string, string> }> | undefined;
         const legacyCommandHistory = (p.commandHistory as string[]) ?? [];
         if (serializedCS) {
           for (const [id, cs] of Object.entries(serializedCS)) {
@@ -401,6 +411,7 @@ export const useGameStore = create<GameStore>()(
                 fs: restoredFs,
                 commandHistory: cs.commandHistory ?? [],
                 envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, username, restoredFs),
+                aliases: cs.aliases ?? initAliasesForComputer(id as ComputerId, username, restoredFs),
               };
             } catch { /* skip corrupted entries */ }
           }
@@ -435,7 +446,7 @@ export const useGameStore = create<GameStore>()(
           if (legacyComputer === "nexacorp") {
             legacyFs = syncToVirtualFS(sfState, legacyFs);
           }
-          computerState[legacyComputer] = { fs: legacyFs, commandHistory: legacyCommandHistory, envVars: initEnvForComputer(legacyComputer, username, legacyFs) };
+          computerState[legacyComputer] = { fs: legacyFs, commandHistory: legacyCommandHistory, envVars: initEnvForComputer(legacyComputer, username, legacyFs), aliases: initAliasesForComputer(legacyComputer, username, legacyFs) };
 
           // Reconstruct stashed FS if present
           const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
@@ -443,9 +454,9 @@ export const useGameStore = create<GameStore>()(
             if (serializedStashedFs?.root) {
               const stashedFs = deserializeFS(serializedStashedFs);
               if (legacyComputer === "devcontainer") {
-                computerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", username, stashedFs) };
+                computerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", username, stashedFs), aliases: initAliasesForComputer("nexacorp", username, stashedFs) };
               } else if (legacyComputer === "nexacorp") {
-                computerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", username, stashedFs) };
+                computerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", username, stashedFs), aliases: initAliasesForComputer("devcontainer", username, stashedFs) };
               }
             }
           } catch { /* skip corrupted stashed fs */ }

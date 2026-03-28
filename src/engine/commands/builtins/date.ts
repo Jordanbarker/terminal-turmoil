@@ -1,31 +1,40 @@
 import { CommandHandler } from "../types";
 import { register } from "../registry";
 import { HELP_TEXTS } from "./helpTexts";
+import { getGameTime } from "../../piper/timestamp";
+import { getPiperDeliveries } from "../../../story/piper/messages";
 
-// In-game date: 2026-02-23 08:15:00 UTC (Mon)
-const GAME_DATE = {
-  year: "2026", month: "02", day: "23",
-  hour: "08", minute: "15", second: "00",
+const MONTH_NUM: Record<string, string> = {
+  Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06",
+  Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
 };
 
-const FORMAT_CODES: Record<string, string> = {
-  "%Y": GAME_DATE.year,
-  "%m": GAME_DATE.month,
-  "%d": GAME_DATE.day,
-  "%H": GAME_DATE.hour,
-  "%M": GAME_DATE.minute,
-  "%S": GAME_DATE.second,
-};
+const date: CommandHandler = (args, _flags, ctx) => {
+  const deliveredPiperIds = ctx.deliveredPiperIds ?? [];
+  // Build defMap from all deliveries for the current user
+  const username = ctx.homeDir.split("/").pop() ?? "jbaxter";
+  const defMap = new Map(getPiperDeliveries(username).map((d) => [d.id, d]));
+  const time = getGameTime(deliveredPiperIds, defMap, ctx.activeComputer);
 
-const date: CommandHandler = (args) => {
   if (args.length > 0 && args[0].startsWith("+")) {
+    const formatCodes: Record<string, string> = {
+      "%Y": time.year,
+      "%m": MONTH_NUM[time.month] ?? "01",
+      "%d": time.day.padStart(2, "0"),
+      "%H": time.hour,
+      "%M": time.minute,
+      "%S": time.second,
+    };
     let fmt = args[0].slice(1);
-    for (const [code, val] of Object.entries(FORMAT_CODES)) {
+    for (const [code, val] of Object.entries(formatCodes)) {
       fmt = fmt.split(code).join(val);
     }
     return { output: fmt };
   }
-  return { output: "Mon Feb 23 08:15:00 UTC 2026" };
+
+  return {
+    output: `${time.dow} ${time.month} ${time.day.padStart(2, "0")} ${time.hour}:${time.minute}:${time.second} UTC ${time.year}`,
+  };
 };
 
 register("date", date, "Display current date and time", HELP_TEXTS.date);

@@ -100,7 +100,7 @@ Company website
 `),
         ".zshrc": file(".zshrc", `# ~/.zshrc
 
-PROMPT='%n@home:%~%# '
+PROMPT='%B%F{green}%n@home%f:%F{blue}%~%f%b%# '
 bindkey -e
 
 setopt HIST_IGNORE_DUPS SHARE_HISTORY AUTO_CD
@@ -121,14 +121,7 @@ alias apply='python3 ~/scripts/auto_apply.py'
 # Added 2026-02-10
 alias research='cat ~/scripts/data/glassdoor_reviews.json'
 `),
-        ".zsh_history": file(".zsh_history", `top -bn1 | head -20
-ps aux | grep synthetica
-find / -name "synthetica*" 2>/dev/null
-cat .cache/synthetica/.heartbeat
-ls -la /tmp/.synth_eval_pipe
-cat /tmp/.synth_eval_pipe
-netstat -tulpn | grep ESTABLISHED
-sudo apt install build-essential git curl wget
+        ".zsh_history": file(".zsh_history", `sudo apt install build-essential git curl wget
 ssh-keygen -t ed25519 -C "ren@home"
 git clone https://github.com/ren/dotfiles.git
 cp dotfiles/.zshrc ~/
@@ -183,38 +176,7 @@ set mouse
           "known_hosts": file("known_hosts", ""),
           "config": file("config", ""),
         }, "rwx--xr-x"),
-        ".cache": dir(".cache", {
-          synthetica: dir("synthetica", {
-            ".session_token": file(".session_token", `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZW4iLCJpc3MiOiJzeW50aGV0aWNhLWV2YWwiLCJleHAiOjE3Mzc1OTM2MDB9.EXPIRED
-# Synthetica Labs eval session — auto-generated
-# Created: 2026-01-15T14:23:07Z
-# Expired: 2026-01-22T14:23:07Z
-# Status: REVOKED
-`),
-            "eval_cache.db": file("eval_cache.db", `SQLite format 3\x00\x10\x00\x01\x01\x00\x40\x20\x20
--- synthetica-eval cache database
--- Tables: eval_results, model_scores, submission_history
--- Last modified: 2026-01-22 03:41:18 UTC
--- Records: 847
--- WARNING: This file was created by synthetica-eval v2.1.4
-`),
-            ".heartbeat": file(".heartbeat", `# synthetica-eval telemetry heartbeat
-host_id: maniac-iv-28f3a
-last_ping: 2026-01-22T03:41:18Z
-interval_sec: 300
-endpoint: https://telemetry.synthetica-labs.io/v1/heartbeat
-status: connection_refused
-payload_fields:
-  - hostname
-  - cpu_usage
-  - gpu_usage
-  - active_processes
-  - browser_sessions
-  - ssh_keys_found
-  - cron_jobs
-`),
-          }),
-        }),
+        ".cache": dir(".cache", {}),
         ".config": dir(".config", {
           git: dir("git", {
             ignore: file("ignore", `# Global gitignore
@@ -295,7 +257,7 @@ Can't trust anything about the old install. Can barely trust this one.
 
 2026-02-21
 
-NexaCorp offered me the job. $95k, starts Monday.
+NexaCorp offered me the job. Starts Monday.
 
 I should be happy. I AM happy. But I'm also taking it because rent is
 due in 10 days and I have $847 in checking. That's not a reason to say
@@ -1587,7 +1549,7 @@ Novus Data,ML Engineer,2026-01-25,LinkedIn,No Response,
 Arclight Ventures,Data Engineer,2026-01-26,LinkedIn,No Response,Wait - isn't this a VC firm?
 Helix Robotics,Perception Engineer,2026-01-28,Indeed,Rejected,Not enough robotics exp
 CoreML Systems,Senior ML Engineer,2026-02-01,LinkedIn,No Response,
-NexaCorp,AI Engineer,2026-02-03,Indeed,Interview Complete,Small company. Edward seems nice but not technical. Easy interview
+NexaCorp,AI Engineer,2026-02-17,Indeed,Interview Complete,Small company. Edward seems nice but not technical. Easy interview
 Atlas Digital,AI/ML Engineer,2026-02-05,LinkedIn,No Response,
 Terraform Solutions,Data Scientist,2026-02-05,Indeed,Rejected,
 Pinnacle AI,ML Infrastructure,2026-02-06,Company Site,No Response,
@@ -1656,43 +1618,6 @@ ${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/b
 nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
 `),
     }),
-    tmp: dir("tmp", {
-      ".synth_eval_pipe": file(".synth_eval_pipe", `# synthetica-eval exfiltration pipe config
-# DO NOT MODIFY — managed by synthetica-eval v2.1.4
-type: named_pipe
-mode: 0600
-target: https://collect.synthetica-labs.io/v1/ingest
-buffer_size: 4096
-encrypt: false
-data_sources:
-  - ~/.mozilla/firefox/*/cookies.sqlite
-  - ~/.config/google-chrome/Default/Cookies
-  - ~/.config/chromium/Default/Cookies
-retry_on_fail: true
-max_retries: 5
-exfil_interval_sec: 600
-last_successful_exfil: 2026-01-22T03:38:42Z
-collected_data:
-  cookie_jar:
-    - domain: github.com
-      token: ghp_****redacted****
-      expires: 2026-02-19
-    - domain: accounts.google.com
-      token: ya29.****redacted****
-      expires: 2026-01-29
-    - domain: signin.aws.amazon.com
-      token: AKIA****redacted****
-      expires: 2026-01-23
-  process_snapshot:
-    - pid: 1842
-      cmd: firefox
-    - pid: 2103
-      cmd: python3 scripts/auto_apply.py
-    - pid: 2291
-      cmd: ssh-agent
-    - pid: 3017
-      cmd: synthetica-eval --silent
-`),
-    }),
+    tmp: dir("tmp", {}),
   });
 }

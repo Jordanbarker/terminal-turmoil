@@ -89,7 +89,7 @@ function createState(): SaveableState {
     deliveredEmailIds: ["email-1"],
     deliveredPiperIds: [],
     storyFlags: {},
-    computerState: { nexacorp: { fs, commandHistory: ["ls", "cd docs", "cat readme.md"], envVars: { USER: "player", HOME: "/home/player" } } },
+    computerState: { nexacorp: { fs, commandHistory: ["ls", "cd docs", "cat readme.md"], envVars: { USER: "player", HOME: "/home/player" }, aliases: {} } },
     tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
     activeTabIndex: 0,
   };
@@ -361,8 +361,8 @@ describe("multi-tab round-trip", () => {
       deliveredPiperIds: [],
       storyFlags: {},
       computerState: {
-        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
-        devcontainer: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} },
+        devcontainer: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} },
       },
       tabs: [
         { computerId: "nexacorp", cwd: "/home/player" },
@@ -397,8 +397,8 @@ describe("multi-tab round-trip", () => {
       deliveredPiperIds: [],
       storyFlags: {},
       computerState: {
-        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
-        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {} },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} },
+        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {}, aliases: {} },
       },
       tabs: [
         { computerId: "nexacorp", cwd: "/home/player" },
@@ -458,7 +458,7 @@ describe("multi-tab round-trip", () => {
       deliveredEmailIds: [],
       deliveredPiperIds: [],
       storyFlags: {},
-      computerState: { nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} } },
+      computerState: { nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} } },
       tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
       activeTabIndex: 0,
     };
@@ -482,9 +482,9 @@ describe("multi-tab round-trip", () => {
       deliveredPiperIds: [],
       storyFlags: {},
       computerState: {
-        home: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
-        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {} },
-        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {} },
+        home: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} },
+        nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {} },
+        devcontainer: { fs: createBareFS(), commandHistory: [], envVars: {}, aliases: {} },
       },
       tabs: [
         { computerId: "home", cwd: "/home/player" },

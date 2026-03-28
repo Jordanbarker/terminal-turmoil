@@ -1,7 +1,7 @@
 import { SerializedFS } from "../engine/filesystem/serialization";
 import { GamePhase, ComputerId, StoryFlags } from "./types";
 
-export const SAVE_FORMAT_VERSION = 7;
+export const SAVE_FORMAT_VERSION = 8;
 
 export type SaveSlotId = "auto" | "slot-1" | "slot-2" | "slot-3";
 
@@ -27,8 +27,8 @@ export interface SaveData {
   storyFlags: StoryFlags;
   stashedFs?: SerializedFS;
   stashedCwd?: string;
-  /** v5+: per-computer serialized filesystems (v6 adds commandHistory, v7 adds envVars) */
-  computerStates?: Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string> }>;
+  /** v5+: per-computer serialized filesystems (v6 adds commandHistory, v7 adds envVars, v8 adds aliases) */
+  computerStates?: Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string>; aliases?: Record<string, string> }>;
   /** v5: saved tab layout */
   tabs?: SavedTabState[];
   /** v5: index of the active tab in tabs[] */

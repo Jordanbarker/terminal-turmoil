@@ -157,6 +157,32 @@ describe("getSuggestion", () => {
     });
   });
 
+  describe("alias path completion", () => {
+    it("completes paths when alias expands to a path command", () => {
+      const ctx = createCtx({
+        aliasNames: ["ll"],
+        aliases: { ll: "ls -la" },
+      });
+      expect(getSuggestion("ll no", ctx)).toBe("ll notes.txt");
+    });
+
+    it("completes directories when alias expands to cd", () => {
+      const ctx = createCtx({
+        aliasNames: ["go"],
+        aliases: { go: "cd" },
+      });
+      expect(getSuggestion("go do", ctx)).toBe("go docs/");
+    });
+
+    it("does not complete paths when alias expands to non-path command", () => {
+      const ctx = createCtx({
+        aliasNames: ["h"],
+        aliases: { h: "help" },
+      });
+      expect(getSuggestion("h no", ctx)).toBeNull();
+    });
+  });
+
   describe("priority", () => {
     it("history takes priority over command completion", () => {
       const ctx = createCtx({

@@ -5,6 +5,8 @@ import { resolvePath, basename } from "../../lib/pathUtils";
 export interface SuggestionContext {
   commandHistory: string[];
   commandNames: string[];
+  aliasNames?: string[];
+  aliases?: Record<string, string>;
   fs: VirtualFS;
   cwd: string;
   homeDir: string;
@@ -30,7 +32,8 @@ export function getSuggestion(
 
   // Strategy 2: Command name completion (no spaces = still typing command)
   if (!input.includes(" ")) {
-    const match = ctx.commandNames
+    const allNames = [...ctx.commandNames, ...(ctx.aliasNames ?? [])];
+    const match = allNames
       .slice()
       .sort()
       .find((name) => name.startsWith(input) && name.length > input.length);
@@ -41,44 +44,49 @@ export function getSuggestion(
   const spaceIdx = input.indexOf(" ");
   if (spaceIdx !== -1) {
     const cmd = input.slice(0, spaceIdx);
+    // Resolve aliases to their underlying command
+    let resolvedCmd = cmd;
+    if (ctx.aliases?.[cmd]) {
+      resolvedCmd = ctx.aliases[cmd].split(/\s+/)[0];
+    }
     const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree", "pdftotext", "bash", "sh"];
-    if (pathCommands.includes(cmd)) {
+    if (pathCommands.includes(resolvedCmd)) {
       const rest = input.slice(spaceIdx + 1);
       const lastSpaceInRest = rest.lastIndexOf(" ");
       const partial = lastSpaceInRest === -1 ? rest : rest.slice(lastSpaceInRest + 1);
       const prefix = lastSpaceInRest === -1 ? "" : rest.slice(0, lastSpaceInRest + 1);
-      const completed = completePath(partial, ctx, cmd === "cd");
+      const completed = completePath(partial, ctx, resolvedCmd === "cd");
       if (completed !== null) {
         return cmd + " " + prefix + completed;
       }
     }
 
     // Strategy 3b: Subcommand completion for dbt, sudo, apt
-    if (cmd === "dbt") {
+    if (resolvedCmd === "dbt") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
-    if (cmd === "snow") {
+    if (resolvedCmd === "snow") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["sql"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
-    if (cmd === "sudo") {
+    if (resolvedCmd === "sudo") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["apt"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
-    if (cmd === "apt") {
+    if (resolvedCmd === "apt") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["install"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
-    if (cmd === "bash" || cmd === "sh") {
+    if (resolvedCmd === "bash" || resolvedCmd === "sh") {
       const partial = input.slice(spaceIdx + 1);
       const subs = ["-c"];
       const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);

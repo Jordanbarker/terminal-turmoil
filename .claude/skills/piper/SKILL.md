@@ -13,10 +13,12 @@ Piper is NexaCorp's Slack-style team chat. It handles casual colleague conversat
 src/engine/piper/
 ├── types.ts           # PiperMessage, PiperDelivery, PiperTrigger, PiperChannel, PiperSessionInfo, PiperReplyOption
 ├── delivery.ts        # checkPiperDeliveries(), seedImmediatePiper(), getConversationHistory(), getPendingReply(), getVisibleChannels()
+├── timestamp.ts       # Segment definitions, interpolateDeliveries(), computeTimestamp(), getGameTime()
 ├── render.ts          # Terminal rendering (header, channel list, conversation, reply menu, footer)
 ├── PiperSession.ts    # Interactive session (ISession impl, channel list ↔ conversation views)
 └── __tests__/
-    └── delivery.test.ts
+    ├── delivery.test.ts
+    └── timestamp.test.ts
 
 src/story/piper/
 ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
@@ -45,7 +47,7 @@ src/state/gameStore.ts                 # deliveredPiperIds state + addDeliveredP
 interface PiperMessage {
   id: string;              // "oscar_hey_1"
   from: string;            // "Oscar Diaz"
-  timestamp: string;       // "9:45 AM"
+  timestamp: string;       // Computed dynamically at render time (set to "" in definitions)
   body: string;
   isPlayer?: boolean;
 }
@@ -100,6 +102,35 @@ Two views: **channel list** and **conversation**.
 
 On session exit, collected trigger events and updated `deliveredPiperIds` (replies + seen markers) are synced back to the store via `useSessionRouter`.
 
+## Dynamic Timestamps — Segment-Based Interpolation
+
+Piper message timestamps are computed dynamically at render time in `getConversationHistory()` (delivery.ts), not hardcoded in message definitions (set timestamps to `""` in definitions).
+
+`timestamp.ts` defines five **time segments** with fixed clock windows. Deliveries are bucketed into segments and linearly interpolated within each segment's time range, ensuring end-of-day messages always land near the segment's end time regardless of how many quests the player completes.
+
+### Segments
+
+| Segment | Clock | Start | End | Calendar | Boundary trigger |
+|---------|-------|-------|-----|----------|-----------------|
+| `nexacorp_day1` | nexacorp | 8:30 AM | 6:15 PM | Mon Feb 23 | (initial) |
+| `nexacorp_day2` | nexacorp | 8:30 AM | 6:00 PM | Tue Feb 24 | `ssh_day2` flag |
+| `home_pre_work` | home | 2:00 PM | 4:00 PM | Sat Feb 21 | (initial) |
+| `home_post_work` | home | 6:15 PM | 9:00 PM | Mon Feb 23 | `returned_home_day1` flag |
+| `home_day2` | home | 6:30 AM | 9:00 AM | Tue Feb 24 | `day1_shutdown` flag |
+
+### Key exports from `timestamp.ts`
+
+- `interpolateDeliveries(deliveredIds, defMap)` — shared by `getConversationHistory` and `getGameTime`. Returns `deliveryMinutes` map (delivery ID → absolute minutes from midnight) and `lastSegment` (clockKey → current segment ID for calendar lookups)
+- `computeTimestamp(absoluteMinutes, messageIndex)` — formats absolute minutes as "h:mm AM/PM", adding `floor(messageIndex/2)` for within-delivery pairing
+- `getGameTime(deliveredPiperIds, defMap, computer)` — returns time + calendar for the `date` command
+- `SEGMENTS`, `SEGMENT_BOUNDARIES`, `INITIAL_SEGMENTS` — segment configuration
+
+### Algorithm
+
+1. **Bucket** deliveries into segments: iterate `deliveredIds`, detect `after_story_flag` triggers matching boundary flags, switch to next segment. Reply follow-ups (`after_piper_reply`) tracked separately.
+2. **Interpolate**: For N non-reply deliveries in a segment: `time = startMinutes + (i / max(N-1, 1)) * duration`
+3. **Reply follow-ups**: `parentDeliveryTime + 2 min`
+
 ## Channels
 
 | Channel | Type | When visible |
@@ -125,7 +156,7 @@ On session exit, collected trigger events and updated `deliveredPiperIds` (repli
      id: "unique_delivery_id",
      channelId: "dm_oscar",
      messages: [
-       { id: "msg_1", from: "Oscar Diaz", timestamp: "2:00 PM", body: "Message text" },
+       { id: "msg_1", from: "Oscar Diaz", timestamp: "", body: "Message text" },
      ],
      trigger: { type: "after_objective", objectiveId: "some_flag" },
      replyOptions: [

@@ -4,6 +4,7 @@ import { getPiperDeliveries } from "../../story/piper/messages";
 import { PIPER_CHANNELS } from "../../story/piper/channels";
 import { ComputerId, StoryFlags } from "../../state/types";
 import { matchesCommonTrigger } from "../narrative/triggerMatcher";
+import { computeTimestamp, interpolateDeliveries } from "./timestamp";
 
 /**
  * Check if any piper deliveries should fire for the given event.
@@ -81,21 +82,31 @@ export function seedImmediatePiper(username: string, computerId?: ComputerId): s
 /**
  * Build the conversation history for a channel, including player replies.
  * Returns messages in delivery order (the order IDs appear in deliveredIds).
+ * Timestamps are computed dynamically based on delivery order.
  */
 export function getConversationHistory(
   channelId: string,
   deliveredIds: string[],
-  username: string
+  username: string,
+  computerId: ComputerId = "nexacorp"
 ): PiperMessage[] {
   const messages: PiperMessage[] = [];
   const defMap = new Map(getPiperDeliveries(username).map((d) => [d.id, d]));
 
+  // Pass 1: Interpolate delivery timestamps across segments
+  const { deliveryMinutes: deliveryMinutesMap } = interpolateDeliveries(deliveredIds, defMap);
+
+  // Pass 2: Build messages for the requested channel with computed timestamps
   for (const id of deliveredIds) {
     if (defMap.has(id)) {
       const def = defMap.get(id)!;
       if (def.channelId !== channelId) continue;
-      for (const msg of def.messages) {
-        messages.push(msg);
+      const absoluteMinutes = deliveryMinutesMap.get(id) ?? 510;
+      for (let i = 0; i < def.messages.length; i++) {
+        messages.push({
+          ...def.messages[i],
+          timestamp: computeTimestamp(absoluteMinutes, i),
+        });
       }
     } else if (id.startsWith("reply:")) {
       const parts = id.split(":");

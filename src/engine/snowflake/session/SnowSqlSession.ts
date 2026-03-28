@@ -15,6 +15,11 @@ import { GameEvent } from "../../mail/delivery";
  */
 export class SnowSqlSession implements ISession {
   private inputBuffer = "";
+  private cursorPos = 0;
+  private escBuffer = "";
+  private history: string[] = [];
+  private historyIndex = -1;
+  private savedInput = "";
   private context: SessionContext;
   private state: SnowflakeState;
   private terminal: Terminal;
@@ -58,6 +63,36 @@ export class SnowSqlSession implements ISession {
       const char = data[i];
       const code = char.charCodeAt(0);
 
+      // Escape sequence buffering (arrow keys etc.)
+      if (code === 0x1b) {
+        this.escBuffer = "\x1b";
+        continue;
+      }
+      if (this.escBuffer === "\x1b" && char === "[") {
+        this.escBuffer = "\x1b[";
+        continue;
+      }
+      if (this.escBuffer === "\x1b[") {
+        this.escBuffer = "";
+        if (char === "A") {
+          this.historyUp();
+        } else if (char === "B") {
+          this.historyDown();
+        } else if (char === "C") {
+          if (this.cursorPos < this.inputBuffer.length) {
+            this.cursorPos++;
+            this.terminal.write("\x1b[C");
+          }
+        } else if (char === "D") {
+          if (this.cursorPos > 0) {
+            this.cursorPos--;
+            this.terminal.write("\x1b[D");
+          }
+        }
+        continue;
+      }
+      this.escBuffer = "";
+
       if (code === CTRL_D && this.inputBuffer.length === 0) {
         this.terminal.write("\r\n");
         return { type: "exit", newState: this.state, triggerEvents: this.pendingEvents.length ? this.pendingEvents : undefined };
@@ -74,14 +109,14 @@ export class SnowSqlSession implements ISession {
 
         if (trimmed.toLowerCase() === "settings") {
           this.showSettings();
-          this.inputBuffer = "";
+          this.resetInput();
           this.writePrompt();
           continue;
         }
 
         if (trimmed.toLowerCase() === "help") {
           this.showHelp();
-          this.inputBuffer = "";
+          this.resetInput();
           this.writePrompt();
           continue;
         }
@@ -90,34 +125,87 @@ export class SnowSqlSession implements ISession {
         if (trimmed.endsWith(";")) {
           const sql = trimmed.slice(0, -1).trim();
           if (sql) {
+            this.history.push(this.inputBuffer.trim());
             this.executeSql(sql);
           }
-          this.inputBuffer = "";
+          this.resetInput();
           this.writePrompt();
         } else if (trimmed === "") {
-          this.inputBuffer = "";
+          this.resetInput();
           this.writePrompt();
         } else {
           // Multi-line input — show continuation prompt
           this.inputBuffer += "\n";
+          this.cursorPos = this.inputBuffer.length;
           this.writeContinuationPrompt();
         }
       } else if (isBackspace(code)) {
-        if (this.inputBuffer.length > 0) {
-          this.inputBuffer = this.inputBuffer.slice(0, -1);
-          this.terminal.write("\b \b");
+        if (this.cursorPos > 0) {
+          const before = this.inputBuffer.slice(0, this.cursorPos - 1);
+          const after = this.inputBuffer.slice(this.cursorPos);
+          this.inputBuffer = before + after;
+          this.cursorPos--;
+          // Move back, write remaining chars + space to erase last char, move cursor back
+          this.terminal.write("\b" + after + " " + "\x1b[" + (after.length + 1) + "D");
         }
       } else if (code === CTRL_C) {
         this.terminal.write("^C\r\n");
-        this.inputBuffer = "";
+        this.resetInput();
         this.writePrompt();
       } else if (isPrintable(code)) {
-        this.inputBuffer += char;
-        this.terminal.write(char);
+        const before = this.inputBuffer.slice(0, this.cursorPos);
+        const after = this.inputBuffer.slice(this.cursorPos);
+        this.inputBuffer = before + char + after;
+        this.cursorPos++;
+        this.terminal.write(char + after);
+        if (after.length > 0) {
+          this.terminal.write("\x1b[" + after.length + "D");
+        }
       }
     }
 
     return { type: "continue" };
+  }
+
+  private resetInput(): void {
+    this.inputBuffer = "";
+    this.cursorPos = 0;
+    this.historyIndex = -1;
+    this.savedInput = "";
+  }
+
+  private replaceInput(newInput: string): void {
+    // Move cursor to start of input, clear to end of line, write new input
+    if (this.cursorPos > 0) {
+      this.terminal.write("\x1b[" + this.cursorPos + "D");
+    }
+    this.terminal.write("\x1b[K" + newInput);
+    this.inputBuffer = newInput;
+    this.cursorPos = newInput.length;
+  }
+
+  private historyUp(): void {
+    if (this.history.length === 0) return;
+    if (this.historyIndex === -1) {
+      this.savedInput = this.inputBuffer;
+      this.historyIndex = this.history.length - 1;
+    } else if (this.historyIndex > 0) {
+      this.historyIndex--;
+    } else {
+      return;
+    }
+    this.replaceInput(this.history[this.historyIndex]);
+  }
+
+  private historyDown(): void {
+    if (this.historyIndex === -1) return;
+    if (this.historyIndex < this.history.length - 1) {
+      this.historyIndex++;
+      this.replaceInput(this.history[this.historyIndex]);
+    } else {
+      this.historyIndex = -1;
+      this.replaceInput(this.savedInput);
+    }
   }
 
   private executeSql(sql: string): void {

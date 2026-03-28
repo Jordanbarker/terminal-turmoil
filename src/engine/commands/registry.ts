@@ -10,7 +10,7 @@ function isPathCommand(name: string): boolean {
 }
 
 const NEXACORP_GATE_HINTS: Record<string, string> = {
-  coder: "Read your welcome email and check /srv/engineering/onboarding.md to get set up.",
+  coder: "Read your email and check with Auri/Oscar to get set up.",
   piper: "Read your welcome email — it has instructions for getting started.",
 };
 

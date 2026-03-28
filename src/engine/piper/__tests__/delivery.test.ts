@@ -111,6 +111,14 @@ describe("checkPiperDeliveries", () => {
     const result = checkPiperDeliveries(event, [], USERNAME, "home", {});
     expect(result).not.toContain("alex_day1_checkin");
   });
+
+  it("delivers nexacorp piper when computerId is undefined (cross-computer)", () => {
+    const event: GameEvent = { type: "command_executed", detail: "dbt" };
+    const storyFlags = { ran_dbt: true } as Record<string, string | boolean>;
+    // No computerId filter — simulates cross-computer pass
+    const result = checkPiperDeliveries(event, [], USERNAME, undefined, storyFlags as never);
+    expect(result).toContain("auri_dbt_results");
+  });
 });
 
 describe("seedImmediatePiper", () => {
@@ -134,19 +142,19 @@ describe("seedImmediatePiper", () => {
 
 describe("getConversationHistory", () => {
   it("returns messages for a delivered channel", () => {
-    const messages = getConversationHistory("general", ["general_edward_welcome"], USERNAME);
+    const messages = getConversationHistory("general", ["general_edward_welcome"], USERNAME, "nexacorp");
     expect(messages.length).toBeGreaterThan(0);
     expect(messages[0].from).toBe("Edward Torres");
   });
 
   it("returns empty for undelivered channel", () => {
-    const messages = getConversationHistory("general", [], USERNAME);
+    const messages = getConversationHistory("general", [], USERNAME, "nexacorp");
     expect(messages).toHaveLength(0);
   });
 
   it("includes player reply when reply ID is in delivered list", () => {
     const delivered = ["general_edward_welcome", "reply:general_edward_welcome:0"];
-    const messages = getConversationHistory("general", delivered, USERNAME);
+    const messages = getConversationHistory("general", delivered, USERNAME, "nexacorp");
     const playerMsg = messages.find((m) => m.isPlayer);
     expect(playerMsg).toBeDefined();
   });
@@ -157,10 +165,45 @@ describe("getConversationHistory", () => {
       "general_tom_wins",
       "reply:general_edward_welcome:0",
     ];
-    const messages = getConversationHistory("general", delivered, USERNAME);
+    const messages = getConversationHistory("general", delivered, USERNAME, "nexacorp");
     const playerIdx = messages.findIndex((m) => m.isPlayer);
     // Reply should be at the end — after all NPC messages
     expect(playerIdx).toBe(messages.length - 1);
+  });
+
+  it("computes non-empty timestamps for NPC messages", () => {
+    const messages = getConversationHistory("general", ["general_edward_welcome"], USERNAME, "nexacorp");
+    const npcMessages = messages.filter((m) => !m.isPlayer);
+    for (const msg of npcMessages) {
+      expect(msg.timestamp).not.toBe("");
+      expect(msg.timestamp).toMatch(/^\d{1,2}:\d{2} (AM|PM)$/);
+    }
+  });
+
+  it("keeps empty timestamps for player replies", () => {
+    const delivered = ["general_edward_welcome", "reply:general_edward_welcome:0"];
+    const messages = getConversationHistory("general", delivered, USERNAME, "nexacorp");
+    const playerMsg = messages.find((m) => m.isPlayer);
+    expect(playerMsg!.timestamp).toBe("");
+  });
+
+  it("produces monotonically increasing timestamps across deliveries", () => {
+    const delivered = ["general_edward_welcome", "general_tom_wins"];
+    const messages = getConversationHistory("general", delivered, USERNAME, "nexacorp");
+    const timestamps = messages.filter((m) => !m.isPlayer).map((m) => m.timestamp);
+    // Parse timestamps to minutes for comparison
+    const toMinutes = (ts: string) => {
+      const match = ts.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/);
+      if (!match) return 0;
+      let hours = parseInt(match[1], 10);
+      const mins = parseInt(match[2], 10);
+      if (match[3] === "PM" && hours !== 12) hours += 12;
+      if (match[3] === "AM" && hours === 12) hours = 0;
+      return hours * 60 + mins;
+    };
+    for (let i = 1; i < timestamps.length; i++) {
+      expect(toMinutes(timestamps[i])).toBeGreaterThanOrEqual(toMinutes(timestamps[i - 1]));
+    }
   });
 });
 

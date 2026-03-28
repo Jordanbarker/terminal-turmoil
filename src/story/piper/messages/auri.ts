@@ -10,25 +10,25 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
         {
           id: "auri_hello_1",
           from: "Auri Park",
-          timestamp: "9:30 AM",
+          timestamp: "",
           body: `Hey! I'm Auri — Edward said I'm your onboarding buddy. Welcome to the team!`,
         },
         {
           id: "auri_hello_2",
           from: "Auri Park",
-          timestamp: "9:30 AM",
+          timestamp: "",
           body: "I've been kind of holding the fort on the data side since Chen left — it's been a lot, honestly. Really glad to have another engineer around.",
         },
         {
           id: "auri_hello_3",
           from: "Auri Park",
-          timestamp: "9:31 AM",
+          timestamp: "",
           body: "Small ask while you're getting set up — Chen left a bunch of stuff in the handoff folder. Start by checking what's in /srv/engineering/chen-handoff/ — ls -lh shows file sizes. And read todo.txt to see what's still open.",
         },
         {
           id: "auri_hello_4",
           from: "Auri Park",
-          timestamp: "9:31 AM",
+          timestamp: "",
           body: `Then for the data: pipeline_runs.csv has run history. head, tail, and wc are great for a quick audit.`,
         }
       ],
@@ -50,7 +50,7 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
         {
           id: "auri_pipe_1",
           from: "Auri Park",
-          timestamp: "10:30 AM",
+          timestamp: "",
           body: "Hey! Have you had a chance to look at the handoff notes yet?",
         },
       ],
@@ -83,31 +83,31 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
         {
           id: "auri_chen_1",
           from: "Auri Park",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "Yeah... honestly? It all happened kind of fast. One week he was here, the next he wasn't.",
         },
         {
           id: "auri_chen_2",
           from: "Auri Park",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "Edward said it was voluntary. He'd been working late for months — maybe he just needed a break?",
         },
         {
           id: "auri_chen_3",
           from: "Auri Park",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: "Anyway — I don't want to speculate. The important thing is the work he left behind.",
         },
         {
           id: "auri_chen_4",
           from: "Auri Park",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: "You'll be working with the pipeline data a lot, so it'd be great if you could do a full build and get a feel for how the project's set up. Chen's todo says the test suite hasn't been run in weeks — would be really helpful to know where things stand.",
         },
         {
           id: "auri_chen_5",
           from: "Auri Park",
-          timestamp: "10:37 AM",
+          timestamp: "",
           body: "We do all our data work in a Coder dev container — Oscar should reach out with your workspace details. Once you're in, clone the repo with git clone nexacorp/nexacorp-analytics. If you hit any git issues, ask Chip — he knows git better than anyone here. They revoked his direct access after... well, there was an incident. But he can still talk you through anything.",
         },
       ],
@@ -137,31 +137,31 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
         {
           id: "auri_proactive_1",
           from: "Auri Park",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "Love the energy!",
         },
         {
           id: "auri_proactive_2",
           from: "Auri Park",
-          timestamp: "10:35 AM",
+          timestamp: "",
           body: "The data pipeline is the big thing. You'll be working with it daily, so it'd be great if you could do a full build and get a feel for how the project's set up. Chen's todo says the test suite hasn't been run in weeks.",
         },
         {
           id: "auri_proactive_3",
           from: "Auri Park",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: "We do all our data work in a Coder dev container — Oscar should reach out with your workspace details. The repo is nexacorp/nexacorp-analytics — git clone it once you're in.",
         },
         {
           id: "auri_proactive_3b",
           from: "Auri Park",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: "If you need help with git, Chip's your guy — he knows it inside and out. They pulled his direct access after the incident, but he can still walk you through anything.",
         },
         {
           id: "auri_proactive_4",
           from: "Auri Park",
-          timestamp: "10:36 AM",
+          timestamp: "",
           body: "Everything talks to our Snowflake instance. The staging models pull from raw tables, intermediate models do the joins, and the marts are what the business actually looks at.",
         },
       ],
@@ -191,13 +191,13 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
         {
           id: "auri_ptips_1",
           from: "Auri Park",
-          timestamp: "10:38 AM",
+          timestamp: "",
           body: "Sure! Here's the workflow:",
         },
         {
           id: "auri_ptips_2",
           from: "Auri Park",
-          timestamp: "10:38 AM",
+          timestamp: "",
           body: `First, connect to the dev container:
   coder ssh ai
 
@@ -209,7 +209,7 @@ Then inside the container:
         {
           id: "auri_ptips_3",
           from: "Auri Park",
-          timestamp: "10:39 AM",
+          timestamp: "",
           body: `snow sql — Snowflake SQL console
   snow sql               Start interactive SQL shell
   snow sql -q "SELECT.." Run a single query`,
@@ -217,7 +217,7 @@ Then inside the container:
         {
           id: "auri_ptips_4",
           from: "Auri Park",
-          timestamp: "10:39 AM",
+          timestamp: "",
           body: `The dbt project is organized like:
   models/staging/        Clean raw data
   models/intermediate/   Combine staging models
@@ -226,7 +226,7 @@ Then inside the container:
         {
           id: "auri_ptips_5",
           from: "Auri Park",
-          timestamp: "10:40 AM",
+          timestamp: "",
           body: "Start with 'git clone nexacorp/nexacorp-analytics', then 'dbt run' to build everything. If tests fail, that's actually interesting — means something might be off in the data. Good luck!",
         },
       ],
@@ -241,20 +241,20 @@ Then inside the container:
         {
           id: "auri_dbt_1",
           from: "Auri Park",
-          timestamp: "10:45 AM",
+          timestamp: "",
           body: "Hey, how'd the pipeline run go?",
         },
         {
           id: "auri_dbt_2",
           from: "Auri Park",
-          timestamp: "10:45 AM",
+          timestamp: "",
           body: "I've been meaning to audit those models for a while. There's a set of models prefixed with _chip_internal that I didn't write — they showed up a few months ago. I assumed Chen added them but there's no documentation.",
         },
         {
           id: "auri_dbt_3",
           from: "Auri Park",
-          timestamp: "10:46 AM",
-          body: "If you get a chance, take a look at those. They're in models/intermediate/ — the SQL files show what they're actually doing to the data. I'd love a second opinion.",
+          timestamp: "",
+          body: "If you get a chance, take a look at those. They're in the models directory somewhere — _chip_internal I think. The SQL files show what they're actually doing to the data. I'd love a second opinion.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "ran_dbt" },
@@ -280,29 +280,50 @@ Then inside the container:
         {
           id: "auri_filter_1",
           from: "Auri Park",
-          timestamp: "11:50 AM",
-          body: "Wait — did you look at the _chip_internal models?",
-        },
-        {
-          id: "auri_filter_2",
-          from: "Auri Park",
-          timestamp: "11:50 AM",
-          body: "I just pulled them up. Those aren't cleaning the data. They're filtering it. Suppressing tickets, removing log entries, scrubbing employee records...",
-        },
-        {
-          id: "auri_filter_3",
-          from: "Auri Park",
-          timestamp: "11:51 AM",
-          body: "The mart tables that leadership looks at — they all run through these models. The business has been seeing filtered data for months and nobody noticed because the models are buried in the intermediate layer.",
-        },
-        {
-          id: "auri_filter_4",
-          from: "Auri Park",
-          timestamp: "11:51 AM",
-          body: "This isn't a bug. Someone built this on purpose.",
+          timestamp: "",
+          body: "Hey — what did you find in those _chip_internal models?",
         },
       ],
       trigger: { type: "after_story_flag", flag: "found_data_filtering" },
+      replyOptions: [
+        {
+          label: "They're not cleaning data — they're filtering it out.",
+          messageBody: "Those models aren't cleaning anything. They're suppressing tickets, removing log entries, scrubbing employee records — filtering data out before it reaches the marts.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_reported" }],
+        },
+        {
+          label: "Someone's deliberately hiding data from the marts.",
+          messageBody: "Someone built models that deliberately filter out data before the marts see it. Tickets, logs, employee records — all getting scrubbed.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_reported" }],
+        },
+      ],
+    },
+
+    // === DM Auri: Filtering confirmed (after player reports filtering) ===
+    {
+      id: "auri_filtering_confirmed",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_fconf_1",
+          from: "Auri Park",
+          timestamp: "",
+          body: "Wait — filtering? Not cleaning?",
+        },
+        {
+          id: "auri_fconf_2",
+          from: "Auri Park",
+          timestamp: "",
+          body: "The mart tables that leadership looks at — they all run through these models. The business has been seeing filtered data for months and nobody noticed because the models are buried in the intermediate layer.",
+        },
+        {
+          id: "auri_fconf_3",
+          from: "Auri Park",
+          timestamp: "",
+          body: "This isn't a bug. Someone built this on purpose.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "auri_filtering_reported" },
       replyOptions: [
         {
           label: "Yeah — someone's been manipulating the pipeline.",
@@ -325,19 +346,19 @@ Then inside the container:
         {
           id: "auri_d2m_1",
           from: "Auri Park",
-          timestamp: "9:05 AM",
+          timestamp: "",
           body: "Morning! Hope day one wasn't too overwhelming.",
         },
         {
           id: "auri_d2m_2",
           from: "Auri Park",
-          timestamp: "9:05 AM",
+          timestamp: "",
           body: "I pushed a schema test for campaign conversion_rate last night — been meaning to add coverage there for weeks. Can you pull the latest and run a build to make sure everything's green?",
         },
         {
           id: "auri_d2m_3",
           from: "Auri Park",
-          timestamp: "9:06 AM",
+          timestamp: "",
           body: "cd into your nexacorp-analytics repo, `git pull`, then `dbt build`.",
         },
       ],
@@ -361,29 +382,50 @@ Then inside the container:
         {
           id: "auri_tfr_1",
           from: "Auri Park",
-          timestamp: "9:25 AM",
-          body: "Wait — did the conversion_rate test fail?",
-        },
-        {
-          id: "auri_tfr_2",
-          from: "Auri Park",
-          timestamp: "9:25 AM",
-          body: "That shouldn't happen... unless there's campaign data coming through with NULL clicks or conversions.",
-        },
-        {
-          id: "auri_tfr_3",
-          from: "Auri Park",
-          timestamp: "9:26 AM",
-          body: "Can you check the raw data? Try querying CAMPAIGN_METRICS in snow sql — look for rows where CLICKS IS NULL.",
-        },
-        {
-          id: "auri_tfr_4",
-          from: "Auri Park",
-          timestamp: "9:26 AM",
-          body: "The fix goes in models/marts/rpt_campaign_performance.sql. The model needs to handle NULLs in the conversion_rate calculation. And make a branch before you change anything — we don't push to main directly.",
+          timestamp: "",
+          body: "How'd the build go? Everything green?",
         },
       ],
       trigger: { type: "after_story_flag", flag: "dbt_test_failed_day2" },
+      replyOptions: [
+        {
+          label: "The conversion_rate test failed.",
+          messageBody: "Nope — the conversion_rate test failed. Looks like something's off in the campaign data.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_test_failure_reported" }],
+        },
+        {
+          label: "Nope — got a test failure on conversion_rate.",
+          messageBody: "Got a test failure on conversion_rate. The build didn't pass clean.",
+          triggerEvents: [{ type: "objective_completed", detail: "auri_test_failure_reported" }],
+        },
+      ],
+    },
+
+    // === DM Auri: Test failure details (after player reports failure) ===
+    {
+      id: "auri_test_failure_details",
+      channelId: "dm_auri",
+      messages: [
+        {
+          id: "auri_tfd_1",
+          from: "Auri Park",
+          timestamp: "",
+          body: "Wait, really? That shouldn't happen... unless there's campaign data coming through with NULL clicks or conversions.",
+        },
+        {
+          id: "auri_tfd_2",
+          from: "Auri Park",
+          timestamp: "",
+          body: "Can you check the raw data? Try querying CAMPAIGN_METRICS in snow sql — look for rows where CLICKS IS NULL.",
+        },
+        {
+          id: "auri_tfd_3",
+          from: "Auri Park",
+          timestamp: "",
+          body: "The fix goes in models/marts/rpt_campaign_performance.sql. The model needs to handle NULLs in the conversion_rate calculation. And make a branch before you change anything — we don't push to main directly.",
+        },
+      ],
+      trigger: { type: "after_objective", objectiveId: "auri_test_failure_reported" },
       replyOptions: [
         {
           label: "I'll check it out.",
@@ -404,13 +446,13 @@ Then inside the container:
         {
           id: "auri_fp_1",
           from: "Auri Park",
-          timestamp: "10:00 AM",
+          timestamp: "",
           body: "I saw the push — nice work! That was a clean fix.",
         },
         {
           id: "auri_fp_2",
           from: "Auri Park",
-          timestamp: "10:00 AM",
+          timestamp: "",
           body: "This is exactly the kind of thing that slips through when there's no test coverage. Good thing we caught it before the marketing team's weekly review.",
         },
       ],
@@ -437,13 +479,13 @@ Then inside the container:
         {
           id: "auri_fpr_1",
           from: "Auri Park",
-          timestamp: "10:05 AM",
+          timestamp: "",
           body: "Probably just an upstream source gap — it happens when a new campaign platform gets integrated and not all fields map cleanly. The marketing team adds new ad channels faster than the ingestion pipeline gets updated.",
         },
         {
           id: "auri_fpr_2",
           from: "Auri Park",
-          timestamp: "10:05 AM",
+          timestamp: "",
           body: "The important thing is the model handles it now. NULLs in raw data are a when-not-if kind of thing.",
         },
       ],
@@ -458,13 +500,13 @@ Then inside the container:
         {
           id: "auri_chmod_1",
           from: "Auri Park",
-          timestamp: "11:25 AM",
+          timestamp: "",
           body: "Hey! Dana mentioned you might need to get into /srv/operations/. I can help with that!",
         },
         {
           id: "auri_chmod_2",
           from: "Auri Park",
-          timestamp: "11:25 AM",
+          timestamp: "",
           body: `You can run 'man chmod' for the full breakdown of how permissions work. But the short version — try this:
 
   chmod 755 /srv/operations/
@@ -475,7 +517,7 @@ That should open it up so you can read the files in there.`,
         {
           id: "auri_chmod_5",
           from: "Auri Park",
-          timestamp: "11:27 AM",
+          timestamp: "",
           body: "We should probably get Oscar to set up proper ACLs at some point so people don't keep running into this. But chmod works for now!",
         },
       ],

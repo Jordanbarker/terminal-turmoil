@@ -62,3 +62,5 @@ import "./source";
 // Environment
 import "./printenv";
 import "./export";
+// Aliases
+import "./alias";

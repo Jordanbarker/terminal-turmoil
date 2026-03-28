@@ -11,19 +11,19 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "maya_dm_1",
           from: "Maya Johnson",
-          timestamp: "9:20 AM",
+          timestamp: "",
           body: `Hey ${PLAYER.displayName}! Maya here. Just wanted to reach out directly — I know the onboarding checklist is a lot, but seriously don't stress about it.`,
         },
         {
           id: "maya_dm_2",
           from: "Maya Johnson",
-          timestamp: "9:20 AM",
+          timestamp: "",
           body: "I paired you with Auri Park as your onboarding buddy — she's great! She'll reach out to help you get oriented with the data systems.",
         },
         {
           id: "maya_dm_3",
           from: "Maya Johnson",
-          timestamp: "9:21 AM",
+          timestamp: "",
           body: "I'm here if you need anything. And I mean anything — questions about the team, the company, where to find things, or just want to vent about first-day overwhelm. My door is always open!",
         },
       ],
@@ -38,13 +38,13 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "maya_handoff_1",
           from: "Maya Johnson",
-          timestamp: "10:45 AM",
+          timestamp: "",
           body: "Hey — how are the handoff materials? I know it's a lot to absorb when you're stepping into someone else's work.",
         },
         {
           id: "maya_handoff_2",
           from: "Maya Johnson",
-          timestamp: "10:46 AM",
+          timestamp: "",
           body: "Jin was really good at his job. I just wish we'd had more time for a proper transition. It all happened kind of fast.",
         },
       ],
@@ -53,6 +53,9 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           label: "What happened with Jin?",
           messageBody: "The handoff docs are helpful but they feel kind of rushed. What happened — did he leave suddenly?",
+          triggerEvents: [
+            { type: "objective_completed", detail: "piper_reply:maya_asked_about_jin" },
+          ],
         },
         {
           label: "It's a lot but I'm managing. Thanks!",
@@ -69,11 +72,11 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "maya_jin_1",
           from: "Maya Johnson",
-          timestamp: "10:50 AM",
+          timestamp: "",
           body: "I probably shouldn't say too much. He wasn't really the type to make a fuss about things — kept his head down, did his work. Just... if anything in the handoff feels incomplete, it's not because he didn't care. He cared a lot.",
         },
       ],
-      trigger: { type: "after_piper_reply", deliveryId: "maya_dm_handoff" },
+      trigger: { type: "after_piper_reply", deliveryId: "maya_asked_about_jin" },
     },
 
     // === DM Maya: Safe harbor check-in (after pipeline_tools_accepted) ===
@@ -84,7 +87,7 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "maya_checkin_1",
           from: "Maya Johnson",
-          timestamp: "11:30 AM",
+          timestamp: "",
           body: "Hey, just wanted to see how you're doing. First days can be a lot — especially jumping into someone else's work. No agenda, just checking in.",
         },
       ],
@@ -109,7 +112,7 @@ export function getMayaDeliveries(_username: string): PiperDelivery[] {
         {
           id: "maya_checkin_reply_1",
           from: "Maya Johnson",
-          timestamp: "11:35 AM",
+          timestamp: "",
           body: "Glad to hear it. You're doing great — seriously. And you know where to find me if you ever need anything.",
         },
       ],

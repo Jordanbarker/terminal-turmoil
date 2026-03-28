@@ -10,13 +10,13 @@ export function getSohamDeliveries(_username: string): PiperDelivery[] {
         {
           id: "soham_dm_1",
           from: "Soham Parekh",
-          timestamp: "11:45 AM",
+          timestamp: "",
           body: "Hey! Sorry I'm just now reaching out — this week has been wild. Sprint retro plus I've been heads-down on some complex architectural decisions for the integrations layer.",
         },
         {
           id: "soham_dm_2",
           from: "Soham Parekh",
-          timestamp: "11:45 AM",
+          timestamp: "",
           body: "We should definitely sync up once I come up for air. Maybe next week? I'll send a calendar invite.",
         },
       ],

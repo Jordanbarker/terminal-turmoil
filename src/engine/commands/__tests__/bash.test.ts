@@ -377,13 +377,21 @@ describe("date format strings", () => {
     expect(result.output).toBe("2026-02-23");
   });
 
-  it("formats +%H:%M:%S", async () => {
+  it("formats +%H:%M:%S (base time with no deliveries)", async () => {
     const result = await executeAsync("date", ["+%H:%M:%S"], {}, ctx());
-    expect(result.output).toBe("08:15:00");
+    expect(result.output).toBe("08:30:00");
   });
 
   it("returns default output without format", async () => {
     const result = await executeAsync("date", [], {}, ctx());
-    expect(result.output).toBe("Mon Feb 23 08:15:00 UTC 2026");
+    expect(result.output).toBe("Mon Feb 23 08:30:00 UTC 2026");
+  });
+
+  it("shows home computer base time", async () => {
+    const result = await executeAsync("date", [], {}, ctx(undefined, {
+      activeComputer: "home",
+      storyFlags: { basic_tools_unlocked: true },
+    }));
+    expect(result.output).toBe("Sat Feb 21 14:00:00 UTC 2026");
   });
 });

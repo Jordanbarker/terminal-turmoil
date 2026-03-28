@@ -72,7 +72,16 @@ register(
         }
       }
 
-      return { output: outputLines.join("\n") };
+      // Detect campaign_metrics query for story progression (mirrors SnowSqlSession)
+      const triggerEvents: import("../../mail/delivery").GameEvent[] = [];
+      if (/campaign_metrics/i.test(sql)) {
+        triggerEvents.push({ type: "command_executed", detail: "queried_campaign_metrics" });
+      }
+
+      return {
+        output: outputLines.join("\n"),
+        ...(triggerEvents.length > 0 && { triggerEvents }),
+      };
     }
 
     // Interactive mode — return session info
