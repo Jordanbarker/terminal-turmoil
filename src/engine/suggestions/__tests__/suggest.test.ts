@@ -96,6 +96,11 @@ describe("getSuggestion", () => {
       expect(getSuggestion("xyz", createCtx())).toBeNull();
     });
 
+    it("completes case-insensitively", () => {
+      expect(getSuggestion("C", createCtx())).toBe("cat");
+      expect(getSuggestion("CL", createCtx())).toBe("clear");
+    });
+
     it("does not complete commands after a space", () => {
       // After space, it should try path completion, not command completion
       const result = getSuggestion("cat c", createCtx());
@@ -213,6 +218,28 @@ describe("getSuggestion", () => {
       const ctx = createCtx();
       const result = getSuggestion("cmd1 || ca", ctx);
       expect(result).toBe("cmd1 || cat");
+    });
+  });
+
+  describe("pipe support", () => {
+    it("completes command after pipe", () => {
+      const ctx = createCtx();
+      expect(getSuggestion("ls | ca", ctx)).toBe("ls | cat");
+    });
+
+    it("completes command after pipe with spaces", () => {
+      const ctx = createCtx();
+      expect(getSuggestion("ls |  ca", ctx)).toBe("ls |  cat");
+    });
+
+    it("returns null for empty segment after pipe", () => {
+      const ctx = createCtx();
+      expect(getSuggestion("ls | ", ctx)).toBeNull();
+    });
+
+    it("completes after multiple pipes", () => {
+      const ctx = createCtx();
+      expect(getSuggestion("cat file | sort | he", ctx)).toBe("cat file | sort | help");
     });
   });
 

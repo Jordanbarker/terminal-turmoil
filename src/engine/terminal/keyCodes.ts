@@ -2,6 +2,7 @@
  * Named constants for terminal key codes used across session handlers.
  */
 
+export const TAB = 9;
 export const BACKSPACE = 127;
 export const BACKSPACE_ALT = 8;
 export const CTRL_C = 3;

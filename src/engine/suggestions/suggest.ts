@@ -1,6 +1,6 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { isDirectory } from "../filesystem/types";
-import { resolvePath, basename } from "../../lib/pathUtils";
+import { resolvePath } from "../../lib/pathUtils";
 import { splitOnChainOperators } from "../commands/parser";
 
 export interface SuggestionContext {
@@ -11,6 +11,115 @@ export interface SuggestionContext {
   fs: VirtualFS;
   cwd: string;
   homeDir: string;
+}
+
+/** Commands that accept path arguments */
+export const PATH_COMMANDS = [
+  "cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file",
+  "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree",
+  "pdftotext", "bash", "sh",
+];
+
+/** Subcommand lists keyed by parent command */
+export const SUBCOMMAND_MAP: Record<string, string[]> = {
+  dbt: ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"],
+  snow: ["sql"],
+  sudo: ["apt"],
+  apt: ["install"],
+  bash: ["-c"],
+  sh: ["-c"],
+  git: ["init", "clone", "add", "rm", "commit", "status", "log", "branch", "checkout", "diff", "stash", "push", "pull", "help"],
+};
+
+/**
+ * List entries in a directory matching a prefix.
+ * Returns matching entries with their display names (name + "/" for dirs).
+ */
+export function listMatchingEntries(
+  parentDir: string,
+  prefix: string,
+  ctx: SuggestionContext,
+  directoriesOnly: boolean,
+  caseInsensitive: boolean,
+): { name: string; displayName: string }[] {
+  const { entries } = ctx.fs.listDirectory(parentDir);
+  if (!entries.length) return [];
+
+  const sorted = entries.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const results: { name: string; displayName: string }[] = [];
+
+  for (const entry of sorted) {
+    if (directoriesOnly && !isDirectory(entry)) continue;
+
+    const matches = caseInsensitive
+      ? entry.name.toLowerCase().startsWith(prefix.toLowerCase())
+      : entry.name.startsWith(prefix);
+
+    if (!matches) continue;
+    if (!prefix && entry.name === prefix) continue;
+
+    const displayName = entry.name + (isDirectory(entry) ? "/" : "");
+    results.push({ name: entry.name, displayName });
+  }
+
+  return results;
+}
+
+/**
+ * Find the last unquoted single pipe `|` (not `||`) in input.
+ * Returns the index, or -1 if none found.
+ */
+export function findLastUnquotedPipe(input: string): number {
+  let inSingle = false;
+  let inDouble = false;
+  let lastPipe = -1;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle;
+    } else if (char === '"' && !inSingle) {
+      inDouble = !inDouble;
+    } else if (char === "|" && !inSingle && !inDouble) {
+      // Check it's not part of ||
+      if (input[i - 1] !== "|" && input[i + 1] !== "|") {
+        lastPipe = i;
+      }
+    }
+  }
+
+  return lastPipe;
+}
+
+/**
+ * Check if input contains an unquoted redirect operator (> or >>).
+ */
+export function hasUnquotedRedirect(input: string): boolean {
+  let inSingle = false;
+  let inDouble = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle;
+    } else if (char === '"' && !inSingle) {
+      inDouble = !inDouble;
+    } else if (char === ">" && !inSingle && !inDouble) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolve an alias to its underlying command name.
+ */
+export function resolveAlias(cmd: string, aliases?: Record<string, string>): string {
+  if (aliases?.[cmd]) {
+    return aliases[cmd].split(/\s+/)[0];
+  }
+  return cmd;
 }
 
 /**
@@ -48,13 +157,25 @@ export function getSuggestion(
     return prefix + segSuggestion;
   }
 
+  // Pipe support: extract last pipe segment
+  const lastPipeIdx = findLastUnquotedPipe(input);
+  if (lastPipeIdx >= 0) {
+    const pipeText = input.slice(lastPipeIdx + 1);
+    const trimmed = pipeText.trimStart();
+    if (!trimmed) return null;
+    const offset = lastPipeIdx + 1 + (pipeText.length - trimmed.length);
+    const segSuggestion = getSuggestion(trimmed, ctx);
+    if (segSuggestion === null) return null;
+    return input.slice(0, offset) + segSuggestion;
+  }
+
   // Strategy 2: Command name completion (no spaces = still typing command)
   if (!input.includes(" ")) {
     const allNames = [...ctx.commandNames, ...(ctx.aliasNames ?? [])];
     const match = allNames
       .slice()
       .sort()
-      .find((name) => name.startsWith(input) && name.length > input.length);
+      .find((name) => name.toLowerCase().startsWith(input.toLowerCase()) && name.length > input.length);
     if (match) return match;
   }
 
@@ -62,13 +183,9 @@ export function getSuggestion(
   const spaceIdx = input.indexOf(" ");
   if (spaceIdx !== -1) {
     const cmd = input.slice(0, spaceIdx);
-    // Resolve aliases to their underlying command
-    let resolvedCmd = cmd;
-    if (ctx.aliases?.[cmd]) {
-      resolvedCmd = ctx.aliases[cmd].split(/\s+/)[0];
-    }
-    const pathCommands = ["cd", "ls", "cat", "nano", "head", "tail", "grep", "diff", "wc", "file", "sort", "uniq", "chmod", "rm", "cp", "mv", "touch", "find", "tree", "pdftotext", "bash", "sh"];
-    if (pathCommands.includes(resolvedCmd)) {
+    const resolvedCmd = resolveAlias(cmd, ctx.aliases);
+
+    if (PATH_COMMANDS.includes(resolvedCmd)) {
       const rest = input.slice(spaceIdx + 1);
       const lastSpaceInRest = rest.lastIndexOf(" ");
       const partial = lastSpaceInRest === -1 ? rest : rest.slice(lastSpaceInRest + 1);
@@ -79,35 +196,11 @@ export function getSuggestion(
       }
     }
 
-    // Strategy 3b: Subcommand completion for dbt, sudo, apt
-    if (resolvedCmd === "dbt") {
+    // Strategy 3b: Subcommand completion
+    const subs = SUBCOMMAND_MAP[resolvedCmd];
+    if (subs) {
       const partial = input.slice(spaceIdx + 1);
-      const subs = ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"];
-      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
-      if (match) return cmd + " " + match;
-    }
-    if (resolvedCmd === "snow") {
-      const partial = input.slice(spaceIdx + 1);
-      const subs = ["sql"];
-      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
-      if (match) return cmd + " " + match;
-    }
-    if (resolvedCmd === "sudo") {
-      const partial = input.slice(spaceIdx + 1);
-      const subs = ["apt"];
-      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
-      if (match) return cmd + " " + match;
-    }
-    if (resolvedCmd === "apt") {
-      const partial = input.slice(spaceIdx + 1);
-      const subs = ["install"];
-      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
-      if (match) return cmd + " " + match;
-    }
-    if (resolvedCmd === "bash" || resolvedCmd === "sh") {
-      const partial = input.slice(spaceIdx + 1);
-      const subs = ["-c"];
-      const match = subs.find((s) => s.startsWith(partial) && s.length > partial.length);
+      const match = subs.find((s) => s.toLowerCase().startsWith(partial.toLowerCase()) && s.length > partial.length);
       if (match) return cmd + " " + match;
     }
   }
@@ -118,6 +211,7 @@ export function getSuggestion(
 /**
  * Complete a partial path against the virtual filesystem.
  * Returns the completed path string, or null if no match.
+ * Used for ghost-text suggestions (returns first match only, no empty prefix).
  */
 function completePath(
   partial: string,
@@ -126,17 +220,14 @@ function completePath(
 ): string | null {
   if (!partial) return null;
 
-  // Determine the parent directory and prefix to match
   const lastSlash = partial.lastIndexOf("/");
   let parentInput: string;
   let prefix: string;
 
   if (lastSlash === -1) {
-    // No slash — resolve relative to cwd
     parentInput = ctx.cwd;
     prefix = partial;
   } else {
-    // Has slash — resolve the directory part
     parentInput = resolvePath(
       partial.slice(0, lastSlash + 1),
       ctx.cwd,
@@ -147,25 +238,15 @@ function completePath(
 
   if (!prefix) return null;
 
-  const { entries } = ctx.fs.listDirectory(parentInput);
-  if (!entries.length) return null;
+  const matches = listMatchingEntries(parentInput, prefix, ctx, directoriesOnly, true);
+  if (matches.length === 0) return null;
 
-  // Sort entries alphabetically and find first match
-  const sorted = entries.slice().sort((a, b) => a.name.localeCompare(b.name));
-  for (const entry of sorted) {
-    if (!entry.name.startsWith(prefix)) continue;
-    if (entry.name.length <= prefix.length) continue;
-    if (directoriesOnly && !isDirectory(entry)) continue;
-
-    // Build the completed path preserving the user's original prefix structure
-    const completedName =
-      entry.name + (isDirectory(entry) ? "/" : "");
-    if (lastSlash === -1) {
-      return completedName;
-    } else {
-      return partial.slice(0, lastSlash + 1) + completedName;
-    }
+  // Return first match (for ghost text, just show the top suggestion)
+  const first = matches[0];
+  const completedName = first.displayName;
+  if (lastSlash === -1) {
+    return completedName;
+  } else {
+    return partial.slice(0, lastSlash + 1) + completedName;
   }
-
-  return null;
 }

@@ -2,8 +2,9 @@ import { useCallback, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
 import { getAvailableCommands } from "../engine/commands/registry";
-import { getSuggestion } from "../engine/suggestions/suggest";
-import { isBackspace, isPrintable, CTRL_C } from "../engine/terminal/keyCodes";
+import { getSuggestion, SuggestionContext } from "../engine/suggestions/suggest";
+import { getCompletions, CompletionResult } from "../engine/suggestions/complete";
+import { isBackspace, isPrintable, CTRL_C, TAB } from "../engine/terminal/keyCodes";
 import { ComputerId } from "../state/types";
 
 interface CommandLineDeps {
@@ -17,11 +18,24 @@ export interface CommandLineResult {
   input: string;
 }
 
+interface CompletionState {
+  matches: string[];
+  displayNames: string[];
+  commonPrefix: string;
+  replaceFrom: number;
+  cycleIndex: number;       // -1 = common prefix shown, 0..N = cycling
+  originalInput: string;
+  menuVisible: boolean;
+  menuLineCount: number;
+  promptCol: number;
+}
+
 export function useCommandLine(deps: CommandLineDeps) {
   const { cwdRef, activeComputerRef, writePrompt } = deps;
   const lineBuffer = useRef("");
   const cursorPos = useRef(0);
   const ghostLengthRef = useRef(0);
+  const completionStateRef = useRef<CompletionState | null>(null);
 
   const pushHistory = useGameStore((s) => s.pushHistory);
   const computerId = activeComputerRef.current;
@@ -64,20 +78,17 @@ export function useCommandLine(deps: CommandLineDeps) {
     []
   );
 
-  const renderGhostText = useCallback((term: Terminal) => {
-    const input = lineBuffer.current;
-    if (!input) return;
-    if (cursorPos.current !== input.length) return;
-
+  const buildSuggestionContext = useCallback((): SuggestionContext | null => {
     const store = useGameStore.getState();
-    const computerId = activeComputerRef.current;
-    const currentFs = store.computerState[computerId]?.fs;
-    if (!currentFs) return;
+    const cId = activeComputerRef.current;
+    const currentFs = store.computerState[cId]?.fs;
+    if (!currentFs) return null;
 
-    const commandNames = getAvailableCommands(computerId, store.storyFlags).map((c) => c.name);
-    const aliases = store.computerState[computerId]?.aliases ?? {};
+    const commandNames = getAvailableCommands(cId, store.storyFlags).map((c) => c.name);
+    const aliases = store.computerState[cId]?.aliases ?? {};
     const aliasNames = Object.keys(aliases);
-    const suggestion = getSuggestion(input, {
+
+    return {
       commandHistory: historyRef.current,
       commandNames,
       aliasNames,
@@ -85,14 +96,232 @@ export function useCommandLine(deps: CommandLineDeps) {
       fs: currentFs,
       cwd: cwdRef.current,
       homeDir: currentFs.homeDir,
-    });
+    };
+  }, [cwdRef]);
+
+  const renderGhostText = useCallback((term: Terminal) => {
+    const input = lineBuffer.current;
+    if (!input) return;
+    if (cursorPos.current !== input.length) return;
+
+    const ctx = buildSuggestionContext();
+    if (!ctx) return;
+
+    const suggestion = getSuggestion(input, ctx);
 
     if (suggestion && suggestion.length > input.length) {
       const suffix = suggestion.slice(input.length);
       term.write(`\x1b[s\x1b[2m${suffix}\x1b[0m\x1b[u`);
       ghostLengthRef.current = suffix.length;
     }
-  }, [cwdRef]);
+  }, [buildSuggestionContext]);
+
+  /** Clear the completion menu from the terminal display. */
+  const clearCompletionMenu = useCallback((term: Terminal) => {
+    const state = completionStateRef.current;
+    if (!state || !state.menuVisible || state.menuLineCount === 0) return;
+
+    // Move down from input line, clear each menu line, move back
+    for (let i = 0; i < state.menuLineCount; i++) {
+      term.write("\x1b[B\x1b[2K");
+    }
+    // Move back up to input line
+    term.write(`\x1b[${state.menuLineCount}A`);
+    // Restore cursor column
+    term.write(`\r\x1b[${state.promptCol}C`);
+  }, []);
+
+  /** Render the completion menu below the input line. */
+  const renderCompletionMenu = useCallback((term: Terminal, state: CompletionState) => {
+    const { displayNames, cycleIndex } = state;
+    const maxDisplayRows = 10;
+
+    // Columnar layout
+    const maxNameLen = Math.max(...displayNames.map((n) => n.length));
+    const colWidth = maxNameLen + 2;
+    const numCols = Math.max(1, Math.floor(term.cols / colWidth));
+    const totalRows = Math.ceil(displayNames.length / numCols);
+    const truncated = totalRows > maxDisplayRows;
+    const displayRows = truncated ? maxDisplayRows : totalRows;
+    const displayCount = truncated ? displayRows * numCols : displayNames.length;
+
+    const menuLineCount = displayRows + (truncated ? 1 : 0); // +1 for "... and N more"
+
+    // Use pre-computed prompt column (cursorX may be stale after writes)
+    const promptCol = state.promptCol;
+
+    // Handle scrolling if needed
+    const cursorRow = term.buffer.active.cursorY;
+    const availableBelow = term.rows - 1 - cursorRow;
+    if (menuLineCount > availableBelow) {
+      const scrollNeeded = menuLineCount - availableBelow;
+      term.write("\n".repeat(scrollNeeded));
+      term.write(`\x1b[${scrollNeeded}A`);
+    }
+
+    // Write menu rows
+    for (let row = 0; row < displayRows; row++) {
+      let line = "";
+      for (let col = 0; col < numCols; col++) {
+        const idx = row + col * displayRows;
+        if (idx >= displayCount) break;
+        if (idx >= displayNames.length) break;
+        const name = displayNames[idx];
+        const padded = name.padEnd(colWidth);
+        if (idx === cycleIndex) {
+          line += `\x1b[7m${padded}\x1b[27m`;
+        } else {
+          line += padded;
+        }
+      }
+      term.write(`\r\n${line}\x1b[K`);
+    }
+
+    if (truncated) {
+      const remaining = displayNames.length - displayCount;
+      term.write(`\r\n\x1b[2m... and ${remaining} more\x1b[0m\x1b[K`);
+    }
+
+    // Move cursor back to input line
+    term.write(`\x1b[${menuLineCount}A`);
+    term.write(`\r\x1b[${promptCol}C`);
+
+    // Update state
+    state.menuVisible = true;
+    state.menuLineCount = menuLineCount;
+  }, []);
+
+  /** Clear completion state and optionally restore original input. */
+  const clearCompletionState = useCallback((term: Terminal, restoreInput: boolean) => {
+    const state = completionStateRef.current;
+    if (!state) return;
+
+    clearGhost(term);
+
+    if (state.menuVisible) {
+      clearCompletionMenu(term);
+    }
+
+    if (restoreInput) {
+      const oldLen = lineBuffer.current.length;
+      const oldPos = cursorPos.current;
+      clearAndRewriteLine(term, oldLen, oldPos, state.originalInput, state.originalInput.length);
+      lineBuffer.current = state.originalInput;
+      cursorPos.current = state.originalInput.length;
+    }
+
+    completionStateRef.current = null;
+  }, [clearGhost, clearCompletionMenu, clearAndRewriteLine]);
+
+  /** Handle Tab key press for completion. */
+  const handleTabCompletion = useCallback((term: Terminal) => {
+    // Compute prompt visual width before any writes (cursorX is accurate here)
+    const promptWidth = term.buffer.active.cursorX - cursorPos.current;
+
+    const state = completionStateRef.current;
+
+    if (!state) {
+      // First Tab press
+      if (cursorPos.current !== lineBuffer.current.length) {
+        term.write("\x07");
+        return;
+      }
+
+      // Bell on empty input
+      if (lineBuffer.current.trim() === "") {
+        term.write("\x07");
+        return;
+      }
+
+      clearGhost(term);
+
+      const ctx = buildSuggestionContext();
+      if (!ctx) return;
+
+      const result = getCompletions(lineBuffer.current, ctx);
+      if (!result || result.matches.length === 0) {
+        term.write("\x07");
+        renderGhostText(term);
+        return;
+      }
+
+      if (result.matches.length === 1) {
+        // Single match — replace and done
+        const newInput = result.commonPrefix;
+        const oldLen = lineBuffer.current.length;
+        const oldPos = cursorPos.current;
+        clearAndRewriteLine(term, oldLen, oldPos, newInput, newInput.length);
+        lineBuffer.current = newInput;
+        cursorPos.current = newInput.length;
+        renderGhostText(term);
+        return;
+      }
+
+      // Multiple matches
+      if (result.commonPrefix.length > lineBuffer.current.length) {
+        // Common prefix extends input — apply it
+        const newInput = result.commonPrefix;
+        const oldLen = lineBuffer.current.length;
+        const oldPos = cursorPos.current;
+        clearAndRewriteLine(term, oldLen, oldPos, newInput, newInput.length);
+
+        completionStateRef.current = {
+          ...result,
+          cycleIndex: -1,
+          originalInput: lineBuffer.current,
+          menuVisible: false,
+          menuLineCount: 0,
+          promptCol: promptWidth + newInput.length,
+        };
+
+        lineBuffer.current = newInput;
+        cursorPos.current = newInput.length;
+        renderGhostText(term);
+        return;
+      }
+
+      // No extension possible — show menu immediately at first match
+      const newInput = input_slice_prefix(lineBuffer.current, result) + result.matches[0];
+      const oldLen = lineBuffer.current.length;
+      const oldPos = cursorPos.current;
+      clearAndRewriteLine(term, oldLen, oldPos, newInput, newInput.length);
+
+      completionStateRef.current = {
+        ...result,
+        cycleIndex: 0,
+        originalInput: lineBuffer.current,
+        menuVisible: false,
+        menuLineCount: 0,
+        promptCol: promptWidth + newInput.length,
+      };
+
+      lineBuffer.current = newInput;
+      cursorPos.current = newInput.length;
+
+      renderCompletionMenu(term, completionStateRef.current);
+      return;
+    }
+
+    // Subsequent Tab presses — cycle
+    clearGhost(term);
+
+    if (state.menuVisible) {
+      clearCompletionMenu(term);
+    }
+
+    const newIndex = state.cycleIndex === -1 ? 0 : (state.cycleIndex + 1) % state.matches.length;
+    state.cycleIndex = newIndex;
+
+    const newInput = input_slice_prefix(state.originalInput, state) + state.matches[newIndex];
+    const oldLen = lineBuffer.current.length;
+    const oldPos = cursorPos.current;
+    clearAndRewriteLine(term, oldLen, oldPos, newInput, newInput.length);
+    lineBuffer.current = newInput;
+    cursorPos.current = newInput.length;
+
+    state.promptCol = promptWidth + newInput.length;
+    renderCompletionMenu(term, state);
+  }, [clearGhost, buildSuggestionContext, clearAndRewriteLine, renderGhostText, clearCompletionMenu, renderCompletionMenu]);
 
   /**
    * Process a single character of input for the command line.
@@ -100,6 +329,26 @@ export function useCommandLine(deps: CommandLineDeps) {
    */
   const handleChar = useCallback(
     (term: Terminal, char: string, code: number): CommandLineResult | null => {
+      // If completion state is active, handle Tab/cancel/clear
+      if (completionStateRef.current) {
+        if (code === TAB) {
+          handleTabCompletion(term);
+          return null;
+        }
+        if (code === CTRL_C || char === "\x1b") {
+          clearCompletionState(term, true);
+          return null;
+        }
+        // Any other key: clear menu, then fall through to normal handling
+        clearCompletionState(term, false);
+      }
+
+      // No active completion — first Tab press
+      if (code === TAB) {
+        handleTabCompletion(term);
+        return null;
+      }
+
       if (char === "\r" || char === "\n") {
         clearGhost(term);
         const input = lineBuffer.current;
@@ -157,7 +406,7 @@ export function useCommandLine(deps: CommandLineDeps) {
 
       return null;
     },
-    [clearGhost, renderGhostText, rewriteFromCursor, pushHistory, writePrompt]
+    [clearGhost, renderGhostText, rewriteFromCursor, pushHistory, writePrompt, handleTabCompletion, clearCompletionState]
   );
 
   const findPrevWordBoundary = useCallback((buffer: string, pos: number): number => {
@@ -180,6 +429,7 @@ export function useCommandLine(deps: CommandLineDeps) {
 
   const deleteWordBackward = useCallback(
     (term: Terminal): void => {
+      clearCompletionState(term, false);
       clearGhost(term);
       const pos = cursorPos.current;
       if (pos > 0) {
@@ -193,11 +443,12 @@ export function useCommandLine(deps: CommandLineDeps) {
       }
       renderGhostText(term);
     },
-    [clearGhost, renderGhostText, rewriteFromCursor, findPrevWordBoundary]
+    [clearCompletionState, clearGhost, renderGhostText, rewriteFromCursor, findPrevWordBoundary]
   );
 
   const deleteWordForward = useCallback(
     (term: Terminal): void => {
+      clearCompletionState(term, false);
       clearGhost(term);
       const pos = cursorPos.current;
       const buf = lineBuffer.current;
@@ -208,11 +459,12 @@ export function useCommandLine(deps: CommandLineDeps) {
       }
       renderGhostText(term);
     },
-    [clearGhost, renderGhostText, rewriteFromCursor, findNextWordBoundary]
+    [clearCompletionState, clearGhost, renderGhostText, rewriteFromCursor, findNextWordBoundary]
   );
 
   const handleArrow = useCallback(
     (term: Terminal, arrow: string, modifier: number = 0): void => {
+      clearCompletionState(term, false);
       const isWordSkip = modifier === 3 || modifier === 5;
       if (arrow === "A") {
         // Up arrow — navigate history
@@ -267,21 +519,8 @@ export function useCommandLine(deps: CommandLineDeps) {
           cursorPos.current = pos + 1;
           term.write("\x1b[C");
         } else if (ghostLengthRef.current > 0) {
-          const store = useGameStore.getState();
-          const cId = activeComputerRef.current;
-          const curFs = store.computerState[cId]?.fs;
-          const commandNames = getAvailableCommands(cId, store.storyFlags).map((c) => c.name);
-          const acceptAliases = store.computerState[cId]?.aliases ?? {};
-          const acceptAliasNames = Object.keys(acceptAliases);
-          const suggestion = curFs ? getSuggestion(lineBuffer.current, {
-            commandHistory: historyRef.current,
-            commandNames,
-            aliasNames: acceptAliasNames,
-            aliases: acceptAliases,
-            fs: curFs,
-            cwd: cwdRef.current,
-            homeDir: curFs.homeDir,
-          }) : null;
+          const ctx = buildSuggestionContext();
+          const suggestion = ctx ? getSuggestion(lineBuffer.current, ctx) : null;
 
           if (suggestion && suggestion.length > lineBuffer.current.length) {
             clearGhost(term);
@@ -329,8 +568,13 @@ export function useCommandLine(deps: CommandLineDeps) {
         }
       }
     },
-    [clearGhost, clearAndRewriteLine, renderGhostText, cwdRef, findPrevWordBoundary, findNextWordBoundary]
+    [clearCompletionState, clearGhost, clearAndRewriteLine, renderGhostText, buildSuggestionContext, cwdRef, findPrevWordBoundary, findNextWordBoundary]
   );
 
   return { handleChar, handleArrow, deleteWordBackward, deleteWordForward };
+}
+
+/** Helper to get the prefix portion of the original input before replaceFrom. */
+function input_slice_prefix(originalInput: string, result: Pick<CompletionResult, 'replaceFrom'>): string {
+  return originalInput.slice(0, result.replaceFrom);
 }

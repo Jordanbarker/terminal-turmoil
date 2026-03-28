@@ -1,5 +1,9 @@
-your absolutely right!
-Pick a side, Sarah or Erik
+you're absolutely right!
+
+Edward asks user who is suspicous, Sarah or Erik or Nobody?
+    (Bad ending) Sarah/Nobody is chosen, Sarah and Edward are fired, Erik takes over as CTO
+    (Good ending) Erik is chosen, Erik and Edward are fired, Sarah takes over as CTO
+
 uv repos, uv install command error
 note about deleting old data to keep snowflake bill cheap
 note about solem not performing, pip

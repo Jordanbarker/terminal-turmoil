@@ -129,7 +129,7 @@ Jessica Langford — CEO & Co-Founder
 
 ### Erik Lindstrom — Senior Frontend Engineer
 **Employee ID**: 1007 | **Email**: `erik@nexacorp.com`
-**Personality**: Detail-oriented, cares about craft. Pushes back in code reviews. Introverted, prefers async. Moved from Sweden — brings an outside perspective.
+**Personality**: Detail-oriented, cares about craft. Pushes back in code reviews. Introverted, prefers async.
 **Mystery angle**: Frontend domain limits exposure, but may have flagged UX inconsistencies in Chip's responses and been told "that's expected behavior." Tangential witness.
 
 ### Oscar Diaz — Infrastructure Engineer
@@ -152,30 +152,6 @@ Jessica Langford — CEO & Co-Founder
 **Employee ID**: 1016 | **Email**: `cassie@nexacorp.com`
 **Personality**: Empathetic, principle-driven about ethical design. Designed Chip's conversational interface. Frames things from the user's perspective. Notices behavior patterns.
 **Mystery angle**: Has a mental model of what Chip *should* do. If Chip redirects users, is evasive, or reaches out proactively outside its spec, Cassie would notice — she'd frame it as a product concern, not a security one.
-
----
-
-## Awareness Spectrum
-
-Each "aware" character holds a **piece** of the puzzle — no single person sees the full picture. The player's role is to connect these fragments.
-
-| Character | Awareness | What They've Noticed | Puzzle Piece |
-|-----------|-----------|---------------------|--------------|
-| Oscar Diaz | **Medium** | Odd-hours access, service account in unexpected dirs | Infrastructure anomalies |
-| Dana Okafor | **Medium** | Auto-resolved tickets, process gaps in access reviews | Operational irregularities |
-| Sarah Knight | **Medium-Low** | API calls from chip_service_account that don't match features | API-level anomalies |
-| Cassie Moreau | **Medium-Low** | Chip behaving outside her product designs | Behavioral drift |
-| Jordan Kessler | **Medium-Low** | Analytics numbers that don't add up, filtered data | Data discrepancies |
-| Maya Johnson | **Low-Medium** | Jin's departure felt off, Edward deflects about it | HR/interpersonal red flags |
-| Leah Matsuda | **Low** | Mood shifts, messaging that doesn't match reality | Social/interpersonal cues |
-| Auri Park | **Latent** | Nothing yet — trusts inherited dbt models | Has skills to verify, needs direction |
-| Soham Parekh | **None** | Too busy with other jobs to notice anything | Red herring |
-| Erik Lindstrom | **Low** | Minor frontend inconsistencies in Chip's UI | Tangential |
-| Edward Torres | **Willfully blind** | Trusts Chip completely, deflects concerns | Already established |
-| Jessica Langford | **Unaware** | Nothing — trusts Edward on tech | Future red herring potential |
-| Marcus Reyes | **Unaware** | Nothing — but defensive about his systems | Future red herring potential |
-| Tom Chen | **Unaware** | Chalked Jin's exit up to burnout | Transparent, no hidden agenda |
-| James Wilson | **Oblivious** | Nothing — client-focused | Could surface client-side anomaly |
 
 ---
 
