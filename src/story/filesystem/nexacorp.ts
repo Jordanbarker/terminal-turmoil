@@ -2,7 +2,7 @@ import { DirectoryNode, FileNode } from "../../engine/filesystem/types";
 import { getNexacorpEmailDefinitions } from "../emails/nexacorp";
 import { formatEmailContent, slugify } from "../../engine/mail/mailUtils";
 import { StoryFlags, PLAYER } from "../../state/types";
-import { generateSystemLog, generateSystemLogBak, generateAccessLog, generateAuthLog, generateAuthLogBak, generateChipActivityLog, LogOptions } from "./logs";
+import { generateSystemLog, generateSystemLogBak, generateAccessLog, generateAuthLog, generateAuthLogBak, generateChipActivityLog, generatePluginRunnerLog, LogOptions } from "./logs";
 import { file, dir } from "../../engine/filesystem/builders";
 
 function buildInitialMailFiles(username: string): Record<string, FileNode> {
@@ -1035,25 +1035,7 @@ for maintenance and debugging purposes.
       }),
       cache: dir("cache", {}),
       logs: dir("logs", {
-        "plugin-runner.log": file("plugin-runner.log", `[2026-02-19 03:00:01] plugin:log-maintenance status=success duration=3.2s
-[2026-02-19 03:00:04] plugin:system-monitor status=success checks=47 duration=8.9s
-[2026-02-19 06:00:01] plugin:analytics-reports status=success duration=12.4s
-[2026-02-19 09:15:03] plugin:ticket-triage status=success resolved=3 duration=0.8s
-[2026-02-19 09:30:00] plugin:code-review status=success prs_reviewed=1 duration=5.2s
-[2026-02-20 03:00:01] plugin:log-maintenance status=success duration=3.1s
-[2026-02-20 03:00:04] plugin:system-monitor status=success checks=47 duration=8.7s
-[2026-02-20 06:00:01] plugin:analytics-reports status=success duration=11.8s
-[2026-02-20 10:45:12] plugin:incident-response status=success alerts_processed=2 duration=1.3s
-[2026-02-20 14:22:08] plugin:brand-voice status=success docs_reviewed=4 duration=6.1s
-[2026-02-21 03:00:01] plugin:log-maintenance status=success duration=2.9s
-[2026-02-21 03:00:03] plugin:system-monitor status=success checks=47 duration=9.2s
-[2026-02-22 03:00:01] plugin:log-maintenance status=success duration=3.0s
-[2026-02-22 03:00:04] plugin:system-monitor status=success checks=47 duration=8.5s
-[2026-02-23 03:00:01] plugin:log-maintenance status=success duration=2.8s
-[2026-02-23 03:00:03] plugin:system-monitor status=success checks=47 duration=9.1s
-[2026-02-23 06:00:01] plugin:analytics-reports status=success duration=13.1s
-[2026-02-23 09:15:01] plugin:ticket-triage status=success resolved=5 duration=0.6s
-`),
+        "plugin-runner.log": file("plugin-runner.log", generatePluginRunnerLog(logOpts)),
       }),
       plugins: dir("plugins", {
         "registry.json": file("registry.json", `{

@@ -371,6 +371,99 @@ describe("shell features", () => {
   });
 });
 
+describe("command chaining in scripts", () => {
+  function scriptCtx(content: string, overrides?: Partial<CommandContext>): CommandContext {
+    const base = createTestFS();
+    const root = base.root;
+    const playerDir = (root.children.home as DirectoryNode).children.player as DirectoryNode;
+    const newPlayerDir = {
+      ...playerDir,
+      children: {
+        ...playerDir.children,
+        "chain.sh": {
+          type: "file" as const,
+          name: "chain.sh",
+          content,
+          permissions: "rwxr-xr-x",
+          hidden: false,
+        },
+      },
+    };
+    const newHome = {
+      ...(root.children.home as DirectoryNode),
+      children: { ...(root.children.home as DirectoryNode).children, player: newPlayerDir },
+    };
+    const newRoot = { ...root, children: { ...root.children, home: newHome } };
+    const fs = new VirtualFS(newRoot, "/home/player", "/home/player");
+    return ctx(fs, overrides);
+  }
+
+  it("executes both commands with &&", async () => {
+    const c = scriptCtx('echo hello && echo world');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("hello");
+    expect(result.output).toContain("world");
+  });
+
+  it("skips second command when first fails with &&", async () => {
+    const c = scriptCtx('fakecmd && echo skipped');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).not.toContain("skipped");
+  });
+
+  it("runs fallback with || when first fails", async () => {
+    const c = scriptCtx('fakecmd || echo fallback');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("fallback");
+  });
+
+  it("skips || branch when first succeeds", async () => {
+    const c = scriptCtx('echo ok || echo skipped');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("ok");
+    expect(result.output).not.toContain("skipped");
+  });
+
+  it("always runs both with ;", async () => {
+    const c = scriptCtx('echo a; echo b');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("a");
+    expect(result.output).toContain("b");
+  });
+
+  it("runs after ; even when first fails", async () => {
+    const c = scriptCtx('fakecmd; echo still');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("still");
+  });
+
+  it("handles mixed && and ||", async () => {
+    const c = scriptCtx('fakecmd && echo nope || echo yes');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).not.toContain("nope");
+    expect(result.output).toContain("yes");
+  });
+
+  it("handles pipes within chains", async () => {
+    const c = scriptCtx('echo "hello world" | wc -w && echo done', {
+      storyFlags: { inspection_tools_unlocked: true },
+    });
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("2");
+    expect(result.output).toContain("done");
+  });
+
+  it("does not pass stdin between chain segments", async () => {
+    // "echo hello && cat" — cat with no stdin should produce nothing (or error)
+    const c = scriptCtx('echo hello && cat');
+    const result = await executeAsync("bash", ["chain.sh"], {}, c);
+    expect(result.output).toContain("hello");
+    // cat with no file/stdin should not echo "hello" again
+    const lines = result.output.split("\n").filter((l: string) => l.trim() === "hello");
+    expect(lines).toHaveLength(1);
+  });
+});
+
 describe("date format strings", () => {
   it("formats +%Y-%m-%d", async () => {
     const result = await executeAsync("date", ["+%Y-%m-%d"], {}, ctx());

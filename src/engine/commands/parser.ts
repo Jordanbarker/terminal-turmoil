@@ -1,4 +1,4 @@
-import { ParsedCommand } from "./types";
+import { ParsedCommand, ChainOperator, ChainSegment } from "./types";
 
 /**
  * Tokenize and parse raw terminal input into a structured command.
@@ -81,6 +81,191 @@ export function splitOnPipe(input: string): string[] {
   }
 
   return segments;
+}
+
+/**
+ * Split raw input on unquoted `&&`, `||`, `;` chain operators, respecting quotes.
+ * Returns segments with the operator that preceded them (null for the first).
+ * Does NOT split on single `&` or single `|` — those pass through for pipe parsing.
+ * No backslash escaping — consistent with splitOnPipe.
+ */
+export function splitOnChainOperators(input: string): { text: string; operator: ChainOperator | null }[] {
+  const segments: { text: string; operator: ChainOperator | null }[] = [];
+  let current = "";
+  let currentOperator: ChainOperator | null = null;
+  let inSingle = false;
+  let inDouble = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle;
+      current += char;
+    } else if (char === '"' && !inSingle) {
+      inDouble = !inDouble;
+      current += char;
+    } else if (!inSingle && !inDouble) {
+      // Two-character lookahead for && and ||
+      if (char === '&' && input[i + 1] === '&') {
+        segments.push({ text: current, operator: currentOperator });
+        current = "";
+        currentOperator = '&&';
+        i++; // skip second &
+      } else if (char === '|' && input[i + 1] === '|') {
+        segments.push({ text: current, operator: currentOperator });
+        current = "";
+        currentOperator = '||';
+        i++; // skip second |
+      } else if (char === ';') {
+        segments.push({ text: current, operator: currentOperator });
+        current = "";
+        currentOperator = ';';
+      } else {
+        current += char;
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  segments.push({ text: current, operator: currentOperator });
+  return segments;
+}
+
+/**
+ * Parse raw input into a chain of pipeline segments.
+ * Splits on `&&`, `||`, `;` first, then calls `parsePipeline` on each segment.
+ * This ordering is essential: `||` must be consumed before `splitOnPipe` sees it.
+ */
+export function parseChainedPipeline(raw: string): ChainSegment[] {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return [{ pipeline: [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [] }], operator: null }];
+  }
+
+  const segments = splitOnChainOperators(trimmed);
+
+  // Validate: check for empty segments (syntax errors)
+  for (let i = 0; i < segments.length; i++) {
+    const text = segments[i].text.trim();
+    if (!text) {
+      // Determine which operator caused the issue
+      if (i === 0 && segments.length > 1) {
+        // Leading operator: e.g., "&& cmd"
+        const nextOp = segments[1].operator ?? '&&';
+        return [{ pipeline: [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error: `bash: syntax error near unexpected token '${nextOp}'` }], operator: null }];
+      } else if (i === segments.length - 1 && segments[i].operator) {
+        // Trailing operator: e.g., "cmd &&"
+        return [{ pipeline: [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error: `bash: syntax error near unexpected token '${segments[i].operator}'` }], operator: null }];
+      } else if (segments[i].operator && i + 1 < segments.length && segments[i + 1].operator) {
+        // Consecutive operators: e.g., "cmd && && cmd2"
+        const op = segments[i + 1].operator!;
+        return [{ pipeline: [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error: `bash: syntax error near unexpected token '${op}'` }], operator: null }];
+      }
+    }
+  }
+
+  return segments.map((seg) => ({
+    pipeline: parsePipeline(seg.text),
+    operator: seg.operator,
+  }));
+}
+
+/**
+ * Perform one-level textual alias expansion on raw input before parsing.
+ * Substitutes alias names at "command positions" (start of input, or after
+ * unquoted `&&`, `||`, `;`). Remaining args stay appended after expansion.
+ * Respects quotes — words inside quotes are never expanded.
+ */
+export function expandAliases(input: string, aliases: Record<string, string>): string {
+  if (!input || Object.keys(aliases).length === 0) return input;
+
+  const result: string[] = [];
+  let i = 0;
+  let atCommandPos = true; // start of input is a command position
+  let inSingle = false;
+  let inDouble = false;
+
+  while (i < input.length) {
+    const char = input[i];
+
+    // Track quote state
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle;
+      result.push(char);
+      atCommandPos = false;
+      i++;
+      continue;
+    }
+    if (char === '"' && !inSingle) {
+      inDouble = !inDouble;
+      result.push(char);
+      atCommandPos = false;
+      i++;
+      continue;
+    }
+
+    // Detect chain operators outside quotes → next word is a command position
+    if (!inSingle && !inDouble) {
+      if (char === '&' && input[i + 1] === '&') {
+        result.push('&&');
+        i += 2;
+        atCommandPos = true;
+        continue;
+      }
+      if (char === '|' && input[i + 1] === '|') {
+        result.push('||');
+        i += 2;
+        atCommandPos = true;
+        continue;
+      }
+      if (char === ';') {
+        result.push(';');
+        i++;
+        atCommandPos = true;
+        continue;
+      }
+    }
+
+    // Skip whitespace (preserve it)
+    if (char === ' ' && !inSingle && !inDouble) {
+      result.push(char);
+      i++;
+      continue;
+    }
+
+    // At a command position outside quotes: extract the word and check aliases
+    if (atCommandPos && !inSingle && !inDouble) {
+      // Extract the word (until space, quote, or chain operator)
+      let word = '';
+      const wordStart = i;
+      while (i < input.length) {
+        const c = input[i];
+        if (c === ' ' || c === "'" || c === '"') break;
+        if (c === '&' && input[i + 1] === '&') break;
+        if (c === '|' && input[i + 1] === '|') break;
+        if (c === ';') break;
+        word += c;
+        i++;
+      }
+
+      if (word in aliases) {
+        result.push(aliases[word]);
+      } else {
+        result.push(word);
+      }
+      atCommandPos = false;
+      continue;
+    }
+
+    // Non-command-position content: just pass through
+    result.push(char);
+    atCommandPos = false;
+    i++;
+  }
+
+  return result.join('');
 }
 
 /**

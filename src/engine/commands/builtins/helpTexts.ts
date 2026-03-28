@@ -371,9 +371,13 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   apt: [
-    "Usage: apt install PACKAGE",
+    "Usage: apt <command> [options]",
     "",
-    "Install software packages.",
+    "Commands:",
+    "  update     Update package lists from repositories",
+    "  upgrade    Upgrade all upgradable packages",
+    "  install    Install new packages",
+    "",
     "Requires sudo.",
   ].join("\n"),
 

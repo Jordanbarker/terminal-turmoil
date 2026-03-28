@@ -28,7 +28,7 @@ npm run check     # Combined typecheck + test + build
 
 `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`, `git`, `source`, `alias`, `unalias`
 
-Pipe support (`|`), output redirection (`>`, `>>`), and stdin passing between piped commands are all supported.
+Pipe support (`|`), output redirection (`>`, `>>`), stdin passing between piped commands, and command chaining (`&&`, `||`, `;`) are all supported.
 
 ## Project Structure
 

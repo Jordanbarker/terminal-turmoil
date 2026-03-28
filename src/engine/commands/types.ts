@@ -91,6 +91,13 @@ export interface IncrementalLine {
   delayMs: number;
 }
 
+export type ChainOperator = '&&' | '||' | ';';
+
+export interface ChainSegment {
+  pipeline: ParsedCommand[];
+  operator: ChainOperator | null; // operator BEFORE this segment (null for first)
+}
+
 export type CommandHandler = (
   args: string[],
   flags: Record<string, boolean>,

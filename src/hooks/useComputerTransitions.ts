@@ -13,7 +13,7 @@ import { gitClone } from "../engine/git/repo";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, coderBanner, getHomeWelcome, UNLOCK_BOX } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, coderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification } from "../lib/ascii";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { ComputerId } from "../state/types";
 
@@ -403,6 +403,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
       // Set Day 2 state
       s.setStoryFlag("day1_shutdown", true);
+      s.setStoryFlag("apt_unlocked", true);
       s.setCurrentChapter("chapter-3");
 
       // Repurpose current tab to home
@@ -466,6 +467,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
           const day2Welcome = getHomeWelcome(2);
           day2Welcome.forEach((line) => term.writeln(line));
           UNLOCK_BOX.forEach((line) => term.writeln(line));
+
+          if (!useGameStore.getState().storyFlags.apt_upgraded) {
+            getUpdateNotification().forEach((line) => term.writeln(line));
+          }
 
           term.write("\x1b[?25h"); // restore cursor
           useGameStore.getState().setGamePhase("playing");

@@ -11,9 +11,9 @@ The command system handles parsing terminal input, dispatching to registered com
 
 ```
 src/engine/commands/
-├── types.ts               # ParsedCommand, CommandContext, CommandResult, CommandHandler, AsyncCommandHandler
+├── types.ts               # ParsedCommand, CommandContext, CommandResult, CommandHandler, AsyncCommandHandler, ChainOperator, ChainSegment
 ├── registry.ts            # register(), registerAsync(), execute(), executeAsync()
-├── parser.ts              # parseInput(), parsePipeline(), splitOnPipe(), tokenize()
+├── parser.ts              # parseInput(), parsePipeline(), parseChainedPipeline(), splitOnPipe(), splitOnChainOperators()
 ├── applyResult.ts         # computeEffects(), AppliedEffects, ApplyContext
 ├── builtins/
 │   ├── index.ts           # Side-effect imports that register all commands
@@ -101,20 +101,43 @@ Two internal `Map`s: `commands` (sync) and `asyncCommands` (async). Both auto-ha
 |----------|---------|
 | `parseInput(raw)` | Tokenize respecting quotes, split into command/args/flags |
 | `parsePipeline(raw)` | Split on unquoted `\|`, parse each segment |
+| `parseChainedPipeline(raw)` | Split on `&&`/`\|\|`/`;` first, then parse each segment's pipeline |
+| `splitOnChainOperators(input)` | Split on unquoted `&&`, `\|\|`, `;` respecting quotes |
 | `splitOnPipe(input)` | Split on `\|` outside single/double quotes |
-| `tokenize(input)` | Split respecting quotes, handle escape sequences |
 
 Flag parsing: `-x` → `{ x: true }`, `-xyz` → `{ x: true, y: true, z: true }`, `--flag` → `{ flag: true }`.
 
+## Command Chaining
+
+Supports `&&` (run if previous succeeded), `||` (run if previous failed), and `;` (always run). Pipes bind tighter than chain operators: `cmd1 && cmd2 | cmd3` means `[cmd1] && [cmd2 | cmd3]`.
+
+**Types** (`types.ts`):
+```ts
+type ChainOperator = '&&' | '||' | ';';
+interface ChainSegment {
+  pipeline: ParsedCommand[];
+  operator: ChainOperator | null;  // null for first segment
+}
+```
+
+**Parsing order**: `parseChainedPipeline` splits on chain operators first (consuming `||` before `splitOnPipe` can misinterpret it), then calls `parsePipeline` on each segment. Empty segments produce syntax errors.
+
+**Execution** (`useTerminal.ts`): Outer loop over `ChainSegment[]`, inner loop runs each segment's pipeline. Per-segment: story flags/deliveries written to store (for gating), FS accumulated locally, output written to terminal. Sessions/incremental/transitions stop the chain. `stdin` resets between segments.
+
+**Bash scripts** (`bash.ts`): `executeSingleLine` uses the same chaining via `parseChainedPipeline`.
+
 ## Pipeline Execution (`useTerminal`)
 
-1. `parsePipeline(raw)` → array of `ParsedCommand`
-2. For each command in sequence:
+1. `parseChainedPipeline(raw)` → array of `ChainSegment`
+2. Outer loop: check `&&`/`||`/`;` logic against previous exit code
+3. For each segment's pipeline:
    - Pass previous command's `output` as `stdin` in `CommandContext`
    - Execute via `execute()` or `executeAsync()`
    - Accumulate `newFs` and `newCwd` across pipeline
-3. Last command's output checked for `>` / `>>` redirection → write to file
-4. Final `CommandResult` passed to `computeEffects()`
+   - Reset `stdin` between chain segments
+4. Per-segment redirection: `>` / `>>` extracted and applied per segment
+5. Per-segment alias expansion
+6. Final `CommandResult` from last segment passed to `computeEffects()`
 
 ## Effect Computation (`applyResult.ts`)
 

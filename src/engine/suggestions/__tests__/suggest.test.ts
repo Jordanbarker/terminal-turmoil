@@ -183,6 +183,39 @@ describe("getSuggestion", () => {
     });
   });
 
+  describe("chain operator support", () => {
+    it("completes command after &&", () => {
+      const ctx = createCtx();
+      const result = getSuggestion("ls && ca", ctx);
+      expect(result).toBe("ls && cat");
+    });
+
+    it("completes command after ;", () => {
+      const ctx = createCtx();
+      const result = getSuggestion("echo hi; l", ctx);
+      expect(result).toBe("echo hi; ls");
+    });
+
+    it("returns null for empty last segment after &&", () => {
+      const ctx = createCtx();
+      expect(getSuggestion("echo hi && ", ctx)).toBeNull();
+    });
+
+    it("does not split quoted operators", () => {
+      const ctx = createCtx();
+      // "echo 'a && b'" has no chain split — treated as single command
+      // No suggestion since it doesn't match history or commands
+      const result = getSuggestion("echo 'a && b'", ctx);
+      expect(result).toBeNull();
+    });
+
+    it("completes command after ||", () => {
+      const ctx = createCtx();
+      const result = getSuggestion("cmd1 || ca", ctx);
+      expect(result).toBe("cmd1 || cat");
+    });
+  });
+
   describe("priority", () => {
     it("history takes priority over command completion", () => {
       const ctx = createCtx({

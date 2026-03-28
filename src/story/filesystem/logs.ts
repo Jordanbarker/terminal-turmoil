@@ -51,9 +51,9 @@ const EMPLOYEES: EmployeeSchedule[] = [
   { username: "dana",    terminal: "pts/2",  daysPresent: [17,19,20,23,24],       loginHour: 8,  loginMinute: 0,  logoutHour: 17, logoutMinute: 15, minuteJitter: 6,  ip: 22 },
   { username: "auri",    terminal: "pts/3",  daysPresent: [17,18,19,20,21,23,24], loginHour: 8,  loginMinute: 10, logoutHour: 0,  logoutMinute: 0,  minuteJitter: 8,  ip: 23 },
   { username: "erik",    terminal: "pts/4",  daysPresent: [17,18,20,23,24],       loginHour: 7,  loginMinute: 50, logoutHour: 18, logoutMinute: 15, minuteJitter: 5,  ip: 24 },
-  { username: "cassie",  terminal: "pts/5",  daysPresent: [17,18,19,20,24],       loginHour: 8,  loginMinute: 25, logoutHour: 17, logoutMinute: 10, minuteJitter: 11, ip: 25 },
-  { username: "soham",   terminal: "pts/6",  daysPresent: [17,18,20,24],          loginHour: 9,  loginMinute: 12, logoutHour: 15, logoutMinute: 45, minuteJitter: 4,  ip: 26 },
-  { username: "jordan",  terminal: "pts/7",  daysPresent: [18,20],                loginHour: 8,  loginMinute: 55, logoutHour: 16, logoutMinute: 30, minuteJitter: 6,  ip: 27 },
+  { username: "cassie",  terminal: "pts/5",  daysPresent: [17,18,19,20,23,24],    loginHour: 8,  loginMinute: 25, logoutHour: 17, logoutMinute: 10, minuteJitter: 11, ip: 25 },
+  { username: "soham",   terminal: "pts/6",  daysPresent: [17,18,20,23,24],       loginHour: 9,  loginMinute: 12, logoutHour: 15, logoutMinute: 45, minuteJitter: 4,  ip: 26 },
+  { username: "jordan",  terminal: "pts/7",  daysPresent: [18,20,23],             loginHour: 8,  loginMinute: 55, logoutHour: 16, logoutMinute: 30, minuteJitter: 6,  ip: 27 },
   { username: "maya",    terminal: "pts/8",  daysPresent: [19,23],                loginHour: 8,  loginMinute: 50, logoutHour: 16, logoutMinute: 0,  minuteJitter: 7,  ip: 28 },
   { username: "marcus",  terminal: "pts/9",  daysPresent: [18],                   loginHour: 9,  loginMinute: 45, logoutHour: 10, logoutMinute: 30, minuteJitter: 3,  ip: 30 },
   { username: "jessica", terminal: "pts/10", daysPresent: [20],                   loginHour: 10, loginMinute: 15, logoutHour: 11, logoutMinute: 0,  minuteJitter: 4,  ip: 31 },
@@ -89,34 +89,43 @@ function fictionalDow(day: number): number {
   return ((day - 17) % 7 + 2) % 7; // 17→2(Tue), 18→3(Wed), ..., 22→0(Sun), 23→1(Mon)
 }
 
+/** Deterministic boot-second offset per day — varies boot time by +/- 30s around 07:00:00 */
+function bootOffset(day: number): number {
+  return ((day * 17 + 3) % 61) - 30;
+}
+
 function generateBootSequence(day: number, d: DateFn, pid: PidCounter): LogEntry[] {
   const entries: LogEntry[] = [];
   const dow = fictionalDow(day);
   const hasKernel = dow === FICTIONAL_MONDAY || dow === FICTIONAL_SUNDAY;
   const hasLogrotate = dow === FICTIONAL_MONDAY || dow === FICTIONAL_SUNDAY;
 
-  entries.push({ date: d(day, 7, 0, 1), msg: "System boot — nexacorp-ws01" });
+  // Boot time with deterministic jitter: base is 06:59:60 + offset (Date auto-normalizes)
+  const off = bootOffset(day);
+  const b = (s: number) => d(day, 6, 59, 60 + off + s);
+
+  entries.push({ date: b(1), msg: "System boot — nexacorp-ws01" });
   if (hasKernel) {
     entries.push(
-      { date: d(day, 7, 0, 1), msg: "kernel: Linux 6.1.0-nexacorp amd64" },
-      { date: d(day, 7, 0, 1), msg: "kernel: Command line: BOOT_IMAGE=/vmlinuz-6.1.0-nexacorp root=/dev/sda1 ro quiet" },
-      { date: d(day, 7, 0, 2), msg: "kernel: EXT4-fs (sda1): mounted filesystem with ordered data mode" },
-      { date: d(day, 7, 0, 2), msg: "kernel: e1000: eth0 NIC Link is Up 1000 Mbps Full Duplex" },
+      { date: b(1), msg: "kernel: Linux 6.1.0-nexacorp amd64" },
+      { date: b(1), msg: "kernel: Command line: BOOT_IMAGE=/vmlinuz-6.1.0-nexacorp root=/dev/sda1 ro quiet" },
+      { date: b(2), msg: "kernel: EXT4-fs (sda1): mounted filesystem with ordered data mode" },
+      { date: b(2), msg: "kernel: e1000: eth0 NIC Link is Up 1000 Mbps Full Duplex" },
     );
   }
   entries.push(
-    { date: d(day, 7, 0, 2), msg: "systemd[1]: Reached target Network." },
-    { date: d(day, 7, 0, 2), msg: "systemd[1]: Reached target Multi-User System." },
-    { date: d(day, 7, 0, 3), msg: "systemd[1]: Started Daily apt download activities." },
-    { date: d(day, 7, 0, 3), msg: "systemd[1]: Started Getty on tty1." },
-    { date: d(day, 7, 0, 3), msg: `login[${pid.next()}]: AUTO LOGIN on /dev/tty1 as edward` },
-    { date: d(day, 7, 0, 3), msg: "Service started: sshd" },
-    { date: d(day, 7, 0, 4), msg: "Service started: chip-service" },
-    { date: d(day, 7, 0, 5), msg: "Service started: postgres" },
-    { date: d(day, 7, 0, 6), msg: "Service started: nginx" },
+    { date: b(2), msg: "systemd[1]: Reached target Network." },
+    { date: b(2), msg: "systemd[1]: Reached target Multi-User System." },
+    { date: b(3), msg: "systemd[1]: Started Daily apt download activities." },
+    { date: b(3), msg: "systemd[1]: Started Getty on tty1." },
+    { date: b(3), msg: `login[${pid.next()}]: AUTO LOGIN on /dev/tty1 as edward` },
+    { date: b(3), msg: "Service started: sshd" },
+    { date: b(4), msg: "Service started: chip-service" },
+    { date: b(5), msg: "Service started: postgres" },
+    { date: b(6), msg: "Service started: nginx" },
   );
   if (hasLogrotate) {
-    entries.push({ date: d(day, 7, 0, 6), msg: `cron[${pid.next()}]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)` });
+    entries.push({ date: b(6), msg: `cron[${pid.next()}]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)` });
   }
 
   return entries;
@@ -851,13 +860,15 @@ function authBaselineEntries(username: string, opts?: LogOptions): LogEntry[] {
     const isWeekend = WEEKEND_DAYS.includes(day);
     const pid = new PidCounter(1000 + day * 100);
 
-    // Edward's auto-login from boot
+    // Edward's auto-login from boot (with same boot-time jitter as system.log)
+    const off = bootOffset(day);
+    const b = (s: number) => d(day, 6, 59, 60 + off + s);
     const ePid = pid.next();
     const eSess = session.next();
     entries.push(
-      { date: d(day, 7, 0, 3), msg: `login[${ePid}]: AUTO LOGIN on /dev/tty1 as edward` },
-      { date: d(day, 7, 0, 3), msg: `systemd-logind[888]: New session ${eSess} of user edward.` },
-      { date: d(day, 7, 0, 4), msg: `pam_unix(login:session): session opened for user edward(uid=1000) by LOGIN(uid=0)` },
+      { date: b(3), msg: `login[${ePid}]: AUTO LOGIN on /dev/tty1 as edward` },
+      { date: b(3), msg: `systemd-logind[888]: New session ${eSess} of user edward.` },
+      { date: b(4), msg: `pam_unix(login:session): session opened for user edward(uid=1000) by LOGIN(uid=0)` },
     );
 
     // Employee SSH logins (weekdays only)
@@ -994,31 +1005,140 @@ export function generateAuthLogBak(username: string, opts?: LogOptions): string 
 /** Chip's own internal activity log */
 export function generateChipActivityLog(username: string, opts?: LogOptions): string {
   const lines: string[] = [];
+  const dd = (day: number) => `2026-02-${String(day).padStart(2, "0")}`;
 
-  // Day 1 baseline: Feb 23 startup + onboarding
+  // Historical entries: Feb 17-22 (daily startup + maintenance)
+  const historicalDays = [17, 18, 19, 20, 21, 22];
+  for (const day of historicalDays) {
+    const isWeekend = WEEKEND_DAYS.includes(day);
+    const cacheMB = 31 + ((day * 7) % 25);
+    const tickets = isWeekend ? 0 : 2 + ((day * 3) % 5);
+    const escalated = isWeekend ? 0 : ((day * 2) % 2);
+
+    lines.push(
+      `[${dd(day)} 07:00:01] Chip service started`,
+      `[${dd(day)} 07:00:02] Routine maintenance: OK`,
+      `[${dd(day)} 07:00:02] Log rotation: OK`,
+      `[${dd(day)} 07:00:03] Monitoring: all systems nominal`,
+    );
+    if (!isWeekend) {
+      lines.push(
+        `[${dd(day)} 07:00:03] Pending tickets: ${tickets} unresolved, ${escalated} escalated`,
+      );
+    }
+    // Nightly cache prune (appears in log from the previous night's run)
+    lines.push(
+      `[${dd(day)} 02:30:00] Nightly maintenance cycle: log rotation, cache prune`,
+      `[${dd(day)} 02:30:${String(8 + ((day * 3) % 10)).padStart(2, "0")}] Cache prune complete — freed ${cacheMB}MB`,
+    );
+  }
+
+  // Day 1: Feb 23 startup + onboarding (the player's first day)
   lines.push(
-    "[2026-02-23 08:00:03] Chip service started",
-    "[2026-02-23 08:00:04] Routine maintenance: OK",
-    "[2026-02-23 08:00:04] Log rotation: OK",
-    "[2026-02-23 08:00:05] Monitoring: all systems nominal",
-    `[2026-02-23 08:12:45] New user detected: ${username}`,
-    "[2026-02-23 08:12:45] Deploying onboarding materials...",
-    `[2026-02-23 08:12:46] Onboarding complete. Welcome, ${username}!`,
+    `[${dd(23)} 02:30:00] Nightly maintenance cycle: log rotation, cache prune`,
+    `[${dd(23)} 02:30:11] Cache prune complete — freed 38MB`,
+    `[${dd(23)} 07:00:01] Chip service started`,
+    `[${dd(23)} 07:00:02] Routine maintenance: OK`,
+    `[${dd(23)} 07:00:02] Log rotation: OK`,
+    `[${dd(23)} 07:00:03] Monitoring: all systems nominal`,
+    `[${dd(23)} 07:00:03] Pending tickets: 4 unresolved, 1 escalated`,
+    `[${dd(23)} 08:12:45] New user detected: ${username}`,
+    `[${dd(23)} 08:12:45] Deploying onboarding materials...`,
+    `[${dd(23)} 08:12:46] Onboarding complete. Welcome, ${username}!`,
   );
 
   // Day 2 additions
   if (opts?.includeDay2) {
     lines.push(
-      "[2026-02-24 02:30:00] Nightly maintenance cycle: log rotation, cache prune",
-      "[2026-02-24 02:30:12] Cache prune complete — freed 47MB",
-      "[2026-02-24 02:45:00] Model recalibration: chip-v2.4.1 (scheduled)",
-      "[2026-02-24 02:45:18] Recalibration complete — weights updated",
-      "[2026-02-24 07:00:01] Chip service started",
-      "[2026-02-24 07:00:02] Health check: all systems nominal",
-      "[2026-02-24 07:00:03] Pending tickets: 3 unresolved, 1 escalated",
-      `[2026-02-24 08:05:14] Returning user detected: ${username}`,
-      `[2026-02-24 08:05:15] Welcome back, ${username}. Resuming session.`,
+      `[${dd(24)} 02:30:00] Nightly maintenance cycle: log rotation, cache prune`,
+      `[${dd(24)} 02:30:12] Cache prune complete — freed 47MB`,
+      `[${dd(24)} 02:45:00] Model recalibration: chip-v2.4.1 (scheduled)`,
+      `[${dd(24)} 02:45:18] Recalibration complete — weights updated`,
+      `[${dd(24)} 07:00:01] Chip service started`,
+      `[${dd(24)} 07:00:02] Health check: all systems nominal`,
+      `[${dd(24)} 07:00:03] Pending tickets: 3 unresolved, 1 escalated`,
+      `[${dd(24)} 08:05:14] Returning user detected: ${username}`,
+      `[${dd(24)} 08:05:15] Welcome back, ${username}. Resuming session.`,
     );
+  }
+
+  // Sort by timestamp for correct chronological order
+  // (historical nightly entries at 02:30 should appear before 07:00 entries)
+  lines.sort();
+
+  return lines.join("\n") + "\n";
+}
+
+// ---------------------------------------------------------------------------
+// Plugin runner log generator
+// ---------------------------------------------------------------------------
+
+interface PluginRun {
+  plugin: string;
+  status: string;
+  extra?: string;
+}
+
+/** Plugins that run every night at 03:00 */
+const NIGHTLY_PLUGINS: PluginRun[] = [
+  { plugin: "log-maintenance", status: "success" },
+  { plugin: "system-monitor", status: "success", extra: "checks=47" },
+];
+
+/** Daytime plugins — assigned deterministically per day */
+const DAYTIME_PLUGINS: PluginRun[] = [
+  { plugin: "analytics-reports", status: "success" },
+  { plugin: "ticket-triage", status: "success" },
+  { plugin: "code-review", status: "success" },
+  { plugin: "incident-response", status: "success" },
+  { plugin: "brand-voice", status: "success" },
+];
+
+/** Generate the plugin-runner.log content for /opt/chip/logs/ */
+export function generatePluginRunnerLog(opts?: LogOptions): string {
+  const days = getDays(opts);
+  const lines: string[] = [];
+
+  for (const day of days) {
+    const isWeekend = WEEKEND_DAYS.includes(day);
+
+    // Nightly plugins at 03:00
+    for (let i = 0; i < NIGHTLY_PLUGINS.length; i++) {
+      const p = NIGHTLY_PLUGINS[i];
+      const sec = 1 + i * 3;
+      const duration = (2.8 + ((day * 7 + i * 3) % 15) / 10).toFixed(1);
+      const extra = p.extra ? ` ${p.extra}` : "";
+      lines.push(`[2026-02-${String(day).padStart(2, "0")} 03:00:${String(sec).padStart(2, "0")}] plugin:${p.plugin} status=${p.status}${extra} duration=${duration}s`);
+    }
+
+    // Daytime plugins (weekdays only, 1-3 per day)
+    if (!isWeekend) {
+      const count = 1 + ((day * 5) % 3); // 1-3 per day
+      for (let i = 0; i < count; i++) {
+        const pluginIdx = (day * 3 + i * 7) % DAYTIME_PLUGINS.length;
+        const p = DAYTIME_PLUGINS[pluginIdx];
+        const hour = 6 + ((day * 4 + i * 5) % 10); // spread 06:00-15:59
+        const minute = (day * 11 + i * 17) % 60;
+        const sec = (day * 3 + i * 7) % 60;
+        const duration = (0.5 + ((day * 13 + i * 9) % 130) / 10).toFixed(1);
+        // Deterministic extra fields for specific plugins
+        let extra = "";
+        if (p.plugin === "ticket-triage") {
+          const resolved = 2 + ((day * 3 + i) % 6);
+          extra = ` resolved=${resolved}`;
+        } else if (p.plugin === "code-review") {
+          const prs = 1 + ((day * 2 + i) % 3);
+          extra = ` prs_reviewed=${prs}`;
+        } else if (p.plugin === "incident-response") {
+          const alerts = 1 + ((day * 4 + i) % 4);
+          extra = ` alerts_processed=${alerts}`;
+        } else if (p.plugin === "brand-voice") {
+          const docs = 2 + ((day * 5 + i) % 6);
+          extra = ` docs_reviewed=${docs}`;
+        }
+        lines.push(`[2026-02-${String(day).padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(sec).padStart(2, "0")}] plugin:${p.plugin} status=${p.status}${extra} duration=${duration}s`);
+      }
+    }
   }
 
   return lines.join("\n") + "\n";

@@ -6,6 +6,7 @@ note about solem not performing, pip
 journal
 Slippery slope, bad guy used chip's permissions slowly and it escalated
 dynamic growth on logs after day to day progression
+make auto_apply.py realistic
 
 chmod to give chip security
 Day 0 - source 

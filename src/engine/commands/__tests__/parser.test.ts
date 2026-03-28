@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseInput } from "../parser";
+import { parseInput, splitOnChainOperators, parseChainedPipeline, expandAliases } from "../parser";
 
 describe("parseInput", () => {
   it("returns empty command for empty input", () => {
@@ -128,5 +128,210 @@ describe("parseInput", () => {
   it("rawArgs preserves quoted strings", () => {
     const result = parseInput('find . -name "*.py"');
     expect(result.rawArgs).toEqual([".", "-name", "*.py"]);
+  });
+});
+
+describe("splitOnChainOperators", () => {
+  it("splits on &&", () => {
+    const result = splitOnChainOperators("ls && echo done");
+    expect(result).toEqual([
+      { text: "ls ", operator: null },
+      { text: " echo done", operator: "&&" },
+    ]);
+  });
+
+  it("splits on ||", () => {
+    const result = splitOnChainOperators("ls || echo fallback");
+    expect(result).toEqual([
+      { text: "ls ", operator: null },
+      { text: " echo fallback", operator: "||" },
+    ]);
+  });
+
+  it("splits on ;", () => {
+    const result = splitOnChainOperators("ls; echo done");
+    expect(result).toEqual([
+      { text: "ls", operator: null },
+      { text: " echo done", operator: ";" },
+    ]);
+  });
+
+  it("preserves single-quoted operators", () => {
+    const result = splitOnChainOperators("echo 'a && b'");
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("echo 'a && b'");
+  });
+
+  it("preserves double-quoted operators", () => {
+    const result = splitOnChainOperators('echo "a || b"');
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe('echo "a || b"');
+  });
+
+  it("handles mixed operators", () => {
+    const result = splitOnChainOperators("cmd1 && cmd2 || cmd3; cmd4");
+    expect(result).toHaveLength(4);
+    expect(result[0].operator).toBeNull();
+    expect(result[1].operator).toBe("&&");
+    expect(result[2].operator).toBe("||");
+    expect(result[3].operator).toBe(";");
+  });
+
+  it("does NOT split on single |", () => {
+    const result = splitOnChainOperators("cmd1 | cmd2");
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("cmd1 | cmd2");
+  });
+
+  it("does NOT split on single &", () => {
+    const result = splitOnChainOperators("cmd1 & cmd2");
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("cmd1 & cmd2");
+  });
+});
+
+describe("parseChainedPipeline", () => {
+  it("parses simple && chain", () => {
+    const result = parseChainedPipeline("ls && echo done");
+    expect(result).toHaveLength(2);
+    expect(result[0].operator).toBeNull();
+    expect(result[0].pipeline[0].command).toBe("ls");
+    expect(result[1].operator).toBe("&&");
+    expect(result[1].pipeline[0].command).toBe("echo");
+  });
+
+  it("parses || chain", () => {
+    const result = parseChainedPipeline("ls || echo fallback");
+    expect(result).toHaveLength(2);
+    expect(result[1].operator).toBe("||");
+    expect(result[1].pipeline[0].command).toBe("echo");
+  });
+
+  it("parses ; chain", () => {
+    const result = parseChainedPipeline("ls; echo done");
+    expect(result).toHaveLength(2);
+    expect(result[1].operator).toBe(";");
+  });
+
+  it("parses three-segment chain with mixed operators", () => {
+    const result = parseChainedPipeline("cmd1 && cmd2 || cmd3");
+    expect(result).toHaveLength(3);
+    expect(result[0].operator).toBeNull();
+    expect(result[1].operator).toBe("&&");
+    expect(result[2].operator).toBe("||");
+  });
+
+  it("ignores operators inside single quotes", () => {
+    const result = parseChainedPipeline("echo 'a && b'");
+    expect(result).toHaveLength(1);
+    expect(result[0].pipeline[0].command).toBe("echo");
+  });
+
+  it("ignores operators inside double quotes", () => {
+    const result = parseChainedPipeline('echo "a || b"');
+    expect(result).toHaveLength(1);
+  });
+
+  it("handles pipes within chain segments", () => {
+    const result = parseChainedPipeline("cmd1 | cmd2 && cmd3 | cmd4");
+    expect(result).toHaveLength(2);
+    expect(result[0].pipeline).toHaveLength(2);
+    expect(result[0].pipeline[0].command).toBe("cmd1");
+    expect(result[0].pipeline[1].command).toBe("cmd2");
+    expect(result[1].pipeline).toHaveLength(2);
+    expect(result[1].pipeline[0].command).toBe("cmd3");
+    expect(result[1].pipeline[1].command).toBe("cmd4");
+  });
+
+  it("handles simple command (backward compat)", () => {
+    const result = parseChainedPipeline("ls");
+    expect(result).toHaveLength(1);
+    expect(result[0].operator).toBeNull();
+    expect(result[0].pipeline[0].command).toBe("ls");
+  });
+
+  it("handles empty input", () => {
+    const result = parseChainedPipeline("");
+    expect(result).toHaveLength(1);
+    expect(result[0].pipeline[0].command).toBe("");
+  });
+
+  it("returns syntax error for trailing &&", () => {
+    const result = parseChainedPipeline("cmd1 &&");
+    expect(result).toHaveLength(1);
+    expect(result[0].pipeline[0].error).toContain("syntax error");
+    expect(result[0].pipeline[0].error).toContain("&&");
+  });
+
+  it("returns syntax error for leading &&", () => {
+    const result = parseChainedPipeline("&& cmd1");
+    expect(result).toHaveLength(1);
+    expect(result[0].pipeline[0].error).toContain("syntax error");
+  });
+
+  it("returns syntax error for consecutive operators", () => {
+    const result = parseChainedPipeline("cmd1 && && cmd2");
+    expect(result).toHaveLength(1);
+    expect(result[0].pipeline[0].error).toContain("syntax error");
+  });
+
+  it("correctly splits || as chain, not pipe", () => {
+    const result = parseChainedPipeline("cmd1 || cmd2");
+    expect(result).toHaveLength(2);
+    expect(result[0].pipeline).toHaveLength(1);
+    expect(result[1].pipeline).toHaveLength(1);
+    expect(result[1].operator).toBe("||");
+  });
+});
+
+describe("expandAliases", () => {
+  it("expands a simple alias", () => {
+    expect(expandAliases("deploy", { deploy: "dbt run && snow sql" })).toBe("dbt run && snow sql");
+  });
+
+  it("appends trailing args after expansion", () => {
+    expect(expandAliases("deploy --full-refresh", { deploy: "dbt run" })).toBe("dbt run --full-refresh");
+  });
+
+  it("expands alias after &&", () => {
+    expect(expandAliases("echo hi && deploy", { deploy: "dbt run" })).toBe("echo hi && dbt run");
+  });
+
+  it("expands alias after ;", () => {
+    expect(expandAliases("echo hi; deploy", { deploy: "dbt run" })).toBe("echo hi; dbt run");
+  });
+
+  it("expands alias after ||", () => {
+    expect(expandAliases("false || deploy", { deploy: "dbt run" })).toBe("false || dbt run");
+  });
+
+  it("does not expand in argument position", () => {
+    expect(expandAliases("echo deploy", { deploy: "dbt run" })).toBe("echo deploy");
+  });
+
+  it("does not expand quoted command", () => {
+    expect(expandAliases("'deploy'", { deploy: "dbt run" })).toBe("'deploy'");
+  });
+
+  it("returns input unchanged when no alias matches", () => {
+    expect(expandAliases("unknown", { deploy: "dbt run" })).toBe("unknown");
+  });
+
+  it("returns input unchanged with empty aliases", () => {
+    expect(expandAliases("ls", {})).toBe("ls");
+  });
+
+  it("expands multiple aliases in a chain", () => {
+    expect(expandAliases("d1 && d2", { d1: "echo a", d2: "echo b" })).toBe("echo a && echo b");
+  });
+
+  it("alias expands to chain operators", () => {
+    const result = expandAliases("deploy", { deploy: "cmd1 && cmd2" });
+    expect(result).toBe("cmd1 && cmd2");
+    // Verify re-parsing produces two chain segments
+    const chain = parseChainedPipeline(result);
+    expect(chain).toHaveLength(2);
+    expect(chain[0].pipeline[0].command).toBe("cmd1");
+    expect(chain[1].pipeline[0].command).toBe("cmd2");
   });
 });

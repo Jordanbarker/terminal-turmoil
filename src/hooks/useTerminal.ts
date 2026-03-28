@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore } from "../state/gameStore";
-import { parseInput, parsePipeline } from "../engine/commands/parser";
+import { parseInput, parsePipeline, parseChainedPipeline, expandAliases } from "../engine/commands/parser";
 import { execute, executeAsync, isAsyncCommand, commandReadsFiles } from "../engine/commands/registry";
 import { resolvePath } from "../lib/pathUtils";
 import { colorize, ansi, stripAnsi } from "../lib/ansi";
@@ -64,6 +64,13 @@ function buildCommandContext(
     setSnowflakeState: store.setSnowflakeState,
     deliveredPiperIds: store.deliveredPiperIds,
   };
+}
+
+/** Check if a command result contains fields that require stopping the chain. */
+function isChainEarlyReturn(result: import("../engine/commands/types").CommandResult): boolean {
+  return !!(result.editorSession || result.interactiveSession || result.snowSqlSession ||
+    result.sshSession || result.chipSession || result.piperSession || result.promptSession ||
+    result.incrementalLines || result.transitionTo);
 }
 
 // Ensure all builtins are registered
@@ -379,56 +386,35 @@ export function useTerminal() {
         const result = commandLine.handleChar(term, char, code);
         if (!result) continue;
 
-        // Command submitted — check for pipeline
-        const pipeline = parsePipeline(result.input);
-
-        // Check for parse errors (e.g. unterminated quotes)
-        const parseError = pipeline.find((p) => p.error);
-        if (parseError) {
-          term.write(colorize(parseError.error!, ansi.red));
-          writePrompt(term);
-          continue;
-        }
-
-        // Check for redirection in the last segment
-        let redirectFile: string | null = null;
-        let redirectAppend = false;
-        const lastSegment = pipeline[pipeline.length - 1];
-        if (lastSegment.raw.includes(">>") || lastSegment.raw.includes(">")) {
-          const raw = lastSegment.raw;
-          const appendIdx = raw.indexOf(">>");
-          const overwriteIdx = raw.indexOf(">");
-          if (appendIdx !== -1) {
-            redirectAppend = true;
-            const parts = raw.split(">>");
-            pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
-            redirectFile = parts[1].trim();
-          } else if (overwriteIdx !== -1) {
-            const parts = raw.split(">");
-            pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
-            redirectFile = parts[1].trim();
-          }
-        }
-
-        // Expand user-defined aliases (one level, before async detection)
+        // Command submitted — expand aliases textually, then parse chain of pipelines
         const computerId = activeComputerRef.current;
         const userAliases = useGameStore.getState().computerState[computerId]?.aliases ?? {};
-        for (let ai = 0; ai < pipeline.length; ai++) {
-          const p = pipeline[ai];
-          if (p.command && p.command in userAliases) {
-            const expanded = userAliases[p.command];
-            const combined = p.args.length > 0 ? expanded + " " + p.args.join(" ") : expanded;
-            pipeline[ai] = parseInput(combined);
+        const expandedInput = expandAliases(result.input, userAliases);
+        const chain = parseChainedPipeline(expandedInput);
+
+        // Check for parse errors in any segment
+        for (const seg of chain) {
+          const parseError = seg.pipeline.find((p) => p.error);
+          if (parseError) {
+            term.write(colorize(parseError.error!, ansi.red));
+            writePrompt(term);
+            continue;
           }
         }
 
-        const parsed = pipeline[0];
-        if (!parsed.command && pipeline.length === 1) {
-          writePrompt(term);
+        // Check if first segment parse error already handled (continue above skips outer for)
+        // Re-check to avoid double-handling — if any segment had error, we already wrote it
+        const hasParseError = chain.some((seg) => seg.pipeline.some((p) => p.error));
+        if (hasParseError) {
+          // The error was already written above, prompt was written, skip execution
           continue;
         }
 
-        const hasAsyncCmd = pipeline.some((p) => isAsyncCommand(p.command));
+        // Check for empty input (single empty pipeline)
+        if (chain.length === 1 && chain[0].pipeline.length === 1 && !chain[0].pipeline[0].command) {
+          writePrompt(term);
+          continue;
+        }
 
         // Capture tab ID at submission time (before async enqueue)
         const submittingTabId = useGameStore.getState().activeTabId;
@@ -436,22 +422,19 @@ export function useTerminal() {
         // Gate input while command is queued/executing
         busyRef.current = true;
         busyTabIdRef.current = submittingTabId;
-        if (hasAsyncCmd) {
-          term.write(colorize("Loading...", ansi.dim));
-        }
 
         // Enqueue command execution to serialize FS mutations per computer
         enqueueCommand(computerId, async () => {
           try {
           const store = useGameStore.getState();
           const initialFs = store.computerState[computerId]!.fs;
-          const currentCwd = cwdRef.current;
           const homeDir = initialFs.homeDir;
 
           const applyCommandResult = (
             cmdResult: import("../engine/commands/types").CommandResult,
             parsedCmd: import("../engine/commands/types").ParsedCommand,
-            runningFs: VirtualFS
+            runningFs: VirtualFS,
+            isFinal: boolean
           ) => {
             const latestStore = useGameStore.getState();
             const targetComputer = cmdResult.transitionTo;
@@ -468,67 +451,155 @@ export function useTerminal() {
               fs: runningFs,
               targetComputerExists: targetComputer ? !!latestStore.computerState[targetComputer] : undefined,
             });
+
+            if (!isFinal) {
+              // Per-segment: apply story flags, deliveries to store (needed for gating)
+              // but do NOT write FS, notifications, or prompt
+              for (const update of effects.storyFlagUpdates) {
+                useGameStore.getState().setStoryFlag(update.flag, update.value);
+                if (update.toast) {
+                  useGameStore.getState().addToast(update.toast);
+                }
+              }
+              if (effects.newDeliveredEmailIds.length > 0) {
+                useGameStore.getState().addDeliveredEmails(effects.newDeliveredEmailIds);
+              }
+              if (effects.newDeliveredPiperIds.length > 0) {
+                useGameStore.getState().addDeliveredPiperMessages(effects.newDeliveredPiperIds);
+              }
+              if (effects.newCwd) {
+                cwdRef.current = effects.newCwd;
+                useGameStore.getState().setTabCwd(useGameStore.getState().activeTabId, effects.newCwd);
+              }
+              if (effects.clearScreen) {
+                term.clear();
+              }
+              if (effects.output) {
+                term.write(effects.output.replace(/\n/g, "\r\n"));
+              }
+              // Check if segment triggers session/incremental/transition — must stop chain
+              if (effects.startSession || effects.incrementalLines || effects.transitionTo) {
+                return executeEffects(term, effects, submittingTabId);
+              }
+              return false;
+            }
+
             return executeEffects(term, effects, submittingTabId);
           };
 
-          let stdin: string | undefined;
-          let lastResult: import("../engine/commands/types").CommandResult = { output: "" };
-          const allTriggerEvents: import("../engine/mail/delivery").GameEvent[] = [];
           let runningFs = initialFs;
+          let lastExitCode = 0;
+          let earlyReturn = false;
+          let wroteOutput = false;
 
-          for (let pi = 0; pi < pipeline.length; pi++) {
-            const p = pipeline[pi];
-            if (!p.command) continue;
+          for (let ci = 0; ci < chain.length; ci++) {
+            const seg = chain[ci];
 
-            const ctx = buildCommandContext(
-              runningFs,
-              cwdRef.current,
-              computerId,
-              homeDir,
-              stdin,
-              p.rawArgs,
-              pi < pipeline.length - 1 || !!redirectFile,
-              useGameStore.getState()
-            );
+            // Check chain operator logic
+            if (seg.operator === '&&' && lastExitCode !== 0) continue;
+            if (seg.operator === '||' && lastExitCode === 0) continue;
+            // ';' and null (first): always execute
 
-            if (isAsyncCommand(p.command)) {
-              lastResult = await executeAsync(p.command, p.args, p.flags, ctx);
-            } else {
-              lastResult = execute(p.command, p.args, p.flags, ctx);
-            }
+            const pipeline = [...seg.pipeline];
 
-            if (lastResult.triggerEvents) {
-              allTriggerEvents.push(...lastResult.triggerEvents);
-            }
-
-            // Intermediate pipeline commands: generate file_read events
-            // (the last command's file reads are handled by computeEffects)
-            if (pi < pipeline.length - 1 && commandReadsFiles(p.command)) {
-              for (const arg of p.args) {
-                if (!arg.startsWith("-")) {
-                  const absPath = resolvePath(arg, cwdRef.current, homeDir);
-                  if (!runningFs.readFile(absPath).error) {
-                    allTriggerEvents.push({ type: "file_read" as const, detail: absPath });
-                  }
-                }
+            // Extract redirection from last pipeline command (per-segment)
+            let redirectFile: string | null = null;
+            let redirectAppend = false;
+            const lastSegment = pipeline[pipeline.length - 1];
+            if (lastSegment.raw.includes(">>") || lastSegment.raw.includes(">")) {
+              const raw = lastSegment.raw;
+              const appendIdx = raw.indexOf(">>");
+              const overwriteIdx = raw.indexOf(">");
+              if (appendIdx !== -1) {
+                redirectAppend = true;
+                const parts = raw.split(">>");
+                pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
+                redirectFile = parts[1].trim();
+              } else if (overwriteIdx !== -1) {
+                const parts = raw.split(">");
+                pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
+                redirectFile = parts[1].trim();
               }
             }
 
-            if (lastResult.newFs) {
-              runningFs = lastResult.newFs;
+            // Async detection per segment
+            const hasAsyncCmd = pipeline.some((p) => isAsyncCommand(p.command));
+            if (hasAsyncCmd) {
+              if (wroteOutput) term.write("\r\n");
+              term.write(colorize("Loading...", ansi.dim));
             }
 
-            stdin = stripAnsi(lastResult.output);
-          }
+            // Execute pipeline for this segment
+            let stdin: string | undefined; // reset per chain segment
+            let lastResult: import("../engine/commands/types").CommandResult = { output: "" };
+            const allTriggerEvents: import("../engine/mail/delivery").GameEvent[] = [];
 
-          if (allTriggerEvents.length > 0) {
-            lastResult = { ...lastResult, triggerEvents: allTriggerEvents };
-          }
+            for (let pi = 0; pi < pipeline.length; pi++) {
+              const p = pipeline[pi];
+              if (!p.command) continue;
 
-          if (redirectFile && lastResult) {
-            const redir = applyRedirection(redirectFile, redirectAppend, lastResult, currentCwd, homeDir, runningFs);
-            lastResult = redir.result;
-            runningFs = redir.fs;
+              const ctx = buildCommandContext(
+                runningFs,
+                cwdRef.current,
+                computerId,
+                homeDir,
+                stdin,
+                p.rawArgs,
+                pi < pipeline.length - 1 || !!redirectFile,
+                useGameStore.getState()
+              );
+
+              if (isAsyncCommand(p.command)) {
+                lastResult = await executeAsync(p.command, p.args, p.flags, ctx);
+              } else {
+                lastResult = execute(p.command, p.args, p.flags, ctx);
+              }
+
+              if (lastResult.triggerEvents) {
+                allTriggerEvents.push(...lastResult.triggerEvents);
+              }
+
+              // Intermediate pipeline commands: generate file_read events
+              if (pi < pipeline.length - 1 && commandReadsFiles(p.command)) {
+                for (const arg of p.args) {
+                  if (!arg.startsWith("-")) {
+                    const absPath = resolvePath(arg, cwdRef.current, homeDir);
+                    if (!runningFs.readFile(absPath).error) {
+                      allTriggerEvents.push({ type: "file_read" as const, detail: absPath });
+                    }
+                  }
+                }
+              }
+
+              if (lastResult.newFs) {
+                runningFs = lastResult.newFs;
+              }
+
+              stdin = stripAnsi(lastResult.output);
+            }
+
+            if (allTriggerEvents.length > 0) {
+              lastResult = { ...lastResult, triggerEvents: allTriggerEvents };
+            }
+
+            if (redirectFile && lastResult) {
+              const redir = applyRedirection(redirectFile, redirectAppend, lastResult, cwdRef.current, homeDir, runningFs);
+              lastResult = redir.result;
+              runningFs = redir.fs;
+            }
+
+            lastExitCode = lastResult.exitCode ?? 0;
+            if (lastResult.output) wroteOutput = true;
+
+            if (hasAsyncCmd) {
+              term.write("\r\x1b[K");
+            }
+
+            const isFinal = ci === chain.length - 1 || isChainEarlyReturn(lastResult);
+            earlyReturn = applyCommandResult(lastResult, pipeline[pipeline.length - 1], runningFs, isFinal) ?? false;
+
+            // If segment triggers session/incremental/transition, stop chain
+            if (isChainEarlyReturn(lastResult) || earlyReturn) break;
           }
 
           // Append command to .zsh_history in the virtual filesystem (HIST_IGNORE_DUPS)
@@ -548,11 +619,6 @@ export function useTerminal() {
             useGameStore.getState().setComputerFs(computerId, runningFs);
           }
 
-          if (hasAsyncCmd) {
-            term.write("\r\x1b[K");
-          }
-
-          const earlyReturn = applyCommandResult(lastResult, pipeline[pipeline.length - 1], runningFs);
           if (!earlyReturn) {
             writePrompt(term);
           }

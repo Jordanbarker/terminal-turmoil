@@ -19,6 +19,16 @@ export function getHomeWelcome(day = 1): string[] {
 
 export const homeWelcome = getHomeWelcome(1);
 
+export function getUpdateNotification(): string[] {
+  return [
+    "",
+    `${colorize("6 updates can be applied immediately.", ansi.yellow)}`,
+    `${colorize("3 of these updates are standard security updates.", ansi.yellow)}`,
+    `To see these additional updates run: ${colorize("sudo apt update && sudo apt upgrade", ansi.bold)}`,
+    "",
+  ];
+}
+
 export const UNLOCK_BOX = [
   "",
   `  ${colorize("┌─────────────────────────────────────────┐", ansi.cyan)}`,

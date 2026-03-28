@@ -1,6 +1,6 @@
 import { registerAsync, registerAlias } from "../registry";
 import { AsyncCommandHandler, CommandContext, CommandResult } from "../types";
-import { parsePipeline, parseInput } from "../parser";
+import { parsePipeline, parseInput, parseChainedPipeline } from "../parser";
 import { execute, executeAsync, isAsyncCommand } from "../registry";
 import { applyRedirection } from "../redirection";
 import { resolvePath } from "../../../lib/pathUtils";
@@ -402,45 +402,17 @@ async function expandSubstitutions(
   return { text: result, fs, cwd };
 }
 
-/** Execute a single line (may be a pipeline with redirection). Returns exitCode. */
-async function executeSingleLine(
-  lineText: string,
+/** Execute a single pipeline (no chain operators). Returns exitCode. */
+async function executePipeline(
+  pipeline: import("../types").ParsedCommand[],
   ctx: CommandContext,
   runningFs: VirtualFS,
   currentCwd: string,
   allTriggerEvents: GameEvent[],
   functions?: Map<string, ScriptNode[]>,
+  redirectFile?: string | null,
+  redirectAppend?: boolean,
 ): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean; exitCode: number }> {
-  // Strip stderr redirects before parsing
-  const cleanedText = stripStderrRedirects(lineText);
-  const pipeline = parsePipeline(cleanedText);
-
-  // Check for parse errors
-  const parseError = pipeline.find((p) => p.error);
-  if (parseError) {
-    return { output: parseError.error!, fs: runningFs, cwd: currentCwd, stopped: false, exitCode: 2 };
-  }
-
-  // Check for redirection in the last segment
-  let redirectFile: string | null = null;
-  let redirectAppend = false;
-  const lastSegment = pipeline[pipeline.length - 1];
-  if (lastSegment.raw.includes(">>") || lastSegment.raw.includes(">")) {
-    const raw = lastSegment.raw;
-    const appendIdx = raw.indexOf(">>");
-    const overwriteIdx = raw.indexOf(">");
-    if (appendIdx !== -1) {
-      redirectAppend = true;
-      const parts = raw.split(">>");
-      pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
-      redirectFile = parts[1].trim();
-    } else if (overwriteIdx !== -1) {
-      const parts = raw.split(">");
-      pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
-      redirectFile = parts[1].trim();
-    }
-  }
-
   let stdin: string | undefined;
   let lastResult: CommandResult = { output: "" };
   let fs = runningFs;
@@ -484,7 +456,6 @@ async function executeSingleLine(
 
     // Check for interactive session — skip with warning
     if (SESSION_FIELDS.some((f) => lastResult[f])) {
-      // Strip session fields, keep output
       const cleaned: CommandResult = { output: lastResult.output, exitCode: lastResult.exitCode };
       if (lastResult.triggerEvents) cleaned.triggerEvents = lastResult.triggerEvents;
       if (lastResult.newFs) cleaned.newFs = lastResult.newFs;
@@ -521,12 +492,83 @@ async function executeSingleLine(
 
   // Apply redirection
   if (redirectFile && lastResult) {
-    const redir = applyRedirection(redirectFile, redirectAppend, lastResult, cwd, ctx.homeDir, fs);
+    const redir = applyRedirection(redirectFile, redirectAppend ?? false, lastResult, cwd, ctx.homeDir, fs);
     lastResult = redir.result;
     fs = redir.fs;
   }
 
   return { output: lastResult.output, fs, cwd, stopped: false, exitCode: lastResult.exitCode ?? 0 };
+}
+
+/** Execute a single line (may contain chain operators and pipelines). Returns exitCode. */
+async function executeSingleLine(
+  lineText: string,
+  ctx: CommandContext,
+  runningFs: VirtualFS,
+  currentCwd: string,
+  allTriggerEvents: GameEvent[],
+  functions?: Map<string, ScriptNode[]>,
+): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean; exitCode: number }> {
+  // Strip stderr redirects before parsing
+  const cleanedText = stripStderrRedirects(lineText);
+  const chain = parseChainedPipeline(cleanedText);
+
+  // Check for parse errors in any segment
+  for (const seg of chain) {
+    const parseError = seg.pipeline.find((p) => p.error);
+    if (parseError) {
+      return { output: parseError.error!, fs: runningFs, cwd: currentCwd, stopped: false, exitCode: 2 };
+    }
+  }
+
+  let fs = runningFs;
+  let cwd = currentCwd;
+  let lastExitCode = 0;
+  const outputs: string[] = [];
+
+  for (const seg of chain) {
+    // Check chain operator logic
+    if (seg.operator === '&&' && lastExitCode !== 0) continue;
+    if (seg.operator === '||' && lastExitCode === 0) continue;
+    // ';' and null (first segment): always execute
+
+    const pipeline = [...seg.pipeline];
+
+    // Extract redirection from last pipeline command
+    let redirectFile: string | null = null;
+    let redirectAppend = false;
+    const lastSegment = pipeline[pipeline.length - 1];
+    if (lastSegment.raw.includes(">>") || lastSegment.raw.includes(">")) {
+      const raw = lastSegment.raw;
+      const appendIdx = raw.indexOf(">>");
+      const overwriteIdx = raw.indexOf(">");
+      if (appendIdx !== -1) {
+        redirectAppend = true;
+        const parts = raw.split(">>");
+        pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
+        redirectFile = parts[1].trim();
+      } else if (overwriteIdx !== -1) {
+        const parts = raw.split(">");
+        pipeline[pipeline.length - 1] = parseInput(parts[0].trim());
+        redirectFile = parts[1].trim();
+      }
+    }
+
+    const result = await executePipeline(
+      pipeline, { ...ctx, fs, cwd }, fs, cwd, allTriggerEvents, functions, redirectFile, redirectAppend,
+    );
+
+    if (result.output) outputs.push(result.output);
+    fs = result.fs;
+    cwd = result.cwd;
+    lastExitCode = result.exitCode;
+
+    if (result.stopped) {
+      return { output: outputs.join("\n"), fs, cwd, stopped: true, exitCode: lastExitCode };
+    }
+  }
+
+  return { output: outputs.join("\n"), fs, cwd, stopped: false, exitCode: lastExitCode };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { isDirectory } from "../filesystem/types";
 import { resolvePath, basename } from "../../lib/pathUtils";
+import { splitOnChainOperators } from "../commands/parser";
 
 export interface SuggestionContext {
   commandHistory: string[];
@@ -22,12 +23,29 @@ export function getSuggestion(
 ): string | null {
   if (!input) return null;
 
-  // Strategy 1: History match (scan reverse, first entry starting with input)
+  // Strategy 1: History match against FULL input (scan reverse, first entry starting with input)
   for (let i = ctx.commandHistory.length - 1; i >= 0; i--) {
     const entry = ctx.commandHistory[i];
     if (entry.startsWith(input) && entry.length > input.length) {
       return entry;
     }
+  }
+
+  // For chain operators (&&, ||, ;): extract the last segment for completion
+  const chainSegments = splitOnChainOperators(input);
+  if (chainSegments.length > 1) {
+    const lastSeg = chainSegments[chainSegments.length - 1];
+    const lastText = lastSeg.text.trimStart();
+    // If last segment is empty/whitespace, no suggestion
+    if (!lastText) return null;
+    // Compute suggestion for just the last segment
+    const segSuggestion = getSuggestion(lastText, ctx);
+    if (segSuggestion === null) return null;
+    // Reconstruct: use original input up to the last segment, then append suggestion
+    const lastSegStart = input.length - lastSeg.text.length;
+    const leadingSpace = lastSeg.text.length - lastSeg.text.trimStart().length;
+    const prefix = input.slice(0, lastSegStart + leadingSpace);
+    return prefix + segSuggestion;
   }
 
   // Strategy 2: Command name completion (no spaces = still typing command)

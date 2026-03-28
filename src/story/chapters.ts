@@ -518,9 +518,16 @@ export const CHAPTERS: ChapterDefinition[] = [
     title: "Getting the Hang of This",
     objectives: [
       {
+        id: "update_system",
+        description: "Update your system",
+        check: { source: "storyFlag", key: "apt_upgraded" },
+      },
+      {
         id: "ssh_to_work_day2",
         description: "SSH to NexaCorp to start your second day",
         check: { source: "storyFlag", key: "ssh_day2" },
+        hidden: true,
+        visibleWhen: { source: "storyFlag", key: "apt_upgraded" },
       },
       // Quest: Fix the Broken Pipeline
       {

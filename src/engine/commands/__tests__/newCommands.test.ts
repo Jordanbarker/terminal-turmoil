@@ -4,7 +4,7 @@ import { CommandContext } from "../types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { DirectoryNode } from "../../filesystem/types";
 import { HELP_TEXTS } from "../builtins/helpTexts";
-import { parsePipeline } from "../parser";
+import { parsePipeline, parseChainedPipeline } from "../parser";
 
 /** Strip ANSI escape codes for easier assertion */
 function stripAnsi(str: string): string {
@@ -1761,5 +1761,74 @@ describe("unalias", () => {
   it("returns error with no arguments", () => {
     const result = execute("unalias", [], {}, ctx(undefined, { aliases: {} }));
     expect(result.exitCode).toBe(1);
+  });
+});
+
+describe("command chaining (interactive-style)", () => {
+  /** Execute a chained command line using the registry directly. */
+  function executeChain(input: string, overrides?: Partial<CommandContext>) {
+    const chain = parseChainedPipeline(input);
+    const c = ctx(undefined, overrides);
+    let fs = c.fs;
+    let cwd = c.cwd;
+    let lastExitCode = 0;
+    const outputs: string[] = [];
+
+    for (const seg of chain) {
+      if (seg.operator === "&&" && lastExitCode !== 0) continue;
+      if (seg.operator === "||" && lastExitCode === 0) continue;
+
+      const pipeline = seg.pipeline;
+      let stdin: string | undefined;
+      let lastResult: import("../types").CommandResult = { output: "" };
+
+      for (let pi = 0; pi < pipeline.length; pi++) {
+        const p = pipeline[pi];
+        if (!p.command) continue;
+        lastResult = execute(p.command, p.args, p.flags, {
+          ...c,
+          fs,
+          cwd,
+          stdin,
+          isPiped: pi < pipeline.length - 1,
+        });
+        if (lastResult.newFs) fs = lastResult.newFs;
+        if (lastResult.newCwd) cwd = lastResult.newCwd;
+        stdin = stripAnsi(lastResult.output);
+      }
+
+      if (lastResult.output) outputs.push(lastResult.output);
+      lastExitCode = lastResult.exitCode ?? 0;
+    }
+
+    return { output: outputs.join("\n"), fs, cwd, exitCode: lastExitCode };
+  }
+
+  it("cd /tmp && pwd propagates cwd", () => {
+    const result = executeChain("cd / && pwd");
+    expect(stripAnsi(result.output)).toContain("/");
+    expect(result.cwd).toBe("/");
+  });
+
+  it("cd /nonexistent && pwd does not run pwd", () => {
+    const result = executeChain("cd /nonexistent && pwd");
+    expect(result.exitCode).not.toBe(0);
+    expect(stripAnsi(result.output)).not.toContain("/home");
+  });
+
+  it("cd /nonexistent || echo failed runs fallback", () => {
+    const result = executeChain('cd /nonexistent || echo "failed"');
+    expect(stripAnsi(result.output)).toContain("failed");
+  });
+
+  it("mkdir && ls shows new directory", () => {
+    const result = executeChain("mkdir /home/player/testdir && ls /home/player");
+    expect(stripAnsi(result.output)).toContain("testdir");
+  });
+
+  it("FS mutations propagate across chain segments", () => {
+    const result = executeChain("touch /home/player/new.txt && cat /home/player/new.txt");
+    // touch creates an empty file, cat reads it (empty output is ok, no error)
+    expect(result.exitCode).toBe(0);
   });
 });
