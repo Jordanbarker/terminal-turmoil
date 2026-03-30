@@ -263,6 +263,15 @@ export function useTerminal() {
       // Apply all state effects (FS, cwd, story flags, deliveries) before any early returns
       applyStateEffects(effects, computerId);
 
+      // Close tabs for a given computer (e.g. coder stop disconnects devcontainer sessions)
+      if (effects.closeTabsForComputer) {
+        const store = useGameStore.getState();
+        const tabsToClose = store.tabs.filter((t) => t.id !== store.activeTabId && t.computerId === effects.closeTabsForComputer);
+        for (const t of tabsToClose) {
+          store.removeTab(t.id);
+        }
+      }
+
       // Computer transitions — first-time (full animation)
       if (effects.transitionTo === "devcontainer") {
         runCoderTransition(term);

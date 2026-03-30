@@ -37,6 +37,7 @@ export const STORY_FLAG_NAMES = [
   "apt_unlocked",
   "basic_tools_unlocked",
   "devcontainer_visited",
+  "coder_workspace_stopped",
 
   "search_tools_unlocked",
   "inspection_tools_unlocked",
@@ -187,6 +188,8 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "directory_visit", path: p.chenHandoff, flag: "auri_listed_handoff", value: true },
     { event: "file_read", path: p.chenHandoffTodo, flag: "auri_read_todo", value: true },
     { event: "file_read", path: p.onboarding, flag: "read_onboarding", value: true },
+    { event: "command_executed", detail: "coder_start", flag: "coder_workspace_stopped", value: false },
+    { event: "command_executed", detail: "coder_stop", flag: "coder_workspace_stopped", value: true },
     { event: "file_read", detail: "oscar_coder_setup", flag: "coder_unlocked", value: true, toast: "coder command unlocked! Try: coder ssh ai" },
     { event: "objective_completed", detail: "pipeline_tools_accepted", flag: "coder_unlocked", value: true, toast: "coder command unlocked! Try: coder ssh ai" },
     { event: "file_read", path: p.teamInfo, flag: "read_team_info", value: true },

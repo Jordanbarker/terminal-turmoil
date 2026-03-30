@@ -10,6 +10,7 @@ up='sudo apt update && sudo apt upgrade'
 RAG quest - outdated docs, bad data, 
     RAG data: PTO, HR policies, IT procedures, internal playbooks, product docs, wikis, databases (snowflake)
              regulatory guidance, audit materials, and transaction context to support reporting and compliance questions.
+    External/customer data in snowflake?
     Terminal angles:
         Inspect the full context passed to the LLM: grep -A 50 "prompt=" logs/app.log | head -n 200 
         Find and inspect raw documents:  find ./data -name "*.txt" -o -name "*.pdf" -o -name "*.md"

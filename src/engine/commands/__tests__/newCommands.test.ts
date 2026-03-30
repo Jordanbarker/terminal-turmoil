@@ -1587,7 +1587,79 @@ describe("coder", () => {
 
   it("shows usage with no args", () => {
     const result = execute("coder", [], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
-    expect(result.output).toContain("usage");
+    expect(result.output).toContain("USAGE:");
+    expect(result.output).toContain("SUBCOMMANDS:");
+  });
+
+  it("lists workspaces", () => {
+    const result = execute("coder", ["list"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("ai");
+    expect(result.output).toContain("Running");
+  });
+
+  it("lists workspaces with ls alias", () => {
+    const result = execute("coder", ["ls"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("ai");
+  });
+
+  it("shows stopped status after stop flag is set", () => {
+    const result = execute("coder", ["list"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true, coder_workspace_stopped: true } }));
+    expect(result.output).toContain("Stopped");
+  });
+
+  it("stops a running workspace", () => {
+    const result = execute("coder", ["stop", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("Stopping");
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "coder_stop" });
+    expect(result.closeTabsForComputer).toBe("devcontainer");
+  });
+
+  it("stop when already stopped", () => {
+    const result = execute("coder", ["stop", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true, coder_workspace_stopped: true } }));
+    expect(result.output).toContain("already stopped");
+  });
+
+  it("starts a stopped workspace with incremental lines", () => {
+    const result = execute("coder", ["start", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true, coder_workspace_stopped: true } }));
+    expect(result.incrementalLines).toBeDefined();
+    expect(result.incrementalLines!.length).toBeGreaterThan(0);
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "coder_start" });
+  });
+
+  it("start when already running", () => {
+    const result = execute("coder", ["start", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("already running");
+  });
+
+  it("ssh fails when workspace is stopped", () => {
+    const result = execute("coder", ["ssh", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true, coder_workspace_stopped: true } }));
+    expect(result.transitionTo).toBeUndefined();
+    expect(result.output).toContain("stopped");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("shows build logs", () => {
+    const result = execute("coder", ["logs", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("Build logs");
+    expect(result.output).toContain("completed successfully");
+  });
+
+  it("create is permission denied", () => {
+    const result = execute("coder", ["create", "test"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("permission");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("delete is permission denied", () => {
+    const result = execute("coder", ["delete", "ai"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("permission");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("rejects unknown subcommand", () => {
+    const result = execute("coder", ["foo"], {}, ctx(undefined, { activeComputer: "nexacorp", storyFlags: { coder_unlocked: true } }));
+    expect(result.output).toContain("unknown subcommand");
+    expect(result.exitCode).toBe(1);
   });
 
   it("rejects from non-nexacorp computer", () => {

@@ -123,6 +123,8 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
 | `read_onboarding` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
 | `coder_unlocked` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
+| `coder_workspace_stopped` | `command_executed` | detail: `coder_stop` | `true` |
+| `coder_workspace_stopped` | `command_executed` | detail: `coder_start` | `false` |
 | `read_team_info` | `file_read` | `/srv/engineering/team-info.md` | `true` |
 | `read_handoff_notes` | `file_read` | `/srv/engineering/chen-handoff/notes.txt` | `true` |
 | `chip_unlocked` | `file_read` | detail: `chip_intro` | `true` |
@@ -225,10 +227,11 @@ Commands are gated differently per computer (see `engine/commands/availability.t
 - `inspection_tools_unlocked` — unlocks head, tail, wc
 - `processing_tools_unlocked` — unlocks sort, uniq
 - `coder_unlocked` — unlocks coder (triggered by reading onboarding docs)
+- `coder_workspace_stopped` — tracks workspace state; set true by `coder stop`, false by `coder start`. Absent = running. `coder ssh` blocked when true; `coder stop` closes devcontainer tabs via `closeTabsForComputer`
 - `chip_unlocked` — unlocks chip (triggered by reading the chip intro email)
 - `piper_unlocked` — unlocks piper (triggered by reading Edward's welcome email)
 
-**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snow, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`.
+**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snow, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`. The `coder` command supports subcommands: `list`/`ls`, `start`, `stop`, `ssh`, `logs`, `create`, `delete`.
 
 ## Event Chain
 

@@ -43,6 +43,7 @@ export interface AppliedEffects {
   suppressPrompt: boolean;
   transitionTo?: ComputerId;
   incrementalLines?: IncrementalLine[];
+  closeTabsForComputer?: ComputerId;
 }
 
 export interface ApplyContext {
@@ -196,6 +197,11 @@ export function computeEffects(
   // Pass through incremental lines
   if (result.incrementalLines) {
     effects.incrementalLines = result.incrementalLines;
+  }
+
+  // Pass through closeTabsForComputer
+  if (result.closeTabsForComputer) {
+    effects.closeTabsForComputer = result.closeTabsForComputer;
   }
 
   return effects;

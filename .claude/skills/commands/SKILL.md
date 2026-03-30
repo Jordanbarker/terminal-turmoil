@@ -177,6 +177,7 @@ interface AppliedEffects {
   emailNotifications: number;
   suppressPrompt: boolean;
   transitionTo?: ComputerId;  // Computer transition (coder/exit commands)
+  closeTabsForComputer?: ComputerId;  // Close all other tabs for this computer (e.g. coder stop)
 }
 ```
 

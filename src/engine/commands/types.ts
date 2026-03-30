@@ -86,6 +86,7 @@ export interface CommandResult {
   triggerEvents?: GameEvent[];
   transitionTo?: ComputerId;
   incrementalLines?: IncrementalLine[];
+  closeTabsForComputer?: ComputerId;
 }
 
 export interface IncrementalLine {
