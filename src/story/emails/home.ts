@@ -108,14 +108,11 @@ Manage alerts: indeed.com/alerts
     {
       email: {
         id: "cron_backup_failure",
-        from: `Cron Daemon <cron@maniac-iv>`,
-        to: `${username}@email.com`,
+        from: `Cron Daemon <root@maniac-iv>`,
+        to: `${username}@maniac-iv`,
         date: "Sat, 21 Feb 2026 02:01:00",
-        subject: `Cron <${username}@maniac-iv> backup.sh`,
-        body: `/home/${username}/scripts/backup.sh: line 14: BAKCUP_DIR: unbound variable
-
-The above error occurred while running your scheduled backup.
-The cron job has been disabled until the issue is fixed.
+        subject: `Cron <${username}@maniac-iv> /home/${username}/scripts/backup.sh`,
+        body: `/home/${username}/scripts/backup.sh: line 19: BAKCUP_DIR: unbound variable
 `,
       },
       trigger: { type: "immediate" },

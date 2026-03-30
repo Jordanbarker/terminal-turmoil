@@ -248,92 +248,20 @@ Then inside the container:
           id: "auri_dbt_2",
           from: "Auri Park",
           timestamp: "",
-          body: "I've been meaning to audit those models for a while. There's a set of models prefixed with _chip_internal that I didn't write — they showed up a few months ago. I assumed Chen added them but there's no documentation.",
-        },
-        {
-          id: "auri_dbt_3",
-          from: "Auri Park",
-          timestamp: "",
-          body: "If you get a chance, take a look at those. They're in the models directory somewhere — _chip_internal I think. The SQL files show what they're actually doing to the data. I'd love a second opinion.",
+          body: "Did everything build clean? I've been meaning to audit the models Chen left behind but haven't had a chance.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "ran_dbt" },
       replyOptions: [
         {
-          label: "I'll check them out.",
-          messageBody: "Sure — I'll look at the _chip_internal models and let you know what I find.",
+          label: "Builds passed but some tests warned.",
+          messageBody: "Everything built but there were a couple of test warnings — employee count mismatch and some ticket data inconsistencies.",
           triggerEvents: [{ type: "objective_completed", detail: "auri_dbt_reported" }],
         },
         {
           label: "The pipeline ran clean, no issues.",
-          messageBody: "Everything built and passed. I'll take a look at those _chip_internal models too.",
+          messageBody: "Everything built and passed. I'll keep poking around the models.",
           triggerEvents: [{ type: "objective_completed", detail: "auri_dbt_reported" }],
-        },
-      ],
-    },
-
-    // === DM Auri: Filtering reaction (after discovering data filtering) ===
-    {
-      id: "auri_filtering_reaction",
-      channelId: "dm_auri",
-      messages: [
-        {
-          id: "auri_filter_1",
-          from: "Auri Park",
-          timestamp: "",
-          body: "Hey — what did you find in those _chip_internal models?",
-        },
-      ],
-      trigger: { type: "after_story_flag", flag: "found_data_filtering" },
-      replyOptions: [
-        {
-          label: "They're not cleaning data — they're filtering it out.",
-          messageBody: "Those models aren't cleaning anything. They're suppressing tickets, removing log entries, scrubbing employee records — filtering data out before it reaches the marts.",
-          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_reported" }],
-        },
-        {
-          label: "Someone's deliberately hiding data from the marts.",
-          messageBody: "Someone built models that deliberately filter out data before the marts see it. Tickets, logs, employee records — all getting scrubbed.",
-          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_reported" }],
-        },
-      ],
-    },
-
-    // === DM Auri: Filtering confirmed (after player reports filtering) ===
-    {
-      id: "auri_filtering_confirmed",
-      channelId: "dm_auri",
-      messages: [
-        {
-          id: "auri_fconf_1",
-          from: "Auri Park",
-          timestamp: "",
-          body: "Wait — filtering? Not cleaning?",
-        },
-        {
-          id: "auri_fconf_2",
-          from: "Auri Park",
-          timestamp: "",
-          body: "The mart tables that leadership looks at — they all run through these models. The business has been seeing filtered data for months and nobody noticed because the models are buried in the intermediate layer.",
-        },
-        {
-          id: "auri_fconf_3",
-          from: "Auri Park",
-          timestamp: "",
-          body: "This isn't a bug. Someone built this on purpose.",
-        },
-      ],
-      trigger: { type: "after_objective", objectiveId: "auri_filtering_reported" },
-      replyOptions: [
-        {
-          label: "Yeah — someone's been manipulating the pipeline.",
-          messageBody: "That's what I'm seeing too. The _chip_internal models are deliberately hiding data before it reaches the marts.",
-          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_confirmed" }],
-        },
-        {
-          label: "Who would have access to add those models?",
-          messageBody: "This is serious. Who has access to push models to the dbt project?",
-          triggerEvents: [{ type: "objective_completed", detail: "auri_filtering_confirmed" }],
         },
       ],
     },

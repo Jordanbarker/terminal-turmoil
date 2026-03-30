@@ -9,6 +9,7 @@ import { getCassieDeliveries } from "./messages/cassie";
 import { getJordanDeliveries } from "./messages/jordan";
 import { getMayaDeliveries } from "./messages/maya";
 import { getSohamDeliveries } from "./messages/soham";
+import { getAmbientDeliveries } from "./messages/ambient";
 
 export const PIPER_DELIVERY_IDS = [
   // Home deliveries
@@ -67,8 +68,6 @@ export const PIPER_DELIVERY_IDS = [
   "jordan_marketing_data",
   "jordan_snowsql_tips",
   "auri_dbt_results",
-  "auri_filtering_reaction",
-  "auri_filtering_confirmed",
   "auri_day2_morning",
   "auri_test_failure_reaction",
   "auri_test_failure_details",
@@ -87,6 +86,15 @@ export const PIPER_DELIVERY_IDS = [
   "soham_dm_welcome",
   "sarah_dm_mystery",
   "cassie_dm_product",
+  // Ambient deliveries
+  "general_kitchen_debate",
+  "general_standup_cancelled",
+  "general_client_demo_panic",
+  "general_all_hands_recap",
+  "eng_deploy_drama",
+  "eng_morning_checkins",
+  "eng_oncall_handoff",
+  "eng_eod_signoffs",
 ] as const;
 export type PiperDeliveryId = (typeof PIPER_DELIVERY_IDS)[number];
 
@@ -102,5 +110,6 @@ export function getPiperDeliveries(username: string): PiperDelivery[] {
     ...getSohamDeliveries(username),
     ...getSarahDeliveries(username),
     ...getCassieDeliveries(username),
+    ...getAmbientDeliveries(username),
   ];
 }

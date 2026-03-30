@@ -14,6 +14,7 @@ const DATE_COLUMNS: Record<string, Set<string>> = {
   AI_MODEL_METRICS: new Set(["METRIC_DATE"]),
   DEPARTMENT_BUDGETS: new Set(["APPROVED_DATE"]),
   SUPPORT_TICKETS: new Set(["SUBMITTED_DATE", "RESOLVED_DATE"]),
+  CUSTOMERS: new Set(["SIGNUP_DATE", "LAST_ACTIVITY_DATE"]),
 };
 
 /**

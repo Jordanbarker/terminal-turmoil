@@ -30,7 +30,6 @@ export const STORY_FLAG_NAMES = [
   "chip_unlocked",
   "ran_dbt",
   "auri_dbt_reported",
-  "found_data_filtering",
   "read_nexacorp_offer",
   "commands_unlocked",
   "first_ssh_connect",
@@ -196,7 +195,6 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", detail: "welcome_edward", flag: "piper_unlocked", value: true, toast: "piper command unlocked!" },
     { event: "file_read", detail: "edward_end_of_day", flag: "read_end_of_day", value: true },
     { event: "file_read", detail: "discovered_log_tampering", flag: "discovered_log_tampering", value: true },
-    { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
     { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
     { event: "file_read", path: p.opsIncidents, flag: "read_ops_incidents", value: true },
     { event: "file_read", path: p.boardMinutes, flag: "read_board_minutes", value: true },
@@ -217,12 +215,6 @@ export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTri
   return [
     { event: "command_executed", detail: "git_clone_nexacorp-analytics", flag: "dbt_project_cloned", value: true, toast: "dbt project cloned to ~/nexacorp-analytics/" },
     { event: "command_executed", detail: "dbt_build", flag: "ran_dbt", value: true },
-    { event: "file_read", path: p.dbtDimEmployees(username), flag: "found_data_filtering", value: true },
-    { event: "file_read", path: p.dbtFctTickets(username), flag: "found_data_filtering", value: true },
-    { event: "file_read", path: p.dbtChipTicketSuppression(username), flag: "found_data_filtering", value: true },
-    { event: "file_read", path: p.dbtChipLogFilter(username), flag: "found_data_filtering", value: true },
-    { event: "file_read", path: p.dbtChipDataCleanup(username), flag: "found_data_filtering", value: true },
-    { event: "file_read", detail: "found_data_filtering", flag: "found_data_filtering", value: true },
     { event: "command_executed", detail: "queried_campaign_metrics", flag: "found_inflated_metrics", value: true },
     // Day 2 quest triggers
     { event: "command_executed", detail: "git_pull_origin_main", flag: "pulled_day2_updates", value: true, requiredFlags: ["ssh_day2"] },

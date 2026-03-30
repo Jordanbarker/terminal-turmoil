@@ -9,7 +9,7 @@ import {
   buildMaterializationMap,
   parseGenericTests,
 } from "./project";
-import { STANDARD_MODEL_ORDER, CHIP_INTERNAL_MODELS } from "./data";
+import { STANDARD_MODEL_ORDER } from "./data";
 import {
   formatRunHeader,
   formatModelRun,
@@ -142,8 +142,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
       return { output: `Selector error: model '${selectModel}' not found` };
     }
   } else {
-    // Default: run discovered models excluding _chip_internal
-    modelsToDisplay = discoveredModels.filter((m) => !CHIP_INTERNAL_MODELS.includes(m));
+    modelsToDisplay = [...discoveredModels];
     modelsToExecute = [...modelsToDisplay];
   }
 
@@ -252,10 +251,8 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
   // Write final state
   ctx.setSnowflakeState?.(runningState);
 
-  const hasChipInternal = modelsToDisplay.some((m) => CHIP_INTERNAL_MODELS.includes(m));
   return {
     output: lines.map((l) => l.text).join("\n"),
-    ...(hasChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
     ...(!ctx.isPiped && { incrementalLines: lines }),
   };
 }
@@ -473,9 +470,6 @@ export function listResources(ctx: CommandContext, resourceType?: string): Comma
 
   let resources = discoverResources(ctx.fs, project.projectRoot, config);
 
-  // Exclude _chip_internal models by default
-  resources = resources.filter((r) => !CHIP_INTERNAL_MODELS.includes(r.name));
-
   if (resourceType) {
     resources = resources.filter((r) => r.type === resourceType);
   }
@@ -551,11 +545,9 @@ export function compileModel(ctx: CommandContext, modelName?: string): CommandRe
   const targetPath = compiledDir + "/" + modelName + ".sql";
   const writeResult = fs.writeFile(targetPath, sql);
 
-  const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
   return {
     output: formatCompiledSql(modelName, sql),
     newFs: writeResult.fs,
-    ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
   };
 }
 
@@ -607,10 +599,8 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
     const adHocColumns = rs.data.columns.map((c: { name: string }) => c.name);
     const adHocRows = rs.data.rows.slice(0, SHOW_LIMIT).map((row: unknown[]) => row.map((v) => String(v ?? "")));
 
-    const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
     return {
       output: formatShowOutput(modelName, adHocColumns, adHocRows, rs.data.rowCount),
-      ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
     };
   }
 
@@ -618,9 +608,7 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
   const displayRows = resultSet.rows.slice(0, SHOW_LIMIT).map((row) => row.map((v) => String(v ?? "")));
   const totalRows = getModelRowCount(modelName, ctx.snowflakeState, sessionCtx) ?? resultSet.rowCount;
 
-  const isChipInternal = CHIP_INTERNAL_MODELS.includes(modelName);
   return {
     output: formatShowOutput(modelName, columns, displayRows, totalRows),
-    ...(isChipInternal && { triggerEvents: [{ type: "file_read" as const, detail: "found_data_filtering" }] }),
   };
 }

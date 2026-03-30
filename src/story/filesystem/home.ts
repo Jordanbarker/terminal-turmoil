@@ -112,6 +112,10 @@ SAVEHIST=1000
 autoload -Uz compinit && compinit
 
 alias ll='ls -la'
+alias ..='cd ..'
+alias df='df -h'
+alias up='sudo apt update && sudo apt upgrade'
+alias work='ssh nexacorp'
 alias py='python3'
 
 # Job search helpers
@@ -1095,6 +1099,7 @@ if __name__ == "__main__":
     main()
 `),
           "backup.sh": file("backup.sh", `#!/bin/bash
+set -euo pipefail
 # backup.sh — created 2026-02-12
 # never again losing everything to malware
 #

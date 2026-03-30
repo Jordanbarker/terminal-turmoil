@@ -127,7 +127,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "after_objective", objectiveId: "dana_ops_reported" },
     },
 
-    // === DM Dana: Schema follow-up (after finding data filtering, if player helped with CSV) ===
+    // === DM Dana: Schema follow-up (after player helped with CSV) ===
     {
       id: "dana_schema_followup",
       channelId: "dm_dana",
@@ -151,7 +151,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           body: "I thought it was just a schema issue but now I'm seeing a pattern. Schema changes, auto-resolved tickets, and nobody in ops approved any of it.",
         },
       ],
-      trigger: { type: "after_story_flag", flag: "found_data_filtering", requireDelivered: "dana_ops_resolved" },
+      trigger: { type: "after_story_flag", flag: "read_ops_incidents", requireDelivered: "dana_ops_resolved" },
     },
   ];
 }

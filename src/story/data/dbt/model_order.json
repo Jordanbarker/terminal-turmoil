@@ -10,6 +10,7 @@
     "stg_raw_nexacorp__employee_directory",
     "stg_raw_nexacorp__projects",
     "stg_raw_nexacorp__departments",
+    "stg_raw_nexacorp__customers",
     "int_employees_joined_to_events",
     "int_employees_with_tenure",
     "int_support_tickets_enriched",
@@ -20,11 +21,5 @@
     "rpt_employee_directory",
     "rpt_department_spending",
     "rpt_campaign_performance"
-  ],
-  "chip_internal": [
-    "chip_data_cleanup",
-    "chip_log_filter",
-    "chip_ticket_suppression",
-    "chip_metric_inflation"
   ]
 }

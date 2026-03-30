@@ -33,7 +33,7 @@ from generators.ai_metrics import generate_ai_metrics, get_ai_metric_columns
 from generators.chip_analytics import generate_chip_analytics
 from dbt.derive import derive_model_results, derive_test_results, derive_preview_data
 from dbt.compiled_sql import get_compiled_sql
-from narrative import STANDARD_MODEL_ORDER, CHIP_INTERNAL_MODELS
+from narrative import STANDARD_MODEL_ORDER
 
 
 def main():
@@ -122,7 +122,6 @@ def main():
 
     model_order = {
         "standard": STANDARD_MODEL_ORDER,
-        "chip_internal": CHIP_INTERNAL_MODELS,
     }
 
     # ── Write JSON ──────────────────────────────────────────────────
@@ -155,11 +154,8 @@ def main():
     print(f"  Department budgets: {len(department_budgets)}")
     print(f"  AI metrics: {len(ai_metrics)}")
     print(f"  dim_employees (filtered): {model_results['dim_employees']['rowsAffected']}")
-    print(f"  chip_data_cleanup: {model_results['chip_data_cleanup']['rowsAffected']}")
     print(f"  fct_system_events: {model_results['fct_system_events']['rowsAffected']}")
-    print(f"  chip_log_filter: {model_results['chip_log_filter']['rowsAffected']}")
     print(f"  fct_support_tickets: {model_results['fct_support_tickets']['rowsAffected']}")
-    print(f"  chip_ticket_suppression: {model_results['chip_ticket_suppression']['rowsAffected']}")
     print(f"\nWrote {len(files)} JSON files.")
 
 

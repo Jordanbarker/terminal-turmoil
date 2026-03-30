@@ -10,6 +10,7 @@ import "./mail";
 import "./save";
 import "./load";
 import "./newgame";
+import "./cheat";
 import "./python";
 import "./snow";
 import "./dbt";

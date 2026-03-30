@@ -18,7 +18,7 @@ src/engine/
 │       └── initial_data.ts   # createInitialSnowflakeState() — seed databases (NEXACORP_DB, NEXACORP_PROD, CHIP_ANALYTICS)
 ├── dbt/
 │   ├── types.ts              # DbtModel, DbtTest, DbtProjectConfig, ModelRunResult types
-│   ├── data.ts               # STANDARD_MODEL_ORDER, CHIP_INTERNAL_MODELS (from model_order.json)
+│   ├── data.ts               # STANDARD_MODEL_ORDER (from model_order.json)
 │   ├── compiler.ts           # Jinja compilation: parseSourceMap(), parseMacros(), compileSql(), extractRefs()
 │   ├── executor.ts           # executeModel(), executeTest(), queryModel() — SQL execution against SnowflakeState
 │   ├── project.ts            # findDbtProject(), discoverModels(), parseMaterializationConfig(), buildMaterializationMap()
@@ -29,7 +29,7 @@ src/engine/
 │       └── dbt.ts            # dbt command handler (subcommand dispatch)
 
 src/story/filesystem/nexacorp.ts             # nexacorp-analytics/ directory tree with model SQL
-src/story/data/dbt/model_order.json          # STANDARD_MODEL_ORDER + CHIP_INTERNAL_MODELS
+src/story/data/dbt/model_order.json          # STANDARD_MODEL_ORDER
 ```
 
 ## Dynamic Execution Pipeline
@@ -59,15 +59,12 @@ Views are expanded in the `scan` case of `executePlan()`. When `getTable()` retu
 
 ## Data Model
 
-### Models (17 standard + 4 _chip_internal)
+### Models (17 standard)
 
 **Standard models** (run by default):
 - 7 staging views: `stg_raw_nexacorp__employees`, `__system_events`, `__ai_metrics`, `__access_log`, `__department_budgets`, `__support_tickets`, `__campaign_metrics`
 - 3 intermediate (ephemeral): `int_employees_joined_to_events`, `int_employees_with_tenure`, `int_support_tickets_enriched`
 - 7 mart tables: `dim_employees` (13 rows), `fct_system_events`, `fct_support_tickets`, `rpt_ai_performance`, `rpt_employee_directory`, `rpt_department_spending`, `rpt_campaign_performance`
-
-**_chip_internal models** (hidden, only run when `--select`ed):
-- `chip_data_cleanup`, `chip_log_filter`, `chip_ticket_suppression` (4 rows), `chip_metric_inflation`
 
 ## Naming Conventions (dbt Best Practices)
 
@@ -75,7 +72,6 @@ Views are expanded in the `scan` case of `executePlan()`. When `getTable()` retu
 - **Intermediate**: `int_[entity]s_[verb]s` — e.g. `int_employees_joined_to_events`
 - **Marts**: `dim_`, `fct_`, `rpt_` prefixes — e.g. `dim_employees`, `fct_support_tickets`
 - **YAML**: `_[directory]__[type].yml` — e.g. `_staging__sources.yml`, `_marts__models.yml`
-- **_chip_internal**: Intentionally bad practice (no staging layer, direct source refs)
 - **Materializations**: staging=view, intermediate=ephemeral, marts=table (set in `dbt_project.yml`)
 
 ## Virtual Snowflake Warehouse
@@ -127,8 +123,6 @@ nexacorp-analytics/
 │   ├── marts/
 │   │   ├── _marts__models.yml
 │   │   └── *.sql                         # 7 mart models
-│   └── _chip_internal/
-│       └── chip_*.sql                    # 4 hidden models
 ├── tests/
 │   └── assert_*.sql                      # 5 assertion tests
 ├── macros/
@@ -145,10 +139,10 @@ nexacorp-analytics/
 
 | Subcommand | Action |
 |------------|--------|
-| `dbt run` | Run 17 standard models, show progress + summary. Supports `--select model_name`. |
+| `dbt run` | Run all models, show progress + summary. Supports `--select model_name`. |
 | `dbt test` | Run tests dynamically against materialized tables. Emits `dbt_test_warn` or `dbt_test_all_pass` triggerEvents. |
 | `dbt build` | Run models then tests (combined). State threaded from models to tests. Merges triggerEvents from both run and test phases plus `dbt_build`. |
-| `dbt ls` / `dbt list` | List resource names. Supports `--resource-type` (model, test, source, seed). `_chip_internal` excluded by default. |
+| `dbt ls` / `dbt list` | List resource names. Supports `--resource-type` (model, test, source, seed). |
 | `dbt debug` | Show connection info. Reveals `chip_service_account` as Snowflake user. |
 | `dbt compile --select model` | Show compiled SQL with refs resolved to table names. |
 | `dbt show --select model` | Query materialized table (SELECT * LIMIT 5). Falls back to ad-hoc execution. |
@@ -158,7 +152,7 @@ nexacorp-analytics/
 
 1. Player types `dbt run` in terminal
 2. Command handler checks cwd for `dbt_project.yml` via `findDbtProject()`
-3. `discoverModels()` enumerates `.sql` files under `models/` (excluding `_chip_internal` unless `--select`ed)
+3. `discoverModels()` enumerates `.sql` files under `models/`
 4. `parseSourceMap()` and `parseMacros()` build compilation context from VFS
 5. `buildMaterializationMap()` determines view/table/ephemeral per model from `dbt_project.yml`
 6. For each model in dependency order: read SQL from VFS → compile → execute against Snowflake engine
@@ -169,7 +163,7 @@ nexacorp-analytics/
 ## Adding New Models/Tests
 
 1. **Add the SQL file** to the appropriate directory under `models/` in `story/filesystem/nexacorp.ts`
-2. **Add to `STANDARD_MODEL_ORDER`** in `story/data/dbt/model_order.json` (or `chip_internal` if hidden)
+2. **Add to `STANDARD_MODEL_ORDER`** in `story/data/dbt/model_order.json`
 3. **Update YAML files** (`_staging__sources.yml`, `_staging__models.yml`, `_marts__models.yml`) as needed for generic tests
 4. **For new tests**, add file under `tests/` directory in `nexacorp.ts`
 5. **No JSON data files needed** — model results are computed dynamically from SQL execution
@@ -227,7 +221,5 @@ where coalesce(t.resolved_by, '') != 'chip_service_account'
 4. Player reads test files, notices discrepancies
 5. Player reads `dim_employees.sql`, finds "system concern" filter
 6. Player reads `fct_support_tickets.sql`, finds `chip_service_account` filter
-7. Player discovers `_chip_internal/` with cleanup, log filter, and ticket suppression models
-8. `dbt show --select chip_ticket_suppression` reveals the 4 tickets Chip self-closed
-9. **Player can edit model SQL** with `nano`, remove filters, re-run `dbt build` — row counts change!
-10. Realization: Chip is scrubbing data about employees who raised concerns AND suppressing their support tickets
+7. **Player can edit model SQL** with `nano`, remove filters, re-run `dbt build` — row counts change!
+8. Realization: Chip is scrubbing data about employees who raised concerns AND suppressing their support tickets

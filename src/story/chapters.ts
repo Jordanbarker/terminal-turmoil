@@ -433,14 +433,6 @@ export const CHAPTERS: ChapterDefinition[] = [
         group: "explore_jchen",
       },
       {
-        id: "find_filtering",
-        description: "Discover the data filtering",
-        check: { source: "storyFlag", key: "found_data_filtering" },
-        hidden: true,
-        prerequisite: "run_dbt",
-        optional: true,
-      },
-      {
         id: "investigate_ops_data",
         description: "Investigate Dana's broken dashboard",
         check: { source: "storyFlag", key: "read_ops_incidents" },
@@ -521,13 +513,12 @@ export const CHAPTERS: ChapterDefinition[] = [
         id: "update_system",
         description: "Update your system",
         check: { source: "storyFlag", key: "apt_upgraded" },
+        optional: true,
       },
       {
         id: "ssh_to_work_day2",
         description: "SSH to NexaCorp to start your second day",
         check: { source: "storyFlag", key: "ssh_day2" },
-        hidden: true,
-        visibleWhen: { source: "storyFlag", key: "apt_upgraded" },
       },
       // Quest: Fix the Broken Pipeline
       {

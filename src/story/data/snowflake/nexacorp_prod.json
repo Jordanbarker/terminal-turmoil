@@ -1913,6 +1913,115 @@
             }
           ],
           "createdAt": "2026-02-03"
+        },
+        "CUSTOMERS": {
+          "name": "CUSTOMERS",
+          "columns": [
+            {
+              "name": "CUSTOMER_ID",
+              "type": "VARCHAR",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "COMPANY_NAME",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "INDUSTRY",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "SIGNUP_DATE",
+              "type": "DATE",
+              "nullable": false
+            },
+            {
+              "name": "PLAN_TIER",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "ANNUAL_CONTRACT_VALUE",
+              "type": "NUMBER",
+              "nullable": true
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "LAST_ACTIVITY_DATE",
+              "type": "DATE",
+              "nullable": true
+            },
+            {
+              "name": "ACCOUNT_MANAGER",
+              "type": "VARCHAR",
+              "nullable": false
+            }
+          ],
+          "rows": [
+            {
+              "CUSTOMER_ID": "C001",
+              "COMPANY_NAME": "Willow Health Systems",
+              "INDUSTRY": "Healthcare",
+              "SIGNUP_DATE": "2025-06-15",
+              "PLAN_TIER": "enterprise",
+              "ANNUAL_CONTRACT_VALUE": 280000,
+              "STATUS": "active",
+              "LAST_ACTIVITY_DATE": "2026-03-25",
+              "ACCOUNT_MANAGER": "James Wilson"
+            },
+            {
+              "CUSTOMER_ID": "C002",
+              "COMPANY_NAME": "Vanguard Health",
+              "INDUSTRY": "Healthcare",
+              "SIGNUP_DATE": "2025-08-01",
+              "PLAN_TIER": "professional",
+              "ANNUAL_CONTRACT_VALUE": 95000,
+              "STATUS": "active",
+              "LAST_ACTIVITY_DATE": "2026-03-27",
+              "ACCOUNT_MANAGER": "James Wilson"
+            },
+            {
+              "CUSTOMER_ID": "C003",
+              "COMPANY_NAME": "Pinnacle Financial Group",
+              "INDUSTRY": "Finance",
+              "SIGNUP_DATE": "2025-09-20",
+              "PLAN_TIER": "enterprise",
+              "ANNUAL_CONTRACT_VALUE": 320000,
+              "STATUS": "active",
+              "LAST_ACTIVITY_DATE": "2026-03-28",
+              "ACCOUNT_MANAGER": "James Wilson"
+            },
+            {
+              "CUSTOMER_ID": "C004",
+              "COMPANY_NAME": "FireCoin",
+              "INDUSTRY": "Finance",
+              "SIGNUP_DATE": "2025-11-10",
+              "PLAN_TIER": "starter",
+              "ANNUAL_CONTRACT_VALUE": 25000,
+              "STATUS": "churned",
+              "LAST_ACTIVITY_DATE": "2026-02-14",
+              "ACCOUNT_MANAGER": "James Wilson"
+            },
+            {
+              "CUSTOMER_ID": "C005",
+              "COMPANY_NAME": "Ascend Crypto",
+              "INDUSTRY": "Finance",
+              "SIGNUP_DATE": "2026-01-05",
+              "PLAN_TIER": "professional",
+              "ANNUAL_CONTRACT_VALUE": 110000,
+              "STATUS": "active",
+              "LAST_ACTIVITY_DATE": "2026-03-26",
+              "ACCOUNT_MANAGER": "James Wilson"
+            }
+          ],
+          "createdAt": "2026-02-03"
         }
       }
     },

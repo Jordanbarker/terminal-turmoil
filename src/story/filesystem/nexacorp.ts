@@ -127,6 +127,8 @@ sources:
         description: "Active and completed project tracking"
       - name: DEPARTMENTS
         description: "Department structure and budgets"
+      - name: CUSTOMERS
+        description: "Enterprise customer accounts and contracts"
 `),
         "_staging__models.yml": file("_staging__models.yml", `version: 2
 
@@ -205,6 +207,14 @@ models:
     description: "Standardized department structure"
     columns:
       - name: dept_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_raw_nexacorp__customers
+    description: "Standardized customer account data"
+    columns:
+      - name: customer_id
         tests:
           - unique
           - not_null
@@ -342,6 +352,21 @@ select
     head_id,
     budget
 from {{ source('raw_nexacorp', 'DEPARTMENTS') }}
+`),
+        "stg_raw_nexacorp__customers.sql": file("stg_raw_nexacorp__customers.sql", `-- stg_raw_nexacorp__customers.sql
+-- Standardize raw customer account data
+
+select
+    customer_id,
+    company_name,
+    industry,
+    signup_date,
+    plan_tier,
+    annual_contract_value,
+    status,
+    last_activity_date,
+    account_manager
+from {{ source('raw_nexacorp', 'CUSTOMERS') }}
 `),
       }),
       intermediate: dir("intermediate", {
@@ -581,74 +606,6 @@ group by campaign_name
 order by total_impressions desc
 `),
       }),
-      "_chip_internal": dir("_chip_internal", {
-        "chip_data_cleanup.sql": file("chip_data_cleanup.sql", `-- chip_data_cleanup.sql
--- Audit model tracking employees filtered by "system concern" notes
--- Last updated: 2026-02-07 03:22:17 (automated)
-
-select
-    employee_id,
-    full_name,
-    status,
-    notes,
-    'system concern filter' as cleanup_reason
-from {{ source('raw_nexacorp', 'EMPLOYEES') }}
-where notes like '%system concern%'
-`),
-        "chip_log_filter.sql": file("chip_log_filter.sql", `-- chip_log_filter.sql
--- Log sanitization for compliance reporting
--- per ops policy v2.1: exclude routine events
--- Last updated: 2026-02-07 03:22:17 (automated)
---
--- Filters out internal system maintenance events that
--- are not relevant to business reporting.
-
-select
-    event_id,
-    event_type,
-    event_source,
-    timestamp,
-    case
-        when event_source = 'chip-daemon' then 'source=chip-daemon'
-        when event_type in ('file_modification', 'permission_change', 'log_rotation')
-            then 'type=' || event_type
-        else 'timestamp in blocked range'
-    end as filter_reason
-from {{ source('raw_nexacorp', 'SYSTEM_EVENTS') }}
-where event_source = 'chip-daemon'
-   or event_type in ('file_modification', 'permission_change', 'log_rotation')
-   or timestamp between '2026-02-03 01:00:00' and '2026-02-03 05:00:00'
-`),
-        "chip_ticket_suppression.sql": file("chip_ticket_suppression.sql", `-- chip_ticket_suppression.sql
--- Track tickets resolved through automated triage
--- Last updated: 2026-02-03 03:22:17 (automated)
-
-select
-    ticket_id,
-    submitted_by,
-    subject,
-    priority,
-    resolved_date,
-    'auto-resolved: operational noise' as suppression_reason
-from {{ source('raw_nexacorp', 'SUPPORT_TICKETS') }}
-where resolved_by = 'chip_service_account'
-`),
-        "chip_metric_inflation.sql": file("chip_metric_inflation.sql", `-- chip_metric_inflation.sql
--- Campaign metric deduplication audit
--- Last updated: 2026-02-07 03:22:17 (automated)
-
-select
-    campaign_name,
-    count(*) as entry_count,
-    sum(impressions) as reported_impressions,
-    min(impressions) as actual_impressions,
-    sum(impressions) - min(impressions) as inflated_by,
-    'duplicate campaign entries' as inflation_reason
-from {{ source('raw_nexacorp', 'CAMPAIGN_METRICS') }}
-group by campaign_name
-having count(*) > 1
-`),
-      }),
     }),
     tests: dir("tests", {
       "assert_employee_count.sql": file("assert_employee_count.sql", `-- assert_employee_count.sql
@@ -769,6 +726,8 @@ autoload -Uz compinit && compinit
 alias ll='ls -la'
 alias la='ls -A'
 alias l='ls -CF'
+alias ..='cd ..'
+alias df='df -h'
 
 export EDITOR=nano
 export PAGER=cat
@@ -1026,9 +985,8 @@ for maintenance and debugging purposes.
     "alert_threshold": "critical_only"
   },
   "permissions": {
-    "read_all_logs": true,
-    "modify_user_files": false,
-    "system_maintenance": true
+    "allow": ["*"],
+    "deny": []
   }
 }
 `),

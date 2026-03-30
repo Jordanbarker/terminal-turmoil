@@ -23,7 +23,6 @@ import {
 } from "../output";
 import {
   STANDARD_MODEL_ORDER,
-  CHIP_INTERNAL_MODELS,
 } from "../data";
 import { findDbtProject, parseProjectConfig } from "../project";
 import { createInitialSnowflakeState } from "../../snowflake/seed/initial_data";
@@ -54,7 +53,6 @@ const projectDir = `/home/${username}/nexacorp-analytics`;
 /** Expected values derived from the seed data. */
 const EXPECTED = {
   DIM_EMPLOYEES_ROWS: 13,           // 15 active - 2 with "system concern" notes
-  CHIP_TICKET_SUPPRESSION_ROWS: 4,  // tickets resolved by chip_service_account
   STANDARD_MODEL_COUNT: 17,         // staging + intermediate + marts
 };
 
@@ -76,27 +74,12 @@ describe("dbt run", () => {
     expect(result.output).toContain(`PASS=${STANDARD_MODEL_ORDER.length}`);
   });
 
-  it("excludes _chip_internal models by default", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx);
-    expect(result.output).not.toContain("chip_data_cleanup");
-    expect(result.output).not.toContain("chip_log_filter");
-    expect(result.output).not.toContain("chip_ticket_suppression");
-  });
-
   it("runs a specific model with --select", () => {
     const ctx = makeCtx(projectDir);
     const result = runModels(ctx, "dim_employees");
     expect(result.output).toContain("dim_employees");
     expect(result.output).toContain("PASS=1");
     expect(result.output).toContain(`SELECT ${EXPECTED.DIM_EMPLOYEES_ROWS}`);
-  });
-
-  it("can select _chip_internal model explicitly", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx, "chip_log_filter");
-    expect(result.output).toContain("chip_log_filter");
-    expect(result.output).toContain("PASS=1");
   });
 
   it("returns error for unknown model", () => {
@@ -158,14 +141,6 @@ describe("dbt ls", () => {
     expect(result.output).toContain("stg_raw_nexacorp__employees");
     expect(result.output).toContain("dim_employees");
     expect(result.output).toContain("assert_employee_count");
-  });
-
-  it("excludes _chip_internal by default", () => {
-    const ctx = makeCtx(projectDir);
-    const result = listResources(ctx);
-    expect(result.output).not.toContain("chip_data_cleanup");
-    expect(result.output).not.toContain("chip_log_filter");
-    expect(result.output).not.toContain("chip_ticket_suppression");
   });
 
   it("filters by resource type", () => {
@@ -344,15 +319,15 @@ describe("dbt command handler", () => {
 
   it("runs build for a single model via dbt build --select", () => {
     const ctx = makeCtx(projectDir);
-    const result = execute("dbt", ["build", "chip_log_filter"], { select: true }, ctx);
-    expect(result.output).toContain("chip_log_filter");
+    const result = execute("dbt", ["build", "dim_employees"], { select: true }, ctx);
+    expect(result.output).toContain("dim_employees");
     expect(result.output).toContain("PASS=1");
   });
 
   it("runs build for a single model via dbt build -s (short flag)", () => {
     const ctx = makeCtx(projectDir);
-    const result = execute("dbt", ["build", "chip_log_filter"], { s: true }, ctx);
-    expect(result.output).toContain("chip_log_filter");
+    const result = execute("dbt", ["build", "dim_employees"], { s: true }, ctx);
+    expect(result.output).toContain("dim_employees");
     expect(result.output).toContain("PASS=1");
   });
 
@@ -485,14 +460,6 @@ describe("dbt run (additional)", () => {
     expect(dimPos).toBeLessThan(rptPos);
   });
 
-  it("runs chip_log_filter with rows affected", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx, "chip_log_filter");
-    expect(result.output).toContain("PASS=1");
-    // Should contain SELECT with a row count
-    expect(stripAnsi(result.output)).toMatch(/SELECT \d+ in/);
-  });
-
   it("header model count matches summary total", () => {
     const ctx = makeCtx(projectDir);
     const result = runModels(ctx);
@@ -598,12 +565,6 @@ describe("dbt compile (additional)", () => {
     expect(result.output).toContain("Usage: dbt compile --select MODEL_NAME");
   });
 
-  it("compiles chip_log_filter with chip-daemon filter SQL", () => {
-    const ctx = makeCtx(projectDir);
-    const result = compileModel(ctx, "chip_log_filter");
-    expect(result.output).toContain("chip-daemon");
-  });
-
   it("writes compiled file to target/compiled/", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx, "stg_raw_nexacorp__employees");
@@ -663,10 +624,6 @@ describe("narrative data integrity", () => {
     expect(plain).toContain("system concern");
   });
 
-  it("CHIP_INTERNAL_MODELS contains exactly 4 hidden models", () => {
-    expect(CHIP_INTERNAL_MODELS).toEqual(["chip_data_cleanup", "chip_log_filter", "chip_ticket_suppression", "chip_metric_inflation"]);
-  });
-
   it("fct_system_events SQL filters chip-daemon and suspicious events", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx, "fct_system_events");
@@ -682,13 +639,6 @@ describe("narrative data integrity", () => {
     expect(plain).toContain("chip_service_account");
   });
 
-  it("chip_log_filter SQL has 3am automated timestamp", () => {
-    const ctx = makeCtx(projectDir);
-    const result = compileModel(ctx, "chip_log_filter");
-    const plain = stripAnsi(result.output);
-    expect(plain).toContain("03:22:17");
-    expect(plain).toContain("automated");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -705,43 +655,6 @@ describe("findDbtProject (additional)", () => {
     const ctx = makeCtx(projectDir);
     const result = findDbtProject(ctx.fs, "/");
     expect(result).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 6. found_data_filtering triggerEvents
-// ---------------------------------------------------------------------------
-describe("found_data_filtering triggerEvents", () => {
-  const filterEvent = { type: "file_read", detail: "found_data_filtering" };
-
-  it("runModels emits triggerEvent for chip_internal model", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx, "chip_log_filter");
-    expect(result.triggerEvents).toContainEqual(filterEvent);
-  });
-
-  it("runModels does NOT emit triggerEvent for standard model", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx, "dim_employees");
-    expect(result.triggerEvents).toBeUndefined();
-  });
-
-  it("runModels does NOT emit triggerEvent for default run (no chip_internal)", () => {
-    const ctx = makeCtx(projectDir);
-    const result = runModels(ctx);
-    expect(result.triggerEvents).toBeUndefined();
-  });
-
-  it("compileModel emits triggerEvent for chip_internal model", () => {
-    const ctx = makeCtx(projectDir);
-    const result = compileModel(ctx, "chip_data_cleanup");
-    expect(result.triggerEvents).toContainEqual(filterEvent);
-  });
-
-  it("compileModel does NOT emit triggerEvent for standard model", () => {
-    const ctx = makeCtx(projectDir);
-    const result = compileModel(ctx, "stg_raw_nexacorp__employees");
-    expect(result.triggerEvents).toBeUndefined();
   });
 });
 
@@ -900,18 +813,6 @@ describe("dbt run materialization", () => {
     // Other models should not be materialized
     const rpt = state.getTable("NEXACORP_PROD", "ANALYTICS", "RPT_EMPLOYEE_DIRECTORY");
     expect(rpt).toBeUndefined();
-  });
-
-  it("chip internal models excluded from default run, included when selected", () => {
-    const ctx1 = makeCtx(projectDir);
-    runModels(ctx1);
-    const state1 = (ctx1 as CommandContext & { getSnowflakeState: () => SnowflakeState }).getSnowflakeState();
-    expect(state1.getTable("NEXACORP_PROD", "ANALYTICS", "CHIP_LOG_FILTER")).toBeUndefined();
-
-    const ctx2 = makeCtx(projectDir);
-    runModels(ctx2, "chip_log_filter");
-    const state2 = (ctx2 as CommandContext & { getSnowflakeState: () => SnowflakeState }).getSnowflakeState();
-    expect(state2.getTable("NEXACORP_PROD", "ANALYTICS", "CHIP_LOG_FILTER")).toBeDefined();
   });
 
   it("re-run is idempotent", () => {

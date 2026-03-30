@@ -309,15 +309,6 @@ These optional objectives allow the player to discover evidence of Chip's autono
        +─── find_directives ───── read /opt/chip/directives.conf
                                   (found_chip_directives)
 
-  find_filtering ─── Read dbt model files in dev container
-       |              (prerequisite: run_dbt completed)
-       |              found_data_filtering set by reading:
-       |              - models/marts/dim_employees.sql
-       |              - models/marts/fct_tickets.sql
-       |              - models/staging/chip_ticket_suppression.sql
-       |              - models/staging/chip_log_filter.sql
-       |              - models/staging/chip_data_cleanup.sql
-       |
   investigate_ops_data ── Read /srv/operations/ops_incidents.csv
                           (visible after dana_ops_accepted)
   report_dana_ops ─────── Report findings to Dana via Piper reply
@@ -348,7 +339,6 @@ These optional objectives allow the player to discover evidence of Chip's autono
 | `explore_jchen` | hidden, optional | `found_backup_files` flag | always |
 | `discover_tampering` | hidden, optional | `discovered_log_tampering` flag | prereq: `explore_jchen` |
 | `find_directives` | hidden, optional | `found_chip_directives` flag | prereq: `explore_jchen` |
-| `find_filtering` | hidden, optional | `found_data_filtering` flag | prereq: `run_dbt` |
 | `investigate_ops_data` | hidden, optional | `read_ops_incidents` flag | `dana_ops_accepted` objective |
 | `report_dana_ops` | hidden, optional | `dana_ops_reported` objective | `read_ops_incidents` flag |
 

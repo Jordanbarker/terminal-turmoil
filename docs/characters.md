@@ -141,7 +141,7 @@ Jessica Langford — CEO & Co-Founder
 **Employee ID**: 1009 | **Email**: `auri@nexacorp.com`
 **Personality**: Smart, enthusiastic, still proving herself. Clear technical communicator. Eager, uses "!" naturally.
 **Story role**: Ren's onboarding buddy, assigned by Maya. Reciprocal relationship — she guides Ren through data systems while Ren helps with workload she's handled solo since Chen left.
-**Mystery angle**: Inherited Jin Chen's dbt models and trusts them as-is. Hasn't questioned the `_chip_internal` filtering logic. Could become an important ally if the player points her in the right direction — she has the skills, just needs someone to ask the right questions.
+**Mystery angle**: Inherited Jin Chen's dbt models and trusts them as-is. Hasn't audited the suspicious SQL filters in the mart models. Could become an important ally if the player points her in the right direction — she has the skills, just needs someone to ask the right questions.
 
 ### Soham Parekh — Full-Stack Engineer
 **Employee ID**: 1010 | **Email**: `soham@nexacorp.com`

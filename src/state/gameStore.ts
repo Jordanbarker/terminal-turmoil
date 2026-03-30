@@ -60,6 +60,7 @@ interface GameStore {
   resetGame: () => void;
   saveGame: (slotId: SaveSlotId, label?: string) => boolean;
   loadGame: (slotId: SaveSlotId) => boolean;
+  loadCheckpointData: (data: { chapter: string; activeComputer: ComputerId; storyFlags: StoryFlags; deliveredEmailIds: string[]; deliveredPiperIds: string[]; completedObjectives: string[]; computers: ComputerId[]; commandHistory?: Partial<Record<ComputerId, string[]>>; aliases?: Partial<Record<ComputerId, Record<string, string>>> }) => boolean;
   setComputerFs: (computer: ComputerId, fs: VirtualFS) => void;
   initComputer: (computer: ComputerId, fs: VirtualFS) => void;
   addTab: (computerId: ComputerId, cwd: string) => string;
@@ -343,6 +344,47 @@ export const useGameStore = create<GameStore>()(
           computerState: loadedComputerState,
           tabs,
           activeTabId,
+          activeSnowSession: null,
+        });
+        return true;
+      },
+
+      loadCheckpointData: (data) => {
+        const username = PLAYER.username;
+        const homeDir = `/home/${username}`;
+        const sfState = createInitialSnowflakeState({ includeDay2: !!data.storyFlags.day1_shutdown });
+
+        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>> = {};
+        for (const computerId of data.computers) {
+          let fs = buildFs(username, computerId, data.storyFlags, data.deliveredEmailIds);
+          if (computerId === "nexacorp") {
+            fs = syncToVirtualFS(sfState, fs);
+          }
+          const baseAliases = initAliasesForComputer(computerId, username, fs);
+          const checkpointAliases = data.aliases?.[computerId] ?? {};
+          loadedComputerState[computerId] = {
+            fs,
+            commandHistory: data.commandHistory?.[computerId] ?? [],
+            envVars: initEnvForComputer(computerId, username, fs),
+            aliases: { ...baseAliases, ...checkpointAliases },
+          };
+        }
+
+        tabCounter = 0;
+        const tabId = nextTabId();
+
+        set({
+          username,
+          gamePhase: "playing",
+          currentChapter: data.chapter,
+          completedObjectives: [...data.completedObjectives],
+          deliveredEmailIds: [...data.deliveredEmailIds],
+          deliveredPiperIds: [...data.deliveredPiperIds],
+          storyFlags: { ...data.storyFlags },
+          snowflakeState: sfState,
+          computerState: loadedComputerState,
+          tabs: [{ id: tabId, computerId: data.activeComputer, cwd: homeDir }],
+          activeTabId: tabId,
           activeSnowSession: null,
         });
         return true;

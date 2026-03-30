@@ -1,8 +1,28 @@
 you're absolutely right!
 
+Do you have any questions for me? 
+
+ll='ls -la'
+..='cd ..'
+df='df -h'
+up='sudo apt update && sudo apt upgrade'
+ 
+RAG quest - outdated docs, bad data, 
+    RAG data: PTO, HR policies, IT procedures, internal playbooks, product docs, wikis, databases (snowflake)
+             regulatory guidance, audit materials, and transaction context to support reporting and compliance questions.
+    Terminal angles:
+        Inspect the full context passed to the LLM: grep -A 50 "prompt=" logs/app.log | head -n 200 
+        Find and inspect raw documents:  find ./data -name "*.txt" -o -name "*.pdf" -o -name "*.md"
+        Endpoint for /health or /ready:
+            curl -X GET http://localhost:8081/v1/health | jq
+            curl -X GET http://localhost:1976/v1/health/ready | jq
+
+gap of startup chaos — the social noise, the overlap, the constant context-switching, the meetings-about-meetings. Right now it reads a bit like an idealized, well-run startup rather than the beautiful mess most actually are.
+
 Edward asks user who is suspicous, Sarah or Erik or Nobody?
     (Bad ending) Sarah/Nobody is chosen, Sarah and Edward are fired, Erik takes over as CTO
     (Good ending) Erik is chosen, Erik and Edward are fired, Sarah takes over as CTO
+    Omni-Z buyout, they rebranded from ScrollSphere like 2 years ago but people still call it ScrollSphere
 
 uv repos, uv install command error
 note about deleting old data to keep snowflake bill cheap
@@ -17,12 +37,22 @@ Day 0 - source
     setup alias=
         filter out companies you've applied to in auto_apply 
 
-Good ending: 
-Bad ending: logoff - they know where you are
 
  - echo $VAR expansion in interactive commands (requires input pipeline changes)
  - unset command: removes shell variables or functions from the current session.
  - export FOO=bar
+
+mart-layer report (rpt_customer_summary or dim_customers)
+du
+    Basic usage
+    du alone: shows disk usage of the current directory and all subdirectories (in blocks, usually 1 KB).
+    du /path/to/dir: shows usage for that specific directory and its subdirectories.
+
+    Common useful options
+    du -h: shows sizes in human‑readable units like K, M, G (e.g., 4.2M).
+    du -sh .: shows only the total size of the current directory (summary).
+    du -a: shows every file and directory, not just directories.
+    du -m or du -k: forces output in MB or KB blocks.
 
 $ echo "Hello World"            # print to screen
 $ echo "Hello" > output.txt     # write to file (overwrites)
@@ -50,8 +80,6 @@ Check dataset sizes: ls -lh /data/training_set/
 Count dataset records: wc -l dataset.csv
 Preview data structures: head -n 10 dataset.csv
 
-nvidia-smi
-
 tmux new -s data_processing
 
 move to later or delete:
@@ -77,23 +105,7 @@ git push origin fix/data-pipeline-null-values
 > git clone, checkout -b, commit -m, push origin
 
 Tabs unlock in Chapter 2 when the player completes the search_tools_accepted objective (alongside grep/find/diff). A toast notifies them: "Multi-terminal tabs unlocked! Ctrl+B, C to create, Ctrl+B, N/P to switch."
-  The tab bar only renders when tabs_unlocked is true and gamePhase === "playing".          
-Keyboard Shortcuts: (tmux-style) All shortcuts use the Ctrl+B prefix followed by a key (500ms timeout, with a pulsing ^B indicator in the tab bar:
-  ┌────────────────┬──────────────────────────────────────────────────────────────┐
-  │    Shortcut    │                            Action                            │            
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, C      │ Create new tab (same computer)                               │            
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, X      │ Close tab (warns if unsaved; press again within 2s to force) │
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, N      │ Next tab                                                     │
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, P      │ Previous tab                                                 │            
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, 1-5    │ Jump to tab by number                                        │            
-  ├────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Ctrl+B, Ctrl+B │ Send literal Ctrl+B                                          │
-
+  The tab bar only renders when tabs_unlocked is true and gamePhase === "playing".
 
 Data Audit Basics (Auri, onboarding) "Before we run anything, let's sanity-check the datasets"
   

@@ -387,35 +387,6 @@ async function playtest() {
   r = await runner.runAsync("dbt build");
   expectFlag(runner, "ran_dbt", "ran dbt build");
 
-  // Check for data filtering (read _chip_internal models)
-  step("Discovering data filtering in dbt models");
-  const dbtBase = `/home/${username}/nexacorp-analytics/models`;
-
-  r = runner.run(`cat ${dbtBase}/marts/dim_employees.sql`);
-  if (runner.storyFlags.found_data_filtering) {
-    ok("found_data_filtering set from dim_employees.sql");
-  }
-
-  r = runner.run(`cat ${dbtBase}/marts/fct_support_tickets.sql`);
-  if (runner.storyFlags.found_data_filtering) {
-    ok("found_data_filtering set from fct_support_tickets.sql");
-  }
-
-  // Check _chip_internal models
-  r = runner.run(`ls ${dbtBase}/_chip_internal/`);
-  if (r.exitCode === 0) {
-    ok("_chip_internal directory exists");
-    r = runner.run(`cat ${dbtBase}/_chip_internal/chip_ticket_suppression.sql`);
-    r = runner.run(`cat ${dbtBase}/_chip_internal/chip_log_filter.sql`);
-    r = runner.run(`cat ${dbtBase}/_chip_internal/chip_data_cleanup.sql`);
-    expectFlag(runner, "found_data_filtering", "found data filtering in chip models");
-  } else {
-    warn(`_chip_internal directory not found at ${dbtBase}/_chip_internal/`);
-    // Check if models exist after dbt build
-    r = runner.run(`ls ${dbtBase}/`);
-    warn(`Available model dirs: ${r.output}`);
-  }
-
   // ── Switch back to NexaCorp for remaining objectives ──
   step("Switching back to NexaCorp");
   runner.switchComputer("nexacorp");

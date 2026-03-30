@@ -10,6 +10,7 @@ import { colorize, ansi } from "../../lib/ansi";
 import { listSaveSlots, formatSlotName } from "../../state/saveManager";
 import { commandReadsFiles } from "./registry";
 import { processDeliveries } from "./processDeliveries";
+import { CHECKPOINTS } from "../../story/checkpoints";
 
 export type SessionToStart =
   | { type: "editor"; info: EditorSessionInfo }
@@ -135,6 +136,10 @@ export function computeEffects(
 
     if (result.gameAction.type === "listSaves") {
       effects.output += computeListSavesOutput();
+    } else if (result.gameAction.type === "listCheckpoints") {
+      effects.output += computeListCheckpointsOutput();
+    } else if (result.gameAction.type === "loadCheckpoint") {
+      effects.suppressPrompt = true;
     } else if (result.gameAction.type === "newGame") {
       effects.suppressPrompt = true;
     } else if (result.gameAction.type === "shutdown") {
@@ -220,5 +225,22 @@ function computeListSavesOutput(): string {
   }
   lines.push("");
   lines.push(`Use ${colorize("save 1|2|3", ansi.cyan)} or ${colorize("load 1|2|3|auto", ansi.cyan)}`);
+  return lines.join("\n");
+}
+
+function computeListCheckpointsOutput(): string {
+  const lines = [
+    colorize("Checkpoints:", ansi.bold + ansi.cyan),
+    "",
+  ];
+  for (let i = 0; i < CHECKPOINTS.length; i++) {
+    const cp = CHECKPOINTS[i];
+    const num = colorize(`${i + 1}.`, ansi.cyan);
+    const name = colorize(cp.id.padEnd(12), ansi.bold);
+    const desc = colorize(cp.description, ansi.dim);
+    lines.push(`  ${num} ${name} ${desc}`);
+  }
+  lines.push("");
+  lines.push(`Use ${colorize("cheat 1|2|3", ansi.cyan)} to load a checkpoint`);
   return lines.join("\n");
 }

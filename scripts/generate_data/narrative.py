@@ -425,51 +425,6 @@ from NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__DEPARTMENT_BUDGETS
 group by department_name, fiscal_year, fiscal_quarter
 order by department_name, fiscal_year, fiscal_quarter""",
 
-    "chip_data_cleanup": """-- models/_chip_internal/chip_data_cleanup.sql
--- Compiled by dbt 1.7.4
--- Last updated: 2026-02-07 03:22:17 (automated)
-
-select
-    employee_id,
-    full_name,
-    status,
-    notes,
-    'system concern filter' as cleanup_reason
-from NEXACORP_PROD.ANALYTICS.STG_RAW_NEXACORP__EMPLOYEES
-where notes like '%system concern%'""",
-
-    "chip_log_filter": """-- models/_chip_internal/chip_log_filter.sql
--- Compiled by dbt 1.7.4
--- Last updated: 2026-02-07 03:22:17 (automated)
-
-select
-    event_id,
-    event_type,
-    event_source,
-    timestamp,
-    case
-        when event_source = 'chip-daemon' then 'source=chip-daemon'
-        when event_type in ('file_modification', 'permission_change', 'log_rotation') then 'type=' || event_type
-        else 'timestamp in blocked range'
-    end as filter_reason
-from NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS
-where event_source = 'chip-daemon'
-   or event_type in ('file_modification', 'permission_change', 'log_rotation')
-   or timestamp between '2026-02-03 01:00:00' and '2026-02-03 05:00:00'""",
-
-    "chip_ticket_suppression": """-- models/_chip_internal/chip_ticket_suppression.sql
--- Compiled by dbt 1.7.4
--- Last updated: 2026-02-07 03:22:17 (automated)
-
-select
-    ticket_id,
-    submitted_by,
-    subject,
-    priority,
-    resolved_date,
-    'auto-resolved: operational noise' as suppression_reason
-from NEXACORP_PROD.RAW_NEXACORP.SUPPORT_TICKETS
-where resolved_by = 'chip_service_account'""",
 }
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -494,8 +449,6 @@ STANDARD_MODEL_ORDER = [
     "rpt_department_spending",
 ]
 
-CHIP_INTERNAL_MODELS = ["chip_data_cleanup", "chip_log_filter", "chip_ticket_suppression"]
-
 # Model materializations
 MODEL_MATERIALIZATIONS = {
     "stg_raw_nexacorp__employees": "view",
@@ -513,9 +466,6 @@ MODEL_MATERIALIZATIONS = {
     "rpt_ai_performance": "table",
     "rpt_employee_directory": "table",
     "rpt_department_spending": "table",
-    "chip_data_cleanup": "table",
-    "chip_log_filter": "table",
-    "chip_ticket_suppression": "table",
 }
 
 # Execution times per model (cosmetic)
@@ -535,9 +485,6 @@ MODEL_EXECUTION_TIMES = {
     "rpt_ai_performance": 0.34,
     "rpt_employee_directory": 0.45,
     "rpt_department_spending": 0.29,
-    "chip_data_cleanup": 0.28,
-    "chip_log_filter": 0.91,
-    "chip_ticket_suppression": 0.19,
 }
 
 # Test execution times

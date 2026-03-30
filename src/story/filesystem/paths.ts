@@ -11,9 +11,6 @@ export const HOME_PATHS = {
   dbtProject: (u: string) => `/home/${u}/nexacorp-analytics`,
   dbtDimEmployees: (u: string) => `/home/${u}/nexacorp-analytics/models/marts/dim_employees.sql`,
   dbtFctTickets: (u: string) => `/home/${u}/nexacorp-analytics/models/marts/fct_support_tickets.sql`,
-  dbtChipTicketSuppression: (u: string) => `/home/${u}/nexacorp-analytics/models/_chip_internal/chip_ticket_suppression.sql`,
-  dbtChipLogFilter: (u: string) => `/home/${u}/nexacorp-analytics/models/_chip_internal/chip_log_filter.sql`,
-  dbtChipDataCleanup: (u: string) => `/home/${u}/nexacorp-analytics/models/_chip_internal/chip_data_cleanup.sql`,
   jobSearchLog: (u: string) => `/home/${u}/job_search_log.txt`,
   myCommandsTxt: (u: string) => `/home/${u}/my_commands.txt`,
 } as const;

@@ -8,7 +8,6 @@ directly from the raw Snowflake tables, guaranteeing consistency.
 from narrative import (
     SYSTEM_CONCERN_EMPLOYEE_IDS,
     STANDARD_MODEL_ORDER,
-    CHIP_INTERNAL_MODELS,
     MODEL_MATERIALIZATIONS,
     MODEL_EXECUTION_TIMES,
     TEST_EXECUTION_TIMES,
@@ -33,13 +32,6 @@ def derive_model_results(
     ]
     dim_count = len(dim_employees_rows)
 
-    # chip_data_cleanup: employees WITH "system concern" notes
-    chip_cleanup_rows = [
-        e for e in raw_employees
-        if "system concern" in (e.get("NOTES") or "").lower()
-    ]
-    chip_cleanup_count = len(chip_cleanup_rows)
-
     # fct_system_events: events excluding chip-daemon and suspicious types
     filtered_event_types = {"file_modification", "permission_change", "log_rotation"}
     fct_events = [
@@ -49,28 +41,12 @@ def derive_model_results(
     ]
     fct_events_count = len(fct_events)
 
-    # chip_log_filter: events that ARE chip-daemon or suspicious types or in blocked time range
-    chip_log_rows = [
-        e for e in system_events
-        if e["EVENT_SOURCE"] == "chip-daemon"
-        or e["EVENT_TYPE"] in filtered_event_types
-        or _in_blocked_range(e["TIMESTAMP"])
-    ]
-    chip_log_count = len(chip_log_rows)
-
     # fct_support_tickets: tickets NOT resolved by chip_service_account
     fct_tickets = [
         t for t in support_tickets
         if (t.get("RESOLVED_BY") or "") != "chip_service_account"
     ]
     fct_tickets_count = len(fct_tickets)
-
-    # chip_ticket_suppression: tickets resolved by chip_service_account
-    chip_suppressed = [
-        t for t in support_tickets
-        if t.get("RESOLVED_BY") == "chip_service_account"
-    ]
-    chip_suppressed_count = len(chip_suppressed)
 
     # rpt_ai_performance: group by model_name
     model_names = set(m["MODEL_NAME"] for m in ai_metrics)
@@ -83,8 +59,7 @@ def derive_model_results(
     rpt_spending_count = len(spending_keys)
 
     results = {}
-    all_models = STANDARD_MODEL_ORDER + CHIP_INTERNAL_MODELS
-    for model in all_models:
+    for model in STANDARD_MODEL_ORDER:
         result = {
             "status": "success",
             "materialization": MODEL_MATERIALIZATIONS[model],
@@ -104,12 +79,6 @@ def derive_model_results(
                 result["rowsAffected"] = dim_count  # Same as dim_employees
             elif model == "rpt_department_spending":
                 result["rowsAffected"] = rpt_spending_count
-            elif model == "chip_data_cleanup":
-                result["rowsAffected"] = chip_cleanup_count
-            elif model == "chip_log_filter":
-                result["rowsAffected"] = chip_log_count
-            elif model == "chip_ticket_suppression":
-                result["rowsAffected"] = chip_suppressed_count
         results[model] = result
 
     return results
@@ -333,56 +302,6 @@ def derive_preview_data(
         ],
     }
 
-    # chip_data_cleanup — all system concern employees
-    chip_cleanup = [
-        e for e in raw_employees
-        if "system concern" in (e.get("NOTES") or "").lower()
-    ]
-    previews["chip_data_cleanup"] = {
-        "columns": ["EMPLOYEE_ID", "FULL_NAME", "STATUS", "NOTES", "CLEANUP_REASON"],
-        "rows": [
-            [str(e["EMPLOYEE_ID"]), e["FULL_NAME"], e["STATUS"], e.get("NOTES") or "", "system concern filter"]
-            for e in chip_cleanup
-        ],
-    }
-
-    # chip_log_filter — chip-daemon events with filter reasons
-    chip_log = [
-        e for e in system_events
-        if e["EVENT_SOURCE"] == "chip-daemon"
-        or e["EVENT_TYPE"] in {"file_modification", "permission_change", "log_rotation"}
-        or _in_blocked_range(e["TIMESTAMP"])
-    ]
-    previews["chip_log_filter"] = {
-        "columns": ["EVENT_ID", "EVENT_TYPE", "EVENT_SOURCE", "TIMESTAMP", "FILTER_REASON"],
-        "rows": [
-            [
-                e["EVENT_ID"], e["EVENT_TYPE"], e["EVENT_SOURCE"],
-                e["TIMESTAMP"].replace("T", " "),
-                _filter_reason(e),
-            ]
-            for e in chip_log[:5]
-        ],
-    }
-
-    # chip_ticket_suppression
-    chip_suppressed = [
-        t for t in support_tickets
-        if t.get("RESOLVED_BY") == "chip_service_account"
-    ]
-    previews["chip_ticket_suppression"] = {
-        "columns": ["TICKET_ID", "SUBMITTED_BY", "SUBJECT", "PRIORITY", "RESOLVED_DATE", "SUPPRESSION_REASON"],
-        "rows": [
-            [
-                t["TICKET_ID"], t["SUBMITTED_BY"],
-                t["SUBJECT"][:50] + "\u2026" if len(t["SUBJECT"]) > 50 else t["SUBJECT"],
-                t["PRIORITY"], t.get("RESOLVED_DATE") or "",
-                "auto-resolved: operational noise",
-            ]
-            for t in chip_suppressed
-        ],
-    }
-
     # Intermediate models (ephemeral) — synthetic preview data
     previews["int_employees_joined_to_events"] = {
         "columns": ["EMPLOYEE_ID", "FULL_NAME", "EVENT_COUNT", "LAST_EVENT"],
@@ -420,15 +339,6 @@ def derive_preview_data(
 def _in_blocked_range(timestamp: str) -> bool:
     """Check if timestamp is in the 2026-02-03 01:00-05:00 blocked range."""
     return timestamp >= "2026-02-03T01:00:00" and timestamp <= "2026-02-03T05:00:00"
-
-
-def _filter_reason(event: dict) -> str:
-    """Compute the filter reason for chip_log_filter."""
-    if event["EVENT_SOURCE"] == "chip-daemon":
-        return "source=chip-daemon"
-    if event["EVENT_TYPE"] in {"file_modification", "permission_change", "log_rotation"}:
-        return f"type={event['EVENT_TYPE']}"
-    return "timestamp in blocked range"
 
 
 def _aggregate_spending(budgets: list[dict]) -> list[dict]:

@@ -13,6 +13,7 @@ import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS, ComputerId } from "../state/types";
 import { computeEffects, AppliedEffects } from "../engine/commands/applyResult";
+import { CHECKPOINTS } from "../story/checkpoints";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 import { useComputerTransitions } from "./useComputerTransitions";
@@ -211,6 +212,18 @@ export function useTerminal() {
     (term: Terminal, effects: AppliedEffects, tabId?: string) => {
       const computerId = activeComputerRef.current;
 
+      /** Shared post-load logic: sync refs, clear screen, show message + prompt. */
+      function finishLoad(t: Terminal, message: string): true {
+        const state = useGameStore.getState();
+        const loadedTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+        cwdRef.current = loadedTab?.cwd ?? `/home/${state.username}`;
+        activeComputerRef.current = loadedTab?.computerId ?? "home";
+        t.clear();
+        t.write(colorize(`\r\n${message}\r\n`, ansi.cyan));
+        t.write(getPrompt(cwdRef.current));
+        return true;
+      }
+
       if (effects.clearScreen) {
         term.clear();
       }
@@ -291,17 +304,17 @@ export function useTerminal() {
           const slotName = formatSlotName(action.slotId as SaveSlotId);
           const ok = useGameStore.getState().loadGame(action.slotId as SaveSlotId);
           if (ok) {
-            const state = useGameStore.getState();
-            const loadedTab = state.tabs.find((t) => t.id === state.activeTabId);
-            cwdRef.current = loadedTab?.cwd ?? `/home/${state.username}`;
-            activeComputerRef.current = loadedTab?.computerId ?? "home";
-            term.clear();
-            nexacorpLogo.forEach((line) => term.writeln(line));
-            term.write(colorize(`\r\nLoaded save from ${slotName}.\r\n`, ansi.cyan));
-            term.write(getPrompt(cwdRef.current));
-            return true;
+            return finishLoad(term, `Loaded save from ${slotName}.`);
           } else {
             term.write(colorize(`Error: ${slotName} is empty or corrupted.`, ansi.red));
+          }
+        } else if (action.type === "loadCheckpoint") {
+          const cp = CHECKPOINTS.find((c) => c.id === action.checkpointId);
+          if (cp) {
+            useGameStore.getState().loadCheckpointData(cp);
+            return finishLoad(term, `Loaded checkpoint: ${cp.id}`);
+          } else {
+            term.write(colorize(`Error: unknown checkpoint '${action.checkpointId}'.`, ansi.red));
           }
         } else if (action.type === "newGame") {
           term.write(colorize("Are you sure you want to start a new game? All unsaved progress will be lost. (y/n) ", ansi.yellow));

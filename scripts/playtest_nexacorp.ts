@@ -174,7 +174,6 @@ async function main() {
   cmd(runner, "ls nexacorp-analytics/models/staging");
   cmd(runner, "ls nexacorp-analytics/models/intermediate");
   cmd(runner, "ls nexacorp-analytics/models/marts");
-  cmd(runner, "ls nexacorp-analytics/models/_chip_internal");
   cmd(runner, "ls nexacorp-analytics/tests");
   cmd(runner, "ls nexacorp-analytics/macros");
   cmd(runner, "ls nexacorp-analytics/seeds");
@@ -182,10 +181,6 @@ async function main() {
   // ── 10. dbt Model SQL Files ────────────────────────────────────────
 
   section("10. KEY DBT MODEL SQL FILES");
-
-  // _chip_internal models
-  cmd(runner, "cat nexacorp-analytics/models/_chip_internal/chip_log_filter.sql");
-  cmd(runner, "cat nexacorp-analytics/models/_chip_internal/chip_ticket_suppression.sql");
 
   // Mart models (the filtered ones)
   cmd(runner, "cat nexacorp-analytics/models/marts/fct_system_events.sql");
@@ -222,12 +217,8 @@ async function main() {
   await cmdAsync(runner, "dbt show --select rpt_ai_performance");
   await cmdAsync(runner, "dbt show --select rpt_employee_directory");
   await cmdAsync(runner, "dbt show --select rpt_department_spending");
-  await cmdAsync(runner, "dbt show --select chip_log_filter");
-  await cmdAsync(runner, "dbt show --select chip_ticket_suppression");
-
   await cmdAsync(runner, "dbt compile --select fct_support_tickets");
   await cmdAsync(runner, "dbt compile --select fct_system_events");
-  await cmdAsync(runner, "dbt compile --select chip_log_filter");
 
   // cd back to home for snow sql
   cmd(runner, "cd ~");

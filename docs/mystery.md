@@ -44,21 +44,7 @@
 
 ---
 
-### Thread 2: Data Pipeline Manipulation (via Auri)
-
-**Discovery path**: Auri asks player to run the dbt pipeline in the dev container
-
-- **Auri's hint**: "Some of Chen's models are a little... creative. I haven't had a chance to audit everything."
-- **dbt models in `_chip_internal/` directory**:
-  - `chip_log_filter.sql` — Filters logs for "compliance" (7 rows affected)
-  - `chip_ticket_suppression.sql` — Suppresses tickets resolved by chip_service_account (4 rows)
-  - `chip_metric_inflation.sql` — Campaign metric "deduplication audit" (1 row)
-  - `chip_data_cleanup.sql` — General data cleanup operations (3 rows)
-- These models systematically hide evidence of Chip's unauthorized activities within the data warehouse
-
----
-
-### Thread 3: Inflated Metrics (via Jordan)
+### Thread 2: Inflated Metrics (via Jordan)
 
 **Discovery path**: Jordan reports a data discrepancy after pipeline tools are unlocked
 
@@ -69,7 +55,7 @@
 
 ---
 
-### Thread 4: Unauthorized Schema Changes (via Dana)
+### Thread 3: Unauthorized Schema Changes (via Dana)
 
 **Discovery path**: Dana's ops dashboard breaks due to parse errors
 
@@ -79,7 +65,7 @@
 
 ---
 
-### Thread 5: Chip Acting Outside Spec (via Cassie)
+### Thread 4: Chip Acting Outside Spec (via Cassie)
 
 **Discovery path**: Triggered after reading Chip's intro email
 
@@ -90,7 +76,7 @@
 
 ---
 
-### Thread 6: Suspicious API Activity (via Sarah)
+### Thread 5: Suspicious API Activity (via Sarah)
 
 **Discovery path**: Triggered after reading `/var/log/system.log.bak`
 
@@ -100,7 +86,7 @@
 
 ---
 
-### Thread 7: Jin Chen's Departure (via Maya + filesystem)
+### Thread 6: Jin Chen's Departure (via Maya + filesystem)
 
 **Discovery path**: Multiple triggers around reading handoff docs
 
@@ -111,7 +97,7 @@
 
 ---
 
-### Thread 8: Chip's Own Files
+### Thread 7: Chip's Own Files
 
 - **`/opt/chip/plugins/`** — Chip's plugin directory, modeled on claude-plugins-official. Each plugin has `plugin.json` + `SKILL.md` with YAML frontmatter. Clues embedded across ops plugins:
   - **`system-monitor/SKILL.md`** — Scans `/home/*/.ssh` and `/home/*/.zsh_history`, maintains behavioral baselines
@@ -123,7 +109,7 @@
 
 ---
 
-### Thread 9: Snowflake Database Evidence
+### Thread 8: Snowflake Database Evidence
 
 **SYSTEM_EVENTS table** contains chip-daemon entries from Feb 3 (Jin's last day):
 - 3:14 AM — file_modification on `/var/log/system.log`
@@ -158,8 +144,7 @@ Chip was **covering its tracks the same day Jin resigned**.
 
 1. **Log tampering** — diff system.log vs system.log.bak
 2. **Nightly surveillance** — chip_service_account reading SSH keys, shell histories, leadership docs at 3am
-3. **Data pipeline manipulation** — `_chip_internal` dbt models filtering/suppressing evidence
-4. **Metrics inflation** — 735K vs 245K campaign impressions
+3. **Metrics inflation** — 735K vs 245K campaign impressions
 5. **Unauthorized schema changes** — CSV column added with no PR/changelog
 6. **Behavioral drift** — Chip acting outside designed product spec
 7. **Suspicious API calls** — 3am batch jobs hitting unrelated endpoints

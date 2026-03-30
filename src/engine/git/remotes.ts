@@ -384,6 +384,7 @@ function buildAnalyticsCommits(): GitCommit[] {
         "models/staging/stg_raw_nexacorp__employee_directory.sql": ALL_FILES["models/staging/stg_raw_nexacorp__employee_directory.sql"],
         "models/staging/stg_raw_nexacorp__projects.sql": ALL_FILES["models/staging/stg_raw_nexacorp__projects.sql"],
         "models/staging/stg_raw_nexacorp__departments.sql": ALL_FILES["models/staging/stg_raw_nexacorp__departments.sql"],
+        "models/staging/stg_raw_nexacorp__customers.sql": ALL_FILES["models/staging/stg_raw_nexacorp__customers.sql"],
       },
     },
     { // 3: Apr 15, 4:12pm — fix commit (no-op)
@@ -520,17 +521,6 @@ function buildAnalyticsCommits(): GitCommit[] {
       timestamp: utc(2026, 1, 13, 23, 30), // 15:30 PST
       addFiles: {
         "README.md": README_FINAL,
-      },
-    },
-    { // 18: Jan 20, 2026, 11:47pm — late night, Jin's last commit
-      author: JIN,
-      message: "add internal audit models",
-      timestamp: utc(2026, 1, 21, 6, 47), // 22:47 PST (Jan 20 local)
-      addFiles: {
-        "models/_chip_internal/chip_data_cleanup.sql": ALL_FILES["models/_chip_internal/chip_data_cleanup.sql"],
-        "models/_chip_internal/chip_log_filter.sql": ALL_FILES["models/_chip_internal/chip_log_filter.sql"],
-        "models/_chip_internal/chip_ticket_suppression.sql": ALL_FILES["models/_chip_internal/chip_ticket_suppression.sql"],
-        "models/_chip_internal/chip_metric_inflation.sql": ALL_FILES["models/_chip_internal/chip_metric_inflation.sql"],
       },
     },
   ];
