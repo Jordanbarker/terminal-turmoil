@@ -53,7 +53,7 @@ const projectDir = `/home/${username}/nexacorp-analytics`;
 /** Expected values derived from the seed data. */
 const EXPECTED = {
   DIM_EMPLOYEES_ROWS: 13,           // 15 active - 2 with "system concern" notes
-  STANDARD_MODEL_COUNT: 17,         // staging + intermediate + marts
+  STANDARD_MODEL_COUNT: 18,         // staging + intermediate + marts
 };
 
 describe("dbt --version", () => {

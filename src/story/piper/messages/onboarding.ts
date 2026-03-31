@@ -49,7 +49,7 @@ export function getOnboardingDeliveries(_username: string): PiperDelivery[] {
           id: "general_tom_1",
           from: "Tom Chen",
           timestamp: "",
-          body: "Team! Quick win to share — Meridian Labs just signed a 12-month enterprise contract. Huge vote of confidence in what we're building!",
+          body: "Team! Quick win to share — AssetDoge just signed a 12-month enterprise contract. Huge vote of confidence in what we're building!",
         },
         {
           id: "general_maya_2",

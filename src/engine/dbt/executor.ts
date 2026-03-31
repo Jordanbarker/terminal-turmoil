@@ -6,6 +6,12 @@ import { ResultSet } from "../snowflake/formatter/result_types";
 
 const TARGET_DB = "NEXACORP_PROD";
 const TARGET_SCHEMA = "ANALYTICS";
+const DBT_ROLE = "TRANSFORMER";
+
+/** Override session role to the dbt service role (matches dbt profile config). */
+function dbtCtx(ctx: SessionContext): SessionContext {
+  return { ...ctx, currentRole: DBT_ROLE };
+}
 
 export interface ModelExecutionResult {
   status: "success" | "error";
@@ -48,7 +54,7 @@ function executeTableModel(
   state: SnowflakeState,
   sessionCtx: SessionContext,
 ): ModelExecutionResult {
-  const { results, state: execState } = execute(compiledSql, state, sessionCtx);
+  const { results, state: execState } = execute(compiledSql, state, dbtCtx(sessionCtx));
 
   // Find the resultset
   const resultSet = results.find((r) => r.type === "resultset");
@@ -93,7 +99,7 @@ function executeViewModel(
   sessionCtx: SessionContext,
 ): ModelExecutionResult {
   // Execute SELECT to get row count for output
-  const { results } = execute(compiledSql, state, sessionCtx);
+  const { results } = execute(compiledSql, state, dbtCtx(sessionCtx));
   const resultSet = results.find((r) => r.type === "resultset");
   if (!resultSet || resultSet.type !== "resultset") {
     const errorResult = results.find((r) => r.type === "error");
@@ -119,7 +125,7 @@ export function executeTest(
   sessionCtx: SessionContext,
 ): TestExecutionResult {
   try {
-    const { results } = execute(compiledSql, state, sessionCtx);
+    const { results } = execute(compiledSql, state, dbtCtx(sessionCtx));
     const resultSet = results.find((r) => r.type === "resultset");
     if (!resultSet || resultSet.type !== "resultset") {
       const errorResult = results.find((r) => r.type === "error");
@@ -149,7 +155,7 @@ export function queryModel(
   const tableName = modelName.toUpperCase();
   const sql = `SELECT * FROM ${TARGET_DB}.${TARGET_SCHEMA}.${tableName} LIMIT ${limit}`;
 
-  const { results } = execute(sql, state, sessionCtx);
+  const { results } = execute(sql, state, dbtCtx(sessionCtx));
   const resultSet = results.find((r) => r.type === "resultset");
   if (!resultSet || resultSet.type !== "resultset") return null;
   return resultSet.data;
@@ -166,7 +172,7 @@ export function getModelRowCount(
   const tableName = modelName.toUpperCase();
   const sql = `SELECT COUNT(*) AS CNT FROM ${TARGET_DB}.${TARGET_SCHEMA}.${tableName}`;
 
-  const { results } = execute(sql, state, sessionCtx);
+  const { results } = execute(sql, state, dbtCtx(sessionCtx));
   const resultSet = results.find((r) => r.type === "resultset");
   if (!resultSet || resultSet.type !== "resultset") return null;
   if (resultSet.data.rows.length === 0) return null;

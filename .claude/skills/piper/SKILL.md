@@ -33,7 +33,8 @@ src/story/piper/
     ├── cassie.ts      # Cassie Moreau
     ├── jordan.ts      # Jordan Kessler
     ├── maya.ts        # Maya Johnson
-    └── soham.ts       # Soham Parekh
+    ├── soham.ts       # Soham Parekh
+    └── ambient.ts     # Ambient channel chatter (general, engineering)
 
 src/engine/commands/builtins/piper.ts  # Command registration
 src/state/gameStore.ts                 # deliveredPiperIds state + addDeliveredPiperMessages action
@@ -72,7 +73,8 @@ type PiperTrigger =
   | { type: "after_email_read"; emailId: string }
   | { type: "after_piper_reply"; deliveryId: string }
   | { type: "after_command"; command: string }
-  | { type: "after_objective"; objectiveId: string };
+  | { type: "after_objective"; objectiveId: string }
+  | { type: "after_story_flag"; flag: string; requireDelivered?: string };
 ```
 
 ## Storage

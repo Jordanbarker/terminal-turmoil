@@ -3,6 +3,8 @@ import { isDirectory } from "../filesystem/types";
 import { resolvePath } from "../../lib/pathUtils";
 import { splitOnChainOperators } from "../commands/parser";
 
+const HISTORY_SCAN_DEPTH = 100;
+
 export interface SuggestionContext {
   commandHistory: string[];
   commandNames: string[];
@@ -133,7 +135,7 @@ export function getSuggestion(
   if (!input) return null;
 
   // Strategy 1: History match against FULL input (scan reverse, first entry starting with input)
-  for (let i = ctx.commandHistory.length - 1; i >= 0; i--) {
+  for (let i = ctx.commandHistory.length - 1; i >= Math.max(0, ctx.commandHistory.length - HISTORY_SCAN_DEPTH); i--) {
     const entry = ctx.commandHistory[i];
     if (entry.startsWith(input) && entry.length > input.length) {
       return entry;

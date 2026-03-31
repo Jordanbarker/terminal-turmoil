@@ -2,6 +2,8 @@ you're absolutely right!
 
 Do you have any questions for me? 
 
+Edward: I asked Oscar to just copy Jin's security over to you. Let Oscar know if you need any additional security for your work. Don't want any blockers.
+
 ll='ls -la'
 ..='cd ..'
 df='df -h'
@@ -166,3 +168,21 @@ STORY FLAGS
           label: "I diffed the logs — entries were stripped from the backup.",
           messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",
           visibleWhen: { flag: "discovered_log_tampering" },
+
+
+cron jobs:
+- A cron job runs `scripts/reindex_nightly.py` at 02:00 UTC 
+- **Cron jobs:** Check `/var/log/cron.log` for unexpected scheduled tasks
+
+
+Environment variables in ~/.zshrc or ~/.bashrc (CHIP_API_URL, CHIP_TOKEN) 
+
+- The Series A blackout date (March 10-21) ties into the game's timeline where due diligence starts March 15.
+
+
+Assess Performance
+- Chrome DevTools Performance tab: Record a session of rapid command typing and look for long tasks (>50ms) on the main thread. Focus on the localStorage serialization.
+- React DevTools Profiler: Check for unnecessary re-renders in the component tree.
+- performance.mark()/performance.measure(): Add timing around processDeliveries() and the persist partialize function to get real numbers.
+- Lighthouse: Run on the deployed build for initial load metrics.
+- Memory tab: Take heap snapshots before and after 50+ commands to check for memory leaks (especially VirtualFS old instances not being GC'd).

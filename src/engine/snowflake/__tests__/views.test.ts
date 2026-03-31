@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { SnowflakeState } from "../state";
 import { createDatabase, createSchema } from "../types";
 import { execute } from "../executor/executor";
-import { createDefaultContext } from "../session/context";
+import { createTestContext } from "./testHelpers";
 
 function createTestState(): SnowflakeState {
   const state = new SnowflakeState({
@@ -32,7 +32,7 @@ function createTestState(): SnowflakeState {
 }
 
 function ctx() {
-  return { ...createDefaultContext(), currentDatabase: "TEST_DB", currentSchema: "PUBLIC" };
+  return createTestContext({ currentDatabase: "TEST_DB" });
 }
 
 describe("view query expansion", () => {

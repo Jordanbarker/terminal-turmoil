@@ -21,6 +21,7 @@ import {
 } from "./render";
 import { CTRL_C } from "../terminal/keyCodes";
 import { GameEvent } from "../mail/delivery";
+import { checkStoryFlagTriggers, getTriggersForComputer } from "../narrative/storyFlags";
 import { PIPER_TYPING_DELAY_MS } from "../../lib/timing";
 
 type View = "channels" | "conversation";
@@ -120,7 +121,13 @@ export class PiperSession implements ISession {
         this.escBuffer = "\x1b[";
         continue;
       }
-      if (this.escBuffer === "\x1b[") {
+      if (this.escBuffer.startsWith("\x1b[") && this.escBuffer.length >= 2) {
+        // CSI parameter byte — accumulate
+        if (char >= "0" && char <= "?") {
+          this.escBuffer += char;
+          continue;
+        }
+        // Final byte — act on it, then reset
         this.escBuffer = "";
         if (char === "A") {
           this.moveSelection(-1);
@@ -283,35 +290,63 @@ export class PiperSession implements ISession {
 
     // Collect trigger events and deliver follow-up Piper messages
     const allNewIds: string[] = [];
+    const storyFlagTriggers = getTriggersForComputer(this.computerId, this.username);
 
     // Auto-generate piper_reply event so after_piper_reply triggers fire
-    const piperReplyEvent = {
-      type: "objective_completed" as const,
+    const piperReplyEvent: GameEvent = {
+      type: "objective_completed",
       detail: `piper_reply:${this.replyDeliveryId}`,
     };
-    const replyTriggered = checkPiperDeliveries(
-      piperReplyEvent,
-      [...this.info.deliveredPiperIds, ...allNewIds],
-      this.username,
-      this.computerId,
-      this.info.storyFlags
-    );
-    allNewIds.push(...replyTriggered);
-    this.pendingEvents.push(piperReplyEvent);
 
+    // Gather all events from this reply
+    const replyEvents: GameEvent[] = [piperReplyEvent];
     if (option.triggerEvents) {
-      this.pendingEvents.push(...option.triggerEvents);
+      replyEvents.push(...option.triggerEvents);
+    }
+    this.pendingEvents.push(...replyEvents);
 
-      for (const event of option.triggerEvents) {
+    // First pass: update story flags so after_story_flag piper triggers can fire
+    for (const event of replyEvents) {
+      const flagResults = checkStoryFlagTriggers(event, storyFlagTriggers, this.info.storyFlags);
+      for (const result of flagResults) {
+        this.info.storyFlags = { ...this.info.storyFlags, [result.flag]: result.value };
+      }
+    }
+
+    // Deliver piper messages with updated flags
+    for (const event of replyEvents) {
+      const newIds = checkPiperDeliveries(
+        event,
+        [...this.info.deliveredPiperIds, ...allNewIds],
+        this.username,
+        this.computerId,
+        this.info.storyFlags
+      );
+      allNewIds.push(...newIds);
+    }
+
+    // Cascade: piper_delivered events can set more story flags, unlocking more messages
+    let cascadeIds = [...allNewIds];
+    while (cascadeIds.length > 0) {
+      const nextCascade: string[] = [];
+      for (const id of cascadeIds) {
+        const pdEvent: GameEvent = { type: "piper_delivered", detail: id };
+        this.pendingEvents.push(pdEvent);
+        const flagResults = checkStoryFlagTriggers(pdEvent, storyFlagTriggers, this.info.storyFlags);
+        for (const result of flagResults) {
+          this.info.storyFlags = { ...this.info.storyFlags, [result.flag]: result.value };
+        }
         const newIds = checkPiperDeliveries(
-          event,
-          [...this.info.deliveredPiperIds, ...allNewIds],
+          pdEvent,
+          [...this.info.deliveredPiperIds, ...allNewIds, ...nextCascade],
           this.username,
           this.computerId,
           this.info.storyFlags
         );
-        allNewIds.push(...newIds);
+        nextCascade.push(...newIds);
       }
+      allNewIds.push(...nextCascade);
+      cascadeIds = nextCascade;
     }
 
     // Flush new IDs immediately so getConversationHistory can see them

@@ -781,10 +781,10 @@ describe("find (additional)", () => {
     expect(result.output).not.toContain("script.py");
   });
 
-  it("finds from cwd when no path argument given", () => {
+  it("shows usage when no arguments given", () => {
     const result = execute("find", [], {}, ctx());
-    expect(result.output).toContain("/home/player");
-    expect(result.output).toContain("notes.txt");
+    expect(result.output).toContain("Usage: find");
+    expect(result.exitCode).toBe(1);
   });
 
   it("returns the file path when given a single file", () => {

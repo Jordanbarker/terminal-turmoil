@@ -98,8 +98,13 @@ export const PIPER_DELIVERY_IDS = [
 ] as const;
 export type PiperDeliveryId = (typeof PIPER_DELIVERY_IDS)[number];
 
+let cachedUsername: string | undefined;
+let cachedDeliveries: PiperDelivery[] | undefined;
+
 export function getPiperDeliveries(username: string): PiperDelivery[] {
-  return [
+  if (username === cachedUsername && cachedDeliveries) return cachedDeliveries;
+  cachedUsername = username;
+  cachedDeliveries = [
     ...getHomeDeliveries(username),
     ...getOnboardingDeliveries(username),
     ...getOscarDeliveries(username),
@@ -112,4 +117,5 @@ export function getPiperDeliveries(username: string): PiperDelivery[] {
     ...getCassieDeliveries(username),
     ...getAmbientDeliveries(username),
   ];
+  return cachedDeliveries;
 }

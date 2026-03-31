@@ -3,6 +3,7 @@ import * as AST from "../parser/ast";
 import { QueryResult, ResultSet } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
 import { resolveThreePart, tableNotFoundError } from "./resolve";
+import { isValidRole, canReadSchema, AVAILABLE_ROLES, getRoleDef } from "../session/permissions";
 
 export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx: SessionContext): QueryResult {
   switch (stmt.objectType) {
@@ -37,6 +38,9 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
     case "TABLES": {
       const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
       const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
+      if (!canReadSchema(ctx.currentRole, db, schema)) {
+        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      }
       const tables = state.listTables(db, schema);
       const filtered = stmt.like ? tables.filter((t) => likeMatch(t.name, stmt.like!)) : tables;
       const rs: ResultSet = {
@@ -55,6 +59,9 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
     case "VIEWS": {
       const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
       const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
+      if (!canReadSchema(ctx.currentRole, db, schema)) {
+        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      }
       const views = state.listViews(db, schema);
       const rs: ResultSet = {
         columns: [
@@ -71,6 +78,9 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
     case "COLUMNS": {
       const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
       const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
+      if (!canReadSchema(ctx.currentRole, db, schema)) {
+        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      }
       const tables = state.listTables(db, schema);
       const rows: (string | number | null)[][] = [];
       for (const t of tables) {
@@ -105,6 +115,60 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
         rowCount: whs.length,
       };
       return { type: "resultset", data: rs };
+    }
+
+    case "ROLES": {
+      const rs: ResultSet = {
+        columns: [
+          { name: "name", type: "VARCHAR" },
+          { name: "is_current", type: "VARCHAR" },
+          { name: "comment", type: "VARCHAR" },
+          { name: "created_on", type: "TIMESTAMP" },
+        ],
+        rows: AVAILABLE_ROLES.map((name) => {
+          const def = getRoleDef(name)!;
+          return [name, name === ctx.currentRole ? "Y" : "N", def.comment, def.createdOn];
+        }),
+        rowCount: AVAILABLE_ROLES.length,
+      };
+      return { type: "resultset", data: rs };
+    }
+
+    case "GRANTS": {
+      const def = getRoleDef(ctx.currentRole);
+      if (!def) {
+        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      }
+      const columns = [
+        { name: "privilege", type: "VARCHAR" as const },
+        { name: "granted_on", type: "VARCHAR" as const },
+        { name: "name", type: "VARCHAR" as const },
+        { name: "granted_to", type: "VARCHAR" as const },
+        { name: "grantee_name", type: "VARCHAR" as const },
+        { name: "grant_option", type: "VARCHAR" as const },
+      ];
+      if (def.isAdmin) {
+        return {
+          type: "resultset",
+          data: {
+            columns,
+            rows: [["ALL PRIVILEGES", "ACCOUNT", "NEXACORP", "ROLE", def.name, "Y"]],
+            rowCount: 1,
+          },
+        };
+      }
+      const rows: (string | number | null)[][] = [];
+      for (const [schemaKey, level] of Object.entries(def.grants)) {
+        rows.push(["USAGE", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+        rows.push(["SELECT", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+        if (level === "WRITE") {
+          rows.push(["INSERT", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+          rows.push(["UPDATE", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+          rows.push(["DELETE", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+          rows.push(["CREATE TABLE", "SCHEMA", schemaKey, "ROLE", def.name, "N"]);
+        }
+      }
+      return { type: "resultset", data: { columns, rows, rowCount: rows.length } };
     }
 
     default: {
@@ -174,6 +238,9 @@ export function executeUse(stmt: AST.UseStatement, state: SnowflakeState, ctx: S
     case "WAREHOUSE":
       return { result: { type: "status", data: { message: `Statement executed successfully.` } }, ctx: { ...ctx, currentWarehouse: name } };
     case "ROLE":
+      if (!isValidRole(name)) {
+        return { result: { type: "error", message: `Role '${name}' does not exist or not authorized.` }, ctx };
+      }
       return { result: { type: "status", data: { message: `Statement executed successfully.` } }, ctx: { ...ctx, currentRole: name } };
   }
 }

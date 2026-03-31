@@ -39,14 +39,7 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
       id: "alex_nudge_accepted",
       channelId: "dm_alex",
       computer: "home",
-      messages: [
-        {
-          id: "alex_nudge_acc_1",
-          from: "Alex Rivera",
-          timestamp: "",
-          body: "hey any updates on the job front?",
-        },
-      ],
+      messages: [],
       trigger: { type: "after_objective", objectiveId: "accepted_nexacorp" },
       replyOptions: [
         {
@@ -107,14 +100,7 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
       id: "alex_nudge_declined",
       channelId: "dm_alex",
       computer: "home",
-      messages: [
-        {
-          id: "alex_nudge_dec_1",
-          from: "Alex Rivera",
-          timestamp: "",
-          body: "hey any updates on the job front?",
-        },
-      ],
+      messages: [],
       trigger: {
         type: "after_objective",
         objectiveId: "rejected_nexacorp_final",
@@ -364,7 +350,7 @@ that last one is your best friend. if you forget how something works, just man i
           body: "shows you where a command actually lives on disk. useful when you have multiple versions installed and need to know which one runs by default.",
         },
       ],
-      trigger: { type: "after_story_flag", flag: "used_file_on_deb" },
+      trigger: { type: "after_story_flag", flag: "used_file_in_downloads" },
       replyOptions: [
         {
           label: "I'm on it",

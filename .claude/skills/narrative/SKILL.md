@@ -31,7 +31,7 @@ src/story/
 │   └── messages.ts        # getPiperDeliveries() — all Piper message definitions with triggers
 └── filesystem/
     ├── paths.ts           # HOME_PATHS and NEXACORP_PATHS constants for story flag trigger paths
-    └── nexacorp.ts        # createNexacorpFilesystem(username, storyFlags)
+    └── nexacorp/           # createNexacorpFilesystem(username, storyFlags) — split into index, dbt, chip, srv, home
 
 src/state/
 ├── types.ts               # StoryFlags, ComputerId, GamePhase, GameState
@@ -309,6 +309,6 @@ When designing story progression, email triggers, or investigation paths involvi
 1. **Add the flag name** to `STORY_FLAG_NAMES` in `story/storyFlags.ts` — `flag` must be a valid `StoryFlagName` entry (the integrity test at `story/__tests__/storyIntegrity.test.ts` will catch invalid references)
 2. **Define the trigger** in `story/storyFlags.ts` — add to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container). Use `getTriggersForComputer(computer, username)` to look up triggers at runtime — this replaces any manual ternary over computer IDs
 3. **Use path constants** — story flag trigger paths use constants from `story/filesystem/paths.ts` (`HOME_PATHS`, `NEXACORP_PATHS`) — use these instead of inline strings when adding new path-based triggers
-4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp.ts`), email definitions (`story/emails/`), or Chip behavior
+4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp/`), email definitions (`story/emails/`), or Chip behavior
 5. **Add tests** for the trigger in `engine/narrative/__tests__/`
-6. If the flag should affect NexaCorp content, check `createNexacorpFilesystem()` in `story/filesystem/nexacorp.ts`
+6. If the flag should affect NexaCorp content, check `createNexacorpFilesystem()` in `story/filesystem/nexacorp/index.ts`

@@ -11,7 +11,7 @@ export function createDefaultContext(username?: string): SessionContext {
     currentDatabase: "NEXACORP_PROD",
     currentSchema: "ANALYTICS",
     currentWarehouse: "NEXACORP_WH",
-    currentRole: "TRANSFORMER",
+    currentRole: "ANALYST",
     currentUser: (username ?? "PLAYER").toUpperCase(),
   };
 }

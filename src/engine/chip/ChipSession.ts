@@ -90,7 +90,13 @@ export class ChipSession implements ISession {
         this.escBuffer = "\x1b[";
         continue;
       }
-      if (this.escBuffer === "\x1b[") {
+      if (this.escBuffer.startsWith("\x1b[") && this.escBuffer.length >= 2) {
+        // CSI parameter byte — accumulate
+        if (char >= "0" && char <= "?") {
+          this.escBuffer += char;
+          continue;
+        }
+        // Final byte — act on it, then reset
         this.escBuffer = "";
         if (char === "A") {
           // Up arrow

@@ -1,6 +1,6 @@
-import { Value } from "../../types";
 import { ScalarFn } from "./registry";
 import { EvalContext } from "../evaluator";
+import { AVAILABLE_ROLES } from "../../session/permissions";
 
 export const systemFunctions: Record<string, ScalarFn> = {
   CURRENT_USER: (_args, ctx: EvalContext) => ctx.currentUser,
@@ -13,7 +13,7 @@ export const systemFunctions: Record<string, ScalarFn> = {
   CURRENT_REGION: () => "us-east-1",
   CURRENT_VERSION: () => "8.0.0",
   CURRENT_CLIENT: () => "Snowflake CLI 3.4.0",
-  CURRENT_AVAILABLE_ROLES: () => "PUBLIC,SYSADMIN,TRANSFORMER",
+  CURRENT_AVAILABLE_ROLES: () => AVAILABLE_ROLES.join(","),
   SYSTEM$TYPEOF: ([v]) => {
     if (v === null) return "NULL";
     if (typeof v === "number") return Number.isInteger(v) ? "NUMBER(38,0)" : "FLOAT";

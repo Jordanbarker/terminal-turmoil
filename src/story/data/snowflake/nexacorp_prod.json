@@ -2019,6 +2019,151 @@
               "STATUS": "active",
               "LAST_ACTIVITY_DATE": "2026-03-26",
               "ACCOUNT_MANAGER": "James Wilson"
+            },
+            {
+              "CUSTOMER_ID": "C006",
+              "COMPANY_NAME": "Meridian Labs",
+              "INDUSTRY": "Healthcare",
+              "SIGNUP_DATE": "2026-03-15",
+              "PLAN_TIER": "enterprise",
+              "ANNUAL_CONTRACT_VALUE": 240000,
+              "STATUS": "active",
+              "LAST_ACTIVITY_DATE": "2026-03-28",
+              "ACCOUNT_MANAGER": "James Wilson"
+            }
+          ],
+          "createdAt": "2026-02-03"
+        },
+        "DEPLOYMENTS": {
+          "name": "DEPLOYMENTS",
+          "columns": [
+            {
+              "name": "DEPLOY_ID",
+              "type": "VARCHAR",
+              "nullable": false,
+              "primaryKey": true
+            },
+            {
+              "name": "SERVICE",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "VERSION",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPLOYED_BY",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "DEPLOYED_AT",
+              "type": "TIMESTAMP",
+              "nullable": false
+            },
+            {
+              "name": "STATUS",
+              "type": "VARCHAR",
+              "nullable": false
+            },
+            {
+              "name": "ROLLBACK_REASON",
+              "type": "VARCHAR",
+              "nullable": true
+            }
+          ],
+          "rows": [
+            {
+              "DEPLOY_ID": "D-301",
+              "SERVICE": "api-gateway",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "2.4.1",
+              "DEPLOYED_AT": "2026-02-03T14:22:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-302",
+              "SERVICE": "ingestion-service",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "1.8.0",
+              "DEPLOYED_AT": "2026-02-07T02:01:00Z",
+              "STATUS": "rolled_back",
+              "ROLLBACK_REASON": "Health check timeout after deploy — upstream dependency not ready"
+            },
+            {
+              "DEPLOY_ID": "D-303",
+              "SERVICE": "auth-service",
+              "DEPLOYED_BY": "sknight",
+              "VERSION": "3.1.2",
+              "DEPLOYED_AT": "2026-02-10T16:05:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-304",
+              "SERVICE": "analytics-worker",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "1.2.0",
+              "DEPLOYED_AT": "2026-02-14T11:30:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-305",
+              "SERVICE": "ingestion-service",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "1.8.1",
+              "DEPLOYED_AT": "2026-02-19T02:03:00Z",
+              "STATUS": "rolled_back",
+              "ROLLBACK_REASON": "OOM during batch processing — memory limit exceeded at peak load"
+            },
+            {
+              "DEPLOY_ID": "D-306",
+              "SERVICE": "api-gateway",
+              "DEPLOYED_BY": "sknight",
+              "VERSION": "2.4.2",
+              "DEPLOYED_AT": "2026-02-21T15:45:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-307",
+              "SERVICE": "chip-orchestrator",
+              "DEPLOYED_BY": "chip_service_account",
+              "VERSION": "0.9.4",
+              "DEPLOYED_AT": "2026-02-25T03:00:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-308",
+              "SERVICE": "ingestion-service",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "1.8.2",
+              "DEPLOYED_AT": "2026-03-01T02:05:00Z",
+              "STATUS": "rolled_back",
+              "ROLLBACK_REASON": "Schema migration failed — column type mismatch on events table"
+            },
+            {
+              "DEPLOY_ID": "D-309",
+              "SERVICE": "analytics-worker",
+              "DEPLOYED_BY": "odiaz",
+              "VERSION": "1.2.1",
+              "DEPLOYED_AT": "2026-03-05T10:15:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
+            },
+            {
+              "DEPLOY_ID": "D-310",
+              "SERVICE": "auth-service",
+              "DEPLOYED_BY": "sknight",
+              "VERSION": "3.1.3",
+              "DEPLOYED_AT": "2026-03-10T13:40:00Z",
+              "STATUS": "success",
+              "ROLLBACK_REASON": null
             }
           ],
           "createdAt": "2026-02-03"

@@ -4,6 +4,7 @@ import { HOME_PATHS, NEXACORP_PATHS } from "./filesystem/paths";
 export interface StoryFlagTrigger {
   event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "piper_delivered" | "objective_completed";
   path?: string;
+  pathPrefix?: string;
   detail?: string;
   flag: StoryFlagName;
   value: string | boolean;
@@ -72,7 +73,7 @@ export const STORY_FLAG_NAMES = [
 
   // Quest 1: Olive's Terminal Challenges
   "olive_challenges_read",
-  "used_file_on_deb",
+  "used_file_in_downloads",
   "used_which_python",
   "created_projects_dir",
   "used_mv_home",
@@ -135,8 +136,7 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
 
     // Quest 1: Olive's Terminal Challenges
     { event: "piper_delivered", detail: "olive_challenge_file", flag: "olive_challenges_read", value: true },
-    { event: "file_read", path: p.zoomDeb(username), flag: "used_file_on_deb", value: true },
-    { event: "file_read", path: p.pipDeb(username), flag: "used_file_on_deb", value: true },
+    { event: "file_read", pathPrefix: p.downloadsDir(username) + "/", flag: "used_file_in_downloads", value: true },
     { event: "command_executed", detail: "which_python", flag: "used_which_python", value: true },
     { event: "directory_created", path: p.projectsDir(username), flag: "created_projects_dir", value: true },
     { event: "command_executed", detail: "mv", flag: "used_mv_home", value: true },

@@ -34,6 +34,9 @@ const find: CommandHandler = (args, _flags, ctx) => {
   // Expressions: -name PATTERN, -type f|d
   // Use rawArgs to preserve -name/-type tokens that the parser strips
   const effectiveArgs = ctx.rawArgs ?? args;
+  if (effectiveArgs.length === 0) {
+    return { output: HELP_TEXTS.find, exitCode: 1 };
+  }
   let searchPath = ctx.cwd;
   let namePattern: RegExp | null = null;
   let typeFilter: "f" | "d" | null = null;

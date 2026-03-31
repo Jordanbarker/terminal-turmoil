@@ -385,6 +385,7 @@ function buildAnalyticsCommits(): GitCommit[] {
         "models/staging/stg_raw_nexacorp__projects.sql": ALL_FILES["models/staging/stg_raw_nexacorp__projects.sql"],
         "models/staging/stg_raw_nexacorp__departments.sql": ALL_FILES["models/staging/stg_raw_nexacorp__departments.sql"],
         "models/staging/stg_raw_nexacorp__customers.sql": ALL_FILES["models/staging/stg_raw_nexacorp__customers.sql"],
+        "models/staging/stg_raw_nexacorp__deployments.sql": ALL_FILES["models/staging/stg_raw_nexacorp__deployments.sql"],
       },
     },
     { // 3: Apr 15, 4:12pm — fix commit (no-op)

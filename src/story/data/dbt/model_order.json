@@ -11,6 +11,7 @@
     "stg_raw_nexacorp__projects",
     "stg_raw_nexacorp__departments",
     "stg_raw_nexacorp__customers",
+    "stg_raw_nexacorp__deployments",
     "int_employees_joined_to_events",
     "int_employees_with_tenure",
     "int_support_tickets_enriched",

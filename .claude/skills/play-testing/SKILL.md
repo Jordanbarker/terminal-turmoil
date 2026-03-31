@@ -22,7 +22,7 @@ Dependencies (engine layer only — no React/Zustand):
   src/lib/                # ansi, pathUtils
   src/state/types.ts      # ComputerId, StoryFlags
   src/story/player.ts     # PLAYER, COMPUTERS
-  src/story/filesystem/   # home.ts (homeFilesystem), nexacorp.ts (initialFilesystem)
+  src/story/filesystem/   # home/ (homeFilesystem), nexacorp/ (createNexacorpFilesystem)
 ```
 
 The script mocks `globalThis.localStorage` before any imports so Zustand's persist middleware doesn't crash in Node.
@@ -38,7 +38,7 @@ export class GameRunner {
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
   deliveredEmailIds: string[];
-  commandHistory: string[];
+  commandHistory: Record<ComputerId, string[]>;
   snowflakeState: SnowflakeState;
   completedObjectives: string[];
   pendingPrompt: PromptSessionInfo | null;
@@ -79,7 +79,7 @@ interface CommandOutput {
   storyFlagUpdates: Array<{ flag: string; value: string | boolean }>;
   newEmails: string[];      // Newly delivered email IDs
   promptPending: boolean;   // True if an inline prompt awaits :select
-  transitionTriggered: boolean; // True if home→NexaCorp transition fired
+  sshSessionStarted: boolean;  // True if an SSH session was started
 }
 ```
 
@@ -142,5 +142,5 @@ runner.switchComputer("nexacorp");
 
 - **Test email delivery chain**: `mail` → read email → `:select N` → check `result.newEmails`
 - **Test story flag triggers**: Run commands, inspect `runner.storyFlags`
-- **Test full home→NexaCorp flow**: Read emails → accept offer → read followup → check `transitionTriggered` → `:switch nexacorp`
+- **Test full home→NexaCorp flow**: Read emails → accept offer → read followup → check `sshSessionStarted` → `:switch nexacorp`
 - **Test dbt/SQL**: `:switch nexacorp` → `await runner.runAsync("dbt run")` → `runner.run("snow sql")`

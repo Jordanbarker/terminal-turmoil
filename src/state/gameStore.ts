@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { createDebouncedStorage } from "./debouncedStorage";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createNexacorpFilesystem } from "../story/filesystem/nexacorp";
 import { createHomeFilesystem } from "../story/filesystem/home";
 import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { serializeFS, deserializeFS, SerializedFS } from "../engine/filesystem/serialization";
-import { createSaveData, saveToSlot, loadFromSlot, restoreFS } from "./saveManager";
+import { createSaveData, saveToSlot, loadFromSlot } from "./saveManager";
 import { SaveSlotId } from "./saveTypes";
 import { GamePhase, ComputerId, StoryFlags, PLAYER } from "./types";
 import { SnowflakeState } from "../engine/snowflake/state";
@@ -275,63 +276,27 @@ export const useGameStore = create<GameStore>()(
       loadGame: (slotId) => {
         const data = loadFromSlot(slotId);
         if (!data) return false;
-        const fs = restoreFS(data);
-        const cwd = fs.getNode(data.cwd) ? data.cwd : fs.cwd;
-        let stashedFs: VirtualFS | null = null;
-        if (data.stashedFs) {
-          try { stashedFs = deserializeFS(data.stashedFs); } catch { stashedFs = null; }
-        }
-        const activeComp = data.activeComputer ?? "nexacorp";
 
-        // Build computerState from v5 computerStates or infer from legacy fields
         const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>> = {};
-        if (data.computerStates) {
-          for (const [id, cs] of Object.entries(data.computerStates)) {
-            try {
-              const loadedFs = deserializeFS(cs.fs);
-              loadedComputerState[id as ComputerId] = {
-                fs: loadedFs,
-                commandHistory: cs.commandHistory ?? [],
-                envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, data.username, loadedFs),
-                aliases: cs.aliases ?? initAliasesForComputer(id as ComputerId, data.username, loadedFs),
-              };
-            } catch { /* skip corrupted entries */ }
-          }
-          // Legacy v5 saves without per-computer history: assign flat commandHistory to active computer
-          if (data.version < 6 && data.commandHistory?.length) {
-            const target = loadedComputerState[activeComp];
-            if (target && target.commandHistory.length === 0) {
-              target.commandHistory = data.commandHistory;
-            }
-          }
-        } else {
-          loadedComputerState[activeComp] = { fs, commandHistory: data.commandHistory ?? [], envVars: initEnvForComputer(activeComp, data.username, fs), aliases: initAliasesForComputer(activeComp, data.username, fs) };
-          if (stashedFs) {
-            if (activeComp === "devcontainer") {
-              loadedComputerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", data.username, stashedFs), aliases: initAliasesForComputer("nexacorp", data.username, stashedFs) };
-            } else if (activeComp === "nexacorp") {
-              loadedComputerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", data.username, stashedFs), aliases: initAliasesForComputer("devcontainer", data.username, stashedFs) };
-            }
-          }
+        for (const [id, cs] of Object.entries(data.computerStates)) {
+          try {
+            const loadedFs = deserializeFS(cs.fs);
+            loadedComputerState[id as ComputerId] = {
+              fs: loadedFs,
+              commandHistory: cs.commandHistory,
+              envVars: cs.envVars,
+              aliases: cs.aliases,
+            };
+          } catch { /* skip corrupted entries */ }
         }
 
-        // Restore tabs from v5 or create single tab from legacy fields
         tabCounter = 0;
-        let tabs: TabState[];
-        let activeTabId: string;
-        if (data.tabs && data.tabs.length > 0) {
-          tabs = data.tabs.map((t) => ({
-            id: nextTabId(),
-            computerId: t.computerId,
-            cwd: t.cwd,
-          }));
-          const activeIdx = Math.min(data.activeTabIndex ?? 0, tabs.length - 1);
-          activeTabId = tabs[activeIdx].id;
-        } else {
-          const id = nextTabId();
-          tabs = [{ id, computerId: activeComp, cwd }];
-          activeTabId = id;
-        }
+        const tabs = data.tabs.map((t) => ({
+          id: nextTabId(),
+          computerId: t.computerId,
+          cwd: t.cwd,
+        }));
+        const activeIdx = Math.min(data.activeTabIndex, tabs.length - 1);
 
         set({
           username: data.username,
@@ -339,11 +304,11 @@ export const useGameStore = create<GameStore>()(
           currentChapter: data.currentChapter,
           completedObjectives: data.completedObjectives,
           deliveredEmailIds: data.deliveredEmailIds,
-          deliveredPiperIds: data.deliveredPiperIds ?? [],
-          storyFlags: data.storyFlags ?? {},
+          deliveredPiperIds: data.deliveredPiperIds,
+          storyFlags: data.storyFlags,
           computerState: loadedComputerState,
           tabs,
-          activeTabId,
+          activeTabId: tabs[activeIdx].id,
           activeSnowSession: null,
         });
         return true;
@@ -392,6 +357,7 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "terminal-turmoil-save",
+      storage: createDebouncedStorage(1000),
       partialize: (state) => {
         // Serialize all computer FS entries (including per-computer history)
         const serializedComputerState: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }> = {};
@@ -421,12 +387,6 @@ export const useGameStore = create<GameStore>()(
 
         const username = (p.username as string) ?? currentState.username;
         const storyFlags = (p.storyFlags as StoryFlags) ?? currentState.storyFlags;
-        const deliveredEmailIds = (p.deliveredEmailIds as string[]) ?? [];
-
-        // Backward compat: existing saves with hasSeenIntro should have commands_unlocked
-        if ((p.hasSeenIntro as boolean) && !storyFlags.commands_unlocked) {
-          storyFlags.commands_unlocked = true;
-        }
 
         // Reconstruct SnowflakeState
         let sfState: SnowflakeState;
@@ -441,92 +401,41 @@ export const useGameStore = create<GameStore>()(
           sfState = createInitialSnowflakeState({ includeDay2: !!storyFlags.day1_shutdown });
         }
 
-        // Build computerState from persisted data or infer from legacy fields
+        // Restore computerState from serialized data
         const computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>> = {};
-        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS; commandHistory?: string[]; envVars?: Record<string, string>; aliases?: Record<string, string> }> | undefined;
-        const legacyCommandHistory = (p.commandHistory as string[]) ?? [];
+        const serializedCS = p.serializedComputerState as Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }> | undefined;
         if (serializedCS) {
           for (const [id, cs] of Object.entries(serializedCS)) {
             try {
               const restoredFs = deserializeFS(cs.fs);
               computerState[id as ComputerId] = {
                 fs: restoredFs,
-                commandHistory: cs.commandHistory ?? [],
-                envVars: cs.envVars ?? initEnvForComputer(id as ComputerId, username, restoredFs),
-                aliases: cs.aliases ?? initAliasesForComputer(id as ComputerId, username, restoredFs),
+                commandHistory: cs.commandHistory,
+                envVars: cs.envVars,
+                aliases: cs.aliases,
               };
             } catch { /* skip corrupted entries */ }
           }
-          // Legacy: if no per-computer history found, assign flat history to first computer
-          if (legacyCommandHistory.length > 0 && Object.values(computerState).every((cs) => cs!.commandHistory.length === 0)) {
-            const firstKey = Object.keys(computerState)[0] as ComputerId | undefined;
-            if (firstKey && computerState[firstKey]) {
-              computerState[firstKey]!.commandHistory = legacyCommandHistory;
-            }
-          }
-          // Sync snowflake to nexacorp if present
           if (computerState.nexacorp) {
             computerState.nexacorp = { ...computerState.nexacorp, fs: syncToVirtualFS(sfState, computerState.nexacorp.fs) };
           }
-        } else {
-          // Legacy save — build computerState from serializedFs + stashed FS
-          const legacyComputer = (p.activeComputer as ComputerId) ?? "home";
-          let legacyFs: VirtualFS;
-          const serializedFs = p.serializedFs as SerializedFS | undefined;
-          try {
-            if (serializedFs?.root) {
-              legacyFs = deserializeFS(serializedFs);
-              if (!legacyFs.getNode(legacyFs.homeDir)) {
-                legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
-              }
-            } else {
-              legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
-            }
-          } catch {
-            legacyFs = buildFs(username, legacyComputer, storyFlags, deliveredEmailIds);
-          }
-          if (legacyComputer === "nexacorp") {
-            legacyFs = syncToVirtualFS(sfState, legacyFs);
-          }
-          computerState[legacyComputer] = { fs: legacyFs, commandHistory: legacyCommandHistory, envVars: initEnvForComputer(legacyComputer, username, legacyFs), aliases: initAliasesForComputer(legacyComputer, username, legacyFs) };
-
-          // Reconstruct stashed FS if present
-          const serializedStashedFs = p.serializedStashedFs as SerializedFS | undefined;
-          try {
-            if (serializedStashedFs?.root) {
-              const stashedFs = deserializeFS(serializedStashedFs);
-              if (legacyComputer === "devcontainer") {
-                computerState.nexacorp = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("nexacorp", username, stashedFs), aliases: initAliasesForComputer("nexacorp", username, stashedFs) };
-              } else if (legacyComputer === "nexacorp") {
-                computerState.devcontainer = { fs: stashedFs, commandHistory: [], envVars: initEnvForComputer("devcontainer", username, stashedFs), aliases: initAliasesForComputer("devcontainer", username, stashedFs) };
-              }
-            }
-          } catch { /* skip corrupted stashed fs */ }
         }
 
-        // Restore tabs from persisted data or create a single tab from legacy fields
+        // Restore tabs
         tabCounter = 0;
         const persistedTabs = p.persistedTabs as Array<{ computerId: ComputerId; cwd: string }> | undefined;
         const persistedActiveTabIndex = (p.persistedActiveTabIndex as number) ?? 0;
         let tabs: TabState[];
-        let restoredActiveTabId: string;
         if (persistedTabs && persistedTabs.length > 0) {
           tabs = persistedTabs.map((t) => ({
             id: nextTabId(),
             computerId: t.computerId,
             cwd: t.cwd,
           }));
-          const activeIdx = Math.min(persistedActiveTabIndex, tabs.length - 1);
-          restoredActiveTabId = tabs[activeIdx].id;
         } else {
-          const legacyComputer = (p.activeComputer as ComputerId) ?? "home";
-          const legacyCwd = (p.cwd as string) ?? `/home/${username}`;
-          const legacyFs = computerState[legacyComputer]?.fs;
-          const cwd = (legacyCwd && legacyFs?.getNode(legacyCwd)) ? legacyCwd : (legacyFs?.cwd ?? `/home/${username}`);
-          const id = nextTabId();
-          tabs = [{ id, computerId: legacyComputer, cwd }];
-          restoredActiveTabId = id;
+          tabs = [{ id: nextTabId(), computerId: "home", cwd: `/home/${username}` }];
         }
+        const activeIdx = Math.min(persistedActiveTabIndex, tabs.length - 1);
 
         return {
           ...currentState,
@@ -541,7 +450,7 @@ export const useGameStore = create<GameStore>()(
           snowflakeState: sfState,
           computerState,
           tabs,
-          activeTabId: restoredActiveTabId,
+          activeTabId: tabs[activeIdx].id,
         };
       },
     }

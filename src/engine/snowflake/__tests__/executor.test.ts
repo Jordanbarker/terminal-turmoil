@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { execute } from "../executor/executor";
-import type { ExecutionResult } from "../executor/executor";
 import { SnowflakeState } from "../state";
-import { SessionContext, createDefaultContext } from "../session/context";
-import type { ResultSet } from "../formatter/result_types";
-import type { Row, Value } from "../types";
+import type { SessionContext } from "../session/context";
+import type { Row } from "../types";
+import { createTestContext, executeQuery, rows, columnValues } from "./testHelpers";
 
 // ─── Test State Factory ──────────────────────────────────────────────
 
@@ -71,53 +69,11 @@ function createTestState(): SnowflakeState {
   });
 }
 
-function createTestContext(): SessionContext {
-  return {
-    currentDatabase: "NEXACORP_DB",
-    currentSchema: "PUBLIC",
-    currentUser: "PLAYER",
-    currentRole: "SYSADMIN",
-    currentWarehouse: "NEXACORP_WH",
-  };
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────
 
-/** Convert a ResultSet (Value[][] with columns) to Record<string, Value>[] for easy assertion */
-function resultSetToRecords(rs: ResultSet): Record<string, Value>[] {
-  return rs.rows.map((row) => {
-    const record: Record<string, Value> = {};
-    rs.columns.forEach((col, i) => {
-      record[col.name] = row[i];
-    });
-    return record;
-  });
-}
-
-/** Extract the first ResultSet from an ExecutionResult, throw if not a resultset */
-function getResultSet(result: ExecutionResult, index = 0): ResultSet {
-  const qr = result.results[index];
-  if (qr.type !== "resultset") throw new Error(`Expected resultset at index ${index}, got ${qr.type}`);
-  return qr.data;
-}
-
-// Helper: run SQL and return the result
-function run(sql: string, state?: SnowflakeState, ctx?: SessionContext): { result: ExecutionResult; state: SnowflakeState } {
-  const s = state ?? createTestState();
-  const c = ctx ?? createTestContext();
-  const result = execute(sql, s, c);
+function run(sql: string, state?: SnowflakeState, ctx?: SessionContext) {
+  const result = executeQuery(sql, state ?? createTestState(), ctx);
   return { result, state: result.state };
-}
-
-// Helper: extract rows from result as records
-function rows(result: ExecutionResult, index = 0): Record<string, Value>[] {
-  const rs = getResultSet(result, index);
-  return resultSetToRecords(rs);
-}
-
-// Helper: extract single column values
-function columnValues(result: ExecutionResult, col: string): Value[] {
-  return rows(result).map((r) => r[col]);
 }
 
 describe("Executor — execute()", () => {

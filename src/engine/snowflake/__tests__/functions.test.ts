@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { execute } from "../executor/executor";
 import { SnowflakeState } from "../state";
-import type { QueryResult } from "../formatter/result_types";
-import type { SessionContext } from "../session/context";
+import { executeQuery, rows, singleValue } from "./testHelpers";
+import type { ExecutionResult } from "../executor/executor";
 
 // ─── Test State Factory ──────────────────────────────────────────────
 
@@ -63,42 +62,8 @@ function createTestState(): SnowflakeState {
   });
 }
 
-function createTestContext(): SessionContext {
-  return {
-    currentDatabase: "NEXACORP_DB",
-    currentSchema: "PUBLIC",
-    currentWarehouse: "NEXACORP_WH",
-    currentRole: "SYSADMIN",
-    currentUser: "PLAYER",
-  };
-}
-
-function run(sql: string, state?: SnowflakeState): QueryResult {
-  const s = state ?? createTestState();
-  const ctx = createTestContext();
-  const execResult = execute(sql, s, ctx);
-  return execResult.results[0];
-}
-
-function rows(result: QueryResult): Record<string, unknown>[] {
-  if (result.type === "resultset") {
-    const rs = result.data;
-    return rs.rows.map((row) => {
-      const obj: Record<string, unknown> = {};
-      rs.columns.forEach((col, i) => {
-        obj[col.name] = row[i];
-      });
-      return obj;
-    });
-  }
-  throw new Error(`Expected resultset, got ${result.type}`);
-}
-
-function singleValue(result: QueryResult): unknown {
-  const r = rows(result);
-  expect(r).toHaveLength(1);
-  const keys = Object.keys(r[0]);
-  return r[0][keys[0]];
+function run(sql: string, state?: SnowflakeState): ExecutionResult {
+  return executeQuery(sql, state ?? createTestState());
 }
 
 describe("SQL Functions", () => {

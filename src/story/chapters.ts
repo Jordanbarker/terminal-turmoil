@@ -78,8 +78,8 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "olive_ch_file",
-        description: "Identify a .deb package with file",
-        check: { source: "storyFlag", key: "used_file_on_deb" },
+        description: "Identify a file type with file",
+        check: { source: "storyFlag", key: "used_file_in_downloads" },
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "olive_challenges_read" },
@@ -91,7 +91,7 @@ export const CHAPTERS: ChapterDefinition[] = [
         check: { source: "storyFlag", key: "used_which_python" },
         hidden: true,
         optional: true,
-        visibleWhen: { source: "storyFlag", key: "used_file_on_deb" },
+        visibleWhen: { source: "storyFlag", key: "used_file_in_downloads" },
         group: "olive_challenges",
       },
       {

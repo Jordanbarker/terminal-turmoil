@@ -69,7 +69,12 @@ src/
 │   │   └── nexacorp.ts         # NexaCorp email definitions
 │   ├── filesystem/
 │   │   ├── home.ts             # Home PC filesystem builder
-│   │   ├── nexacorp.ts         # NexaCorp filesystem builder (initialFilesystem)
+│   │   ├── nexacorp/           # NexaCorp filesystem builder (split into modules)
+│   │   │   ├── index.ts        # createNexacorpFilesystem() composer + re-exports
+│   │   │   ├── dbt.ts          # buildDbtProject() — full dbt project tree
+│   │   │   ├── chip.ts         # buildOptDirectory() — /opt/chip/ with plugins
+│   │   │   ├── srv.ts          # buildSrvDirectory() — /srv/ marketing, ops, engineering
+│   │   │   └── home.ts         # buildHomeDirectory() — user home dir
 │   │   ├── devcontainer.ts     # Coder dev container filesystem builder
 │   │   └── paths.ts            # HOME_PATHS and NEXACORP_PATHS constants for story flag triggers
 │   ├── chip/

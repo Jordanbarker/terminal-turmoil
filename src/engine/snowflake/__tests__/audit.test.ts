@@ -1,63 +1,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { execute } from "../executor/executor";
-import type { ExecutionResult } from "../executor/executor";
 import { createInitialSnowflakeState } from "../seed/initial_data";
 import { SnowflakeState } from "../state";
 import type { SessionContext } from "../session/context";
-import type { QueryResult, ResultSet } from "../formatter/result_types";
-import type { Value } from "../types";
 import { formatResultSet } from "../formatter/table_formatter";
+import { createTestContext, executeQuery, rows, singleValue, columnValues, expectError, stripAnsi } from "./testHelpers";
 
 // ─── Shared Helpers ─────────────────────────────────────────────────
 
-function createTestContext(db = "NEXACORP_PROD", schema = "RAW_NEXACORP"): SessionContext {
-  return {
-    currentDatabase: db,
-    currentSchema: schema,
-    currentUser: "PLAYER",
-    currentRole: "SYSADMIN",
-    currentWarehouse: "NEXACORP_WH",
-  };
-}
+const auditCtx = () => createTestContext({ currentDatabase: "NEXACORP_PROD", currentSchema: "RAW_NEXACORP" });
 
-function run(sql: string, state: SnowflakeState, ctx?: SessionContext): ExecutionResult {
-  return execute(sql, state, ctx ?? createTestContext());
-}
-
-function rows(result: ExecutionResult, index = 0): Record<string, Value>[] {
-  const qr = result.results[index];
-  if (qr.type !== "resultset") throw new Error(`Expected resultset at index ${index}, got ${qr.type}: ${"message" in qr ? qr.message : ""}`);
-  return qr.data.rows.map((row) => {
-    const obj: Record<string, Value> = {};
-    qr.data.columns.forEach((col, i) => {
-      obj[col.name] = row[i];
-    });
-    return obj;
-  });
-}
-
-function singleValue(result: ExecutionResult): Value {
-  const r = rows(result);
-  expect(r).toHaveLength(1);
-  const keys = Object.keys(r[0]);
-  return r[0][keys[0]];
-}
-
-function columnValues(result: ExecutionResult, col: string): Value[] {
-  return rows(result).map((r) => r[col]);
-}
-
-function expectError(result: ExecutionResult, substring: string): void {
-  const qr = result.results[0];
-  expect(qr.type).toBe("error");
-  if (qr.type === "error") {
-    expect(qr.message.toLowerCase()).toContain(substring.toLowerCase());
-  }
-}
-
-function stripAnsi(str: string): string {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1b\[[0-9;]*m/g, "");
+function run(sql: string, state: SnowflakeState, ctx?: SessionContext) {
+  return executeQuery(sql, state, ctx ?? auditCtx());
 }
 
 // ─── Simple test state for non-seed tests ───────────────────────────
@@ -113,8 +66,8 @@ function createSimpleState(): SnowflakeState {
   });
 }
 
-function simpleCtx(): SessionContext {
-  return createTestContext("TESTDB", "PUBLIC");
+function simpleCtx() {
+  return createTestContext({ currentDatabase: "TESTDB", currentSchema: "PUBLIC" });
 }
 
 // ═════════════════════════════════════════════════════════════════════

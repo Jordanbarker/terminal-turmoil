@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { colorizeCsv } from "../../../lib/ansi";
 import { highlightSql } from "../../../lib/sqlHighlight";
+import { highlightPython } from "../../../lib/pythonHighlight";
 import { isBinaryFile } from "../../filesystem/VirtualFS";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -37,7 +38,9 @@ const cat: CommandHandler = (args, _flags, ctx) => {
         ? colorizeCsv(result.content)
         : arg.endsWith(".sql")
           ? highlightSql(result.content)
-          : result.content;
+          : arg.endsWith(".py")
+            ? highlightPython(result.content)
+            : result.content;
       outputs.push(content);
     }
   }

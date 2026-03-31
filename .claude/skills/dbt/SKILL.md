@@ -28,7 +28,7 @@ src/engine/
 │   └── builtins/
 │       └── dbt.ts            # dbt command handler (subcommand dispatch)
 
-src/story/filesystem/nexacorp.ts             # nexacorp-analytics/ directory tree with model SQL
+src/story/filesystem/nexacorp/dbt.ts          # nexacorp-analytics/ directory tree with model SQL
 src/story/data/dbt/model_order.json          # STANDARD_MODEL_ORDER
 ```
 
@@ -162,10 +162,10 @@ nexacorp-analytics/
 
 ## Adding New Models/Tests
 
-1. **Add the SQL file** to the appropriate directory under `models/` in `story/filesystem/nexacorp.ts`
+1. **Add the SQL file** to the appropriate directory under `models/` in `story/filesystem/nexacorp/dbt.ts`
 2. **Add to `STANDARD_MODEL_ORDER`** in `story/data/dbt/model_order.json`
 3. **Update YAML files** (`_staging__sources.yml`, `_staging__models.yml`, `_marts__models.yml`) as needed for generic tests
-4. **For new tests**, add file under `tests/` directory in `nexacorp.ts`
+4. **For new tests**, add file under `tests/` directory in `nexacorp/dbt.ts`
 5. **No JSON data files needed** — model results are computed dynamically from SQL execution
 
 ## Design Patterns

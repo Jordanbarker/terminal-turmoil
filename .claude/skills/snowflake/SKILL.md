@@ -53,6 +53,7 @@ src/engine/snowflake/
 │   └── table_formatter.ts         # ASCII table with ANSI colors (Snowflake CLI-style)
 ├── session/
 │   ├── context.ts                 # SessionContext: current database/schema/warehouse/role
+│   ├── permissions.ts             # Role definitions, permission checks (checkPermission, canReadSchema, isValidRole)
 │   └── SnowSqlSession.ts          # Interactive REPL (inline, not alt buffer)
 ├── seed/
 │   └── initial_data.ts            # Seed databases + tables
@@ -294,6 +295,29 @@ NEXACORP_DB.PUBLIC> SELECT id, name, created_at FROM projects LIMIT 3;
 - Added to `partialize` config as `serializedSnowflake`
 - Restored in `onRehydrateStorage` (falls back to seed data)
 - Save/load system includes snowflake state in `SaveData`
+
+## Role-Based Access Control (`session/permissions.ts`)
+
+Schema-level permission model enforced across SELECT, DML, and DDL.
+
+| Role | Access |
+|------|--------|
+| `PUBLIC` | INFORMATION_SCHEMA only |
+| `ANALYST` | Read on ANALYTICS + RAW_NEXACORP |
+| `TRANSFORMER` | Read-write on ANALYTICS, read on RAW_NEXACORP (dbt service role) |
+| `ENGINEER` | Read-write on ANALYTICS, read on RAW_NEXACORP |
+| `SYSADMIN` | Full access |
+| `ACCOUNTADMIN` | Full access |
+
+- Player default role: `ANALYST`
+- `checkPermission(role, db, schema, "READ"|"WRITE")` — throws Snowflake-style error on denial
+- `canReadSchema(role, db, schema)` — used by SHOW commands to filter output
+- `isValidRole(role)` — validates role names for `USE ROLE`
+- INFORMATION_SCHEMA always readable; admin roles (`isAdmin: true`) bypass all checks
+- View expansion skips permission checks (owner-privilege semantics: `viewDepth > 0`)
+- SHOW TABLES/VIEWS/COLUMNS filtered by `canReadSchema()` to hide inaccessible schemas
+- dbt executor overrides session role to `TRANSFORMER` (`src/engine/dbt/executor.ts`)
+- Error format: `"SQL access control error:\nInsufficient privileges to operate on schema '...'"  `
 
 ## Design Patterns
 

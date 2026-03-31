@@ -6,6 +6,7 @@ import { evaluate, toBool, EvalContext } from "./evaluator";
 import { SessionContext } from "../session/context";
 import { execute as executeSql } from "./executor";
 import { resolveThreePart, tableNotFoundError } from "./resolve";
+import { checkPermission } from "../session/permissions";
 
 export function executeDML(stmt: AST.Statement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const evalCtx = sessionToEvalCtx(ctx);
@@ -21,6 +22,7 @@ export function executeDML(stmt: AST.Statement, state: SnowflakeState, ctx: Sess
 
 function executeInsert(stmt: AST.InsertStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const tbl = state.getTable(db, schema, table);
   if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
@@ -70,6 +72,7 @@ function executeInsert(stmt: AST.InsertStatement, state: SnowflakeState, ctx: Se
 
 function executeUpdate(stmt: AST.UpdateStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const tbl = state.getTable(db, schema, table);
   if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
@@ -100,6 +103,7 @@ function executeUpdate(stmt: AST.UpdateStatement, state: SnowflakeState, ctx: Se
 
 function executeDelete(stmt: AST.DeleteStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const tbl = state.getTable(db, schema, table);
   if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
 
@@ -130,6 +134,7 @@ function executeDelete(stmt: AST.DeleteStatement, state: SnowflakeState, ctx: Se
 
 function executeMerge(stmt: AST.MergeStatement, state: SnowflakeState, ctx: SessionContext, evalCtx: EvalContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.target, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const tbl = state.getTable(db, schema, table);
   if (!tbl) return { result: { type: "error", message: tableNotFoundError(stmt.target.join(".")) }, state };
 
@@ -137,6 +142,7 @@ function executeMerge(stmt: AST.MergeStatement, state: SnowflakeState, ctx: Sess
   let sourceRows: Row[] = [];
   if (stmt.source.kind === "table_name") {
     const [sDb, sSch, sTbl] = resolveThreePart(stmt.source.name, ctx);
+    checkPermission(ctx.currentRole, sDb, sSch, "READ");
     const srcTable = state.getTable(sDb, sSch, sTbl);
     if (srcTable) sourceRows = srcTable.rows;
   }

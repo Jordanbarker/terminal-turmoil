@@ -18,6 +18,7 @@ import { executeShow, executeDescribe, executeUse } from "./show_describe";
 import { executeCopyInto } from "./copy_staging";
 import { SessionContext } from "../session/context";
 import { tableNotFoundError } from "./resolve";
+import { checkPermission } from "../session/permissions";
 
 export interface ExecutionResult {
   results: QueryResult[];
@@ -228,6 +229,9 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
       return [outerRow ? { ...outerRow } : {}]; // Single empty row for SELECT without FROM
 
     case "scan": {
+      if (!(ctx.viewDepth ?? 0)) {
+        checkPermission(ctx.currentRole, plan.database, plan.schema, "READ");
+      }
       const tbl = state.getTable(plan.database, plan.schema, plan.table);
       if (!tbl) {
         // Fall back to view expansion

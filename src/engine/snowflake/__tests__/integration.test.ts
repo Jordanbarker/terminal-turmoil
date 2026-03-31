@@ -4,6 +4,7 @@ import { formatResultSet, formatStatusMessage } from "../formatter/table_formatt
 import type { QueryResult } from "../formatter/result_types";
 import { SnowflakeState } from "../state";
 import type { SessionContext } from "../session/context";
+import { createTestContext, stripAnsi } from "./testHelpers";
 
 // ─── Test Helpers ────────────────────────────────────────────────────
 
@@ -57,22 +58,6 @@ function createTestState(): SnowflakeState {
     },
     warehouses: {},
   });
-}
-
-function createTestContext(): SessionContext {
-  return {
-    currentDatabase: "NEXACORP_DB",
-    currentSchema: "PUBLIC",
-    currentUser: "PLAYER",
-    currentRole: "SYSADMIN",
-    currentWarehouse: "NEXACORP_WH",
-  };
-}
-
-// Strip ANSI codes for content assertions
-function stripAnsi(str: string): string {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
 // Full pipeline: SQL string → execute → format → string output

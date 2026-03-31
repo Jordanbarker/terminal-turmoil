@@ -25,8 +25,8 @@ src/engine/prompt/
 └── PromptSession.ts  # Inline prompt session (renders, validates, resolves)
 
 src/engine/commands/builtins/mail.ts       # mail command handler (reply options → prompt)
-src/story/filesystem/nexacorp.ts           # Maildir dir creation + immediate email seeding (NexaCorp)
-src/story/filesystem/home.ts               # Maildir dir creation + immediate email seeding (Home PC)
+src/story/filesystem/nexacorp/index.ts     # Maildir dir creation + immediate email seeding (NexaCorp)
+src/story/filesystem/home/system.ts         # Maildir dir creation + immediate email seeding (Home PC)
 src/state/gameStore.ts                     # deliveredEmailIds state + addDeliveredEmails action
 src/hooks/useTerminal.ts                   # Delivery trigger + prompt session integration
 src/hooks/useSessionRouter.ts              # Processes triggerEvents from prompt sessions (email delivery + story flags)
@@ -168,7 +168,7 @@ Email body here...
    }
    ```
 2. Choose the appropriate trigger type based on when the email should arrive.
-3. Immediate emails are seeded via `buildInitialMailFiles()` in `story/filesystem/nexacorp.ts` (NexaCorp) or `buildHomeMailFiles()` in `story/filesystem/home.ts` (home).
+3. Immediate emails are seeded via `buildInitialMailFiles()` in `story/filesystem/nexacorp/index.ts` (NexaCorp) or `buildHomeMailFiles()` in `story/filesystem/home/system.ts` (home).
 
 ## Character Reference
 

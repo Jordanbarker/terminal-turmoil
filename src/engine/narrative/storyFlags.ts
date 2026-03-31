@@ -17,7 +17,12 @@ export function checkStoryFlagTriggers(
     if (trigger.event === event.type) {
       if (trigger.requiredFlags?.some(f => !currentFlags[f])) continue;
       const matchDetail = trigger.path ?? trigger.detail;
-      if (matchDetail && event.detail === matchDetail) {
+      const matchPrefix = trigger.pathPrefix;
+      if (matchPrefix && event.detail?.startsWith(matchPrefix)) {
+        if (currentFlags[trigger.flag] === undefined) {
+          results.push({ flag: trigger.flag, value: trigger.value, toast: trigger.toast });
+        }
+      } else if (matchDetail && event.detail === matchDetail) {
         if (currentFlags[trigger.flag] === undefined) {
           results.push({ flag: trigger.flag, value: trigger.value, toast: trigger.toast });
         }

@@ -5,17 +5,12 @@ import {
   loadFromSlot,
   deleteSlot,
   listSaveSlots,
-  restoreFS,
-  migrateSaveData,
   SaveableState,
 } from "../saveManager";
-import { SaveData, SAVE_FORMAT_VERSION } from "../saveTypes";
+import { SAVE_FORMAT_VERSION } from "../saveTypes";
 import { VirtualFS } from "../../engine/filesystem/VirtualFS";
 import { DirectoryNode } from "../../engine/filesystem/types";
-import {
-  serializeFS,
-  deserializeFS,
-} from "../../engine/filesystem/serialization";
+import { deserializeFS } from "../../engine/filesystem/serialization";
 
 function createMinimalFS(): VirtualFS {
   const root: DirectoryNode = {
@@ -121,8 +116,6 @@ describe("createSaveData", () => {
     expect(data.currentChapter).toBe("chapter-1");
     expect(data.completedObjectives).toEqual(["obj-1"]);
     expect(data.deliveredEmailIds).toEqual(["email-1"]);
-    expect(data.commandHistory).toEqual(["ls", "cd docs", "cat readme.md"]);
-    expect(data.cwd).toBe("/home/player");
     expect(data.timestamp).toBeGreaterThan(0);
   });
 
@@ -133,34 +126,26 @@ describe("createSaveData", () => {
     expect(data.completedObjectives).toEqual(["obj-1"]);
   });
 
-  it("truncates command history to 500 entries", () => {
+  it("truncates command history to 500 entries per computer", () => {
     const state = createState();
     state.computerState.nexacorp!.commandHistory = Array.from({ length: 600 }, (_, i) => `cmd-${i}`);
     const data = createSaveData(state, "Test");
-    expect(data.commandHistory).toHaveLength(500);
-    expect(data.commandHistory[0]).toBe("cmd-100");
-  });
-
-  it("serializes filesystem", () => {
-    const state = createState();
-    const data = createSaveData(state, "Test");
-    expect(data.fs.root).toBeDefined();
-    expect(data.fs.cwd).toBe("/home/player");
-    expect(data.fs.homeDir).toBe("/home/player");
+    expect(data.computerStates.nexacorp.commandHistory).toHaveLength(500);
+    expect(data.computerStates.nexacorp.commandHistory[0]).toBe("cmd-100");
   });
 
   it("serializes computerStates", () => {
     const state = createState();
     const data = createSaveData(state, "Test");
     expect(data.computerStates).toBeDefined();
-    expect(data.computerStates!.nexacorp).toBeDefined();
-    expect(data.computerStates!.nexacorp.fs.root).toBeDefined();
+    expect(data.computerStates.nexacorp).toBeDefined();
+    expect(data.computerStates.nexacorp.fs.root).toBeDefined();
   });
 
   it("serializes envVars in computerStates", () => {
     const state = createState();
     const data = createSaveData(state, "Test");
-    expect(data.computerStates!.nexacorp.envVars).toEqual({ USER: "player", HOME: "/home/player" });
+    expect(data.computerStates.nexacorp.envVars).toEqual({ USER: "player", HOME: "/home/player" });
   });
 
   it("serializes tabs and activeTabIndex", () => {
@@ -249,106 +234,6 @@ describe("listSaveSlots", () => {
   });
 });
 
-describe("restoreFS", () => {
-  it("restores VirtualFS from save data", () => {
-    const state = createState();
-    const data = createSaveData(state, "Test");
-    const restoredFs = restoreFS(data);
-
-    expect(restoredFs).toBeInstanceOf(VirtualFS);
-    expect(restoredFs.cwd).toBe("/home/player");
-    expect(restoredFs.readFile("/home/player/test.txt").content).toBe(
-      "test content"
-    );
-  });
-});
-
-describe("migrateSaveData", () => {
-  it("returns data unchanged for current version", () => {
-    const data = createSaveData(createState(), "Test");
-    expect(migrateSaveData(data)).toBe(data);
-  });
-
-  it("migrates v4 data to v5 with computerStates and tabs", () => {
-    const fs = createMinimalFS();
-    const v4Data: SaveData = {
-      version: 4,
-      timestamp: Date.now(),
-      label: "v4 save",
-      username: "player",
-      gamePhase: "playing",
-      currentChapter: "chapter-2",
-      completedObjectives: [],
-      deliveredEmailIds: [],
-      deliveredPiperIds: [],
-      commandHistory: [],
-      cwd: "/home/player",
-      fs: serializeFS(fs),
-      activeComputer: "nexacorp",
-      storyFlags: {},
-    };
-    const migrated = migrateSaveData(v4Data);
-    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
-    expect(migrated.computerStates).toBeDefined();
-    expect(migrated.computerStates!.nexacorp).toBeDefined();
-    expect(migrated.tabs).toEqual([{ computerId: "nexacorp", cwd: "/home/player" }]);
-    expect(migrated.activeTabIndex).toBe(0);
-  });
-
-  it("migrates v6 to v7 (no-op, envVars initialized on load)", () => {
-    const fs = createMinimalFS();
-    const v6Data: SaveData = {
-      version: 6,
-      timestamp: Date.now(),
-      label: "v6 save",
-      username: "player",
-      gamePhase: "playing",
-      currentChapter: "chapter-2",
-      completedObjectives: [],
-      deliveredEmailIds: [],
-      deliveredPiperIds: [],
-      commandHistory: [],
-      cwd: "/home/player",
-      fs: serializeFS(fs),
-      activeComputer: "nexacorp",
-      storyFlags: {},
-      computerStates: {
-        nexacorp: { fs: serializeFS(fs), commandHistory: ["ls"] },
-      },
-      tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
-      activeTabIndex: 0,
-    };
-    const migrated = migrateSaveData(v6Data);
-    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
-    // envVars not present in v6 data — will be initialized from defaults on load
-    expect(migrated.computerStates!.nexacorp.envVars).toBeUndefined();
-  });
-
-  it("migrates v4 with stashedFs", () => {
-    const fs = createMinimalFS();
-    const v4Data: SaveData = {
-      version: 4,
-      timestamp: Date.now(),
-      label: "v4 stashed",
-      username: "player",
-      gamePhase: "playing",
-      currentChapter: "chapter-2",
-      completedObjectives: [],
-      deliveredEmailIds: [],
-      deliveredPiperIds: [],
-      commandHistory: [],
-      cwd: "/home/player",
-      fs: serializeFS(fs),
-      activeComputer: "devcontainer",
-      storyFlags: {},
-      stashedFs: serializeFS(fs),
-    };
-    const migrated = migrateSaveData(v4Data);
-    expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
-    expect(migrated.computerStates!.devcontainer).toBeDefined();
-    expect(migrated.computerStates!.nexacorp).toBeDefined();
-  });
-});
 
 describe("multi-tab round-trip", () => {
   it("full round-trip with 3 tabs on 2 computers", () => {
@@ -378,12 +263,12 @@ describe("multi-tab round-trip", () => {
 
     expect(loaded).not.toBeNull();
     expect(loaded!.computerStates).toBeDefined();
-    expect(loaded!.computerStates!.nexacorp).toBeDefined();
-    expect(loaded!.computerStates!.devcontainer).toBeDefined();
+    expect(loaded!.computerStates.nexacorp).toBeDefined();
+    expect(loaded!.computerStates.devcontainer).toBeDefined();
     expect(loaded!.tabs).toHaveLength(3);
-    expect(loaded!.tabs![0].computerId).toBe("nexacorp");
-    expect(loaded!.tabs![1].computerId).toBe("devcontainer");
-    expect(loaded!.tabs![2].computerId).toBe("nexacorp");
+    expect(loaded!.tabs[0].computerId).toBe("nexacorp");
+    expect(loaded!.tabs[1].computerId).toBe("devcontainer");
+    expect(loaded!.tabs[2].computerId).toBe("nexacorp");
     expect(loaded!.activeTabIndex).toBe(1);
   });
 
@@ -412,41 +297,13 @@ describe("multi-tab round-trip", () => {
     const loaded = loadFromSlot("slot-1");
 
     expect(loaded).not.toBeNull();
-    const nexaFs = deserializeFS(loaded!.computerStates!.nexacorp.fs);
-    const devFs = deserializeFS(loaded!.computerStates!.devcontainer.fs);
+    const nexaFs = deserializeFS(loaded!.computerStates.nexacorp.fs);
+    const devFs = deserializeFS(loaded!.computerStates.devcontainer.fs);
 
     expect(nexaFs.readFile("/home/player/test.txt").content).toBe(
       "test content"
     );
     expect(devFs.readFile("/home/player/test.txt").error).toBeDefined();
-  });
-
-  it("v4→v5 migration preserves tab-computer alignment", () => {
-    const fs = createMinimalFS();
-    const v4Data: SaveData = {
-      version: 4,
-      timestamp: Date.now(),
-      label: "v4 aligned",
-      username: "player",
-      gamePhase: "playing",
-      currentChapter: "chapter-2",
-      completedObjectives: [],
-      deliveredEmailIds: [],
-      deliveredPiperIds: [],
-      commandHistory: [],
-      cwd: "/home/player",
-      fs: serializeFS(fs),
-      activeComputer: "nexacorp",
-      storyFlags: {},
-      stashedFs: serializeFS(fs),
-    };
-
-    const migrated = migrateSaveData(v4Data);
-
-    expect(migrated.tabs![0].computerId).toBe("nexacorp");
-    expect(migrated.activeTabIndex).toBe(0);
-    expect(migrated.computerStates!.nexacorp).toBeDefined();
-    expect(migrated.computerStates!.devcontainer).toBeDefined();
   });
 
   it("single tab round-trip", () => {

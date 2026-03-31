@@ -4,14 +4,22 @@ import * as AST from "../parser/ast";
 import { QueryResult, StatusMessage } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
 import { resolveThreePart, tableNotFoundError } from "./resolve";
+import { checkPermission, getRoleDef } from "../session/permissions";
+
+function requireAdmin(ctx: SessionContext): void {
+  const def = getRoleDef(ctx.currentRole);
+  if (!def?.isAdmin) {
+    throw new Error("SQL access control error:\nInsufficient privileges to operate on account 'NEXACORP'");
+  }
+}
 
 export function executeDDL(stmt: AST.Statement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   switch (stmt.kind) {
-    case "create_database": return executeCreateDatabase(stmt, state);
+    case "create_database": return executeCreateDatabase(stmt, state, ctx);
     case "create_schema": return executeCreateSchema(stmt, state, ctx);
     case "create_table": return executeCreateTable(stmt, state, ctx);
     case "create_view": return executeCreateView(stmt, state, ctx);
-    case "create_warehouse": return executeCreateWarehouse(stmt, state);
+    case "create_warehouse": return executeCreateWarehouse(stmt, state, ctx);
     case "create_stage": return executeCreateStage(stmt, state, ctx);
     case "create_sequence": return executeCreateSequence(stmt, state, ctx);
     case "alter_table": return executeAlterTable(stmt, state, ctx);
@@ -26,7 +34,8 @@ function ok(msg?: string): QueryResult {
   return { type: "status", data: { message: msg ?? "Statement executed successfully." } };
 }
 
-function executeCreateDatabase(stmt: AST.CreateDatabaseStatement, state: SnowflakeState): { result: QueryResult; state: SnowflakeState } {
+function executeCreateDatabase(stmt: AST.CreateDatabaseStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
+  requireAdmin(ctx);
   const name = stmt.name.toUpperCase();
   if (state.getDatabase(name) && !stmt.orReplace) {
     if (stmt.ifNotExists) return { result: ok(), state };
@@ -50,6 +59,7 @@ function executeCreateDatabase(stmt: AST.CreateDatabaseStatement, state: Snowfla
 }
 
 function executeCreateSchema(stmt: AST.CreateSchemaStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
+  requireAdmin(ctx);
   const db = (stmt.database ?? ctx.currentDatabase).toUpperCase();
   const name = stmt.name.toUpperCase();
   if (!state.getDatabase(db)) return { result: { type: "error", message: `Database '${db}' does not exist.` }, state };
@@ -62,6 +72,7 @@ function executeCreateSchema(stmt: AST.CreateSchemaStatement, state: SnowflakeSt
 
 function executeCreateTable(stmt: AST.CreateTableStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.name, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   if (!state.getDatabase(db)) return { result: { type: "error", message: `Database '${db}' does not exist.` }, state };
   if (!state.getSchema(db, schema)) return { result: { type: "error", message: `Schema '${db}.${schema}' does not exist.` }, state };
 
@@ -100,6 +111,7 @@ function executeCreateTable(stmt: AST.CreateTableStatement, state: SnowflakeStat
 
 function executeCreateView(stmt: AST.CreateViewStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, name] = resolveThreePart(stmt.name, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const view = {
     name: name.toUpperCase(),
     columns: [],
@@ -108,7 +120,8 @@ function executeCreateView(stmt: AST.CreateViewStatement, state: SnowflakeState,
   return { result: ok(`View '${name}' successfully created.`), state: state.createView(db, schema, view) };
 }
 
-function executeCreateWarehouse(stmt: AST.CreateWarehouseStatement, state: SnowflakeState): { result: QueryResult; state: SnowflakeState } {
+function executeCreateWarehouse(stmt: AST.CreateWarehouseStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
+  requireAdmin(ctx);
   const wh = {
     name: stmt.name.toUpperCase(),
     size: stmt.size ?? "X-Small",
@@ -120,18 +133,21 @@ function executeCreateWarehouse(stmt: AST.CreateWarehouseStatement, state: Snowf
 
 function executeCreateStage(stmt: AST.CreateStageStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, name] = resolveThreePart(stmt.name, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const stage = { name: name.toUpperCase(), files: {} };
   return { result: ok(`Stage '${name}' successfully created.`), state: state.createStage(db, schema, stage) };
 }
 
 function executeCreateSequence(stmt: AST.CreateSequenceStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, name] = resolveThreePart(stmt.name, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   const seq = { name: name.toUpperCase(), current: stmt.start ?? 1, increment: stmt.increment ?? 1 };
   return { result: ok(`Sequence '${name}' successfully created.`), state: state.createSequence(db, schema, seq) };
 }
 
 function executeAlterTable(stmt: AST.AlterTableStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   if (!state.getTable(db, schema, table)) {
     return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
   }
@@ -158,6 +174,7 @@ function executeAlterTable(stmt: AST.AlterTableStatement, state: SnowflakeState,
 function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   switch (stmt.objectType) {
     case "DATABASE": {
+      requireAdmin(ctx);
       const name = stmt.name[0].toUpperCase();
       if (!state.getDatabase(name)) {
         if (stmt.ifExists) return { result: ok(), state };
@@ -166,6 +183,7 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
       return { result: ok(`${name} successfully dropped.`), state: state.dropDatabase(name) };
     }
     case "SCHEMA": {
+      requireAdmin(ctx);
       const parts = stmt.name;
       const db = (parts.length === 2 ? parts[0] : ctx.currentDatabase).toUpperCase();
       const schema = parts[parts.length - 1].toUpperCase();
@@ -177,6 +195,7 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
     }
     case "TABLE": {
       const [db, schema, table] = resolveThreePart(stmt.name, ctx);
+      checkPermission(ctx.currentRole, db, schema, "WRITE");
       if (!state.getTable(db, schema, table)) {
         if (stmt.ifExists) return { result: ok(), state };
         return { result: { type: "error", message: tableNotFoundError(table) }, state };
@@ -185,9 +204,11 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
     }
     case "VIEW": {
       const [db, schema, name] = resolveThreePart(stmt.name, ctx);
+      checkPermission(ctx.currentRole, db, schema, "WRITE");
       return { result: ok(`${name} successfully dropped.`), state: state.dropView(db, schema, name) };
     }
     case "WAREHOUSE": {
+      requireAdmin(ctx);
       const name = stmt.name[0].toUpperCase();
       return { result: ok(`${name} successfully dropped.`), state: state.dropWarehouse(name) };
     }
@@ -200,6 +221,7 @@ function executeDrop(stmt: AST.DropStatement, state: SnowflakeState, ctx: Sessio
 
 function executeTruncate(stmt: AST.TruncateStatement, state: SnowflakeState, ctx: SessionContext): { result: QueryResult; state: SnowflakeState } {
   const [db, schema, table] = resolveThreePart(stmt.table, ctx);
+  checkPermission(ctx.currentRole, db, schema, "WRITE");
   if (!state.getTable(db, schema, table)) {
     return { result: { type: "error", message: tableNotFoundError(stmt.table.join(".")) }, state };
   }
