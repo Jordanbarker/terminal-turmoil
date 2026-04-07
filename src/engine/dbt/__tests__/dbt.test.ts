@@ -52,7 +52,7 @@ const projectDir = `/home/${username}/nexacorp-analytics`;
 
 /** Expected values derived from the seed data. */
 const EXPECTED = {
-  DIM_EMPLOYEES_ROWS: 13,           // 15 active - 2 with "system concern" notes
+  DIM_EMPLOYEES_ROWS: 15,           // 16 total - 1 resigned (Jin Chen)
   STANDARD_MODEL_COUNT: 18,         // staging + intermediate + marts
 };
 
@@ -214,7 +214,7 @@ describe("dbt show", () => {
     ctx.snowflakeState = (ctx as CommandContext & { getSnowflakeState: () => SnowflakeState }).getSnowflakeState();
     const result = showModel(ctx, "dim_employees");
     expect(result.output).toContain("EMPLOYEE_ID");
-    // Jin Chen (E005) should NOT be in dim_employees (system concern filter)
+    // Jin Chen (E006) should NOT be in dim_employees (status = 'resigned')
     expect(result.output).not.toContain("Jin Chen");
   });
 
@@ -616,12 +616,11 @@ describe("narrative data integrity", () => {
     expect(result.output).toContain("WARN");
   });
 
-  it("dim_employees compiled SQL reveals system concern filter", () => {
+  it("dim_employees compiled SQL filters by active status", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx, "dim_employees");
     const plain = stripAnsi(result.output);
     expect(plain).toContain("status = 'active'");
-    expect(plain).toContain("system concern");
   });
 
   it("fct_system_events SQL filters chip-daemon and suspicious events", () => {

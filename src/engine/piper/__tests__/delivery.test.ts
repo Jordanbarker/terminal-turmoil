@@ -21,12 +21,13 @@ describe("checkPiperDeliveries", () => {
     expect(result).toContain("dana_welcome");
   });
 
-  it("delivers messages on matching after_email_read trigger", () => {
+  it("delivers messages on matching after_story_flag trigger", () => {
     const event: GameEvent = {
-      type: "file_read",
-      detail: "chip_intro",
+      type: "command_executed",
+      detail: "ls",
     };
-    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp");
+    const flags = { chip_unlocked: true } as Record<string, string | boolean>;
+    const result = checkPiperDeliveries(event, [], USERNAME, "nexacorp", flags);
     expect(result).toContain("eng_sarah_welcome");
   });
 

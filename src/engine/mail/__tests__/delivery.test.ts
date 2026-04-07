@@ -102,20 +102,20 @@ describe("checkEmailDeliveries", () => {
 
   it("calculates correct sequence numbers from existing mail", () => {
     const fs = makeFS();
-    // The initial FS has 3 immediate emails (seq 1, 2, 3)
+    // The initial FS has 2 immediate emails (seq 1, 2)
     const event: GameEvent = {
       type: "file_read",
       detail: "/srv/engineering/chen-handoff/notes.txt",
     };
 
     const { fs: newFs } = checkEmailDeliveries(fs, event, []);
-    // Verify new email was written (seq 4 based on 3 existing immediate emails)
+    // Verify new email was written (seq 3 based on 2 existing immediate emails)
     const newNode = newFs.getNode(`/var/mail/${USERNAME}/new`);
     expect(newNode).toBeDefined();
     if (newNode && newNode.type === "directory") {
       const filenames = Object.keys(newNode.children);
-      const hasSeq4 = filenames.some((f) => f.startsWith("004_"));
-      expect(hasSeq4).toBe(true);
+      const hasSeq3 = filenames.some((f) => f.startsWith("003_"));
+      expect(hasSeq3).toBe(true);
     }
   });
 

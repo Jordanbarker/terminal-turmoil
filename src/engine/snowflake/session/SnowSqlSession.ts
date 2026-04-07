@@ -181,11 +181,27 @@ export class SnowSqlSession implements ISession {
   }
 
   private replaceInput(newInput: string): void {
-    // Move cursor to start of input, clear to end of line, write new input
-    if (this.cursorPos > 0) {
-      this.terminal.write("\x1b[" + this.cursorPos + "D");
+    const currentLineCount = (this.inputBuffer.match(/\n/g) || []).length + 1;
+
+    // Move up to the first input line
+    if (currentLineCount > 1) {
+      this.terminal.write(`\x1b[${currentLineCount - 1}A`);
     }
-    this.terminal.write("\x1b[K" + newInput);
+
+    // Clear from start of line to end of screen, then rewrite prompt
+    this.terminal.write("\r\x1b[J");
+    this.writePrompt();
+
+    // Write new input with continuation prompts for each line
+    const lines = newInput.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        this.terminal.write("\r\n");
+        this.writeContinuationPrompt();
+      }
+      this.terminal.write(lines[i]);
+    }
+
     this.inputBuffer = newInput;
     this.cursorPos = newInput.length;
   }

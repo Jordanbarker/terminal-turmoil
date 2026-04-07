@@ -13,7 +13,6 @@ import {
 } from "./render";
 import { CTRL_C } from "../terminal/keyCodes";
 import { GameEvent } from "../mail/delivery";
-import { colorize, ansi } from "../../lib/ansi";
 import {
   CHIP_THINKING_DELAY_MS,
   CHIP_CHAT_LINE_INTERVAL_MS,
@@ -120,15 +119,7 @@ export class ChipSession implements ISession {
 
       // Ctrl+C or q — exit
       if (code === CTRL_C || char === "q") {
-        const clear = this.buildClearSequence();
-        this.terminal.write(clear + colorize("See you later!", ansi.cyan) + "\r\n\x1b[?25h");
-        return {
-          type: "exit",
-          triggerEvents:
-            this.collectedEvents.length > 0
-              ? this.collectedEvents
-              : undefined,
-        };
+        return this.exitSession();
       }
 
       // a — toggle used items visibility
@@ -167,7 +158,7 @@ export class ChipSession implements ISession {
 
   private exitSession(): SessionResult {
     const clear = this.buildClearSequence();
-    this.terminal.write(clear + colorize("See you later!", ansi.cyan) + "\r\n\x1b[?25h");
+    this.terminal.write(clear + "\x1b[?25h");
     return {
       type: "exit",
       triggerEvents:

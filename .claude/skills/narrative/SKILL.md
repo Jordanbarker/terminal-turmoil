@@ -29,6 +29,8 @@ src/story/
 ├── piper/
 │   ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
 │   └── messages.ts        # getPiperDeliveries() — all Piper message definitions with triggers
+├── fsEffects.ts           # STORY_FS_EFFECTS — filesystem effects applied when story flags are set (e.g., adding CHIP_API_KEY to .zshrc after sourced_nexacorp_zshrc)
+├── checkpoints.ts         # Checkpoint definitions — checkpoint loading also applies FS effects
 └── filesystem/
     ├── paths.ts           # HOME_PATHS and NEXACORP_PATHS constants for story flag trigger paths
     └── nexacorp/           # createNexacorpFilesystem(username, storyFlags) — split into index, dbt, chip, srv, home
@@ -127,7 +129,10 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `coder_workspace_stopped` | `command_executed` | detail: `coder_start` | `false` |
 | `read_team_info` | `file_read` | `/srv/engineering/team-info.md` | `true` |
 | `read_handoff_notes` | `file_read` | `/srv/engineering/chen-handoff/notes.txt` | `true` |
-| `chip_unlocked` | `file_read` | detail: `chip_intro` | `true` |
+| `chip_unlocked` | `piper_delivered` | detail: `edward_chip_intro` | `true` |
+| `chip_error_seen` | `command_executed` | detail: `chip_api_error` | `true` |
+| `printenv_unlocked` | `piper_delivered` | detail: `edward_chip_fix` | `true` |
+| `sourced_nexacorp_zshrc` | `command_executed` | detail: `sourced_zshrc` | `true` | requires: `printenv_unlocked` |
 | `piper_unlocked` | `file_read` | detail: `welcome_edward` | `true` |
 | `discovered_log_tampering` | `file_read` | detail: `discovered_log_tampering` | `true` |
 ### Dev Container Flags (`story/storyFlags.ts` — `getDevcontainerStoryFlagTriggers()`)
@@ -186,7 +191,8 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
   - `meet_auri` (concrete check) → 5 optional children: auri_ls_data, auri_check_todo, auri_use_head/tail/wc
   - `explore_jchen` (concrete check) → 2 children: discover_tampering, find_directives
   - `olive_power_tools` (allVisibleChildren) → 5 children: olive_pt_grep/wc/redirect/sort_uniq/find
-  - Ungrouped: read_welcome_email, read_onboarding, meet_the_team, review_handoff, help_auri_pipeline, run_dbt, head_home, investigate_ops_data
+  - `edward_onboarding` (allVisibleChildren) → 5 children: read_onboarding, meet_the_team, try_chip, tell_edward_chip_error, source_zshrc
+  - Ungrouped: read_welcome_email, review_handoff, help_auri_pipeline, run_dbt, head_home, investigate_ops_data
 - **chapter-3** ("Getting the Hang of This"): Day 2 content:
   - `fix_pipeline_quest` (allVisibleChildren) → 7 children: pull_day2_updates, discover_test_failure, investigate_null_data, create_fix_branch, fix_the_model, push_fix, report_to_auri
   - Ungrouped: ssh_to_work_day2
@@ -228,7 +234,8 @@ Commands are gated differently per computer (see `engine/commands/availability.t
 - `processing_tools_unlocked` — unlocks sort, uniq
 - `coder_unlocked` — unlocks coder (triggered by reading onboarding docs)
 - `coder_workspace_stopped` — tracks workspace state; set true by `coder stop`, false by `coder start`. Absent = running. `coder ssh` blocked when true; `coder stop` closes devcontainer tabs via `closeTabsForComputer`
-- `chip_unlocked` — unlocks chip (triggered by reading the chip intro email)
+- `chip_unlocked` — unlocks chip (triggered by delivery of `edward_chip_intro` Piper DM)
+- `printenv_unlocked` — unlocks printenv, env (triggered by delivery of `edward_chip_fix` Piper DM)
 - `piper_unlocked` — unlocks piper (triggered by reading Edward's welcome email)
 
 **Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snow, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`. The `coder` command supports subcommands: `list`/`ls`, `start`, `stop`, `ssh`, `logs`, `create`, `delete`.

@@ -69,7 +69,7 @@ describe("getEmailDefinitions", () => {
       const triggers = Array.isArray(d.trigger) ? d.trigger : [d.trigger];
       return triggers.every((t) => t.type === "immediate");
     });
-    expect(immediates.length).toBeGreaterThanOrEqual(3);
+    expect(immediates.length).toBeGreaterThanOrEqual(2);
   });
 
   it("has at least 1 triggered (non-immediate) email", () => {

@@ -6,9 +6,9 @@ import { getDanaDeliveries } from "./messages/dana";
 import { getAuriDeliveries } from "./messages/auri";
 import { getSarahDeliveries } from "./messages/sarah";
 import { getCassieDeliveries } from "./messages/cassie";
+import { getEdwardDeliveries } from "./messages/edward";
 import { getJordanDeliveries } from "./messages/jordan";
 import { getMayaDeliveries } from "./messages/maya";
-import { getSohamDeliveries } from "./messages/soham";
 import { getAmbientDeliveries } from "./messages/ambient";
 
 export const PIPER_DELIVERY_IDS = [
@@ -83,9 +83,11 @@ export const PIPER_DELIVERY_IDS = [
   "maya_dm_jin_reply",
   "maya_dm_checkin",
   "maya_dm_checkin_reply",
-  "soham_dm_welcome",
   "sarah_dm_mystery",
   "cassie_dm_product",
+  "edward_chip_intro",
+  "edward_chip_error",
+  "edward_chip_fix",
   // Ambient deliveries
   "general_kitchen_debate",
   "general_standup_cancelled",
@@ -112,9 +114,9 @@ export function getPiperDeliveries(username: string): PiperDelivery[] {
     ...getAuriDeliveries(username),
     ...getJordanDeliveries(username),
     ...getMayaDeliveries(username),
-    ...getSohamDeliveries(username),
     ...getSarahDeliveries(username),
     ...getCassieDeliveries(username),
+    ...getEdwardDeliveries(username),
     ...getAmbientDeliveries(username),
   ];
   return cachedDeliveries;

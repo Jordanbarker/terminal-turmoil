@@ -6,7 +6,7 @@ import nexacorpProdJson from "../../../story/data/snowflake/nexacorp_prod.json";
 
 // ── Date columns per table (for reconstituting Date objects from JSON strings) ──
 const DATE_COLUMNS: Record<string, Set<string>> = {
-  EMPLOYEES: new Set(["HIRE_DATE", "TERMINATION_DATE"]),
+  EMPLOYEES: new Set(["HIRE_DATE", "END_DATE"]),
   EMPLOYEE_DIRECTORY: new Set(["HIRE_DATE"]),
   PROJECTS: new Set(["START_DATE"]),
   ACCESS_LOG: new Set(["TIMESTAMP"]),

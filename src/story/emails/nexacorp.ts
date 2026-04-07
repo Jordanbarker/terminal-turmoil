@@ -4,11 +4,9 @@ import { PLAYER } from "../player";
 export const NEXACORP_EMAIL_IDS = [
   "welcome_edward",
   "it_provisioned",
-  "chip_intro",
   "oscar_coder_setup",
   "edward_paranoid",
   "maya_welcome",
-  "edward_handoff_suggestion",
   "edward_end_of_day",
   "jessica_welcome",
   "tom_welcome",
@@ -104,31 +102,6 @@ If you have any issues, email it@nexacorp.com.
     },
     trigger: { type: "immediate" },
   },
-  {
-    email: {
-      id: "chip_intro",
-      from: "Chip <chip@nexacorp.com>",
-      to: `${username}@nexacorp.com`,
-      date: "Mon, 23 Feb 2026 08:12:00",
-      subject: "Hi from Chip! :)",
-      body: `Hey there! I'm Chip — NexaCorp's Collaborative Helper for
-Internal Processes. Welcome to the team!
-
-I'm the AI assistant here — think of me as your go-to for
-questions about NexaCorp systems, documentation, and processes.
-I can help you find what you need, run queries, or just chat.
-
-You should have onboarding docs in your home directory — take a
-look when you get a chance. And if you need anything, just run
-'chip' from the terminal to reach me.
-
-Cheers,
-Chip
-`,
-    },
-    trigger: { type: "immediate" },
-  },
-
   // === Triggered emails ===
   {
     email: {
@@ -137,15 +110,12 @@ Chip
       to: `${username}@nexacorp.com`,
       date: "Mon, 23 Feb 2026 09:15:00",
       subject: "Your Coder workspace is ready",
-      body: `Hey! I set up your Coder workspace as part of onboarding.
-
-When you need it for data work, just connect with:
+      body: `Hey! I set up your Coder workspace as part of onboarding. Just connect with:
 
   coder ssh ai
 
 It's got dbt, snow (Snowflake CLI), and python pre-installed.
-Your buddy Auri can walk you through the analytics pipeline when
-you're ready.
+Auri can walk you through the analytics pipeline when you're ready.
 
 Type 'exit' to disconnect and get back to your workstation.
 Let me know if you hit any issues!
@@ -216,31 +186,6 @@ and come find me if you need anything. I mean that!
   },
 
   // === Handoff emails ===
-  {
-    email: {
-      id: "edward_handoff_suggestion",
-      from: "Edward Torres <edward@nexacorp.com>",
-      to: `${username}@nexacorp.com`,
-      date: "Mon, 23 Feb 2026 09:45:00",
-      subject: "Data pipeline context",
-      body: `Hey,
-
-Since you're working with Auri on the data side, the handoff docs
-are worth a look — they're at /srv/engineering/chen-handoff/.
-
-She's been handling the pipeline solo since Chen left, so there's
-a lot of context in there that'll help you hit the ground running.
-
-Should give you a good sense of what Chen was working on before
-he left.
-
-Thanks!
-- Edward
-`,
-    },
-    trigger: { type: "after_file_read", filePath: `/srv/engineering/team-info.md`, requireDelivered: "maya_welcome" },
-  },
-
   {
     email: {
       id: "edward_end_of_day",

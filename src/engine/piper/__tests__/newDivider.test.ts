@@ -93,9 +93,9 @@ describe("getVisibleChannels unread with seen markers", () => {
     const channels = getVisibleChannels(deliveredIds, USERNAME, "nexacorp");
     const auri = channels.find((c) => c.channel.id === "dm_auri");
     expect(auri).toBeDefined();
-    // Total NPC: auri_hello(4) + pipeline_help(1) + day2_morning(3) = 8
-    // seenCount should be 5 (highest) → unread = 8 - 5 = 3
-    expect(auri!.unread).toBe(3);
+    // Total NPC: auri_hello(4) + pipeline_help(0) + day2_morning(3) = 7
+    // seenCount should be 5 (highest) → unread = 7 - 5 = 2
+    expect(auri!.unread).toBe(2);
   });
 });
 

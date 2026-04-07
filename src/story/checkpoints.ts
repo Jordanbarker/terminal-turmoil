@@ -33,9 +33,20 @@ const DAY1_START: Checkpoint = {
     basic_tools_unlocked: true,
     apt_unlocked: true,
     first_ssh_connect: true,
+    // Olive basic challenges flags
+    olive_challenges_read: true,
+    used_file_in_downloads: true,
+    used_which_python: true,
+    created_projects_dir: true,
+    used_mv_home: true,
+    used_echo_pipe: true,
+    used_man_command: true,
     // NexaCorp immediate unlocks
     piper_unlocked: true,
     chip_unlocked: true,
+    chip_error_seen: true,
+    printenv_unlocked: true,
+    sourced_nexacorp_zshrc: true,
   },
   deliveredEmailIds: [
     // Home emails
@@ -47,7 +58,6 @@ const DAY1_START: Checkpoint = {
     // NexaCorp immediate emails
     "welcome_edward",
     "it_provisioned",
-    "chip_intro",
   ],
   deliveredPiperIds: [
     // Home immediate
@@ -58,13 +68,37 @@ const DAY1_START: Checkpoint = {
     "alex_nudge_accepted",
     "alex_react_accepted",
     "olive_tree_tip",
+    // Olive basic challenges (chapter 1)
+    "olive_challenges_intro",
+    "reply:olive_challenges_intro:0",
+    "olive_challenge_file",
+    "reply:olive_challenge_file:0",
+    "olive_challenge_which",
+    "reply:olive_challenge_which:0",
+    "olive_challenge_mkdir",
+    "reply:olive_challenge_mkdir:0",
+    "olive_challenge_mv",
+    "reply:olive_challenge_mv:0",
+    "olive_challenge_pipe",
+    "reply:olive_challenge_pipe:0",
+    "olive_challenge_man",
+    "reply:olive_challenge_man:0",
+    "olive_challenges_complete",
     // NexaCorp immediate
     "general_edward_welcome",
     "general_tom_wins",
+    // Edward chip DM chain
+    "edward_chip_intro",
+    "reply:edward_chip_intro:0",
+    "edward_chip_error",
+    "reply:edward_chip_error:0",
+    "edward_chip_fix",
   ],
   completedObjectives: [
     "accepted_nexacorp",
     "piper_reply:olive_linux_basics",
+    "piper_reply:olive_challenges_intro",
+    "piper_reply:olive_challenge_man",
   ],
   computers: ["home", "nexacorp"],
   commandHistory: {
@@ -105,6 +139,8 @@ const DAY1_END: Checkpoint = {
     ran_dbt: true,
     dbt_project_cloned: true,
     auri_dbt_reported: true,
+    // Olive power tools (derived from piper_delivered trigger)
+    olive_power_tools_read: true,
     // End of day
     read_end_of_day: true,
     returned_home_day1: true,
@@ -115,7 +151,6 @@ const DAY1_END: Checkpoint = {
     // Triggered during NexaCorp work
     "oscar_coder_setup",
     "maya_welcome",
-    "edward_handoff_suggestion",
     "jessica_welcome",
     "tom_welcome",
     "edward_end_of_day",
@@ -150,6 +185,10 @@ const DAY1_END: Checkpoint = {
     "read_welcome_email",
     "read_onboarding",
     "meet_the_team",
+    "told_edward_chip_error",
+    "try_chip",
+    "tell_edward_chip_error",
+    "source_zshrc",
     "edward_onboarding",
     // Oscar quest
     "search_tools_accepted",

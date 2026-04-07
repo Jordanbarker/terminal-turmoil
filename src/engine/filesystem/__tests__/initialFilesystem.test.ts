@@ -166,7 +166,7 @@ describe("createNexacorpFilesystem", () => {
       expect(mailNew?.type).toBe("directory");
       if (mailNew?.type === "directory") {
         const fileCount = Object.keys(mailNew.children).length;
-        expect(fileCount).toBeGreaterThanOrEqual(3);
+        expect(fileCount).toBeGreaterThanOrEqual(2);
       }
     });
 

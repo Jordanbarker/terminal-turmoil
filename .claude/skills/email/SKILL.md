@@ -240,9 +240,7 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 |----|------|---------|-------------------|
 | `welcome_edward` | Edward Torres | immediate | Establish CTO, mention Piper + Jin Chen |
 | `it_provisioned` | NexaCorp IT | immediate | Teach `mail` command usage |
-| `chip_intro` | Chip | immediate | Chatbot intro, unlocks `chip` + `piper` |
 | `maya_welcome` | Maya Johnson | after reading `it_provisioned` | HR welcome, team culture |
-| `edward_handoff_suggestion` | Edward Torres | after reading `team-info.md` | Suggests handoff docs |
 | `edward_paranoid` | Edward Torres | after reading handoff notes | Casual check-in, supportive |
 | `edward_end_of_day` | Edward Torres | after dbt command | End-of-day debrief, hooks Chapter 3 |
 

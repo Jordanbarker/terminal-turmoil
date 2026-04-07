@@ -189,6 +189,7 @@ describe("printenv command", () => {
     const ctx = makeCtx({
       activeComputer: "nexacorp",
       envVars: getDefaultEnv("nexacorp", "ren"),
+      storyFlags: { printenv_unlocked: true },
     });
     const result = execute("printenv", ["SNOWFLAKE_ACCOUNT"], {}, ctx);
     expect(result.output).toBe("nexacorp.us-east-1");

@@ -91,7 +91,7 @@ export function getOnboardingDeliveries(_username: string): PiperDelivery[] {
           body: "Happy to pair on anything if you want a second set of eyes while you're getting started. Or just grep the codebase and judge us silently — that's what I did my first week.",
         },
       ],
-      trigger: { type: "after_email_read", emailId: "chip_intro" },
+      trigger: { type: "after_story_flag", flag: "chip_unlocked" },
     },
 
     // === #engineering — Sarah/Erik tension (after reading team-info.md) ===

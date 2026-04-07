@@ -15,6 +15,7 @@ import { serializeSnowflake, deserializeSnowflake, SerializedSnowflake } from ".
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { seedDeliveredEmails } from "../engine/mail/delivery";
 import { getDefaultEnv, initEnvForComputer, initAliasesForComputer } from "../story/env";
+import { STORY_FS_EFFECTS } from "../story/fsEffects";
 
 const MAX_HISTORY = 500;
 
@@ -324,6 +325,10 @@ export const useGameStore = create<GameStore>()(
           let fs = buildFs(username, computerId, data.storyFlags, data.deliveredEmailIds);
           if (computerId === "nexacorp") {
             fs = syncToVirtualFS(sfState, fs);
+          }
+          // Apply story-driven filesystem effects (e.g. IT provisioning API keys)
+          for (const [flag, effect] of Object.entries(STORY_FS_EFFECTS)) {
+            if (data.storyFlags[flag]) fs = effect(fs, username);
           }
           const baseAliases = initAliasesForComputer(computerId, username, fs);
           const checkpointAliases = data.aliases?.[computerId] ?? {};

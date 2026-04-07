@@ -13,10 +13,8 @@ export default function StatusBar() {
   const cwd = activeTab?.cwd ?? "";
 
   let leftText: string;
-  if (gamePhase === "playing") {
+  if (gamePhase === "playing" || gamePhase === "transitioning") {
     leftText = cwd;
-  } else if (gamePhase === "transitioning") {
-    leftText = "Shutting down...";
   } else if (activeComputer === "home") {
     leftText = "Personal Workstation";
   } else if (activeComputer === "devcontainer") {
@@ -30,8 +28,6 @@ export default function StatusBar() {
     rightText = "Login Required";
   } else if (gamePhase === "booting") {
     rightText = "Authenticating...";
-  } else if (gamePhase === "transitioning") {
-    rightText = "Shutting down...";
   } else {
     rightText = chapter.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }

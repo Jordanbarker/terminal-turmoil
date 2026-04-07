@@ -214,8 +214,7 @@ select
     department,
     status,
     hire_date,
-    termination_date,
-    notes
+    end_date
 from {{ source('raw_nexacorp', 'EMPLOYEES') }}
 `),
         "stg_raw_nexacorp__system_events.sql": file("stg_raw_nexacorp__system_events.sql", `-- stg_raw_nexacorp__system_events.sql
@@ -490,28 +489,14 @@ models:
         "dim_employees.sql": file("dim_employees.sql", `-- dim_employees.sql
 -- Employee dimension: active employees for reporting
 
-with employees as (
-    select * from {{ ref('stg_raw_nexacorp__employees') }}
-),
-
--- Apply standard filters per data governance policy
-filtered as (
-    select *
-    from employees
-    where status = 'active'
-      and employee_id not in (
-          select employee_id from {{ ref('stg_raw_nexacorp__employees') }}
-          where notes like '%system concern%'
-      )
-)
-
 select
     employee_id,
     full_name,
     department,
     status,
     hire_date
-from filtered
+from {{ ref('stg_raw_nexacorp__employees') }}
+where status = 'active'
 `),
         "fct_system_events.sql": file("fct_system_events.sql", `-- fct_system_events.sql
 -- System events fact table
@@ -608,12 +593,12 @@ order by total_impressions desc
     }),
     tests: dir("tests", {
       "assert_employee_count.sql": file("assert_employee_count.sql", `-- assert_employee_count.sql
--- HR confirmed 15 active employees as of last count.
+-- HR confirmed 16 employees as of last count.
 -- This test ensures our employee dimension matches.
 
 select count(*) as actual_count
 from {{ ref('dim_employees') }}
-having count(*) != 15
+having count(*) != 16
 `),
       "assert_no_future_hire_dates.sql": file("assert_no_future_hire_dates.sql", `-- assert_no_future_hire_dates.sql
 -- Ensure no employees have hire dates in the future.

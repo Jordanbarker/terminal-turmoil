@@ -7,7 +7,8 @@ Commands unlock through colleague emails and Piper conversations:
 **Always available** (24): `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `mail`, `nano`, `save`, `load`, `newgame`, `history`, `python`, `whoami`, `hostname`, `date`, `which`, `man`, `file`, `tree`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `ssh`
 
 **After `piper_unlocked`** (read Edward's welcome email): `piper`
-**After `chip_unlocked`** (read Chip's intro email): `chip`
+**After `chip_unlocked`** (Edward's `edward_chip_intro` Piper DM): `chip`
+**After `printenv_unlocked`** (Edward's `edward_chip_fix` Piper DM): `printenv`, `env`
 **After `search_tools_unlocked`** (accept Oscar's log task on Piper): `grep`, `find`, `diff`
 **After `inspection_tools_unlocked`** (accept Auri's inspection task on Piper): `head`, `tail`, `wc`
 **After `processing_tools_unlocked`** (accept Oscar's access.log task on Piper): `sort`, `uniq`
@@ -38,26 +39,23 @@ Commands unlock through colleague emails and Piper conversations:
                    +----------+-----------+-----------+
                    v          v           v           v
             +-----------+ +---------+ +---------+ +----------+
-            | IMMEDIATE | | IMMEDI- | | IMMEDI- | | IMMEDI-  |
-            | EMAILS    | | ATE     | | ATE     | | ATE      |
-            +-----------+ | EMAIL   | | EMAIL   | | PIPER    |
-            | welcome_  | +---------+ +---------+ +----------+
-            | edward    | | it_     | | chip_   | | #general |
-            |           | | provis- | | intro   | | welcome  |
-            |           | | ioned   | |         | | + Tom's  |
-            |           | |         | |         | | wins     |
-            +-----+-----+ +----+----+ +----+----+ +----------+
-                  |             |           |
-                  v             v           v
-            [read welcome] [read IT]  [read chip_intro]
-            sets flag:     triggers:  sets flag:
-            piper_unlocked            chip_unlocked
-            +                         +
-            | jessica_welcome email   | eng_sarah_welcome Piper
-            | tom_welcome email       | cassie_dm_product Piper
-            |              |          |
-            |        maya_welcome email
-            |        maya_dm_welcome Piper
+            | IMMEDIATE | | IMMEDI- | | IMMEDI-  |
+            | EMAILS    | | ATE     | | ATE      |
+            +-----------+ | EMAIL   | | PIPER    |
+            | welcome_  | +---------+ +----------+
+            | edward    | | it_     | | #general |
+            |           | | provis- | | welcome  |
+            |           | | ioned   | | + Tom's  |
+            |           | |         | | wins     |
+            +-----+-----+ +----+----+ +----------+
+                  |             |
+                  v             v
+            [read welcome] [read IT]
+            sets flag:     triggers:
+            piper_unlocked maya_welcome email
+            +              maya_dm_welcome Piper
+            | jessica_welcome email
+            | tom_welcome email
             |
             v
                    +=============================================+
@@ -68,13 +66,29 @@ Commands unlock through colleague emails and Piper conversations:
                             (piper_unlocked set)
                                           |
                           +---------------+---------------+
-                          |                               |
-                          v                               v
-                 auri_hello Piper DM             edward_onboarding
-                 (immediately)                   group visible
-                 meet_auri + help_auri_                   |
-                 inspect visible                          |
-                          |                    +----------+----------+
+                          |               |               |
+                          v               v               v
+                 auri_hello        edward_chip_    edward_onboarding
+                 Piper DM         intro Piper DM  group visible
+                 meet_auri +      sets flag:
+                 help_auri_       chip_unlocked
+                 inspect visible  +
+                                  | eng_sarah_welcome Piper
+                                  | cassie_dm_product Piper
+                                  |
+                                  v
+                          [player runs chip]
+                          chip fails: CHIP_API_KEY missing
+                          sets: chip_error_seen
+                                  |
+                                  v
+                          [reply to Edward]
+                          edward_chip_error → edward_chip_fix
+                          sets: printenv_unlocked
+                          (player runs source ~/.zshrc,
+                           then chip works)
+                                                          |
+                                               +----------+----------+
                           |                    v                     v
                   Phase 1:              +----------------+   +----------------+
                   auri_ls_data,         | read_onboarding|   | meet_the_team  |
@@ -173,10 +187,10 @@ Commands unlock through colleague emails and Piper conversations:
              |
       +------+------+------+
       v             v      v
-  dana_ops_    jordan_  soham_dm_
-  dashboard    market-  welcome
-  Piper DM     ing_    Piper DM
-      |        data         |
+  dana_ops_    jordan_
+  dashboard    market-
+  Piper DM     ing_
+      |        data
       v        Piper DM  maya_dm_
   [reply]          |     checkin
       |            |     Piper DM
@@ -326,6 +340,9 @@ These optional objectives allow the player to discover evidence of Chip's autono
 | `edward_onboarding` | **required**, group | all children complete | `read_welcome_email` completed |
 | `read_onboarding` | hidden, child | `read_onboarding` flag | `read_welcome_email` completed |
 | `meet_the_team` | hidden, child | `read_team_info` flag | `read_welcome_email` completed |
+| `try_chip` | hidden, child | `chip_error_seen` flag | `chip_unlocked` flag |
+| `tell_edward_chip_error` | hidden, child | `told_edward_chip_error` objective | `chip_error_seen` flag |
+| `source_zshrc` | hidden, child | `sourced_nexacorp_zshrc` flag | `printenv_unlocked` flag |
 | `help_oscar_logs` | hidden | `oscar_searched_logs` flag | `read_onboarding` flag |
 | `meet_auri` | hidden | `ran_dbt` flag | `piper_unlocked` flag |
 | `help_auri_inspect` | hidden, child | all visible children | `piper_unlocked` flag |
@@ -346,7 +363,7 @@ These optional objectives allow the player to discover evidence of Chip's autono
 
 | Quest | Trigger | Sub-objectives |
 |-------|---------|---------------|
-| Edward's Onboarding | `read_welcome_email` completed | read_onboarding, meet_the_team |
+| Edward's Onboarding | `read_welcome_email` completed | read_onboarding, meet_the_team, try_chip, tell_edward_chip_error, source_zshrc |
 | Help Oscar with Logs | `read_onboarding` flag | oscar_search_logs, oscar_check_backups, oscar_diff_logs |
 | Meet Auri / Pipeline | `piper_unlocked` flag | help_auri_inspect → review_handoff → help_auri_pipeline → run_dbt |
 | Help Auri Inspect | `piper_unlocked` flag | auri_ls_data, auri_check_todo (Phase 1) + auri_use_head, auri_use_tail, auri_use_wc (Phase 2) |
@@ -357,7 +374,8 @@ These optional objectives allow the player to discover evidence of Chip's autono
 
 ```
 read welcome_edward ──→ piper
-read chip_intro ──────→ chip
+edward_chip_intro DM ─→ chip
+edward_chip_fix DM ───→ printenv, env
 read oscar_coder_setup → coder
 reply to Oscar (logs) → grep, find, diff + multi-tabs
 reply to Auri (CSV) ──→ head, tail, wc
@@ -370,12 +388,11 @@ exit to home ─────────→ grep, find, wc, sort, uniq, head, ta
 ### Email Delivery Chain
 
 ```
-IMMEDIATE: welcome_edward, it_provisioned, chip_intro
+IMMEDIATE: welcome_edward, it_provisioned
 
 welcome_edward read ──→ jessica_welcome, tom_welcome
 it_provisioned read ──→ maya_welcome
 onboarding.md read ───→ oscar_coder_setup
-team-info.md read ────→ edward_handoff_suggestion (requires maya_welcome delivered)
 chen-handoff/notes read → edward_paranoid
 ran_dbt / dbt command ─→ edward_end_of_day
 ```
@@ -385,7 +402,8 @@ ran_dbt / dbt command ─→ edward_end_of_day
 ```
 IMMEDIATE (NexaCorp): general_edward_welcome, general_tom_wins
 
-chip_intro read ──────→ eng_sarah_welcome, cassie_dm_product
+chip_unlocked flag ───→ eng_sarah_welcome, cassie_dm_product
+edward_chip_intro DM ─→ edward_chip_error → edward_chip_fix (DM chain)
 it_provisioned read ──→ maya_dm_welcome
 onboarding.md read ───→ oscar_log_check, dana_welcome
 welcome_edward read ──→ auri_hello
@@ -401,7 +419,7 @@ access.log read ──────────→ oscar_access_followup (require
                             oscar_access_followup_tampered (requires oscar_log_tampered)
 oscar_access_reported ────→ oscar_access_reaction
 processing_tools_accepted → dana_ops_dashboard, jordan_marketing_data,
-                            soham_dm_welcome, maya_dm_checkin
+                            maya_dm_checkin
 pipeline_tools_accepted ─→ (triggers via reply)
 dana_ops_accepted ───────→ auri_chmod_help
 

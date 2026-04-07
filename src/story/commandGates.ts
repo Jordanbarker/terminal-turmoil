@@ -42,6 +42,8 @@ export const NEXACORP_GATED: Record<string, StoryFlagName> = {
   uniq: "processing_tools_unlocked",
   coder: "coder_unlocked",
   chip: "chip_unlocked",
+  printenv: "printenv_unlocked",
+  env: "printenv_unlocked",
   piper: "piper_unlocked",
   chmod: "chmod_unlocked",
   sudo: "apt_unlocked",

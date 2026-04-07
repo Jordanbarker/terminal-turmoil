@@ -46,14 +46,7 @@ export function getAuriDeliveries(_username: string): PiperDelivery[] {
     {
       id: "auri_pipeline_help",
       channelId: "dm_auri",
-      messages: [
-        {
-          id: "auri_pipe_1",
-          from: "Auri Park",
-          timestamp: "",
-          body: "Hey! Have you had a chance to look at the handoff notes yet?",
-        },
-      ],
+      messages: [],
       trigger: { type: "after_file_read", filePath: "/srv/engineering/chen-handoff/notes.txt" },
       replyOptions: [
         {

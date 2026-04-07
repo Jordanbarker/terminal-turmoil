@@ -2,6 +2,7 @@ import { CommandHandler } from "../types";
 import { register, registerAlias } from "../registry";
 import { resolvePath } from "../../../lib/pathUtils";
 import { parseEnvAssignments, parseAliases } from "../../../story/env";
+import { GameEvent } from "../../mail/delivery";
 import { HELP_TEXTS } from "./helpTexts";
 
 const source: CommandHandler = (args, _flags, ctx) => {
@@ -30,7 +31,14 @@ const source: CommandHandler = (args, _flags, ctx) => {
   }
 
   // Real `source` produces no output — silently succeed and trigger file_read
-  return { output: "", triggerEvents: [{ type: "file_read", detail: filePath }] };
+  const events: GameEvent[] = [{ type: "file_read", detail: filePath }];
+
+  // Emit sourced_zshrc event so story flags can distinguish source from cat
+  if (filePath.endsWith("/.zshrc")) {
+    events.push({ type: "command_executed", detail: "sourced_zshrc" });
+  }
+
+  return { output: "", triggerEvents: events };
 };
 
 const description = "Execute commands from a file in the current shell";

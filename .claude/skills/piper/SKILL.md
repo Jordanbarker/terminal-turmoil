@@ -34,6 +34,7 @@ src/story/piper/
     ├── jordan.ts      # Jordan Kessler
     ├── maya.ts        # Maya Johnson
     ├── soham.ts       # Soham Parekh
+    ├── edward.ts      # Edward Torres (Chip onboarding DM chain)
     └── ambient.ts     # Ambient channel chatter (general, engineering)
 
 src/engine/commands/builtins/piper.ts  # Command registration
@@ -143,10 +144,12 @@ Piper message timestamps are computed dynamically at render time in `getConversa
 | DM Dana | dm | After `dana_welcome` delivered |
 | DM Auri | dm | After `auri_hello` delivered |
 | DM Jordan | dm | After `jordan_marketing_data` delivered |
+| DM Edward | dm | After `edward_chip_intro` delivered |
 
 ## Gating
 
 - Unlocked by `piper_unlocked` story flag (set when player reads `welcome_edward` email)
+- Edward's Chip onboarding DM chain (`edward_chip_intro` → `edward_chip_error` → `edward_chip_fix`) unlocks `chip`, teaches the API key puzzle, and unlocks `printenv`/`env`
 - Available on NexaCorp only (not home PC, not dev container)
 - Gated in `story/commandGates.ts` via `NEXACORP_GATED`
 

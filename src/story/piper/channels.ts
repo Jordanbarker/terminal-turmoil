@@ -71,13 +71,13 @@ export const PIPER_CHANNELS: PiperChannel[] = [
     type: "dm",
   },
   {
-    id: "dm_soham",
-    name: "Soham Parekh",
+    id: "dm_cassie",
+    name: "Cassie Moreau",
     type: "dm",
   },
   {
-    id: "dm_cassie",
-    name: "Cassie Moreau",
+    id: "dm_edward",
+    name: "Edward Torres",
     type: "dm",
   },
 ];
