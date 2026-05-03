@@ -20,6 +20,7 @@ export interface CommandContext {
   fs: VirtualFS;
   cwd: string;
   homeDir: string;
+  username: string;
   activeComputer: ComputerId;
   storyFlags?: StoryFlags;
   stdin?: string;

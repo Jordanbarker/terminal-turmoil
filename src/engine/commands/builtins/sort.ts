@@ -18,13 +18,13 @@ const sort: CommandHandler = (args, flags, ctx) => {
       const absPath = resolvePath(file, ctx.cwd, ctx.homeDir);
       const result = ctx.fs.readFile(absPath);
       if (result.error) {
-        return { output: result.error.replace("cat:", "sort:") };
+        return { output: result.error.replace("cat:", "sort:"), exitCode: 2 };
       }
       parts.push(result.content ?? "");
     }
     content = parts.join("\n");
   } else {
-    return { output: "sort: missing file operand" };
+    return { output: "sort: missing file operand", exitCode: 2 };
   }
 
   const lines = content.split("\n");

@@ -232,6 +232,14 @@ export function useComputerTransitions(deps: TransitionDeps) {
     cwdRef.current = nexaCwd;
 
     term.writeln(colorize("\r\nDisconnected from coder-ai.", ansi.dim));
+
+    // Show deferred Piper notification (suppressed while on devcontainer where piper is unavailable)
+    const latest = useGameStore.getState();
+    if (latest.pendingPiperNotification) {
+      term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+      latest.setPendingPiperNotification(false);
+    }
+
     writePrompt(term);
   }, [cwdRef, activeComputerRef, writePrompt]);
 

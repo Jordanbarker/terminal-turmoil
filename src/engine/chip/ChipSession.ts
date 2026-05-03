@@ -17,6 +17,7 @@ import {
   CHIP_THINKING_DELAY_MS,
   CHIP_CHAT_LINE_INTERVAL_MS,
   CHIP_COMMAND_LINE_INTERVAL_MS,
+  CHIP_MENU_LINE_INTERVAL_MS,
 } from "../../lib/timing";
 
 export class ChipSession implements ISession {
@@ -267,13 +268,46 @@ export class ChipSession implements ISession {
     this.selectedIndex = 0;
     this.expanded = false;
     this.currentPrompt = "";
-    const menu = this.buildMenuOutput(this.currentPrompt);
-    this.terminal.write(`\r\n${separator}\r\n${menu}`);
+    const menuLines = this.buildMenuLines(this.currentPrompt);
+    const allLines = [separator, ...menuLines];
+    this.writeMenuLineByLine(allLines, 0);
+  }
 
-    this.isAnimating = false;
-    this.pendingAnimationItem = null;
-    this.animationTimer = null;
-    this.animationLinesWritten = 0;
+  private writeMenuLineByLine(lines: string[], index: number): void {
+    if (!this.isAnimating) return;
+
+    if (index >= lines.length) {
+      this.isAnimating = false;
+      this.pendingAnimationItem = null;
+      this.animationTimer = null;
+      this.animationLinesWritten = 0;
+      return;
+    }
+
+    this.terminal.write(`\r\n${lines[index]}`);
+    this.animationLinesWritten++;
+
+    this.animationTimer = setTimeout(() => {
+      this.writeMenuLineByLine(lines, index + 1);
+    }, CHIP_MENU_LINE_INTERVAL_MS);
+  }
+
+  private buildMenuLines(prompt: string): string[] {
+    const width = this.getWidth();
+    const visibleItems = this.getVisibleItems();
+    const usedIds = this.expanded ? this.usedItemIds : undefined;
+    const menu = renderMenu(visibleItems, this.selectedIndex, prompt, usedIds);
+    const footer = renderFooter(width);
+    const hasHint = this.usedItemIds.size > 0;
+    const hasPrompt = prompt.length > 0;
+    this.menuLineCount = visibleItems.length + (hasPrompt ? 1 : 0) + (hasHint ? 1 : 0) + 2;
+
+    const lines: string[] = menu.split("\r\n");
+    if (hasHint) {
+      lines.push(renderHintLine(this.usedItemIds.size, this.expanded));
+    }
+    lines.push(...footer.split("\r\n"));
+    return lines;
   }
 
   private buildMenuOutput(prompt: string): string {

@@ -304,14 +304,6 @@ export const CHAPTERS: ChapterDefinition[] = [
         visibleWhen: { source: "completedObjective", key: "run_dbt" },
         group: "meet_auri",
       },
-      // Bridging objective: prompt player to check email
-      {
-        id: "check_eod_email",
-        description: "Check your email",
-        check: { source: "storyFlag", key: "read_end_of_day" },
-        hidden: true,
-        visibleWhen: { source: "deliveredEmail", key: "edward_end_of_day" },
-      },
       // Closing Time quest group
       {
         id: "closing_time",
@@ -479,6 +471,24 @@ export const CHAPTERS: ChapterDefinition[] = [
         hidden: true,
         optional: true,
         visibleWhen: { source: "storyFlag", key: "read_ops_incidents" },
+      },
+
+      // Quest: Jordan's Marketing Data
+      {
+        id: "jordan_query_metrics",
+        description: "Query campaign_metrics in Snowflake",
+        check: { source: "storyFlag", key: "found_inflated_metrics" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "completedObjective", key: "pipeline_tools_accepted" },
+      },
+      {
+        id: "jordan_report_findings",
+        description: "Report findings to Jordan on Piper",
+        check: { source: "completedObjective", key: "jordan_metrics_reported" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "found_inflated_metrics" },
       },
 
       // Quest 4: Olive's Power Tools (visible after returning home)

@@ -4,19 +4,27 @@ import { HELP_TEXTS } from "./helpTexts";
 import {
   findRepoRoot,
   gitInit, gitAdd, gitRm, gitCommit, gitStatus, getCommitLog,
-  listBranches, deleteBranch, gitCheckout, gitDiffFiles,
+  listBranches, createBranch, deleteBranch, gitCheckout, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashList,
   gitClone, gitPush, gitPull,
 } from "../../git/repo";
 import { formatStatus, formatLog, formatDiff, formatBranches } from "../../git/output";
+import { PLAYER } from "../../../story/player";
+import type { ComputerId } from "../../../state/types";
 
 const NOT_A_REPO = "fatal: not a git repository (or any of the parent directories): .git";
+
+const AUTHOR_EMAIL_DOMAIN: Record<ComputerId, string> = {
+  home: "maniac-iv.local",
+  nexacorp: "nexacorp.com",
+  devcontainer: "nexacorp.com",
+};
 
 /** Parse raw args, handling value flags like -m, -b, -u */
 function parseGitArgs(rawArgs: string[]): { positional: string[]; flags: Record<string, string | boolean> } {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
-  const valueFlags = new Set(["m", "b", "C"]);
+  const valueFlags = new Set(["m", "b", "c", "C"]);
 
   let i = 0;
   while (i < rawArgs.length) {
@@ -65,7 +73,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
   const subcommand = positional[0];
   const subArgs = positional.slice(1);
   const plain = !!ctx.isPiped;
-  const author = ctx.activeComputer === "home" ? "player <player@localhost>" : "player <player@nexacorp.io>";
+  const author = `${PLAYER.displayName} <${ctx.username}@${AUTHOR_EMAIL_DOMAIN[ctx.activeComputer]}>`;
 
   if (flags["version"]) {
     return { output: "git version 2.43.0" };
@@ -146,16 +154,35 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
         if (result.error) return { output: result.error, exitCode: 1 };
         return { output: result.output, newFs: result.fs };
       }
+      if (subArgs[0]) {
+        const result = createBranch(ctx.fs, root, subArgs[0]);
+        if (result.error) return { output: result.error, exitCode: 128 };
+        return { output: result.output, newFs: result.fs };
+      }
       const { branches, current } = listBranches(ctx.fs, root);
       return { output: formatBranches(branches, current, plain) };
     }
 
     case "checkout": {
-      const createBranch = !!flags["b"];
-      const target = subArgs[0] || (createBranch ? String(flags["b"]) : undefined);
+      const create = !!flags["b"];
+      const target = subArgs[0] || (create ? String(flags["b"]) : undefined);
       if (!target) return { output: "error: you must specify a branch to checkout" };
-      const result = gitCheckout(ctx.fs, root, target, createBranch);
+      const result = gitCheckout(ctx.fs, root, target, create);
       if (result.error) return { output: result.error, exitCode: 1 };
+      return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
+    }
+
+    case "switch": {
+      const create = !!flags["c"];
+      const target = subArgs[0] || (create ? String(flags["c"]) : undefined);
+      if (!target) return { output: "fatal: missing branch or commit argument", exitCode: 128 };
+      const result = gitCheckout(ctx.fs, root, target, create);
+      if (result.error) {
+        const msg = result.error.startsWith("error: pathspec")
+          ? `fatal: invalid reference: ${target}`
+          : result.error;
+        return { output: msg, exitCode: 128 };
+      }
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 

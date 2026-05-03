@@ -39,7 +39,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
   }
 
   if (fileArgs.length === 0) {
-    return { output: "wc: missing file operand" };
+    return { output: "wc: missing file operand", exitCode: 2 };
   }
 
   const outputLines: string[] = [];

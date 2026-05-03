@@ -107,7 +107,7 @@ const ALL_UNLOCKED = {
 
 function ctx(fs?: VirtualFS): CommandContext {
   const f = fs ?? createTestFS();
-  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
+  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, username: "ren", activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
 }
 
 describe("ls", () => {
@@ -484,7 +484,7 @@ describe("mail", () => {
 
   function mailCtx(fs?: VirtualFS): CommandContext {
     const f = fs ?? createMailFS();
-    return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
+    return { fs: f, cwd: f.cwd, homeDir: f.homeDir, username: "ren", activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED };
   }
 
   it("shows inbox listing with message count", () => {
@@ -630,7 +630,7 @@ describe("mail", () => {
       },
     };
     const fs = new VirtualFS(root, "/home/player", "/home/player");
-    const result = execute("mail", ["1"], {}, { fs, cwd: fs.cwd, homeDir: fs.homeDir, activeComputer: "nexacorp" });
+    const result = execute("mail", ["1"], {}, { fs, cwd: fs.cwd, homeDir: fs.homeDir, username: "ren", activeComputer: "nexacorp" });
     expect(result.triggerEvents).toBeDefined();
     expect(result.triggerEvents!.length).toBeGreaterThan(0);
     expect(result.triggerEvents![0]).toEqual({ type: "file_read", detail: "welcome_edward" });
@@ -723,6 +723,65 @@ describe("--help", () => {
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["commit", "-am", "quick fix"] });
       expect(stripAnsi(result.output)).toContain("quick fix");
       expect(result.newFs).toBeDefined();
+    });
+  });
+
+  describe("git branch / git switch", () => {
+    const devCtx = (f: VirtualFS) => ({ ...ctx(f), activeComputer: "devcontainer" as const });
+
+    function initialRepo(): VirtualFS {
+      let fs = createTestFS();
+      fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["init"] }).newFs ?? fs;
+      fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["add", "-A"] }).newFs ?? fs;
+      fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["commit", "-m", "initial"] }).newFs ?? fs;
+      return fs;
+    }
+
+    it("git branch <name> creates a branch silently", () => {
+      const fs = initialRepo();
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "hi"] });
+      expect(stripAnsi(result.output)).toBe("");
+      expect(result.newFs).toBeDefined();
+      // Verify it appears in the listing
+      const list = execute("git", [], {}, { ...devCtx(result.newFs!), rawArgs: ["branch"] });
+      expect(stripAnsi(list.output)).toContain("hi");
+      expect(stripAnsi(list.output)).toContain("* main");
+    });
+
+    it("git branch <name> errors on duplicate", () => {
+      const fs = initialRepo();
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "main"] });
+      expect(result.exitCode).toBe(128);
+      expect(stripAnsi(result.output)).toContain("already exists");
+    });
+
+    it("git switch <branch> switches to an existing branch", () => {
+      let fs = initialRepo();
+      fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "hi"] }).newFs ?? fs;
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch", "hi"] });
+      expect(stripAnsi(result.output)).toContain("Switched to branch 'hi'");
+      expect(result.newFs).toBeDefined();
+    });
+
+    it("git switch -c creates and switches, firing git_checkout_b event", () => {
+      const fs = initialRepo();
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch", "-c", "feature/x"] });
+      expect(stripAnsi(result.output)).toContain("Switched to a new branch 'feature/x'");
+      expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+    });
+
+    it("git switch <nonexistent> errors with 'invalid reference'", () => {
+      const fs = initialRepo();
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch", "nonexistent"] });
+      expect(result.exitCode).toBe(128);
+      expect(stripAnsi(result.output)).toContain("fatal: invalid reference: nonexistent");
+    });
+
+    it("git switch with no arg errors", () => {
+      const fs = initialRepo();
+      const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch"] });
+      expect(result.exitCode).toBe(128);
+      expect(stripAnsi(result.output)).toContain("missing branch");
     });
   });
 

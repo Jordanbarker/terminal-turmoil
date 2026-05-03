@@ -26,7 +26,7 @@ function makeCtx(): CommandContext {
     children: {},
   };
   const fs = new VirtualFS(root, "/", "/");
-  return { fs, cwd: "/", homeDir: "/", activeComputer: "nexacorp" as const };
+  return { fs, cwd: "/", homeDir: "/", username: "ren", activeComputer: "nexacorp" as const };
 }
 
 describe("registry", () => {

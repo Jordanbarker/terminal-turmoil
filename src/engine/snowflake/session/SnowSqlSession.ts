@@ -5,6 +5,7 @@ import { execute } from "../executor/executor";
 import { formatResultSet, formatStatusMessage, formatError } from "../formatter/table_formatter";
 import { colorize, ansi } from "../../../lib/ansi";
 import { isBackspace, isPrintable, CTRL_C, CTRL_D } from "../../terminal/keyCodes";
+import { findPrevWordBoundary, findNextWordBoundary } from "../../terminal/wordBoundary";
 import { ISession, SessionResult } from "../../session/types";
 import { GameEvent } from "../../mail/delivery";
 
@@ -63,41 +64,64 @@ export class SnowSqlSession implements ISession {
       const char = data[i];
       const code = char.charCodeAt(0);
 
-      // Escape sequence buffering (arrow keys etc.)
+      // Escape sequence buffering (arrow keys, modifier sequences, ESC+DEL)
       if (code === 0x1b) {
         this.escBuffer = "\x1b";
         continue;
       }
-      if (this.escBuffer === "\x1b" && char === "[") {
-        this.escBuffer = "\x1b[";
+      if (this.escBuffer === "\x1b") {
+        if (char === "[") {
+          this.escBuffer = "\x1b[";
+          continue;
+        }
+        // ESC + DEL = Ctrl+Backspace
+        if (code === 127) {
+          this.escBuffer = "";
+          this.deleteWordBackward();
+          continue;
+        }
+        // Unknown ESC sequence — drop silently
+        this.escBuffer = "";
         continue;
       }
-      if (this.escBuffer.startsWith("\x1b[") && this.escBuffer.length >= 2) {
+      if (this.escBuffer.startsWith("\x1b[")) {
         // CSI parameter byte — accumulate
         if (char >= "0" && char <= "?") {
           this.escBuffer += char;
           continue;
         }
-        // Final byte — act on it, then reset
+        // Final byte — extract params BEFORE resetting buffer
+        const params = this.escBuffer.slice(2);
         this.escBuffer = "";
+        const parts = params.split(";");
+        const keyCode = parts[0] ? parseInt(parts[0], 10) : 0;
+        const modifier = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        const isWordSkip = modifier === 3 || modifier === 5;
+
         if (char === "A") {
           this.historyUp();
         } else if (char === "B") {
           this.historyDown();
         } else if (char === "C") {
-          if (this.cursorPos < this.inputBuffer.length) {
+          if (isWordSkip) {
+            this.cursorWordRight();
+          } else if (this.cursorPos < this.inputBuffer.length) {
             this.cursorPos++;
             this.terminal.write("\x1b[C");
           }
         } else if (char === "D") {
-          if (this.cursorPos > 0) {
+          if (isWordSkip) {
+            this.cursorWordLeft();
+          } else if (this.cursorPos > 0) {
             this.cursorPos--;
             this.terminal.write("\x1b[D");
           }
+        } else if (char === "~" && keyCode === 3) {
+          if (isWordSkip) this.deleteWordForward();
+          else this.deleteForward();
         }
         continue;
       }
-      this.escBuffer = "";
 
       if (code === CTRL_D && this.inputBuffer.length === 0) {
         this.terminal.write("\r\n");
@@ -145,6 +169,9 @@ export class SnowSqlSession implements ISession {
           this.cursorPos = this.inputBuffer.length;
           this.writeContinuationPrompt();
         }
+      } else if (code === 23) {
+        // Ctrl+W — delete previous word
+        this.deleteWordBackward();
       } else if (isBackspace(code)) {
         if (this.cursorPos > 0) {
           const before = this.inputBuffer.slice(0, this.cursorPos - 1);
@@ -227,6 +254,55 @@ export class SnowSqlSession implements ISession {
     } else {
       this.historyIndex = -1;
       this.replaceInput(this.savedInput);
+    }
+  }
+
+  private deleteForward(): void {
+    if (this.cursorPos >= this.inputBuffer.length) return;
+    const before = this.inputBuffer.slice(0, this.cursorPos);
+    const after = this.inputBuffer.slice(this.cursorPos + 1);
+    this.inputBuffer = before + after;
+    this.terminal.write(after + " " + `\x1b[${after.length + 1}D`);
+  }
+
+  private deleteWordBackward(): void {
+    if (this.cursorPos === 0) return;
+    const newPos = findPrevWordBoundary(this.inputBuffer, this.cursorPos);
+    const delta = this.cursorPos - newPos;
+    if (delta === 0) return;
+    const after = this.inputBuffer.slice(this.cursorPos);
+    this.inputBuffer = this.inputBuffer.slice(0, newPos) + after;
+    this.cursorPos = newPos;
+    this.terminal.write(`\x1b[${delta}D` + after + " ".repeat(delta) + `\x1b[${after.length + delta}D`);
+  }
+
+  private deleteWordForward(): void {
+    if (this.cursorPos >= this.inputBuffer.length) return;
+    const endPos = findNextWordBoundary(this.inputBuffer, this.cursorPos);
+    const delta = endPos - this.cursorPos;
+    if (delta === 0) return;
+    const after = this.inputBuffer.slice(endPos);
+    this.inputBuffer = this.inputBuffer.slice(0, this.cursorPos) + after;
+    this.terminal.write(after + " ".repeat(delta) + `\x1b[${after.length + delta}D`);
+  }
+
+  private cursorWordLeft(): void {
+    if (this.cursorPos === 0) return;
+    const newPos = findPrevWordBoundary(this.inputBuffer, this.cursorPos);
+    const delta = this.cursorPos - newPos;
+    if (delta > 0) {
+      this.cursorPos = newPos;
+      this.terminal.write(`\x1b[${delta}D`);
+    }
+  }
+
+  private cursorWordRight(): void {
+    if (this.cursorPos >= this.inputBuffer.length) return;
+    const newPos = findNextWordBoundary(this.inputBuffer, this.cursorPos);
+    const delta = newPos - this.cursorPos;
+    if (delta > 0) {
+      this.cursorPos = newPos;
+      this.terminal.write(`\x1b[${delta}C`);
     }
   }
 

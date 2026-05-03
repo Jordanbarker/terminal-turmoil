@@ -33,7 +33,7 @@ const tail: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (fileArgs.length === 0) {
-    return { output: "tail: missing file operand" };
+    return { output: "tail: missing file operand", exitCode: 2 };
   }
 
   const outputs: string[] = [];

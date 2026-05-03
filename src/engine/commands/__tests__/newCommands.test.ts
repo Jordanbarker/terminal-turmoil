@@ -162,7 +162,7 @@ const ALL_UNLOCKED = {
 
 function ctx(fs?: VirtualFS, overrides?: Partial<CommandContext>): CommandContext {
   const f = fs ?? createTestFS();
-  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED, ...overrides };
+  return { fs: f, cwd: f.cwd, homeDir: f.homeDir, username: "ren", activeComputer: "nexacorp", storyFlags: ALL_UNLOCKED, ...overrides };
 }
 
 // --- grep ---

@@ -106,15 +106,28 @@ export function readRemoteUrl(fs: VirtualFS, root: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-export function readUpstream(fs: VirtualFS, root: string): { remote: string; branch: string } | null {
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Real git stores upstream per-branch as:
+//   [branch "<name>"]
+//     remote = origin
+//     merge = refs/heads/<name>
+// We match the section for `branch` and pull its remote/merge keys.
+export function readUpstream(fs: VirtualFS, root: string, branch: string | null): { remote: string; branch: string } | null {
+  if (!branch) return null;
   const configFile = fs.readFile(`${root}/.git/config`);
   if (!configFile.content) return null;
-  const remoteMatch = configFile.content.match(/merge-remote\s*=\s*(.+)/);
-  const branchMatch = configFile.content.match(/merge-branch\s*=\s*(.+)/);
-  if (remoteMatch && branchMatch) {
-    return { remote: remoteMatch[1].trim(), branch: branchMatch[1].trim() };
-  }
-  return null;
+  const sectionRe = new RegExp(`\\[branch "${escapeRegex(branch)}"\\]([\\s\\S]*?)(?=\\n\\[|$)`);
+  const match = configFile.content.match(sectionRe);
+  if (!match) return null;
+  const body = match[1];
+  const remoteMatch = body.match(/^\s*remote\s*=\s*(.+)$/m);
+  const mergeMatch = body.match(/^\s*merge\s*=\s*(.+)$/m);
+  if (!remoteMatch || !mergeMatch) return null;
+  const mergeRef = mergeMatch[1].trim().replace(/^refs\/heads\//, "");
+  return { remote: remoteMatch[1].trim(), branch: mergeRef };
 }
 
 export function readRepo(fs: VirtualFS, root: string): GitRepo {
@@ -126,7 +139,7 @@ export function readRepo(fs: VirtualFS, root: string): GitRepo {
     index: readIndex(fs, root),
     stash: readStash(fs, root),
     remoteUrl: readRemoteUrl(fs, root),
-    upstream: readUpstream(fs, root),
+    upstream: readUpstream(fs, root, getCurrentBranch(head)),
   };
 }
 
@@ -148,6 +161,28 @@ function removeOrFail(fs: VirtualFS, path: string): VirtualFS {
   const result = fs.removeNode(path);
   if (result.error) throw new Error(result.error);
   return result.fs!;
+}
+
+// Write a ref file under .git/refs/, creating any missing parent directories
+// (refs can be nested, e.g. refs/heads/feature/x).
+function writeRefOrFail(fs: VirtualFS, path: string, content: string): VirtualFS {
+  const parts = path.split("/");
+  for (let i = 1; i < parts.length - 1; i++) {
+    fs = mkdirOrFail(fs, parts.slice(0, i + 1).join("/"));
+  }
+  return writeOrFail(fs, path, content);
+}
+
+// FS-safety subset of git check-ref-format: reject names that would corrupt
+// the on-disk layout. Real git's full ruleset is stricter; we only enforce
+// what's needed to keep the virtual FS consistent.
+export function isValidRefName(name: string): boolean {
+  if (!name) return false;
+  const segments = name.split("/");
+  for (const seg of segments) {
+    if (seg === "" || seg === "." || seg === "..") return false;
+  }
+  return true;
 }
 
 // ── git init ─────────────────────────────────────────────────────────
@@ -318,7 +353,7 @@ export function gitCommit(
   const head = readHead(fs, root);
   const branch = getCurrentBranch(head);
   if (branch) {
-    fs = writeOrFail(fs, `${root}/.git/refs/heads/${branch}`, hash);
+    fs = writeRefOrFail(fs, `${root}/.git/refs/heads/${branch}`, hash);
   } else {
     fs = writeOrFail(fs, `${root}/.git/HEAD`, hash);
   }
@@ -415,9 +450,39 @@ export function getCommitLog(fs: VirtualFS, root: string): GitCommit[] {
 
 export function listBranches(fs: VirtualFS, root: string): { branches: string[]; current: string | null } {
   const current = getCurrentBranch(readHead(fs, root));
-  const { entries } = fs.listDirectory(`${root}/.git/refs/heads`);
-  const branches = entries.filter(isFile).map((e) => e.name).sort();
+  const headsRoot = `${root}/.git/refs/heads`;
+  const branches: string[] = [];
+  const walk = (dirPath: string, prefix: string) => {
+    const { entries } = fs.listDirectory(dirPath);
+    for (const entry of entries) {
+      if (isFile(entry)) {
+        branches.push(prefix + entry.name);
+      } else if (isDirectory(entry)) {
+        walk(`${dirPath}/${entry.name}`, `${prefix}${entry.name}/`);
+      }
+    }
+  };
+  walk(headsRoot, "");
+  branches.sort();
   return { branches, current };
+}
+
+export function createBranch(fs: VirtualFS, root: string, name: string): { fs: VirtualFS; output: string; error?: string } {
+  if (!isValidRefName(name)) {
+    return { fs, output: "", error: `fatal: '${name}' is not a valid branch name` };
+  }
+  const existing = fs.readFile(`${root}/.git/refs/heads/${name}`);
+  if (existing.content) {
+    return { fs, output: "", error: `fatal: a branch named '${name}' already exists` };
+  }
+
+  const headHash = resolveHead(fs, root);
+  if (!headHash) {
+    return { fs, output: "", error: `fatal: Not a valid object name: 'HEAD'.` };
+  }
+
+  fs = writeRefOrFail(fs, `${root}/.git/refs/heads/${name}`, headHash);
+  return { fs, output: "" };
 }
 
 export function deleteBranch(fs: VirtualFS, root: string, name: string, force: boolean): { fs: VirtualFS; output: string; error?: string } {
@@ -454,6 +519,9 @@ export function gitCheckout(
   const hasUncommitted = Object.keys(index.staged).length > 0 || index.deleted.length > 0;
 
   if (createBranch) {
+    if (!isValidRefName(target)) {
+      return { fs, output: "", error: `fatal: '${target}' is not a valid branch name` };
+    }
     // Check if branch already exists
     const existing = fs.readFile(`${root}/.git/refs/heads/${target}`);
     if (existing.content) {
@@ -462,7 +530,7 @@ export function gitCheckout(
     // Create branch at current HEAD
     const hash = headHash ?? "";
     if (hash) {
-      fs = writeOrFail(fs, `${root}/.git/refs/heads/${target}`, hash);
+      fs = writeRefOrFail(fs, `${root}/.git/refs/heads/${target}`, hash);
     }
     fs = writeOrFail(fs, `${root}/.git/HEAD`, `ref: refs/heads/${target}`);
     return { fs, output: `Switched to a new branch '${target}'`, triggerEvents: [{ type: "command_executed", detail: "git_checkout_b" }] };
@@ -557,8 +625,17 @@ export function gitDiffFiles(fs: VirtualFS, root: string, staged: boolean): Diff
       }
     }
   } else {
+    const index = readIndex(fs, root);
+    const trackedTree: Record<string, string> = { ...headTree };
+    for (const [path, content] of Object.entries(index.staged)) {
+      trackedTree[path] = content;
+    }
+    for (const path of index.deleted) {
+      delete trackedTree[path];
+    }
+
     const workingTree = collectFiles(fs, root, root);
-    for (const [path, content] of Object.entries(headTree)) {
+    for (const [path, content] of Object.entries(trackedTree)) {
       if (path in workingTree) {
         if (workingTree[path] !== content) {
           diffs.push({ path, oldContent: content, newContent: workingTree[path] });
@@ -568,7 +645,7 @@ export function gitDiffFiles(fs: VirtualFS, root: string, staged: boolean): Diff
       }
     }
     for (const [path, content] of Object.entries(workingTree)) {
-      if (!(path in headTree)) {
+      if (!(path in trackedTree)) {
         diffs.push({ path, oldContent: "", newContent: content });
       }
     }
@@ -698,8 +775,12 @@ export function gitClone(
   // Set HEAD to desired branch
   fs = writeOrFail(fs, `${repoPath}/.git/HEAD`, `ref: refs/heads/${branch}`);
 
-  // Write remote config
-  fs = writeOrFail(fs, `${repoPath}/.git/config`, `[remote "origin"]\n  url = ${url}\n  fetch = +refs/heads/*:refs/remotes/origin/*\nmerge-remote = origin\nmerge-branch = ${branch}`);
+  // Write remote config + per-branch upstream section (matches real git layout)
+  fs = writeOrFail(
+    fs,
+    `${repoPath}/.git/config`,
+    `[remote "origin"]\n  url = ${url}\n  fetch = +refs/heads/*:refs/remotes/origin/*\n[branch "${branch}"]\n  remote = origin\n  merge = refs/heads/${branch}\n`,
+  );
 
   // Write commit objects and set up refs
   let lastHash: string | null = null;
@@ -709,8 +790,8 @@ export function gitClone(
   }
 
   if (lastHash) {
-    fs = writeOrFail(fs, `${repoPath}/.git/refs/heads/${branch}`, lastHash);
-    fs = writeOrFail(fs, `${repoPath}/.git/refs/remotes/origin/${branch}`, lastHash);
+    fs = writeRefOrFail(fs, `${repoPath}/.git/refs/heads/${branch}`, lastHash);
+    fs = writeRefOrFail(fs, `${repoPath}/.git/refs/remotes/origin/${branch}`, lastHash);
   }
 
   // Populate working tree from latest commit
@@ -791,19 +872,29 @@ export function gitPush(
     }
   }
 
-  // Ensure remote ref directory exists
-  fs = mkdirOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}`);
-  // Update remote ref
+  // Update remote ref (writeRefOrFail mkdir-p's the parent chain, including
+  // the remote dir itself and any nested branch path like feature/x).
   const oldHash = remoteHash ?? "0000000";
-  fs = writeOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, headHash);
+  fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, headHash);
 
-  // Set upstream if requested
+  // Set upstream if requested — write a per-branch section so each branch
+  // tracks its own upstream independently (real git layout).
   if (setUpstream) {
     const existingConfig = fs.readFile(`${root}/.git/config`);
     let configContent = existingConfig.content ?? "";
-    // Remove old merge-remote/merge-branch lines
-    configContent = configContent.replace(/merge-remote\s*=\s*.+\n?/g, "").replace(/merge-branch\s*=\s*.+\n?/g, "");
-    configContent = configContent.trimEnd() + `\nmerge-remote = ${targetRemote}\nmerge-branch = ${targetBranch}`;
+    // Drop legacy global keys from older saves so they can't shadow per-branch lookups
+    configContent = configContent
+      .replace(/^\s*merge-remote\s*=\s*.+$\n?/gm, "")
+      .replace(/^\s*merge-branch\s*=\s*.+$\n?/gm, "");
+    // Strip any existing section for this branch — terminate at the next [section] or EOF
+    const sectionRe = new RegExp(
+      `\\[branch "${escapeRegex(targetBranch)}"\\][\\s\\S]*?(?=\\n\\[|$)\\n?`,
+      "g",
+    );
+    configContent = configContent.replace(sectionRe, "");
+    configContent =
+      configContent.trimEnd() +
+      `\n[branch "${targetBranch}"]\n  remote = ${targetRemote}\n  merge = refs/heads/${targetBranch}\n`;
     fs = writeOrFail(fs, `${root}/.git/config`, configContent);
   }
 

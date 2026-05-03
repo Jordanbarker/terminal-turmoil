@@ -111,6 +111,7 @@ function ctx(fs?: VirtualFS, overrides?: Partial<CommandContext>): CommandContex
     fs: f,
     cwd: f.cwd,
     homeDir: f.homeDir,
+    username: "ren",
     activeComputer: "nexacorp",
     storyFlags: {},
     ...overrides,

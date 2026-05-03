@@ -17,6 +17,7 @@ import { checkPiperDeliveries } from "../engine/piper/delivery";
 import { ISession } from "../engine/session/types";
 import { SessionToStart } from "../engine/commands/applyResult";
 import { ComputerId } from "../state/types";
+import { isCommandAvailable } from "../engine/commands/availability";
 import { PiperSessionInfo } from "../engine/piper/types";
 
 interface EventActionContext {
@@ -215,7 +216,11 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         if (piperNew.length > 0) {
           latestStore.addDeliveredPiperMessages(piperNew);
           if (notify) {
-            term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            if (isCommandAvailable("piper", computerId, latestStore.storyFlags)) {
+              term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            } else {
+              useGameStore.getState().setPendingPiperNotification(true);
+            }
           }
 
           // Second pass: process piper_delivered events through story flag triggers
@@ -244,7 +249,11 @@ export function useSessionRouter(deps: SessionRouterDeps) {
         if (crossPiper.length > 0) {
           crossLatest.addDeliveredPiperMessages(crossPiper);
           if (notify) {
-            term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            if (isCommandAvailable("piper", computerId, crossLatest.storyFlags)) {
+              term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            } else {
+              useGameStore.getState().setPendingPiperNotification(true);
+            }
           }
           // Process piper_delivered flag triggers for cross-computer deliveries too
           for (const id of crossPiper) {
@@ -346,8 +355,12 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           wroteNotifications = true;
         }
         if (pending.piper > 0) {
-          term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
-          wroteNotifications = true;
+          if (isCommandAvailable("piper", computerId, useGameStore.getState().storyFlags)) {
+            term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+            wroteNotifications = true;
+          } else {
+            useGameStore.getState().setPendingPiperNotification(true);
+          }
         }
       }
 

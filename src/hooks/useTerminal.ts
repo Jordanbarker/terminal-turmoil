@@ -12,6 +12,7 @@ import { createDefaultContext } from "../engine/snowflake/session/context";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS, ComputerId } from "../state/types";
+import { isCommandAvailable } from "../engine/commands/availability";
 import { computeEffects, AppliedEffects } from "../engine/commands/applyResult";
 import { CHECKPOINTS } from "../story/checkpoints";
 import { useSessionRouter } from "./useSessionRouter";
@@ -50,6 +51,7 @@ function buildCommandContext(
     fs,
     cwd,
     homeDir,
+    username: store.username,
     activeComputer: computerId,
     storyFlags: store.storyFlags,
     stdin,
@@ -201,7 +203,13 @@ export function useTerminal() {
         term.write(`\r\n${colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold)}`);
       }
       if (effects.piperNotifications > 0) {
-        term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+        const computerId = activeComputerRef.current;
+        const storyFlags = useGameStore.getState().storyFlags;
+        if (isCommandAvailable("piper", computerId, storyFlags)) {
+          term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+        } else {
+          useGameStore.getState().setPendingPiperNotification(true);
+        }
       }
     },
     []

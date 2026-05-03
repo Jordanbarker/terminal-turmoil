@@ -31,7 +31,7 @@ const head: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (fileArgs.length === 0) {
-    return { output: "head: missing file operand" };
+    return { output: "head: missing file operand", exitCode: 2 };
   }
 
   const outputs: string[] = [];

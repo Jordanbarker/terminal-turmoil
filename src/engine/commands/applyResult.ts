@@ -150,9 +150,9 @@ export function computeEffects(
     }
   }
 
-  // Build event list — skip events for commands that weren't found (exitCode 127)
+  // Build event list — skip events for usage errors (exitCode >= 2) and unknown commands (127)
   const events: GameEvent[] = [];
-  if (result.exitCode !== 127) {
+  if (result.exitCode === undefined || result.exitCode <= 1) {
     events.push({ type: "command_executed", detail: applyCtx.parsedCommand });
 
     if (result.triggerEvents) {

@@ -11,40 +11,40 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "A commit is a snapshot of your project at a point in time. " +
       "Each one has a unique hash (e.g. a3f2c1b), a message, an author, and a pointer to its parent commit." +
       "\n" +
+
       "\nStage changes" +
       "\n  git add app.py    # stage one file" +
       "\n  git add .         # stage everything" +
       "\n  git add -p        # interactively pick which parts of a file to stage" +
       "\n\n" +
+
       "Commit changes" +
       "\n  git commit -m fix/bug.    # commit with a message (-m)" +
       "\n  git commit -ma fix/bug    # commit with a message (-m) and auto-stage (-a)" +
       "\n\n" +
+
       "Browse history" +
-      "\n git log                         # full log with author, date, message" +
-      "\n git log --oneline               # compact: one line per commit" +
+      "\n git log               # full log with author, date, message" +
+      "\n git log --oneline     # compact: one line per commit" +
       "\n\n" +
-      "Branching" +
-      "\n git branch                          # list local branches" +
-      "\n git branch -a                       # list local + remote branches" +
-      "\n git branch -d fix/bug               # delete a branch (safe — won't delete if unmerged)" +
-      "\n git branch -D fix/bug               # force delete" +
-
-      "\n git switch main                     # switch to existing branch" +
-      "\n git switch -c fix/bug.              # create and switch to a new branch" +
       
-      "\n git restore app.py                  # discard changes to a file" +
+      "Branching" +
+      "\n git branch            # list local branches" +
+      "\n git branch -a         # list local + remote branches" +
+      "\n git branch -d fix/bug # delete a branch (safe — won't delete if unmerged)" +
+      "\n git branch -D fix/bug # force delete" + 
+      "\n git switch main       # switch to existing branch" +
+      "\n git switch -c fix/bug # create and switch to a new branch" +
+      "\n git restore app.py     # discard changes to a file" +
+      
+      "See what changed" +
+      "\n git status   # summary" +
+      "\n git diff     # line-by-line" +
+      "\n\n" +
 
-
-      "Some basics:\n" +
-      "  git status   — check what's changed\n" +
-      "  git add      — stage changes\n" +
-      "  git commit   — save your work\n" +
-      "  git log      — view history\n" +
-      "  git diff     — see what changed\n\n" +
       "Creating a feature branch:\n" +
       "  1. Create & switch to a branch\n" +
-      "     git checkout -b fix/my-fix\n" +
+      "     git switch -c fix/my-fix\n" +
       "  2. Stage changed files\n" +
       "     git add <file>\n" +
       "  3. Commit your work\n" +
@@ -161,7 +161,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "  git commit -m \"description\"   Commit with a message\n" +
       "  git push -u origin <branch>   Push and set upstream\n\n" +
       "If you haven't created a branch yet:\n" +
-      "  git checkout -b fix/my-fix    Create and switch to branch\n\n" +
+      "  git switch -c fix/my-fix      Create and switch to branch\n\n" +
       "The -u flag on push sets the upstream tracking, so future\n" +
       "pushes just need 'git push'.",
   },

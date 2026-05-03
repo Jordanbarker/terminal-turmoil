@@ -45,6 +45,7 @@ interface GameStore {
   tabs: TabState[];
   activeTabId: string;
   activeSnowSession: string | null;
+  pendingPiperNotification: boolean;
 
   // Actions
   setUsername: (username: string) => void;
@@ -74,6 +75,7 @@ interface GameStore {
   setComputerEnv: (computer: ComputerId, envVars: Record<string, string>) => void;
   setComputerAliases: (computer: ComputerId, aliases: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
+  setPendingPiperNotification: (value: boolean) => void;
 }
 
 export function buildFs(
@@ -124,6 +126,7 @@ function createInitialState(username = PLAYER.username) {
     tabs: [{ id: initialTabId, computerId: "home" as ComputerId, cwd: fs.cwd }] as TabState[],
     activeTabId: initialTabId,
     activeSnowSession: null as string | null,
+    pendingPiperNotification: false,
   };
 }
 
@@ -261,6 +264,7 @@ export const useGameStore = create<GameStore>()(
           const { [computer]: _, ...rest } = state.computerState;
           return { computerState: rest };
         }),
+      setPendingPiperNotification: (value) => set({ pendingPiperNotification: value }),
       resetGame: () => {
         tabCounter = 0;
         set(createInitialState());

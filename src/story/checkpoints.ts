@@ -210,7 +210,6 @@ const DAY1_END: Checkpoint = {
     "check_auri_dbt",
     "meet_auri",
     // Closing time
-    "check_eod_email",
     "read_eod_email",
     "head_home",
     "closing_time",

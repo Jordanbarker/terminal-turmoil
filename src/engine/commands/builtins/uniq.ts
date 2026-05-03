@@ -16,11 +16,11 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     const absPath = resolvePath(fileArgs[0], ctx.cwd, ctx.homeDir);
     const result = ctx.fs.readFile(absPath);
     if (result.error) {
-      return { output: result.error.replace("cat:", "uniq:") };
+      return { output: result.error.replace("cat:", "uniq:"), exitCode: 2 };
     }
     content = result.content ?? "";
   } else {
-    return { output: "uniq: missing file operand" };
+    return { output: "uniq: missing file operand", exitCode: 2 };
   }
 
   const lines = content.split("\n");

@@ -53,6 +53,7 @@ function createCtx(overrides?: Partial<CommandContext>): CommandContext {
     fs: createTestFS(),
     cwd: "/home/ren",
     homeDir: "/home/ren",
+    username: "ren",
     activeComputer: "home",
     storyFlags: { commands_unlocked: true, ssh_unlocked: true },
     ...overrides,

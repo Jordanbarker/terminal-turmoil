@@ -138,3 +138,76 @@ Performance
 - performance.mark()/performance.measure(): Add timing around processDeliveries() and the persist partialize function to get real numbers.
 - Lighthouse: Run on the deployed build for initial load metrics.
 - Memory tab: Take heap snapshots before and after 50+ commands to check for memory leaks (especially VirtualFS old instances not being GC'd).
+
+
+
+```sql
+select
+    campaign_name,
+    coalesce(sum(impressions), 0) as total_impressions,
+    coalesce(sum(clicks), 0) as total_clicks,
+    coalesce(sum(conversions), 0) as total_conversions,
+    coalesce(sum(spend), 0) as total_spend,
+    round(coalesce(total_clicks, 0) * 100.0 / coalesce(sum(impressions), 0), 2) as click_rate,
+    coalesce(round(coalesce(total_conversions, 0) * 100.0 / coalesce(sum(clicks), 0), 2), 2) as conversion_rate
+from stg_raw_nexacorp__campaign_metrics
+group by campaign_name
+order by total_impressions desc
+```
+
+
+## dbt 
+
+Auri Park (Data Engineer) — Owns the dbt project itself. 
+    
+  Mart Models — Auri builds, stakeholders own the requirements
+
+  ┌──────────────────────────┬───────────────────────────────┬────────────────────────────────────────────────────────┐
+  │          Model           │            Builder            │       Stakeholder (owns requirements/validation)       │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ dim_employees            │ Auri                          │ Maya Johnson (HR) — she'd define who's "active"        │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ rpt_employee_directory   │ Auri                          │ Maya Johnson — HR portal feed                          │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ fct_system_events        │ Auri                          │ Oscar Diaz (Infra) — observability/security            │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ fct_support_tickets      │ Auri                          │ Dana Okafor (Ops) — she tracks ticket resolution       │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ rpt_ai_performance       │ Jin Chen originally, now Auri │ Jin/Ren (AI Engineer) — ML model monitoring            │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ rpt_department_spending  │ Auri                          │ Dana Okafor / Marcus Reyes (Ops/COO) — budget tracking │
+  ├──────────────────────────┼───────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ rpt_campaign_performance │ Auri                          │ Jordan Kessler (Growth Marketing) — campaign analytics │
+  └──────────────────────────┴───────────────────────────────┴────────────────────────────────────────────────────────┘
+
+  Custom Test Assertions — Cross-functional
+
+  ┌────────────────────────────────────┬───────────────────────────────────────────────────┐
+  │                Test                │           Who provided the requirement            │
+  ├────────────────────────────────────┼───────────────────────────────────────────────────┤
+  │ assert_employee_count (expects 15) │ Maya Johnson — "HR confirmed 15 active employees" │
+  ├────────────────────────────────────┼───────────────────────────────────────────────────┤
+  │ assert_no_future_hire_dates        │ HR data quality (Maya)                            │
+  ├────────────────────────────────────┼───────────────────────────────────────────────────┤
+  │ assert_no_negative_budgets         │ Finance/Ops (Dana/Marcus)                         │
+  ├────────────────────────────────────┼───────────────────────────────────────────────────┤
+  │ assert_valid_ticket_priorities     │ Dana Okafor — she'd define valid priority levels  │
+  ├────────────────────────────────────┼───────────────────────────────────────────────────┤
+  │ assert_all_tickets_in_directory    │ Referential integrity — Auri's own quality check  │
+  └────────────────────────────────────┴───────────────────────────────────────────────────┘
+
+    CUSTOMERS table schemas.RAW_NEXACORP.tables 
+
+     ┌─────────────┬──────────────────────────┬────────────┬─────────────┬──────────────┬───────────────────────┬─────────┬────────────────────┬─────────────────┐
+     │ CUSTOMER_ID │       COMPANY_NAME       │  INDUSTRY  │ SIGNUP_DATE │  PLAN_TIER   │ ANNUAL_CONTRACT_VALUE │ STATUS  │ LAST_ACTIVITY_DATE │ ACCOUNT_MANAGER │
+     ├─────────────┼──────────────────────────┼────────────┼─────────────┼──────────────┼───────────────────────┼─────────┼────────────────────┼─────────────────┤
+     │ C001        │ Willow Health Systems    │ Healthcare │ 2025-06-15  │ enterprise   │ 280000                │ active  │ 2026-03-25         │ James Wilson    │
+     ├─────────────┼──────────────────────────┼────────────┼─────────────┼──────────────┼───────────────────────┼─────────┼────────────────────┼─────────────────┤
+     │ C002        │ Vanguard Health          │ Healthcare │ 2025-08-01  │ professional │ 95000                 │ active  │ 2026-03-27         │ James Wilson    │
+     ├─────────────┼──────────────────────────┼────────────┼─────────────┼──────────────┼───────────────────────┼─────────┼────────────────────┼─────────────────┤
+     │ C003        │ Pinnacle Financial Group │ Finance    │ 2025-09-20  │ enterprise   │ 320000                │ active  │ 2026-03-28         │ James Wilson    │
+     ├─────────────┼──────────────────────────┼────────────┼─────────────┼──────────────┼───────────────────────┼─────────┼────────────────────┼─────────────────┤
+     │ C004        │ FireCoin                 │ Finance    │ 2025-11-10  │ starter      │ 25000                 │ churned │ 2026-02-14         │ James Wilson    │
+     ├─────────────┼──────────────────────────┼────────────┼─────────────┼──────────────┼───────────────────────┼─────────┼────────────────────┼─────────────────┤
+     │ C005        │ Ascend Crypto            │ Finance    │ 2026-01-05  │ professional │ 110000                │ active  │ 2026-03-26         │ James Wilson    │
+     └─────────────┴──────────────────────────┴────────────┴─────────────┴──────────────┴───────────────────────┴─────────┴────────────────────┴─────────────────┘

@@ -19,7 +19,7 @@ function makeCtxWithGit(opts?: { includeDay2?: boolean; pullUpdates?: boolean })
   const root = createDevcontainerFilesystem(username);
   let fs = new VirtualFS(root, homeDir, homeDir);
 
-  const cloneResult = gitClone(fs, homeDir, "nexacorp/nexacorp-analytics", "player <player@nexacorp.io>");
+  const cloneResult = gitClone(fs, homeDir, "nexacorp/nexacorp-analytics", "Ren <ren@nexacorp.com>");
   if (cloneResult.error) throw new Error(cloneResult.error);
   fs = cloneResult.fs;
 
@@ -33,7 +33,7 @@ function makeCtxWithGit(opts?: { includeDay2?: boolean; pullUpdates?: boolean })
   let currentState = snowflakeState;
 
   return {
-    fs, cwd: projectDir, homeDir,
+    fs, cwd: projectDir, homeDir, username,
     activeComputer: "devcontainer" as const,
     storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true },
     snowflakeState,
@@ -50,7 +50,7 @@ function makeSimpleCtx(): CommandContext & { getSnowflakeState: () => SnowflakeS
   let currentState = snowflakeState;
 
   return {
-    fs, cwd: projectDir, homeDir,
+    fs, cwd: projectDir, homeDir, username,
     activeComputer: "devcontainer" as const,
     storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true },
     snowflakeState,
@@ -196,7 +196,7 @@ describe("git checkout -b emits triggerEvents", () => {
   it("includes git_checkout_b event", () => {
     const root = createDevcontainerFilesystem(username);
     let fs = new VirtualFS(root, homeDir, homeDir);
-    const cloneResult = gitClone(fs, homeDir, "nexacorp/nexacorp-analytics", "player <player@nexacorp.io>");
+    const cloneResult = gitClone(fs, homeDir, "nexacorp/nexacorp-analytics", "Ren <ren@nexacorp.com>");
     fs = cloneResult.fs;
 
     // Use a simple branch name without slashes to avoid directory creation issues

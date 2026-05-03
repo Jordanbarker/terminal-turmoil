@@ -17,7 +17,7 @@ const root: DirectoryNode = {
 function ctx(overrides?: Partial<CommandContext>): CommandContext {
   const fs = new VirtualFS(root);
   const { storyFlags, ...rest } = overrides ?? {};
-  return { fs, cwd: "/", homeDir: "/", activeComputer: "home", storyFlags: { apt_unlocked: true, ...storyFlags }, ...rest };
+  return { fs, cwd: "/", homeDir: "/", username: "ren", activeComputer: "home", storyFlags: { apt_unlocked: true, ...storyFlags }, ...rest };
 }
 
 describe("apt update", () => {

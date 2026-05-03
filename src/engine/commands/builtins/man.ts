@@ -6,7 +6,7 @@ import { HELP_TEXTS } from "./helpTexts";
 
 const man: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "What manual page do you want?\nUsage: man COMMAND" };
+    return { output: "What manual page do you want?\nUsage: man COMMAND", exitCode: 2 };
   }
 
   const cmd = args[0];
@@ -14,13 +14,13 @@ const man: CommandHandler = (args, _flags, ctx) => {
   const isAlias = cmd !== primaryName;
 
   if (!isCommandAvailable(cmd, ctx.activeComputer, ctx.storyFlags)) {
-    return { output: `No manual entry for ${cmd}` };
+    return { output: `No manual entry for ${cmd}`, exitCode: 2 };
   }
 
   const helpText = HELP_TEXTS[primaryName];
 
   if (!helpText) {
-    return { output: `No manual entry for ${cmd}` };
+    return { output: `No manual entry for ${cmd}`, exitCode: 2 };
   }
 
   const cmdAliases = getAliasesFor(primaryName);

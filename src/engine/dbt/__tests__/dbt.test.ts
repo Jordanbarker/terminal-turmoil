@@ -39,7 +39,7 @@ function makeCtx(cwd: string): CommandContext {
   const snowflakeState = createInitialSnowflakeState();
   let currentState = snowflakeState;
   return {
-    fs, cwd, homeDir: `/home/${username}`,
+    fs, cwd, homeDir: `/home/${username}`, username,
     activeComputer: "devcontainer" as const,
     storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true },
     snowflakeState,
@@ -832,7 +832,7 @@ describe("dbt run materialization", () => {
     const root = createDevcontainerFilesystem(username, { dbt_project_cloned: true });
     const fs = new VirtualFS(root, projectDir, `/home/${username}`);
     const ctx: CommandContext = {
-      fs, cwd: projectDir, homeDir: `/home/${username}`,
+      fs, cwd: projectDir, homeDir: `/home/${username}`, username,
       activeComputer: "devcontainer" as const,
       storyFlags: { pipeline_tools_unlocked: true, devcontainer_visited: true },
     };

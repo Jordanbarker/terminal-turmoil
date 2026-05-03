@@ -50,14 +50,7 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
     {
       id: "jordan_metrics_followup",
       channelId: "dm_jordan",
-      messages: [
-        {
-          id: "jordan_metrics_1",
-          from: "Jordan Kessler",
-          timestamp: "",
-          body: "Hey — did you find anything in that campaign data?",
-        },
-      ],
+      messages: [],
       trigger: { type: "after_story_flag", flag: "found_inflated_metrics" },
       replyOptions: [
         {

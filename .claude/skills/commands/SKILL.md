@@ -48,6 +48,7 @@ interface CommandContext {
   fs: VirtualFS;
   cwd: string;
   homeDir: string;
+  username: string;             // Player's unix username (e.g. "ren")
   activeComputer: ComputerId;
   storyFlags?: StoryFlags;
   stdin?: string;               // Piped input from previous command
