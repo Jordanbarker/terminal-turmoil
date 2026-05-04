@@ -543,11 +543,13 @@ export const REMOTE_REPOS: Record<string, RemoteRepoDef> = {
       commits,
       getUpdates: (storyFlags: Record<string, string | boolean>, localHead: string | null) => {
         if (!storyFlags.day1_shutdown || !localHead) return [];
-        const files = { ...finalTree };
-        files["models/marts/_marts__models.yml"] = UPDATED_MARTS_YAML;
         const message = "add not_null test for conversion_rate";
         const timestamp = 1772000000000;
-        const hash = shortHash(message + timestamp + localHead);
+        // Deterministic remote-tip hash so repeated pulls converge instead of looping.
+        const hash = shortHash(message + timestamp);
+        if (localHead === hash) return [];
+        const files = { ...finalTree };
+        files["models/marts/_marts__models.yml"] = UPDATED_MARTS_YAML;
         return [{ hash, parent: localHead, message, author: "Auri Park <auri@nexacorp.com>", timestamp, tree: files }];
       },
     } satisfies RemoteRepoDef;

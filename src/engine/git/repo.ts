@@ -467,7 +467,9 @@ export function listBranches(fs: VirtualFS, root: string): { branches: string[];
   return { branches, current };
 }
 
-export function createBranch(fs: VirtualFS, root: string, name: string): { fs: VirtualFS; output: string; error?: string } {
+export function createBranch(
+  fs: VirtualFS, root: string, name: string
+): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
   if (!isValidRefName(name)) {
     return { fs, output: "", error: `fatal: '${name}' is not a valid branch name` };
   }
@@ -482,7 +484,7 @@ export function createBranch(fs: VirtualFS, root: string, name: string): { fs: V
   }
 
   fs = writeRefOrFail(fs, `${root}/.git/refs/heads/${name}`, headHash);
-  return { fs, output: "" };
+  return { fs, output: "", triggerEvents: [{ type: "command_executed", detail: "git_checkout_b" }] };
 }
 
 export function deleteBranch(fs: VirtualFS, root: string, name: string, force: boolean): { fs: VirtualFS; output: string; error?: string } {

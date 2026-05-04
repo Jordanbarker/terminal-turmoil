@@ -8,7 +8,7 @@ import { SnowflakeState } from "../../snowflake/state";
 import { checkStoryFlagTriggers } from "../../narrative/storyFlags";
 import { getDevcontainerStoryFlagTriggers } from "../../../story/storyFlags";
 import { REMOTE_REPOS } from "../../git/remotes";
-import { gitClone, gitPull, gitCheckout } from "../../git/repo";
+import { gitClone, gitPull, gitCheckout, createBranch } from "../../git/repo";
 
 const username = "player";
 const projectDir = `/home/${username}/nexacorp-analytics`;
@@ -203,5 +203,72 @@ describe("git checkout -b emits triggerEvents", () => {
     const result = gitCheckout(fs, projectDir, "fix-null-campaign", true);
     expect(result.error).toBeUndefined();
     expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+  });
+});
+
+describe("Day 2 Quest: cascade & alt-path completion", () => {
+  it("dbt_test_all_pass also fires investigated_null_data and created_fix_branch (cascade)", () => {
+    // The player who skipped `snow sql` and used `git branch` instead of `git checkout -b`
+    // should still get credit for those subtasks once their fix turns dbt green.
+    const triggers = getDevcontainerStoryFlagTriggers(username);
+    const event = { type: "command_executed" as const, detail: "dbt_test_all_pass" };
+
+    const results = checkStoryFlagTriggers(event, triggers, {
+      ssh_day2: true,
+      pulled_day2_updates: true,
+      dbt_test_failed_day2: true,
+    });
+
+    const flags = results.map(r => r.flag);
+    expect(flags).toContain("fixed_campaign_model");
+    expect(flags).toContain("investigated_null_data");
+    expect(flags).toContain("created_fix_branch");
+  });
+
+  it("cascade respects dbt_test_failed_day2 — won't credit subtasks before the player has even seen the bug", () => {
+    const triggers = getDevcontainerStoryFlagTriggers(username);
+    const event = { type: "command_executed" as const, detail: "dbt_test_all_pass" };
+
+    const results = checkStoryFlagTriggers(event, triggers, {});
+    expect(results.find(r => r.flag === "investigated_null_data")).toBeUndefined();
+    expect(results.find(r => r.flag === "created_fix_branch")).toBeUndefined();
+  });
+
+  it("cascade does not double-fire when the player took the intended path (flag already set)", () => {
+    const triggers = getDevcontainerStoryFlagTriggers(username);
+    const event = { type: "command_executed" as const, detail: "dbt_test_all_pass" };
+
+    const results = checkStoryFlagTriggers(event, triggers, {
+      ssh_day2: true,
+      pulled_day2_updates: true,
+      dbt_test_failed_day2: true,
+      investigated_null_data: true,
+      created_fix_branch: true,
+    });
+
+    expect(results.find(r => r.flag === "investigated_null_data")).toBeUndefined();
+    expect(results.find(r => r.flag === "created_fix_branch")).toBeUndefined();
+    // fixed_campaign_model still fires (it wasn't set yet)
+    expect(results.find(r => r.flag === "fixed_campaign_model")).toBeDefined();
+  });
+
+  it("`git branch <name>` (no -b) fires git_checkout_b so created_fix_branch can set", () => {
+    const root = createDevcontainerFilesystem(username);
+    let fs = new VirtualFS(root, homeDir, homeDir);
+    const cloneResult = gitClone(fs, homeDir, "nexacorp/nexacorp-analytics", "Ren <ren@nexacorp.com>");
+    fs = cloneResult.fs;
+
+    const branchResult = createBranch(fs, projectDir, "fix-null-campaign");
+    expect(branchResult.error).toBeUndefined();
+    expect(branchResult.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+
+    // And the trigger system would set created_fix_branch given the right gating
+    const triggers = getDevcontainerStoryFlagTriggers(username);
+    const results = checkStoryFlagTriggers(branchResult.triggerEvents![0], triggers, {
+      ssh_day2: true,
+      pulled_day2_updates: true,
+      dbt_test_failed_day2: true,
+    });
+    expect(results.find(r => r.flag === "created_fix_branch")).toBeDefined();
   });
 });

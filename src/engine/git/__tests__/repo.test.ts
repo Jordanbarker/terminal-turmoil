@@ -284,6 +284,14 @@ describe("git branch", () => {
     expect(ref).toBe(headHash);
   });
 
+  it("emits git_checkout_b trigger so `git branch <name>` counts as branching for story flags", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    const result = createBranch(fs, "/home/player", "feature");
+    expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+  });
+
   it("errors when creating a branch that already exists", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;

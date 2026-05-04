@@ -232,5 +232,8 @@ export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTri
     { event: "command_executed", detail: "git_checkout_b", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
     { event: "command_executed", detail: "dbt_test_all_pass", flag: "fixed_campaign_model", value: true, requiredFlags: ["dbt_test_failed_day2"] },
     { event: "command_executed", detail: "git_push", flag: "pushed_fix_branch", value: true, requiredFlags: ["fixed_campaign_model"] },
+    // Cascade: a green dbt build proves the upstream investigation + branching happened, even if the player took an unconventional path
+    { event: "command_executed", detail: "dbt_test_all_pass", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+    { event: "command_executed", detail: "dbt_test_all_pass", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
   ];
 }

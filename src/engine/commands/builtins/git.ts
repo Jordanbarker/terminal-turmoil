@@ -157,7 +157,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       if (subArgs[0]) {
         const result = createBranch(ctx.fs, root, subArgs[0]);
         if (result.error) return { output: result.error, exitCode: 128 };
-        return { output: result.output, newFs: result.fs };
+        return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
       }
       const { branches, current } = listBranches(ctx.fs, root);
       return { output: formatBranches(branches, current, plain) };

@@ -144,15 +144,35 @@ interface AssistantState { visible: boolean; currentMessage: ChipMessage | null;
 | `pulled_day2_updates` | `command_executed` | detail: `git_pull_origin_main` | `true` | requires: `ssh_day2` |
 | `dbt_test_failed_day2` | `command_executed` | detail: `dbt_test_warn` | `true` | requires: `pulled_day2_updates` |
 | `investigated_null_data` | `command_executed` | detail: `queried_campaign_metrics` | `true` | requires: `dbt_test_failed_day2` |
+| `investigated_null_data` | `command_executed` | detail: `dbt_test_all_pass` (cascade) | `true` | requires: `dbt_test_failed_day2` |
 | `created_fix_branch` | `command_executed` | detail: `git_checkout_b` | `true` | requires: `dbt_test_failed_day2` |
+| `created_fix_branch` | `command_executed` | detail: `dbt_test_all_pass` (cascade) | `true` | requires: `dbt_test_failed_day2` |
 | `fixed_campaign_model` | `command_executed` | detail: `dbt_test_all_pass` | `true` | requires: `dbt_test_failed_day2` |
 | `pushed_fix_branch` | `command_executed` | detail: `git_push` | `true` | requires: `fixed_campaign_model` |
+
+The `git_checkout_b` event is emitted by `git checkout -b <name>`, `git switch -c <name>`, **and** `git branch <name>` — any realistic way of creating a new branch counts. The cascade rows on `dbt_test_all_pass` ensure the parent `fix_pipeline_quest` objective can complete even when the player took an unconventional path (e.g., diagnosed the bug by `cat`-ing the model SQL, or branched via `git branch` + `git checkout` instead of `-b`). See [Cascade triggers](#cascade-triggers) below.
 
 ### NexaCorp Day 2 Flags (`getNexacorpStoryFlagTriggers()`)
 
 | Flag | Event | Detail | Value |
 |------|-------|--------|-------|
 | `reported_fix_to_auri` | `objective_completed` | `reported_fix_to_auri` | `true` |
+
+### Cascade triggers
+
+A "cascade" trigger is a second `StoryFlagTrigger` whose `flag` matches an upstream flag, but whose `event`/`detail` corresponds to a *downstream* milestone. When the player reaches the downstream milestone, the upstream flag also fires (only if it hasn't already been set — see the `currentFlags[trigger.flag] === undefined` check in `checkStoryFlagTriggers`).
+
+Use this when:
+- A sub-objective has a narrow, prescriptive trigger (e.g., "do X with snow sql"), and
+- A later objective inherently proves the sub-objective happened (e.g., "make the failing test pass" — you can't get there without diagnosing the bug first), and
+- The parent uses `allVisibleChildren` so leaving the sub-objective unchecked would block parent completion.
+
+Example — the Day 2 "Fix the Broken Pipeline" cascade in `getDevcontainerStoryFlagTriggers()`:
+```ts
+{ event: "command_executed", detail: "dbt_test_all_pass", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+{ event: "command_executed", detail: "dbt_test_all_pass", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
+```
+A green dbt build proves the player diagnosed the NULLs and (one way or another) made the change on a branch, even if they used `cat` instead of `snow sql` or `git branch` instead of `git checkout -b`. Always gate cascades with `requiredFlags` so they can't credit subtasks the player hasn't reached the context for yet.
 
 ## Objectives System
 
@@ -194,7 +214,7 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
   - `edward_onboarding` (allVisibleChildren) → 5 children: read_onboarding, meet_the_team, try_chip, tell_edward_chip_error, source_zshrc
   - Ungrouped: read_welcome_email, review_handoff, help_auri_pipeline, run_dbt, head_home, investigate_ops_data
 - **chapter-3** ("Getting the Hang of This"): Day 2 content:
-  - `fix_pipeline_quest` (allVisibleChildren) → 7 children: pull_day2_updates, discover_test_failure, investigate_null_data, create_fix_branch, fix_the_model, push_fix, report_to_auri
+  - `fix_pipeline_quest` (allVisibleChildren) → 8 children: read_auri_day2_morning, pull_day2_updates, discover_test_failure, investigate_null_data, create_fix_branch, fix_the_model, push_fix, report_to_auri
   - Ungrouped: ssh_to_work_day2
 
 ### Objective Resolution (`objectives.ts`)
