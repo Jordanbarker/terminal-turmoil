@@ -62,9 +62,9 @@ type EmailTrigger =
   | { type: "immediate" }
   | { type: "after_file_read"; filePath: string; requireDelivered?: string }
   | { type: "after_email_read"; emailId: string }
-  | { type: "after_command"; command: string }
+  | { type: "after_command"; command: string; requiredFlags?: string[] }
   | { type: "after_objective"; objectiveId: string }
-  | { type: "after_story_flag"; flag: string };
+  | { type: "after_story_flag"; flag: string; requiredFlags?: string[] };
 
 type GameEvent =
   | { type: "command_executed"; detail: string }
@@ -240,33 +240,37 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 |----|------|---------|-------------------|
 | `welcome_edward` | Edward Torres | immediate | Establish CTO, mention Piper + Jin Chen |
 | `it_provisioned` | NexaCorp IT | immediate | Teach `mail` command usage |
+| `oscar_coder_setup` | Oscar Diaz | after reading `/srv/engineering/onboarding.md` | Unlocks the `coder` command (sets `coder_unlocked`) |
+| `edward_paranoid` | Edward Torres | after reading `/srv/engineering/chen-handoff/notes.txt` | Casual check-in, supportive |
 | `maya_welcome` | Maya Johnson | after reading `it_provisioned` | HR welcome, team culture |
-| `edward_paranoid` | Edward Torres | after reading handoff notes | Casual check-in, supportive |
-| `edward_end_of_day` | Edward Torres | after dbt command | End-of-day debrief, hooks Chapter 3 |
+| `edward_end_of_day` | Edward Torres | (complex trigger after Day 1 progress) | End-of-day debrief, hooks Chapter 3 |
+| `jessica_welcome` | Jessica Liu | after reading `welcome_edward` | Cross-team welcome from another department |
+| `tom_welcome` | Tom Park | after reading `welcome_edward` | Cross-team welcome from another department |
 
-*Casual colleague interactions (Sarah, Oscar, Dana, Auri, Jordan) have moved to Piper messages — see the piper skill.*
+*Casual colleague interactions (Sarah, Oscar, Dana, Auri, Jordan) live primarily in Piper — see the piper skill.*
 
 ### Home PC Emails (`story/emails/home.ts`)
 
 | ID | From | Trigger | Narrative Purpose |
 |----|------|---------|-------------------|
-| `alex_checkin` | Alex Rivera | immediate | Friend check-in, establish personal context |
-| `job_board_alert` | Indeed | immediate | Job listings, NexaCorp featured |
-| `nexacorp_offer` | Edward Torres | after reading alex_checkin OR job_board_alert | The job offer (accept/reject reply options) |
+| `job_board_alert` | Indeed Job Alerts | immediate | Job listings, NexaCorp featured |
+| `cron_backup_failure` | Cron Daemon | immediate | Surfaces a real bug in `~/scripts/backup.sh` for the backup quest |
+| `nexacorp_offer` | Edward Torres | immediate | The job offer (accept/reject reply options) |
 | `nexacorp_persuasion_1` | Edward Torres | after `rejected_nexacorp_1` objective | Sweetened deal after first rejection |
 | `nexacorp_persuasion_2` | Edward Torres | after `rejected_nexacorp_2` objective | Final personal pitch after second rejection |
-| `alex_warning` | Alex Rivera | after reading glassdoor_reviews.json | Warning about NexaCorp red flags |
+| `alex_good_news` | Alex Rivera | after `rejected_nexacorp_final` objective | Friend congratulates the player on (any) decision — soft landing for the dead end |
 | `nexacorp_followup` | Edward Torres | after `accepted_nexacorp` objective | Triggers transition to NexaCorp |
+| `chip_ssh_setup` | Edward Torres | after `accepted_nexacorp` objective | SSH onboarding instructions; reading it sets `ssh_unlocked` |
 
 ### Home PC Reply Flow (Offer → Rejection → Persuasion Chain)
 
 The `nexacorp_offer` has two reply options: accept or reject.
 
-**Accept path** (at any stage): triggers `accepted_nexacorp` → delivers `nexacorp_followup` → triggers home→NexaCorp transition.
+**Accept path** (at any stage): triggers `accepted_nexacorp` → delivers `nexacorp_followup` and `chip_ssh_setup` → reading the followup triggers the home→NexaCorp transition.
 
 **Rejection chain:**
-1. **`nexacorp_offer`**: "I'm in!" (`accepted_nexacorp`) / "Thanks, but I'll pass" (`rejected_nexacorp_1`)
-2. **`nexacorp_persuasion_1`**: "You've convinced me" (`accepted_nexacorp`) / "Still going to pass" (`rejected_nexacorp_2`)
-3. **`nexacorp_persuasion_2`**: "Fine, I'll give it a shot" (`accepted_nexacorp`) / "My answer is final" (`rejected_nexacorp_final`)
+1. **`nexacorp_offer`**: "I'm in! When do I start?" (`accepted_nexacorp`) / "Thanks, but I'll have to pass" (`rejected_nexacorp_1`)
+2. **`nexacorp_persuasion_1`**: "Alright, you've convinced me" (`accepted_nexacorp`) / "I'm still going to pass" (`rejected_nexacorp_2`)
+3. **`nexacorp_persuasion_2`**: "Okay, I'll give it a shot" (`accepted_nexacorp` + `salary_180k`) / "My answer is final — good luck" (`rejected_nexacorp_final`)
 
-If the player rejects all three times (`rejected_nexacorp_final`), no more emails arrive — dead end.
+If the player rejects all three times (`rejected_nexacorp_final`), `alex_good_news` arrives as the soft landing — the recruitment thread closes but no transition happens.

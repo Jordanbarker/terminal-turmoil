@@ -38,6 +38,7 @@ export class GameRunner {
   activeComputer: ComputerId;
   storyFlags: StoryFlags;
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   commandHistory: Record<ComputerId, string[]>;
   snowflakeState: SnowflakeState;
   completedObjectives: string[];

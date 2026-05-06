@@ -26,7 +26,7 @@ npm run check     # Combined typecheck + test + build
 
 ### In-Game Commands
 
-`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `pdftotext`, `sudo`, `apt`, `git`, `source`, `alias`, `unalias`
+`ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `nano`, `mail`, `piper`, `python`, `snow`, `dbt`, `chip`, `ssh`, `coder`, `exit`, `shutdown`, `save`, `load`, `newgame`, `grep`, `find`, `head`, `tail`, `diff`, `wc`, `echo`, `chmod`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `history`, `whoami`, `hostname`, `file`, `tree`, `sort`, `uniq`, `date`, `which`, `man`, `df`, `pdftotext`, `sudo`, `apt`, `git`, `source`, `alias`, `unalias`, `export`, `printenv`, `env`
 
 Pipe support (`|`), output redirection (`>`, `>>`), stdin passing between piped commands, and command chaining (`&&`, `||`, `;`) are all supported.
 
@@ -82,7 +82,7 @@ src/
 │   ├── piper/
 │   │   ├── channels.ts         # Piper channel definitions
 │   │   ├── messages.ts         # Piper message/delivery definitions (re-exports from messages/)
-│   │   └── messages/           # Per-character message files (home, onboarding, oscar, dana, auri, sarah, cassie, jordan, maya, soham)
+│   │   └── messages/           # Per-character message files (home, onboarding, oscar, dana, auri, sarah, cassie, jordan, maya, soham, edward, ambient)
 │   └── data/
 │       ├── dbt/                # Pre-generated dbt data (model results, test results, etc.)
 │       └── snowflake/          # Pre-generated Snowflake seed data
@@ -114,6 +114,7 @@ src/
 - For save system, see the **save skill**. 
 - For SQL engine, see the **snowflake skill**. 
 - For dbt models/tests, see the **dbt skill**. 
+- For the virtual git CLI (commit graph, remotes, push/pull), see the **git skill**.
 - For headless play-testing, see the **play-testing skill**.
 
 ## Characters

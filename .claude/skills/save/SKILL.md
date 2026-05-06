@@ -56,7 +56,10 @@ type GameAction =
   | { type: "save"; slotId: string }
   | { type: "load"; slotId: string }
   | { type: "listSaves" }
-  | { type: "newGame" };
+  | { type: "listCheckpoints" }
+  | { type: "loadCheckpoint"; checkpointId: string }
+  | { type: "newGame" }
+  | { type: "shutdown" };
 ```
 
 ## Save Slots

@@ -136,22 +136,40 @@ Piper message timestamps are computed dynamically at render time in `getConversa
 
 ## Channels
 
-| Channel | Type | When visible |
-|---------|------|-------------|
-| `#general` | channel | Always (immediate welcome messages) |
-| `#engineering` | channel | Always |
-| DM Oscar | dm | After `oscar_log_check` delivered |
-| DM Dana | dm | After `dana_welcome` delivered |
-| DM Auri | dm | After `auri_hello` delivered |
-| DM Jordan | dm | After `jordan_marketing_data` delivered |
-| DM Edward | dm | After `edward_chip_intro` delivered |
+Defined in `src/story/piper/channels.ts`. Each channel/DM has a `computer` field — `"home"` shows it on Home PC, omitted means NexaCorp.
+
+### Home PC
+
+| ID | Name | Type |
+|----|------|------|
+| `openclam` | `#OpenClam` | channel |
+| `bubble_buddies` | `#BubbleBuddies` | channel |
+| `dm_alex` | Alex Rivera | dm |
+| `dm_olive` | Olive Borden | dm |
+
+### NexaCorp
+
+| ID | Name | Type |
+|----|------|------|
+| `general` | `#general` | channel |
+| `engineering` | `#engineering` | channel |
+| `dm_oscar` | Oscar Diaz | dm |
+| `dm_dana` | Dana Okafor | dm |
+| `dm_auri` | Auri Park | dm |
+| `dm_jordan` | Jordan Kessler | dm |
+| `dm_maya` | Maya Johnson | dm |
+| `dm_sarah` | Sarah Knight | dm |
+| `dm_cassie` | Cassie Moreau | dm |
+| `dm_edward` | Edward Torres | dm |
+
+DMs are visible only after at least one delivery has reached them. `getVisibleChannels()` (delivery.ts) filters out channels with no messages.
 
 ## Gating
 
-- Unlocked by `piper_unlocked` story flag (set when player reads `welcome_edward` email)
-- Edward's Chip onboarding DM chain (`edward_chip_intro` → `edward_chip_error` → `edward_chip_fix`) unlocks `chip`, teaches the API key puzzle, and unlocks `printenv`/`env`
-- Available on NexaCorp only (not home PC, not dev container)
-- Gated in `story/commandGates.ts` via `NEXACORP_GATED`
+- On NexaCorp, `piper` is unlocked by the `piper_unlocked` story flag (set when the player reads the `welcome_edward` email). Gated in `story/commandGates.ts` via `NEXACORP_GATED`.
+- On Home PC, `piper` is part of `HOME_COMMANDS` and available from the start — Olive's quest lines and Alex's chats live there.
+- Edward's Chip onboarding DM chain (`edward_chip_intro` → `edward_chip_error` → `edward_chip_fix`) unlocks `chip`, teaches the API key puzzle, and unlocks `printenv`/`env`.
+- Not available in the dev container.
 
 ## Adding New Messages
 

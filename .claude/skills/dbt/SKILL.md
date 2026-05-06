@@ -59,10 +59,10 @@ Views are expanded in the `scan` case of `executePlan()`. When `getTable()` retu
 
 ## Data Model
 
-### Models (17 standard)
+### Models (22 standard)
 
-**Standard models** (run by default):
-- 7 staging views: `stg_raw_nexacorp__employees`, `__system_events`, `__ai_metrics`, `__access_log`, `__department_budgets`, `__support_tickets`, `__campaign_metrics`
+**Standard models** (run by default — see `src/story/data/dbt/model_order.json` for the canonical order):
+- 12 staging views (all prefixed `stg_raw_nexacorp__`): `employees`, `system_events`, `ai_metrics`, `access_log`, `department_budgets`, `support_tickets`, `campaign_metrics`, `employee_directory`, `projects`, `departments`, `customers`, `deployments`
 - 3 intermediate (ephemeral): `int_employees_joined_to_events`, `int_employees_with_tenure`, `int_support_tickets_enriched`
 - 7 mart tables: `dim_employees` (13 rows), `fct_system_events`, `fct_support_tickets`, `rpt_ai_performance`, `rpt_employee_directory`, `rpt_department_spending`, `rpt_campaign_performance`
 
@@ -78,17 +78,22 @@ Views are expanded in the `scan` case of `executePlan()`. When `getTable()` retu
 
 Three databases: `NEXACORP_DB` (operational), `NEXACORP_PROD` (analytics), `CHIP_ANALYTICS` (investigation).
 
-### `NEXACORP_PROD.RAW_NEXACORP` (7 Source Tables)
+### `NEXACORP_PROD.RAW_NEXACORP` (12 Source Tables)
 
 | Table | Rows | Narrative Hook |
 |-------|------|----------------|
-| `EMPLOYEES` | 16 | Jin Chen (terminated) + others with "system concern" notes |
-| `SYSTEM_EVENTS` | 66 | Chip modifying files at 3am |
-| `AI_MODEL_METRICS` | 8 | Chip's suspiciously perfect metrics |
-| `ACCESS_LOG` | 25 | Chip accessing `/home/jchen/` after departure |
+| `EMPLOYEES` | 21 | Jin Chen (terminated) + others with "system concern" notes |
+| `SYSTEM_EVENTS` | 71 base + generated | Chip modifying files at 3am (extra rows added at seed time via `generateAccessEvents()`) |
+| `AI_MODEL_METRICS` | 9 | Chip's suspiciously perfect metrics |
+| `ACCESS_LOG` | generated dynamically | Chip accessing `/home/jchen/` after departure (built entirely by `generateAccessLogRows()` from `LogOptions`) |
 | `DEPARTMENT_BUDGETS` | 16 | Normal business data (red herring) |
-| `SUPPORT_TICKETS` | 15 | 11 normal + 4 suspicious (self-closed by `chip_service_account`) |
+| `SUPPORT_TICKETS` | 15 base + ~43 auto-generated | 11 normal + 4 suspicious (self-closed by `chip_service_account`); generator adds Chip-resolved tickets |
 | `CAMPAIGN_METRICS` | 6 (Day 1), 8 (Day 2) | Marketing campaign data. Day 2 adds 2 rows for `partner_referral_q2` with NULL clicks/conversions |
+| `EMPLOYEE_DIRECTORY` | 21 | Mirror of EMPLOYEES used by directory marts |
+| `PROJECTS` | 5 | Active project list |
+| `DEPARTMENTS` | 7 | Department codes/owners |
+| `CUSTOMERS` | 6 | Customer accounts (red herring data) |
+| `DEPLOYMENTS` | 10 | Recent deployment history |
 
 ### `NEXACORP_PROD.ANALYTICS` (dbt-Materialized Tables/Views)
 

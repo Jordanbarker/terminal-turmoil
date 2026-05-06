@@ -42,6 +42,7 @@ interface ParsedCommand {
   flags: Record<string, boolean>;  // -x, --flag
   raw: string;
   rawArgs: string[];
+  error?: string;                  // Set by parser when input is malformed (e.g. unterminated quote)
 }
 
 interface CommandContext {
@@ -55,11 +56,15 @@ interface CommandContext {
   rawArgs?: string[];
   isPiped?: boolean;
   commandHistory?: string[];    // For history command
-  envVars?: Record<string, string>;  // Per-computer environment variables
-  setEnvVars?: (envVars: Record<string, string>) => void;  // Persist env changes
   snowflakeState?: SnowflakeState;
   snowflakeContext?: SessionContext;
   setSnowflakeState?: (state: SnowflakeState) => void;
+  elevated?: boolean;           // True when command is running under sudo
+  envVars?: Record<string, string>;  // Per-computer environment variables
+  setEnvVars?: (envVars: Record<string, string>) => void;  // Persist env changes
+  aliases?: Record<string, string>;  // Per-computer shell aliases
+  setAliases?: (aliases: Record<string, string>) => void;  // Persist alias changes
+  deliveredPiperIds?: string[]; // Piper deliveries already received (for `after_piper_reply` checks)
 }
 
 interface CommandResult {
@@ -68,15 +73,18 @@ interface CommandResult {
   newCwd?: string;              // cd changes directory
   newFs?: VirtualFS;            // Filesystem mutations
   clearScreen?: boolean;        // clear command
-  editorSession?: { ... };      // Enter nano editor
+  editorSession?: { ...; triggerEvents?: GameEvent[] };  // Enter nano editor; events fire when nano closes
   interactiveSession?: { ... }; // Enter Python REPL
   snowSqlSession?: { ... };     // Enter Snowflake CLI SQL session
   promptSession?: { ... };      // Enter inline prompt
   sshSession?: { ... };         // Enter SSH session
   chipSession?: { ... };        // Enter Chip assistant
-  gameAction?: GameAction;      // save/load/newgame
+  piperSession?: { ... };       // Enter Piper session
+  gameAction?: GameAction;      // save/load/newgame/shutdown/listCheckpoints/loadCheckpoint
   triggerEvents?: GameEvent[];  // Events for email/story processing
-  transitionTo?: ComputerId;   // Transition to another computer (devcontainer, nexacorp)
+  transitionTo?: ComputerId;    // Transition to another computer (devcontainer, nexacorp)
+  incrementalLines?: IncrementalLine[];  // Lines to print with per-line delays (e.g. boot sequences)
+  closeTabsForComputer?: ComputerId;     // Close all tabs for a computer (e.g. coder stop)
 }
 
 type CommandHandler = (args: string[], flags: Record<string, boolean>, ctx: CommandContext) => CommandResult;
@@ -157,8 +165,10 @@ interface ApplyContext {
   activeComputer: ComputerId;
   username: string;
   deliveredEmailIds: string[];
+  deliveredPiperIds: string[];
   storyFlags: StoryFlags;
   fs: VirtualFS;
+  targetComputerExists?: boolean;  // True on a repeat transition (e.g. second `coder ssh ai`); skips the first-time animation
 }
 ```
 
@@ -170,14 +180,17 @@ interface AppliedEffects {
   output: string;
   newFs?: VirtualFS;
   newCwd?: string;
-  startSession?: SessionToStart;  // "editor" | "snow-sql" | "pythonRepl" | "prompt" | "ssh" | "chip"
+  startSession?: SessionToStart;  // "editor" | "snow-sql" | "pythonRepl" | "prompt" | "ssh" | "chip" | "piper"
   gameAction?: GameAction;
   events: GameEvent[];
   storyFlagUpdates: StoryFlagUpdate[];
   newDeliveredEmailIds: string[];
   emailNotifications: number;
+  newDeliveredPiperIds: string[];
+  piperNotifications: number;
   suppressPrompt: boolean;
   transitionTo?: ComputerId;  // Computer transition (coder/exit commands)
+  incrementalLines?: IncrementalLine[];  // For boot/login output animations
   closeTabsForComputer?: ComputerId;  // Close all other tabs for this computer (e.g. coder stop)
 }
 ```
@@ -194,8 +207,10 @@ interface AppliedEffects {
 
 ```ts
 interface ISession {
-  enter(): void | Promise<void>;           // Initialize (show UI, etc.)
-  handleInput(data: string): SessionResult | null;  // null = continue session
+  enter(): void | SessionResult | Promise<void>;       // Initialize (show UI, etc.). May exit immediately by returning a SessionResult
+  handleInput(data: string): SessionResult | null;     // null = continue session
+  canClose?(): boolean;                                 // Optional unsaved-state guard for tab close (default true)
+  resize?(): void;                                      // Optional re-render after terminal resize / tab switch
 }
 
 interface SessionResult {
@@ -207,7 +222,7 @@ interface SessionResult {
 }
 ```
 
-Session types: editor (nano), snow-sql (Snowflake CLI REPL), pythonRepl (Pyodide), prompt (inline choices), ssh (SSH connection), chip (Chip assistant).
+Session types: editor (nano), snow-sql (Snowflake CLI REPL), pythonRepl (Pyodide), prompt (inline choices), ssh (SSH connection), chip (Chip assistant), piper (team chat).
 
 ## Command Availability (`availability.ts`)
 

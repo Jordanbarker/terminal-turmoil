@@ -20,11 +20,13 @@ src/engine/
 ├── assistant/
 │   └── types.ts           # ChipMessage, AssistantState types
 ├── commands/
-│   └── applyResult.ts     # computeEffects() — processes events into story flag updates, email + piper deliveries, transitions
+│   ├── applyResult.ts     # computeEffects() — wraps processDeliveries() and adds command-shaped events
+│   └── processDeliveries.ts  # Pure function: events → story flag updates, email + piper deliveries, FS effects
 
 src/story/
 ├── chapters.ts            # CHAPTERS array (chapter/objective definitions)
 ├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, StoryFlagTrigger interface, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers(), getTriggersForComputer(computer, username)
+├── commandGates.ts        # HOME_COMMANDS, HOME_GATED, NEXACORP_GATED, NEXACORP_ONLY, HOME_ONLY, DEVCONTAINER_ONLY, DEVCONTAINER_COMMANDS
 ├── player.ts              # PLAYER and COMPUTERS config
 ├── piper/
 │   ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
@@ -50,32 +52,24 @@ type ComputerId = "home" | "nexacorp" | "devcontainer";
 type GamePhase = "login" | "booting" | "playing" | "transitioning";
 ```
 
-### Player & Computers (`story/player.ts`)
-
-```ts
-const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: string }> = {
-  home: { hostname: "maniac-iv", promptHostname: "maniac-iv" },
-  nexacorp: { hostname: "nexacorp-ws01", promptHostname: "nexacorp-ws01" },
-  devcontainer: { hostname: "coder-ai", promptHostname: "coder-ai" },
-};
-```
-
 ### Triggers (`story/storyFlags.ts`)
 
 ```ts
-// Defined in story/storyFlags.ts
 interface StoryFlagTrigger {
   event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "piper_delivered" | "objective_completed";
-  path?: string;
-  detail?: string;
-  flag: StoryFlagName;   // must be a valid STORY_FLAG_NAMES entry
+  path?: string;          // Exact path match (most common)
+  pathPrefix?: string;    // Match any path starting with this prefix (e.g. "~/Downloads/")
+  detail?: string;        // Match the event's `detail` field (command names, email IDs, etc.)
+  flag: StoryFlagName;    // must be a valid STORY_FLAG_NAMES entry
   value: string | boolean;
   toast?: string;
   requiredFlags?: StoryFlagName[];  // All must be truthy in currentFlags for trigger to fire
 }
 ```
 
-**`requiredFlags`**: Optional array of flags that must all be truthy before the trigger fires. Used to gate Day 2 quest triggers so they only fire in the correct story context (e.g., `dbt_test_warn` only sets `dbt_test_failed_day2` if `pulled_day2_updates` is already set). Checked in `checkStoryFlagTriggers()` before event matching.
+**`pathPrefix`**: lets a trigger fire for any file under a directory — e.g. `used_file_in_downloads` fires when the player runs `file` on anything in `~/Downloads/`, not a specific file.
+
+**`requiredFlags`**: gates the trigger on prior story state. Used heavily for Day 2 triggers so they only fire in the correct context (e.g., `dbt_test_failed_day2` only fires if `pulled_day2_updates` is set). Checked in `checkStoryFlagTriggers()` before event matching.
 
 ### Types (`engine/narrative/types.ts`)
 
@@ -92,71 +86,37 @@ interface ChipMessage { text: string; triggeredBy?: string }
 interface AssistantState { visible: boolean; currentMessage: ChipMessage | null; messageHistory: ChipMessage[] }
 ```
 
-## All Story Flag Triggers
+## Story Flags — Source of Truth
 
-### Home PC Flags (`story/storyFlags.ts` — `getStoryFlagTriggers(username)`)
+**Don't maintain a hand-curated flag table here — it rots.** The authoritative list is `STORY_FLAG_NAMES` in `src/story/storyFlags.ts` (~75 entries today, growing). Each flag is defined exactly once in that array, and the integrity test at `src/story/__tests__/storyIntegrity.test.ts` will fail any reference to an undefined flag.
 
-| Flag | Event | Path / Detail | Value |
-|------|-------|---------------|-------|
-| `read_resume` | `file_read` | `/home/{username}/Downloads/resume_final_v3.pdf` | `true` |
-| `pdftotext_unlocked` | `directory_visit` | `/home/{username}/Downloads` | `true` |
-| `pdftotext_unlocked` | `file_read` | (any PDF in `~/Downloads`) | `true` |
-| `tree_installed` | `command_executed` | detail: `apt_install_tree` | `true` |
-| `read_nexacorp_offer` | `file_read` | detail: `nexacorp_offer` | `true` |
-| `ssh_unlocked` | `file_read` | detail: `chip_ssh_setup` | `true` |
-| `apt_unlocked` | `file_read` | detail: `olive_tree_tip` | `true` |
-| `read_cron_backup` | `file_read` | detail: `cron_backup_failure` | `true` |
-| `fixed_backup_script` | `file_read` | detail: `fixed_backup_script` | `true` |
-| `ran_auto_apply` | `command_executed` | detail: `ran_auto_apply` | `true` |
+To find what triggers a flag, search `src/story/storyFlags.ts`:
 
-### NexaCorp Investigation Flags (`story/storyFlags.ts` — `getNexacorpStoryFlagTriggers()`)
+| Function | Scope |
+|----------|-------|
+| `getStoryFlagTriggers(username)` | Home PC triggers |
+| `getNexacorpStoryFlagTriggers(username)` | NexaCorp triggers |
+| `getDevcontainerStoryFlagTriggers(username)` | Dev container triggers |
+| `getTriggersForComputer(computer, username)` | Dispatcher used at runtime |
 
-| Flag | Event | Path / Detail | Value |
-|------|-------|---------------|-------|
-| `oscar_searched_logs` | `file_read` | `/var/log/system.log` | `true` |
-| `oscar_checked_backups` | `file_read` | `/var/log/system.log.bak` | `true` |
-| `oscar_diffed_logs` | `command_executed` | detail: `diff` | `true` |
-| `auri_used_head` | `command_executed` | detail: `head` | `true` |
-| `auri_used_tail` | `command_executed` | detail: `tail` | `true` |
-| `auri_used_wc` | `command_executed` | detail: `wc` | `true` |
-| `found_backup_files` | `file_read` | `/var/log/system.log.bak` | `true` |
-| `found_auth_backup` | `file_read` | `/var/log/auth.log.bak` | `true` |
-| `found_chip_directives` | `file_read` | `/opt/chip/.internal/directives.txt` | `true` |
-| `found_cleanup_script` | `file_read` | `/opt/chip/.internal/cleanup.sh` | `true` |
-| `read_onboarding` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
-| `coder_unlocked` | `file_read` | `/srv/engineering/onboarding.md` | `true` |
-| `coder_workspace_stopped` | `command_executed` | detail: `coder_stop` | `true` |
-| `coder_workspace_stopped` | `command_executed` | detail: `coder_start` | `false` |
-| `read_team_info` | `file_read` | `/srv/engineering/team-info.md` | `true` |
-| `read_handoff_notes` | `file_read` | `/srv/engineering/chen-handoff/notes.txt` | `true` |
-| `chip_unlocked` | `piper_delivered` | detail: `edward_chip_intro` | `true` |
-| `chip_error_seen` | `command_executed` | detail: `chip_api_error` | `true` |
-| `printenv_unlocked` | `piper_delivered` | detail: `edward_chip_fix` | `true` |
-| `sourced_nexacorp_zshrc` | `command_executed` | detail: `sourced_zshrc` | `true` | requires: `printenv_unlocked` |
-| `piper_unlocked` | `file_read` | detail: `welcome_edward` | `true` |
-| `discovered_log_tampering` | `file_read` | detail: `discovered_log_tampering` | `true` |
-### Dev Container Flags (`story/storyFlags.ts` — `getDevcontainerStoryFlagTriggers()`)
+### Frequently referenced flag groups (orient yourself by purpose)
 
-| Flag | Event | Path / Detail | Value |
-|------|-------|---------------|-------|
-| `ran_dbt` | `command_executed` | detail: `dbt_build` | `true` |
-| `found_inflated_metrics` | `command_executed` | detail: `queried_campaign_metrics` | `true` |
-| `pulled_day2_updates` | `command_executed` | detail: `git_pull_origin_main` | `true` | requires: `ssh_day2` |
-| `dbt_test_failed_day2` | `command_executed` | detail: `dbt_test_warn` | `true` | requires: `pulled_day2_updates` |
-| `investigated_null_data` | `command_executed` | detail: `queried_campaign_metrics` | `true` | requires: `dbt_test_failed_day2` |
-| `investigated_null_data` | `command_executed` | detail: `dbt_test_all_pass` (cascade) | `true` | requires: `dbt_test_failed_day2` |
-| `created_fix_branch` | `command_executed` | detail: `git_checkout_b` | `true` | requires: `dbt_test_failed_day2` |
-| `created_fix_branch` | `command_executed` | detail: `dbt_test_all_pass` (cascade) | `true` | requires: `dbt_test_failed_day2` |
-| `fixed_campaign_model` | `command_executed` | detail: `dbt_test_all_pass` | `true` | requires: `dbt_test_failed_day2` |
-| `pushed_fix_branch` | `command_executed` | detail: `git_push` | `true` | requires: `fixed_campaign_model` |
+These groupings reflect the comment headers in `src/story/storyFlags.ts`. When adding a flag, pick the group it belongs to and append it there.
 
-The `git_checkout_b` event is emitted by `git checkout -b <name>`, `git switch -c <name>`, **and** `git branch <name>` — any realistic way of creating a new branch counts. The cascade rows on `dbt_test_all_pass` ensure the parent `fix_pipeline_quest` objective can complete even when the player took an unconventional path (e.g., diagnosed the bug by `cat`-ing the model SQL, or branched via `git branch` + `git checkout` instead of `-b`). See [Cascade triggers](#cascade-triggers) below.
+- **Home PC core flow**: `read_resume`, `read_nexacorp_offer`, `ssh_unlocked`, `read_cron_backup`, `fixed_backup_script`, `ran_auto_apply`, `accepted_at_180k`, `day1_shutdown`, `read_piper_day1_home`, `ssh_day2`, `returned_home_day1`
+- **Home command unlocks**: `pdftotext_unlocked`, `tree_installed`, `apt_unlocked`, `apt_updated`, `apt_upgraded`, `basic_tools_unlocked`, `commands_unlocked`, `first_ssh_connect`, `tabs_unlocked`
+- **Olive's Terminal Challenges (Quest 1)**: `olive_challenges_read`, `used_file_in_downloads`, `used_which_python`, `created_projects_dir`, `used_mv_home`, `used_echo_pipe`, `used_man_command`
+- **Backup quest (Quest 2)**: `backup_quest_started`, `created_backups_dir`, `copied_scripts_backup`, `created_backup_log`, `verified_backup`
+- **Olive's Power Tools (Quest 4, post day 1)**: `olive_power_tools_read`, `used_grep_at_home`, `used_wc_at_home`, `used_history_redirect`, `used_sort_uniq_home`, `used_find_home`
+- **NexaCorp onboarding & gating**: `read_onboarding`, `read_team_info`, `read_handoff_notes`, `coder_unlocked`, `coder_workspace_stopped`, `chip_unlocked`, `chip_error_seen`, `printenv_unlocked`, `sourced_nexacorp_zshrc`, `piper_unlocked`, `chmod_unlocked`, `search_tools_unlocked`, `inspection_tools_unlocked`, `processing_tools_unlocked`, `pipeline_tools_unlocked`, `devcontainer_visited`
+- **Investigation breadcrumbs**: `oscar_searched_logs`, `oscar_checked_backups`, `oscar_diffed_logs`, `oscar_access_completed`, `auri_listed_handoff`, `auri_read_todo`, `auri_used_head`, `auri_used_tail`, `auri_used_wc`, `found_backup_files`, `found_auth_backup`, `found_chip_directives`, `found_cleanup_script`, `discovered_log_tampering`, `found_inflated_metrics`, `used_chip_topics`
+- **Side quests (Day 1)**: `read_end_of_day`, `read_ops_incidents`, `read_board_minutes`, `read_headcount_plan`, `auri_dbt_reported`, `dbt_project_cloned`, `ran_dbt`
+- **Day 2 pipeline fix (devcontainer)**: `pulled_day2_updates`, `dbt_test_failed_day2`, `investigated_null_data`, `created_fix_branch`, `fixed_campaign_model`, `pushed_fix_branch`, `reported_fix_to_auri`
 
-### NexaCorp Day 2 Flags (`getNexacorpStoryFlagTriggers()`)
+### Special triggers in `applyResult.ts` (not in StoryFlagTrigger tables)
 
-| Flag | Event | Detail | Value |
-|------|-------|--------|-------|
-| `reported_fix_to_auri` | `objective_completed` | `reported_fix_to_auri` | `true` |
+- **`discovered_log_tampering`**: detected when `diff` is run on NexaCorp with args containing `.bak` files
+- **Transition trigger**: when a `file_read` event matches the `nexacorp_followup` email file path, sets `triggerTransition: true`
 
 ### Cascade triggers
 
@@ -172,7 +132,7 @@ Example — the Day 2 "Fix the Broken Pipeline" cascade in `getDevcontainerStory
 { event: "command_executed", detail: "dbt_test_all_pass", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
 { event: "command_executed", detail: "dbt_test_all_pass", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
 ```
-A green dbt build proves the player diagnosed the NULLs and (one way or another) made the change on a branch, even if they used `cat` instead of `snow sql` or `git branch` instead of `git checkout -b`. Always gate cascades with `requiredFlags` so they can't credit subtasks the player hasn't reached the context for yet.
+A green dbt build proves the player diagnosed the NULLs and (one way or another) made the change on a branch, even if they used `cat` instead of `snow sql` or `git branch` instead of `git checkout -b`. The `git_checkout_b` event is emitted by `git checkout -b <name>`, `git switch -c <name>`, **and** `git branch <name>` — any realistic way of creating a new branch counts. **Always gate cascades with `requiredFlags`** so they can't credit subtasks the player hasn't reached the context for yet.
 
 ## Objectives System
 
@@ -202,20 +162,23 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
 
 ### CHAPTERS
 
-- **chapter-1** ("New Beginnings"): Core objectives + 2 grouped optional quest lines:
-  - `olive_challenges` (allVisibleChildren) → 6 children: olive_ch_file/which/projects/mv/echo/man
-  - `backup_quest` (allVisibleChildren) → 4 children: backup_mkdir/copy/log/verify
-  - Ungrouped: explore_home, learn_linux_basics, fix_backup, run_auto_apply, check_email, check_piper, accept_offer
-- **chapter-2** ("First Day"): Core objectives + grouped sub-quests:
-  - `help_oscar_logs` (concrete check) → 3 children: oscar_search/check/diff_logs
-  - `meet_auri` (concrete check) → 5 optional children: auri_ls_data, auri_check_todo, auri_use_head/tail/wc
-  - `explore_jchen` (concrete check) → 2 children: discover_tampering, find_directives
-  - `olive_power_tools` (allVisibleChildren) → 5 children: olive_pt_grep/wc/redirect/sort_uniq/find
-  - `edward_onboarding` (allVisibleChildren) → 5 children: read_onboarding, meet_the_team, try_chip, tell_edward_chip_error, source_zshrc
-  - Ungrouped: read_welcome_email, review_handoff, help_auri_pipeline, run_dbt, head_home, investigate_ops_data
-- **chapter-3** ("Getting the Hang of This"): Day 2 content:
-  - `fix_pipeline_quest` (allVisibleChildren) → 8 children: read_auri_day2_morning, pull_day2_updates, discover_test_failure, investigate_null_data, create_fix_branch, fix_the_model, push_fix, report_to_auri
-  - Ungrouped: ssh_to_work_day2
+`src/story/chapters.ts` is the source of truth. As of writing:
+
+- **chapter-1** ("New Beginnings"): home-PC onboarding before accepting the offer
+  - Top-level: `explore_home`, `learn_linux_basics`, `fix_backup`, `run_auto_apply`, `check_email`, `check_piper`, `accept_offer`, `read_chip_setup`, `first_ssh_connect`
+  - `olive_challenges` group (allVisibleChildren) → `olive_ch_file/which/projects/mv/echo/man`
+  - `backup_quest` group (allVisibleChildren) → `backup_mkdir/copy/log/verify`
+- **chapter-2** ("First Day"): NexaCorp Day 1
+  - Top-level: `read_welcome_email`, `help_oscar_logs`, `meet_auri`, `explore_jchen`, `investigate_ops_data`, `report_dana_ops`, `jordan_query_metrics`, `jordan_report_findings`
+  - `edward_onboarding` group → `read_onboarding`, `meet_the_team`, `reply_edward_chip_intro`, `try_chip`, `tell_edward_chip_error`, `source_zshrc`
+  - `meet_auri` group → `review_handoff`, `reply_auri_handoff`, `help_auri_pipeline`, `clone_analytics_repo`, `run_dbt`, `check_auri_dbt`, `auri_ls_data`, `auri_check_todo`, `auri_use_head/tail/wc`
+  - `help_oscar_logs` group → `oscar_search_logs`, `oscar_check_backups`, `oscar_diff_logs`, `reply_oscar_logs`, `report_to_oscar`
+  - `explore_jchen` group → `discover_tampering`, `find_directives`
+  - `closing_time` group → `read_eod_email`, `head_home`, `shutdown_day1` (plus optional ungrouped `read_piper_home`)
+  - `olive_power_tools` group → `olive_pt_grep/wc/redirect/sort_uniq/find`
+- **chapter-3** ("Getting the Hang of This"): Day 2
+  - Top-level: `update_system`, `ssh_to_work_day2`
+  - `fix_pipeline_quest` group (allVisibleChildren) → `read_auri_day2_morning`, `pull_day2_updates`, `discover_test_failure`, `investigate_null_data`, `create_fix_branch`, `fix_the_model`, `push_fix`, `report_to_auri`
 
 ### Objective Resolution (`objectives.ts`)
 
@@ -238,27 +201,50 @@ To group sub-quests under a parent header in the ObjectiveTracker:
 3. **Constraints**: groups cannot be nested (a child cannot also be a parent), and group must reference an ID in the same chapter. The `storyIntegrity.test.ts` validates both rules
 4. The ObjectiveTracker renders children indented under the parent. When the parent is completed, children collapse
 
-### Command Gating
+## Command Gating
 
-Commands are gated differently per computer (see `engine/commands/availability.ts`, with gate data in `story/commandGates.ts`):
+Source of truth: `src/story/commandGates.ts`. The following sets and maps are exported:
 
-**Home PC**: `HOME_COMMANDS` set available from the start (ls, cd, cat, pwd, clear, help, mail, nano, save, load, newgame, history, python, pdftotext, tree). `HOME_GATED` commands require story flags:
-- `ssh` — unlocked by `ssh_unlocked` (reading chip_ssh_setup email)
-- `sudo`, `apt` — unlocked by `apt_unlocked` (reading olive_tree_tip email)
-- `pdftotext` — also unlocked by `pdftotext_unlocked` (visiting `~/Downloads` or reading a PDF there)
-- `tree` — unlocked by `tree_installed` (running `apt install tree`)
+| Constant | Purpose |
+|----------|---------|
+| `HOME_COMMANDS` | Always-available on Home PC (ls, cd, cat, pwd, clear, help, mail, nano, piper, save, load, newgame, history, python/python3, bash/sh/zsh, source/`.`, printenv, env, export, alias, unalias, cheat) |
+| `HOME_GATED` | Home commands behind a flag |
+| `NEXACORP_GATED` | NexaCorp commands behind a flag |
+| `NEXACORP_ONLY` | Never available on Home (`coder`, `chip`) |
+| `HOME_ONLY` | Never available on NexaCorp (`pdftotext`) |
+| `DEVCONTAINER_COMMANDS` | Whitelist of commands inside the Coder dev container |
+| `DEVCONTAINER_ONLY` | Only available in dev container (`git`, `snow`, `dbt`) |
 
-**NexaCorp**: Most commands available by default (including dbt, snow, python). `NEXACORP_GATED` commands require specific story flags from colleague emails:
-- `search_tools_unlocked` — unlocks grep, find, diff
-- `inspection_tools_unlocked` — unlocks head, tail, wc
-- `processing_tools_unlocked` — unlocks sort, uniq
-- `coder_unlocked` — unlocks coder (triggered by reading onboarding docs)
-- `coder_workspace_stopped` — tracks workspace state; set true by `coder stop`, false by `coder start`. Absent = running. `coder ssh` blocked when true; `coder stop` closes devcontainer tabs via `closeTabsForComputer`
-- `chip_unlocked` — unlocks chip (triggered by delivery of `edward_chip_intro` Piper DM)
-- `printenv_unlocked` — unlocks printenv, env (triggered by delivery of `edward_chip_fix` Piper DM)
-- `piper_unlocked` — unlocks piper (triggered by reading Edward's welcome email)
+### `HOME_GATED` (current map)
 
-**Dev Container**: Has a fixed whitelist of commands (`DEVCONTAINER_COMMANDS` in `story/commandGates.ts`). dbt, snow, python, and chip are always available — no story flags needed. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`. The `coder` command supports subcommands: `list`/`ls`, `start`, `stop`, `ssh`, `logs`, `create`, `delete`.
+| Command | Flag | Source |
+|---------|------|--------|
+| `ssh` | `ssh_unlocked` | reading `chip_ssh_setup` email |
+| `sudo`, `apt` | `apt_unlocked` | Olive's tree tip on Piper |
+| `pdftotext` | `pdftotext_unlocked` | visiting `~/Downloads` or reading a PDF there |
+| `tree` | `tree_installed` | running `apt install tree` |
+| `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `whoami`, `hostname`, `date`, `which`, `man`, `file` | `basic_tools_unlocked` | Olive's "Linux basics" Piper reply |
+| `grep`, `find`, `wc`, `sort`, `uniq`, `head`, `tail`, `diff`, `shutdown` | `returned_home_day1` | end of Day 1 (these were learned at NexaCorp; only available at home after the player has been there) |
+
+### `NEXACORP_GATED` (current map)
+
+| Command | Flag | Source |
+|---------|------|--------|
+| `grep`, `find`, `diff` | `search_tools_unlocked` | colleague Piper reply |
+| `head`, `tail`, `wc` | `inspection_tools_unlocked` | colleague Piper reply |
+| `sort`, `uniq` | `processing_tools_unlocked` | colleague Piper reply |
+| `coder` | `coder_unlocked` | reading Oscar's onboarding email |
+| `chip` | `chip_unlocked` | Edward's `edward_chip_intro` Piper DM |
+| `printenv`, `env` | `printenv_unlocked` | Edward's `edward_chip_fix` Piper DM |
+| `piper` | `piper_unlocked` | reading Edward's welcome email |
+| `chmod` | `chmod_unlocked` | Day 1 quest reward |
+| `sudo`, `apt` | `apt_unlocked` | (carried over from home) |
+
+`coder_workspace_stopped` is a workspace-state flag rather than an unlock: set `true` by `coder stop`, `false` by `coder start`, absent = running. `coder ssh` is blocked when `true`; `coder stop` closes devcontainer tabs via `closeTabsForComputer`.
+
+### Dev container
+
+`DEVCONTAINER_COMMANDS` is a fixed whitelist (no flag gates). `dbt`, `snow`, `python`, `chip`, `git` are always available. Accessed via `coder ssh ai` from NexaCorp, exited with `exit`. `coder` subcommands: `list`/`ls`, `start`, `stop`, `ssh`, `logs`, `create`, `delete`.
 
 ## Event Chain
 
@@ -267,21 +253,19 @@ Command execution
   → CommandResult (with triggerEvents)
   → computeEffects() in applyResult.ts
     → builds GameEvent[] (command_executed + file_read events from args)
-    → checkStoryFlagTriggers() → StoryFlagUpdate[]
-    → checkEmailDeliveries() → new emails in FS
+    → processDeliveries() in processDeliveries.ts:
+      → checkStoryFlagTriggers() → StoryFlagUpdate[]
+      → checkEmailDeliveries() → new emails in FS
+      → checkPiperDeliveries() → new piper deliveries
+      → STORY_FS_EFFECTS for set flags → FS mutations
     → transition detection → triggerTransition flag
   → AppliedEffects returned to hook
-  → Hook applies: terminal output, FS updates, state updates, email notifications
+  → Hook applies: terminal output, FS updates, state updates, email/piper notifications
 ```
 
 ### File-Read Event Generation
 
 `computeEffects()` auto-generates `file_read` events for commands that read files: `cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`, `pdftotext`. Each file argument produces a `{ type: "file_read", detail: absolutePath }` event.
-
-### Special Cases in `computeEffects()`
-
-- **`discovered_log_tampering`**: Detected when `diff` command is run on NexaCorp with args containing `.bak` files — not via standard `StoryFlagTrigger`
-- **Transition trigger**: When a `file_read` event matches the `nexacorp_followup` email file path, sets `triggerTransition: true`
 
 ## Home → NexaCorp Transition
 
@@ -333,9 +317,9 @@ When designing story progression, email triggers, or investigation paths involvi
 
 ## Adding a New Story Flag
 
-1. **Add the flag name** to `STORY_FLAG_NAMES` in `story/storyFlags.ts` — `flag` must be a valid `StoryFlagName` entry (the integrity test at `story/__tests__/storyIntegrity.test.ts` will catch invalid references)
-2. **Define the trigger** in `story/storyFlags.ts` — add to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container). Use `getTriggersForComputer(computer, username)` to look up triggers at runtime — this replaces any manual ternary over computer IDs
+1. **Add the flag name** to `STORY_FLAG_NAMES` in `story/storyFlags.ts` — under the appropriate comment-grouped section so it's easy to find later. The integrity test at `story/__tests__/storyIntegrity.test.ts` will catch invalid references in triggers
+2. **Define the trigger** in `story/storyFlags.ts` — append to `getStoryFlagTriggers()` (home), `getNexacorpStoryFlagTriggers()` (NexaCorp), or `getDevcontainerStoryFlagTriggers()` (dev container). Use `getTriggersForComputer(computer, username)` to look up triggers at runtime — this replaces any manual ternary over computer IDs
 3. **Use path constants** — story flag trigger paths use constants from `story/filesystem/paths.ts` (`HOME_PATHS`, `NEXACORP_PATHS`) — use these instead of inline strings when adding new path-based triggers
-4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp/`), email definitions (`story/emails/`), or Chip behavior
+4. **Use the flag** in filesystem generation (`story/filesystem/nexacorp/`), email definitions (`story/emails/`), Piper messages (`story/piper/messages/`), or Chip behavior
 5. **Add tests** for the trigger in `engine/narrative/__tests__/`
 6. If the flag should affect NexaCorp content, check `createNexacorpFilesystem()` in `story/filesystem/nexacorp/index.ts`
