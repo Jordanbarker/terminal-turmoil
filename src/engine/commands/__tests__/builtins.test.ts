@@ -127,6 +127,11 @@ describe("ls", () => {
     expect(result.output).toContain(".hidden");
   });
 
+  it("shows hidden files with -A", () => {
+    const result = execute("ls", [], { A: true }, ctx());
+    expect(result.output).toContain(".hidden");
+  });
+
   it("shows long format with -l including sizes", () => {
     const result = execute("ls", [], { l: true }, ctx());
     const plain = stripAnsi(result.output);
@@ -227,6 +232,31 @@ describe("cd", () => {
   it("returns error when cd to a file", () => {
     const result = execute("cd", ["notes.txt"], {}, ctx());
     expect(result.output).toContain("Not a directory");
+  });
+
+  it("updates OLDPWD on successful cd", () => {
+    const envVars: Record<string, string> = { OLDPWD: "/home/player" };
+    const setEnvVars = (e: Record<string, string>) => Object.assign(envVars, e);
+    const c = { ...ctx(), envVars, setEnvVars };
+    execute("cd", ["/etc"], {}, c);
+    expect(envVars.OLDPWD).toBe("/home/player");
+  });
+
+  it("`cd -` returns to OLDPWD and prints destination", () => {
+    const envVars: Record<string, string> = { OLDPWD: "/etc" };
+    const setEnvVars = (e: Record<string, string>) => Object.assign(envVars, e);
+    const c = { ...ctx(), envVars, setEnvVars };
+    const result = execute("cd", ["-"], {}, c);
+    expect(result.newCwd).toBe("/etc");
+    expect(result.output).toBe("/etc");
+    expect(envVars.OLDPWD).toBe("/home/player");
+  });
+
+  it("`cd -` errors when OLDPWD is unset", () => {
+    const c = { ...ctx(), envVars: {}, setEnvVars: () => {} };
+    const result = execute("cd", ["-"], {}, c);
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("OLDPWD not set");
   });
 });
 

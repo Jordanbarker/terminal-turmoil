@@ -64,6 +64,8 @@ const find: CommandHandler = (args, _flags, ctx) => {
     }
   }
 
+  const searchedEvent = { type: "command_executed" as const, detail: "files_searched" };
+
   const node = ctx.fs.getNode(searchPath);
   if (!node) {
     return { output: `find: '${searchPath}': No such file or directory`, exitCode: 1 };
@@ -72,12 +74,12 @@ const find: CommandHandler = (args, _flags, ctx) => {
     // Single file — check if it matches
     const name = node.name;
     if (namePattern && !namePattern.test(name)) {
-      return { output: "", exitCode: 0 };
+      return { output: "", exitCode: 0, triggerEvents: [searchedEvent] };
     }
     if (typeFilter === "d") {
-      return { output: "", exitCode: 0 };
+      return { output: "", exitCode: 0, triggerEvents: [searchedEvent] };
     }
-    return { output: searchPath, exitCode: 0 };
+    return { output: searchPath, exitCode: 0, triggerEvents: [searchedEvent] };
   }
 
   const allEntries = walkAll(ctx.fs, searchPath);
@@ -98,7 +100,11 @@ const find: CommandHandler = (args, _flags, ctx) => {
     matches.push(path);
   }
 
-  return { output: matches.join("\n"), exitCode: 0 };
+  return {
+    output: matches.join("\n"),
+    exitCode: 0,
+    triggerEvents: [searchedEvent],
+  };
 };
 
 register("find", find, "Search for files by name", HELP_TEXTS.find);

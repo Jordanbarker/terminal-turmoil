@@ -135,6 +135,7 @@ const grep: CommandHandler = (args, flags, ctx) => {
   return {
     output: outputLines.join("\n"),
     exitCode: totalMatches > 0 ? 0 : 1,
+    triggerEvents: [{ type: "command_executed", detail: "text_filtered" }],
   };
 };
 

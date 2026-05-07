@@ -135,8 +135,10 @@ export function parseAliases(content: string): Record<string, string> {
     const trimmed = line.trim();
     if (!trimmed.startsWith("alias ")) continue;
 
-    // Match: alias NAME='VALUE' or alias NAME="VALUE" or alias NAME=VALUE
-    const match = trimmed.match(/^alias\s+([A-Za-z_][A-Za-z0-9_-]*)=(.*)$/);
+    // Match: alias NAME='VALUE' or alias NAME="VALUE" or alias NAME=VALUE.
+    // zsh allows essentially any non-whitespace, non-`=` characters in alias
+    // names (e.g. `-`, `..`, `...`).
+    const match = trimmed.match(/^alias\s+([^\s=]+)=(.*)$/);
     if (match) {
       aliases[match[1]] = stripQuotes(match[2]);
     }

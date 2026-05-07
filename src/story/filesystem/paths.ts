@@ -32,6 +32,7 @@ export const NEXACORP_PATHS = {
   chenHandoff: "/srv/engineering/chen-handoff",
   chenHandoffTodo: "/srv/engineering/chen-handoff/todo.txt",
   handoffNotes: "/srv/engineering/chen-handoff/notes.txt",
+  pipelineRuns: "/srv/engineering/chen-handoff/pipeline_runs.csv",
   opsIncidents: "/srv/operations/ops_incidents.csv",
   boardMinutes: "/srv/leadership/board_minutes_feb.md",
   headcountPlan: "/srv/leadership/headcount_plan.csv",

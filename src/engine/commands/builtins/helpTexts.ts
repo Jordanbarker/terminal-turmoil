@@ -283,6 +283,19 @@ export const HELP_TEXTS: Record<string, string> = {
     "Show the full path of a command.",
   ].join("\n"),
 
+  command: [
+    "Usage: command -v COMMAND",
+    "",
+    "Print the path of COMMAND, or nothing if not found.",
+    "POSIX-portable alternative to 'which'.",
+  ].join("\n"),
+
+  type: [
+    "Usage: type COMMAND",
+    "",
+    "Describe how COMMAND would be interpreted (path, alias, builtin).",
+  ].join("\n"),
+
   man: [
     "Usage: man COMMAND",
     "",

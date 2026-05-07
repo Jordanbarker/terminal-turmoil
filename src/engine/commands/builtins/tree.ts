@@ -60,7 +60,10 @@ const tree: CommandHandler = (args, flags, ctx) => {
   lines.push("");
   lines.push(`${counts.dirs} directories, ${counts.files} files`);
 
-  return { output: lines.join("\n") };
+  return {
+    output: lines.join("\n"),
+    triggerEvents: [{ type: "command_executed", detail: "files_searched" }],
+  };
 };
 
 register("tree", tree, "Display directory tree", HELP_TEXTS.tree);

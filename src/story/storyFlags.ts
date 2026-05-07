@@ -140,7 +140,9 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     // Quest 1: Olive's Terminal Challenges
     { event: "piper_delivered", detail: "olive_challenge_file", flag: "olive_challenges_read", value: true },
     { event: "file_read", pathPrefix: p.downloadsDir(username) + "/", flag: "used_file_in_downloads", value: true },
-    { event: "command_executed", detail: "which_python", flag: "used_which_python", value: true },
+    // Any way of locating the python interpreter — `which python3`, `command -v python3`,
+    // `type python3` — credits this objective.
+    { event: "command_executed", detail: "python_located", flag: "used_which_python", value: true },
     { event: "directory_created", path: p.projectsDir(username), flag: "created_projects_dir", value: true },
     { event: "command_executed", detail: "mv", flag: "used_mv_home", value: true },
     { event: "command_executed", detail: "echo_pipe", flag: "used_echo_pipe", value: true },
@@ -149,17 +151,24 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     // Quest 2: Fix & Extend Backup
     { event: "piper_delivered", detail: "olive_backup_advice", flag: "backup_quest_started", value: true },
     { event: "directory_created", path: p.backupsDir(username), flag: "created_backups_dir", value: true },
+    // Fast path: cp credits immediately. Cascade: any way of placing a script under the backup
+    // dir + reading it (cat, less, nano, redirected `> dest` then verify, etc.) also credits.
     { event: "command_executed", detail: "cp", flag: "copied_scripts_backup", value: true },
+    { event: "file_read", path: p.backupsScripts(username), flag: "copied_scripts_backup", value: true },
     { event: "file_read", path: p.backupLog(username), flag: "created_backup_log", value: true },
     { event: "file_read", path: p.backupsScripts(username), flag: "verified_backup", value: true },
 
     // Quest 4: Olive's Power Tools (post day 1)
     { event: "piper_delivered", detail: "olive_power_tools_intro", flag: "olive_power_tools_read", value: true },
-    { event: "command_executed", detail: "grep", flag: "used_grep_at_home", value: true },
+    // Result-oriented events — fired by any builtin that produces the corresponding outcome.
+    // text_filtered: grep (and any future filter tool — awk, sed)
+    // data_deduped: uniq, sort -u (and any future dedup tool)
+    // files_searched: find, tree, ls -R (and any future search tool)
+    { event: "command_executed", detail: "text_filtered", flag: "used_grep_at_home", value: true },
     { event: "command_executed", detail: "wc",   flag: "used_wc_at_home",   value: true },
     { event: "file_read", path: p.myCommandsTxt(username), flag: "used_history_redirect", value: true },
-    { event: "command_executed", detail: "uniq", flag: "used_sort_uniq_home", value: true },
-    { event: "command_executed", detail: "find", flag: "used_find_home",      value: true },
+    { event: "command_executed", detail: "data_deduped", flag: "used_sort_uniq_home", value: true },
+    { event: "command_executed", detail: "files_searched", flag: "used_find_home", value: true },
 
     // Day 1 → Day 2 transition
     { event: "command_executed", detail: "shutdown", flag: "day1_shutdown", value: true },
@@ -174,11 +183,18 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.systemLog, flag: "oscar_searched_logs", value: true },
     { event: "file_read", path: p.systemLogBak, flag: "oscar_checked_backups", value: true },
     { event: "command_executed", detail: "diff", flag: "oscar_diffed_logs", value: true },
+    // Cascade: reading both logs (in either order) credits the diff objective even
+    // without `diff` — `cat`, `comm`, `vimdiff`, or any other comparison method works.
+    { event: "file_read", path: p.systemLog, flag: "oscar_diffed_logs", value: true, requiredFlags: ["oscar_checked_backups"] },
+    { event: "file_read", path: p.systemLogBak, flag: "oscar_diffed_logs", value: true, requiredFlags: ["oscar_searched_logs"] },
     { event: "objective_completed", detail: "oscar_access_reported", flag: "oscar_access_completed", value: true },
     { event: "objective_completed", detail: "auri_dbt_reported", flag: "auri_dbt_reported", value: true },
-    { event: "command_executed", detail: "head", flag: "auri_used_head", value: true },
-    { event: "command_executed", detail: "tail", flag: "auri_used_tail", value: true },
-    { event: "command_executed", detail: "wc", flag: "auri_used_wc", value: true },
+    // Reading pipeline_runs.csv with any tool (cat, head, tail, wc, less, nano, …) credits all
+    // three "audit the file" objectives. The auto-emitter in applyResult.ts emits file_read for
+    // cat/head/tail/grep/wc/sort/uniq/file/pdftotext, so any reader counts.
+    { event: "file_read", path: p.pipelineRuns, flag: "auri_used_head", value: true },
+    { event: "file_read", path: p.pipelineRuns, flag: "auri_used_tail", value: true },
+    { event: "file_read", path: p.pipelineRuns, flag: "auri_used_wc", value: true },
     { event: "file_read", path: p.systemLogBak, flag: "found_backup_files", value: true },
     { event: "file_read", path: p.authLogBak, flag: "found_auth_backup", value: true },
     { event: "file_read", path: p.chipPluginSdk, flag: "found_chip_directives", value: true },

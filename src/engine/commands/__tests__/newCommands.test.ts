@@ -1689,20 +1689,28 @@ describe("exit", () => {
 });
 
 // --- Quest trigger events ---
-describe("which python trigger", () => {
-  it("emits which_python event for python", () => {
+describe("python_located trigger", () => {
+  it("emits python_located event for `which python`", () => {
     const result = execute("which", ["python"], {}, ctx());
-    expect(result.triggerEvents).toBeDefined();
-    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "which_python" });
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "python_located" });
   });
 
-  it("emits which_python event for python3", () => {
+  it("emits python_located event for `which python3`", () => {
     const result = execute("which", ["python3"], {}, ctx());
-    expect(result.triggerEvents).toBeDefined();
-    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "which_python" });
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "python_located" });
   });
 
-  it("does not emit which_python for other commands", () => {
+  it("emits python_located event for `command -v python3`", () => {
+    const result = execute("command", ["python3"], { v: true }, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "python_located" });
+  });
+
+  it("emits python_located event for `type python3`", () => {
+    const result = execute("type", ["python3"], {}, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "python_located" });
+  });
+
+  it("does not emit python_located for other commands", () => {
     const result = execute("which", ["grep"], {}, ctx());
     expect(result.triggerEvents).toBeUndefined();
   });
@@ -1718,6 +1726,38 @@ describe("echo pipe trigger", () => {
   it("does not emit echo_pipe when not piped", () => {
     const result = execute("echo", ["hello"], {}, ctx());
     expect(result.triggerEvents).toBeUndefined();
+  });
+});
+
+describe("result-oriented quest trigger events", () => {
+  it("grep emits text_filtered", () => {
+    const result = execute("grep", ["hello", "notes.txt"], {}, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "text_filtered" });
+  });
+
+  it("uniq emits data_deduped", () => {
+    const result = execute("uniq", ["notes.txt"], {}, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "data_deduped" });
+  });
+
+  it("sort -u emits data_deduped (alternate path)", () => {
+    const result = execute("sort", ["notes.txt"], { u: true }, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "data_deduped" });
+  });
+
+  it("plain sort (no -u) does NOT emit data_deduped", () => {
+    const result = execute("sort", ["notes.txt"], {}, ctx());
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("find emits files_searched", () => {
+    const result = execute("find", [".", "-name", "*.txt"], {}, ctx(undefined, { rawArgs: [".", "-name", "*.txt"] }));
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "files_searched" });
+  });
+
+  it("tree emits files_searched (alternate path)", () => {
+    const result = execute("tree", ["."], {}, ctx());
+    expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "files_searched" });
   });
 });
 

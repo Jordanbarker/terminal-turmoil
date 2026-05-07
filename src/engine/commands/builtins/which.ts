@@ -1,4 +1,4 @@
-import { CommandHandler } from "../types";
+import { CommandHandler, CommandContext } from "../types";
 import { register, getAvailableCommands } from "../registry";
 import { isCommandAvailable } from "../availability";
 import { HELP_TEXTS } from "./helpTexts";
@@ -37,31 +37,42 @@ export const COMMAND_PATHS: Record<string, string> = {
   env: "/usr/bin/env",
 };
 
+/**
+ * Resolve a command name to its filesystem path, returning null if unavailable.
+ * Shared by `which`, `command -v`, and `type`.
+ */
+export function resolveCommandPath(name: string, ctx: CommandContext): string | null {
+  if (!isCommandAvailable(name, ctx.activeComputer, ctx.storyFlags)) return null;
+  if (COMMAND_PATHS[name]) return COMMAND_PATHS[name];
+  const commandNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
+  if (commandNames.includes(name)) return `/usr/bin/${name}`;
+  return null;
+}
+
+/** Emit the python_located trigger event when args include python/python3. */
+export function pythonLocatedEvents(args: string[]) {
+  return args.some((a) => a === "python" || a === "python3")
+    ? [{ type: "command_executed" as const, detail: "python_located" }]
+    : undefined;
+}
+
 const which: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
     return { output: "which: missing command argument" };
   }
 
   const outputs: string[] = [];
-  const commandNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
-
   for (const arg of args) {
-    if (!isCommandAvailable(arg, ctx.activeComputer, ctx.storyFlags)) {
-      outputs.push(`${arg} not found`);
-    } else if (COMMAND_PATHS[arg]) {
-      outputs.push(COMMAND_PATHS[arg]);
-    } else if (commandNames.includes(arg)) {
-      outputs.push(`/usr/bin/${arg}`);
-    } else {
-      outputs.push(`${arg} not found`);
-    }
+    const path = resolveCommandPath(arg, ctx);
+    outputs.push(path ?? `${arg} not found`);
   }
 
   const notFound = outputs.some((o) => o.endsWith("not found"));
-  const triggerEvents = args.some((a) => a === "python" || a === "python3")
-    ? [{ type: "command_executed" as const, detail: "which_python" }]
-    : undefined;
-  return { output: outputs.join("\n"), exitCode: notFound ? 1 : 0, triggerEvents };
+  return {
+    output: outputs.join("\n"),
+    exitCode: notFound ? 1 : 0,
+    triggerEvents: pythonLocatedEvents(args),
+  };
 };
 
 register("which", which, "Show command path", HELP_TEXTS.which);

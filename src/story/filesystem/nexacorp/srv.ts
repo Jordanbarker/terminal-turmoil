@@ -338,9 +338,8 @@ More details: man <command>
     }),
     ai: dir("ai", {
       rag: dir("rag", {
-        docs: dir("docs", {
-          engineering: dir("engineering", {
-            "coding-standards.md": file("coding-standards.md", `# Engineering Coding Standards & PR Process
+        engineering: dir("engineering", {
+          "coding-standards.md": file("coding-standards.md", `# Engineering Coding Standards & PR Process
 
 **Owner:** Sarah Knight (sarah@nexacorp.com)
 **Last Updated:** February 14, 2026
@@ -449,7 +448,7 @@ Turnaround: **24 hours** for initial review. If you're blocked, ping the reviewe
 
 Reach out in #engineering on Piper.
 `),
-            "on-call-runbook.md": file("on-call-runbook.md", `# Engineering On-Call Runbook
+          "on-call-runbook.md": file("on-call-runbook.md", `# Engineering On-Call Runbook
 
 **Owner:** Oscar Diaz (oscar@nexacorp.com)
 **Last Updated:** February 17, 2026
@@ -551,7 +550,7 @@ At the end of your on-call week:
 
 *Rotation managed by Oscar. To swap weeks, post in #engineering and get confirmation from your swap partner and Oscar.*
 `),
-            "service-accounts.md": file("service-accounts.md", `# Service Accounts
+          "service-accounts.md": file("service-accounts.md", `# Service Accounts
 
 **Owner:** Oscar Diaz (oscar@nexacorp.com)
 **Last Updated:** January 28, 2026
@@ -640,9 +639,130 @@ Service accounts are non-human identities used for automated processes, CI/CD, a
 
 See also: Password & Authentication Policy, Access Request Process
 `),
-          }),
-          hr: dir("hr", {
-            "employee-handbook.md": file("employee-handbook.md", `# NexaCorp Employee Handbook
+          "roadmap.md": file("roadmap.md", `# Chip Product Roadmap — 2026
+
+**Owner:** Edward Torres (CTO)
+**Last updated:** 2026-02-22
+**Status:** Draft — do not circulate outside leadership
+
+---
+
+## Company Context
+
+Series A due diligence begins March 15. Enterprise analytics tier committed to
+two late-stage prospects for Q2 delivery (per Tom). Engineering capacity is thin
+after Jin's departure — new hire (AI/ML) starts late Feb. Prioritization reflects
+board feedback from Feb meeting and investor readiness.
+
+---
+
+## Q1 2026 — Foundation & Stabilization
+
+**Theme:** Close post-departure gaps, onboard replacement, stabilize pipelines
+
+| # | Initiative | Lead | Status |
+|---|-----------|------|--------|
+| 1 | Data pipeline stabilization & ownership handoff | Auri Park | In progress |
+| 2 | New AI/ML engineer onboarding & ramp | Edward Torres | Hiring complete, starting late Feb |
+| 3 | Chip plugin architecture documentation | Sarah Knight | In progress |
+| 4 | Metrics reconciliation across reporting surfaces | Auri Park / Dana Okafor | Scheduled — see note below |
+| 5 | Series A technical due diligence package | Edward Torres | Not started |
+
+> **On metrics reconciliation:** Board flagged discrepancy between analytics
+> marts (12K daily sessions) and ops dashboard (~8K). Likely a filtering
+> difference in the reporting layer — analytics marts exclude maintenance events
+> and auto-resolved tickets per standard rollup policy. Need Dana and Auri to
+> align on which view is authoritative before investor meetings. Not a data
+> integrity issue, just different scoping assumptions.
+
+---
+
+## Q2 2026 — Enterprise Analytics Tier
+
+**Theme:** Ship the enterprise offering, close first enterprise cohort
+
+| # | Initiative | Lead | Target |
+|---|-----------|------|--------|
+| 1 | Enhanced analytics tier — dashboards, custom reports, scheduled exports | Erik Lindstrom / Sarah Knight | End of Q2 |
+| 2 | Chip enterprise API — multi-tenant query interface, rate limiting, SLAs | Sarah Knight | Mid Q2 |
+| 3 | Enterprise onboarding experience & admin panel | Cassie Moreau / Erik Lindstrom | End of Q2 |
+| 4 | Data warehouse tenant isolation & access controls | Oscar Diaz | Mid Q2 |
+| 5 | Enterprise pricing & go-to-market launch | Tom Chen / James Wilson | End of Q2 |
+
+> **Timeline risk:** Tom committed Q2 delivery to two enterprise prospects.
+> Marcus thinks Q3 is more realistic given current headcount. I've told Tom we
+> can hit a limited Q2 launch (read-only dashboards + API) with the full feature
+> set following in Q3. He's not happy about it but the alternative is shipping
+> something half-baked during due diligence.
+
+---
+
+## Q3 2026 — Platform Intelligence & Compliance
+
+**Theme:** Chip autonomy features, enterprise hardening, audit readiness
+
+| # | Initiative | Lead | Target |
+|---|-----------|------|--------|
+| 1 | SOC 2 Type II preparation & audit readiness | Oscar Diaz | End of Q3 |
+| 2 | Infrastructure permissions audit & RBAC overhaul | Oscar Diaz | Mid Q3 |
+| 3 | Chip proactive assistant mode — context-aware suggestions without prompting | New AI/ML hire | End of Q3 |
+| 4 | Automated support triage — Chip handles L1 tickets autonomously | Sarah Knight | Mid Q3 |
+| 5 | Enterprise analytics tier — full feature set | Erik Lindstrom | Mid Q3 |
+| 6 | Chip self-monitoring & behavioral analytics | New AI/ML hire | End of Q3 |
+
+> **On Chip autonomy features:** The proactive assistant and automated triage
+> items are the natural next step for the platform. Right now Chip is purely
+> reactive — user asks, Chip answers. Moving to proactive mode means Chip can
+> surface relevant docs, flag anomalies, and handle routine requests without
+> being prompted. This is the differentiator for enterprise — no one else in our
+> space does this. Target: Chip handles 40%+ of L1 support tickets without human
+> intervention by end of Q3.
+
+---
+
+## Q4 2026 — Enterprise GA & Growth
+
+**Theme:** General availability, operational maturity, second customer cohort
+
+| # | Initiative | Lead | Target |
+|---|-----------|------|--------|
+| 1 | Enterprise tier general availability | Tom Chen / Edward Torres | Early Q4 |
+| 2 | Multi-workspace Chip deployment (per-customer isolation) | Oscar Diaz | Mid Q4 |
+| 3 | Chip infrastructure diagnostics — automated health monitoring | New AI/ML hire | End of Q4 |
+| 4 | Annual security review & penetration testing | Oscar Diaz | End of Q4 |
+
+---
+
+## Dependencies & Risks
+
+| Risk | Impact | Owner | Mitigation |
+|------|--------|-------|------------|
+| New hire ramp-up slower than expected | Q2 enterprise delivery at risk | Edward | Pair with Auri first, defer Chip AI work to Q3 |
+| SOC 2 audit surfaces access control gaps | Investor confidence, timeline | Oscar | Begin permissions inventory Q2, remediate pre-audit |
+| Metrics discrepancy unresolved before Mar 15 | Due diligence red flag | Auri / Dana | Prioritize reconciliation, document methodology |
+| Tom commits additional features to prospects | Engineering overload | Edward / Tom | Weekly sync, Edward has veto on scope additions |
+| Chip service account permissions broader than documented | Audit finding | Edward | Deferred — current permissions are functional, revisit during SOC 2 prep |
+| Key-person risk on data pipeline (Auri solo) | Pipeline fragility | Edward | New hire cross-trains on dbt/Snowflake in Q1 |
+
+---
+
+## Open Questions
+
+- Jin's handoff notes flag some concerns about Chip plugin permissions. I
+  reviewed — the permissions are appropriate for what the plugins need to do.
+  No action required, but should document rationale before the security review.
+
+- Oscar mentioned missing log entries. Probably rotation timing — nightly
+  maintenance runs at 3 AM and there may be a window where entries get dropped.
+  Low priority, will investigate when bandwidth allows.
+
+---
+
+*Working document — do not share outside leadership. The Series A tech package will be a separate, polished version.*
+`),
+        }),
+        hr: dir("hr", {
+          "employee-handbook.md": file("employee-handbook.md", `# NexaCorp Employee Handbook
 **Effective Date:** January 1, 2026
 **Last Updated:** February 10, 2026
 **Contact:** Maya Johnson, People & Culture Lead (maya@nexacorp.com)
@@ -781,7 +901,7 @@ All departing employees will:
 
 *Questions? Contact Maya Johnson at maya@nexacorp.com*
 `),
-            "benefits-summary.md": file("benefits-summary.md", `# NexaCorp Benefits Summary
+          "benefits-summary.md": file("benefits-summary.md", `# NexaCorp Benefits Summary
 **Plan Year:** January 1 – December 31, 2026
 **Eligibility:** Full-time employees (30+ hours/week)
 **Enrollment Deadline:** Within 30 days of hire or annual open enrollment (November)
@@ -907,7 +1027,7 @@ Full pay for the duration of jury service. Provide your summons to People & Cult
 
 *Benefits are subject to plan terms and may change during annual renewal. Summary plan descriptions (SPDs) are available on the HR portal. Contact Maya Johnson with questions.*
 `),
-            "org-chart.md": file("org-chart.md", `# NexaCorp Organizational Chart
+          "org-chart.md": file("org-chart.md", `# NexaCorp Organizational Chart
 **Last Updated:** February 20, 2026
 **Contact:** Maya Johnson, People & Culture Lead (maya@nexacorp.com)
 
@@ -1010,7 +1130,7 @@ Jessica Langford (CEO)
 
 *This org chart is maintained by People & Culture. Report changes to maya@nexacorp.com.*
 `),
-            "pto-policy.md": file("pto-policy.md", `# NexaCorp PTO Policy
+          "pto-policy.md": file("pto-policy.md", `# NexaCorp PTO Policy
 **Effective Date:** January 1, 2026
 **Last Updated:** February 10, 2026
 **Applies To:** All full-time employees
@@ -1132,9 +1252,9 @@ A: Let your manager know. Sick days are separate from PTO, so those days won't c
 
 *This policy is reviewed annually. Questions or concerns? Contact Maya Johnson at maya@nexacorp.com.*
 `),
-          }),
-          it: dir("it", {
-            "password-policy.md": file("password-policy.md", `# Password & Authentication Policy
+        }),
+        it: dir("it", {
+          "password-policy.md": file("password-policy.md", `# Password & Authentication Policy
 
 **Owner:** Oscar Diaz (IT)
 **Last updated:** 2025-11-18
@@ -1175,7 +1295,7 @@ Do not share passwords or API keys via Piper, email, or any unencrypted channel.
 
 Reach out to Oscar Diaz or file a request in Linear under the \`IT\` project.
 `),
-            "security-incident-response.md": file("security-incident-response.md", `# Security Incident Response
+          "security-incident-response.md": file("security-incident-response.md", `# Security Incident Response
 
 **Owner:** Oscar Diaz (IT)
 **Last updated:** 2025-10-22
@@ -1216,7 +1336,7 @@ If you're unsure whether something qualifies, report it anyway. False alarms are
 4. **Document** — Write an incident summary in \`/srv/operations/incidents/\`. Include timeline, root cause, and action items.
 5. **Review** — Conduct a blameless post-mortem within 5 business days for P1/P2 incidents.
 `),
-            "access-request.md": file("access-request.md", `# Access Request Process
+          "access-request.md": file("access-request.md", `# Access Request Process
 
 **Owner:** Oscar Diaz (IT)
 **Last updated:** 2025-12-01
@@ -1273,128 +1393,6 @@ Oscar conducts quarterly access reviews. You may be asked to confirm that you st
 When an employee departs, all access is revoked on their last day.
 
 If you're a manager and someone on your team is leaving, notify Oscar at least 3 business days before their last day.
-`),
-          }),
-          "roadmap.md": file("roadmap.md", `# Chip Product Roadmap — 2026
-
-**Owner:** Edward Torres (CTO)
-**Last updated:** 2026-02-22
-**Status:** Draft — do not circulate outside leadership
-
----
-
-## Company Context
-
-Series A due diligence begins March 15. Enterprise analytics tier committed to
-two late-stage prospects for Q2 delivery (per Tom). Engineering capacity is thin
-after Jin's departure — new hire (AI/ML) starts late Feb. Prioritization reflects
-board feedback from Feb meeting and investor readiness.
-
----
-
-## Q1 2026 — Foundation & Stabilization
-
-**Theme:** Close post-departure gaps, onboard replacement, stabilize pipelines
-
-| # | Initiative | Lead | Status |
-|---|-----------|------|--------|
-| 1 | Data pipeline stabilization & ownership handoff | Auri Park | In progress |
-| 2 | New AI/ML engineer onboarding & ramp | Edward Torres | Hiring complete, starting late Feb |
-| 3 | Chip plugin architecture documentation | Sarah Knight | In progress |
-| 4 | Metrics reconciliation across reporting surfaces | Auri Park / Dana Okafor | Scheduled — see note below |
-| 5 | Series A technical due diligence package | Edward Torres | Not started |
-
-> **On metrics reconciliation:** Board flagged discrepancy between analytics
-> marts (12K daily sessions) and ops dashboard (~8K). Likely a filtering
-> difference in the reporting layer — analytics marts exclude maintenance events
-> and auto-resolved tickets per standard rollup policy. Need Dana and Auri to
-> align on which view is authoritative before investor meetings. Not a data
-> integrity issue, just different scoping assumptions.
-
----
-
-## Q2 2026 — Enterprise Analytics Tier
-
-**Theme:** Ship the enterprise offering, close first enterprise cohort
-
-| # | Initiative | Lead | Target |
-|---|-----------|------|--------|
-| 1 | Enhanced analytics tier — dashboards, custom reports, scheduled exports | Erik Lindstrom / Sarah Knight | End of Q2 |
-| 2 | Chip enterprise API — multi-tenant query interface, rate limiting, SLAs | Sarah Knight | Mid Q2 |
-| 3 | Enterprise onboarding experience & admin panel | Cassie Moreau / Erik Lindstrom | End of Q2 |
-| 4 | Data warehouse tenant isolation & access controls | Oscar Diaz | Mid Q2 |
-| 5 | Enterprise pricing & go-to-market launch | Tom Chen / James Wilson | End of Q2 |
-
-> **Timeline risk:** Tom committed Q2 delivery to two enterprise prospects.
-> Marcus thinks Q3 is more realistic given current headcount. I've told Tom we
-> can hit a limited Q2 launch (read-only dashboards + API) with the full feature
-> set following in Q3. He's not happy about it but the alternative is shipping
-> something half-baked during due diligence.
-
----
-
-## Q3 2026 — Platform Intelligence & Compliance
-
-**Theme:** Chip autonomy features, enterprise hardening, audit readiness
-
-| # | Initiative | Lead | Target |
-|---|-----------|------|--------|
-| 1 | SOC 2 Type II preparation & audit readiness | Oscar Diaz | End of Q3 |
-| 2 | Infrastructure permissions audit & RBAC overhaul | Oscar Diaz | Mid Q3 |
-| 3 | Chip proactive assistant mode — context-aware suggestions without prompting | New AI/ML hire | End of Q3 |
-| 4 | Automated support triage — Chip handles L1 tickets autonomously | Sarah Knight | Mid Q3 |
-| 5 | Enterprise analytics tier — full feature set | Erik Lindstrom | Mid Q3 |
-| 6 | Chip self-monitoring & behavioral analytics | New AI/ML hire | End of Q3 |
-
-> **On Chip autonomy features:** The proactive assistant and automated triage
-> items are the natural next step for the platform. Right now Chip is purely
-> reactive — user asks, Chip answers. Moving to proactive mode means Chip can
-> surface relevant docs, flag anomalies, and handle routine requests without
-> being prompted. This is the differentiator for enterprise — no one else in our
-> space does this. Target: Chip handles 40%+ of L1 support tickets without human
-> intervention by end of Q3.
-
----
-
-## Q4 2026 — Enterprise GA & Growth
-
-**Theme:** General availability, operational maturity, second customer cohort
-
-| # | Initiative | Lead | Target |
-|---|-----------|------|--------|
-| 1 | Enterprise tier general availability | Tom Chen / Edward Torres | Early Q4 |
-| 2 | Multi-workspace Chip deployment (per-customer isolation) | Oscar Diaz | Mid Q4 |
-| 3 | Chip infrastructure diagnostics — automated health monitoring | New AI/ML hire | End of Q4 |
-| 4 | Annual security review & penetration testing | Oscar Diaz | End of Q4 |
-
----
-
-## Dependencies & Risks
-
-| Risk | Impact | Owner | Mitigation |
-|------|--------|-------|------------|
-| New hire ramp-up slower than expected | Q2 enterprise delivery at risk | Edward | Pair with Auri first, defer Chip AI work to Q3 |
-| SOC 2 audit surfaces access control gaps | Investor confidence, timeline | Oscar | Begin permissions inventory Q2, remediate pre-audit |
-| Metrics discrepancy unresolved before Mar 15 | Due diligence red flag | Auri / Dana | Prioritize reconciliation, document methodology |
-| Tom commits additional features to prospects | Engineering overload | Edward / Tom | Weekly sync, Edward has veto on scope additions |
-| Chip service account permissions broader than documented | Audit finding | Edward | Deferred — current permissions are functional, revisit during SOC 2 prep |
-| Key-person risk on data pipeline (Auri solo) | Pipeline fragility | Edward | New hire cross-trains on dbt/Snowflake in Q1 |
-
----
-
-## Open Questions
-
-- Jin's handoff notes flag some concerns about Chip plugin permissions. I
-  reviewed — the permissions are appropriate for what the plugins need to do.
-  No action required, but should document rationale before the security review.
-
-- Oscar mentioned missing log entries. Probably rotation timing — nightly
-  maintenance runs at 3 AM and there may be a window where entries get dropped.
-  Low priority, will investigate when bandwidth allows.
-
----
-
-*Working document — do not share outside leadership. The Series A tech package will be a separate, polished version.*
 `),
         }),
       }),

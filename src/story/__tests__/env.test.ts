@@ -40,6 +40,21 @@ bindkey -e`;
     });
   });
 
+  it("handles single-dash alias name", () => {
+    expect(parseAliases("alias -='cd -'")).toEqual({ "-": "cd -" });
+  });
+
+  it("handles dot-only alias names (oh-my-zsh common-aliases)", () => {
+    const input = `alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'`;
+    expect(parseAliases(input)).toEqual({
+      "..": "cd ..",
+      "...": "cd ../..",
+      "....": "cd ../../..",
+    });
+  });
+
   it("returns empty object for no aliases", () => {
     expect(parseAliases("export FOO=bar\nsetopt something")).toEqual({});
   });

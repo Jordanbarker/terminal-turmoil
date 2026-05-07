@@ -47,7 +47,9 @@ function formatLongEntries(entries: FSNode[], humanReadable: boolean): string[] 
 
 const ls: CommandHandler = (args, flags, ctx) => {
   const targets = args.length > 0 ? args : [ctx.cwd];
-  const showHidden = flags["a"] || flags["all"];
+  // `-A`/`--almost-all` differs from `-a` only by hiding `.` and `..`, which
+  // our virtual FS doesn't list as entries — treat them identically.
+  const showHidden = flags["a"] || flags["all"] || flags["A"] || flags["almost-all"];
   const longFormat = flags["l"];
   const humanReadable = flags["h"] || flags["human-readable"];
   const showHeaders = targets.length > 1;

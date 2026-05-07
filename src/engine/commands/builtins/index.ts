@@ -42,6 +42,8 @@ import "./sort";
 import "./uniq";
 import "./date";
 import "./which";
+import "./command";
+import "./type";
 import "./man";
 import "./df";
 // Network

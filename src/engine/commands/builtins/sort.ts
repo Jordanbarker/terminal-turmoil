@@ -48,7 +48,10 @@ const sort: CommandHandler = (args, flags, ctx) => {
         deduped.push(line);
       }
     }
-    return { output: deduped.join("\n") };
+    return {
+      output: deduped.join("\n"),
+      triggerEvents: [{ type: "command_executed", detail: "data_deduped" }],
+    };
   }
 
   return { output: lines.join("\n") };

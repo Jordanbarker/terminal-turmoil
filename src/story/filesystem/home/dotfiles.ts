@@ -19,11 +19,26 @@ SAVEHIST=1000
 
 autoload -Uz compinit && compinit
 
-alias ll='ls -la'
+# Navigation
+alias -='cd -'
 alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias ......='cd ../../../../..'
+
+# Listing (oh-my-zsh common-aliases)
+alias l='ls -lah'
+alias la='ls -lAh'
+alias ll='ls -lh'
+alias lsa='ls -lah'
+
+# Directory
+alias md='mkdir -p'
+
+# System
 alias df='df -h'
 alias up='sudo apt update && sudo apt upgrade'
-alias work='ssh nexacorp'
 alias py='python3'
 
 # Job search helpers

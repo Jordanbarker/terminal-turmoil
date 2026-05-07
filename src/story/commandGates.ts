@@ -28,6 +28,9 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   "export",
   "alias",
   "unalias",
+  // Shell builtins for command lookup — always available alongside `which` (which itself is gated)
+  "command",
+  "type",
 ]);
 
 /** NexaCorp commands gated behind colleague emails. */
@@ -68,7 +71,7 @@ export const DEVCONTAINER_COMMANDS: ReadonlySet<string> = new Set([
   "ls", "cd", "cat", "pwd", "clear", "help", "nano", "python", "python3", "dbt",
   "snow", "chip", "grep", "find", "diff", "head", "tail", "wc",
   "sort", "uniq", "echo", "whoami", "hostname", "file", "tree",
-  "date", "which", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
+  "date", "which", "command", "type", "man", "mkdir", "rm", "mv", "cp", "touch", "chmod",
   "history", "exit", "save", "load", "newgame", "cheat", "git", "bash", "sh", "zsh",
   "source", ".",
   "printenv", "env", "export",

@@ -50,7 +50,10 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     return g.line;
   });
 
-  return { output: outputLines.join("\n") };
+  return {
+    output: outputLines.join("\n"),
+    triggerEvents: [{ type: "command_executed", detail: "data_deduped" }],
+  };
 };
 
 register("uniq", uniq, "Filter adjacent duplicate lines", HELP_TEXTS.uniq, true);

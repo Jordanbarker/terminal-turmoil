@@ -118,6 +118,34 @@ These groupings reflect the comment headers in `src/story/storyFlags.ts`. When a
 - **`discovered_log_tampering`**: detected when `diff` is run on NexaCorp with args containing `.bak` files
 - **Transition trigger**: when a `file_read` event matches the `nexacorp_followup` email file path, sets `triggerTransition: true`
 
+### Result-oriented `command_executed` details
+
+Founding principle: **validate results, not keystrokes** — `find the hidden file` should accept `ls -a`, `ls -la`, `find . -name ".*"`, or any other valid approach. Quest triggers should fire on the *outcome* the player produced, not the literal command they typed.
+
+Several builtins emit synthetic `command_executed` events with a result-shaped `detail` so multiple commands can credit the same flag:
+
+| `detail` | Emitted by | Flag |
+|----------|------------|------|
+| `python_located` | `which python[3]`, `command -v python[3]`, `type python[3]` (shared helper in `which.ts: pythonLocatedEvents`) | `used_which_python` |
+| `text_filtered` | `grep` (extend to `awk`/`sed` if implemented) | `used_grep_at_home` |
+| `data_deduped` | `uniq`, `sort -u` | `used_sort_uniq_home` |
+| `files_searched` | `find`, `tree` (extend to `ls -R` if added) | `used_find_home` |
+
+When adding a new builtin that produces one of these outcomes, emit the matching event from its `triggerEvents` so existing quest flags fire — no trigger-table edits needed. When adding a new outcome, prefer this pattern over a command-name `detail`.
+
+**Tutorial carve-out — kept strict on purpose:** A few flags still match the command name because the objective text literally names the tool (e.g. `used_mv_home` "Rename a file with mv", `used_wc_at_home` "Count files with wc", `used_echo_pipe` "Pipe or redirect echo output"). Loosening these would defeat the teaching moment. Document any future strict triggers here so they don't get "fixed" later.
+
+### Read-pair cascades
+
+Some objectives describe an outcome that requires comparing two files (`oscar_diffed_logs` "Diff the active and backup logs"). The fast path is `diff system.log system.log.bak`, but a player who runs `cat` on each in sequence is doing the same comparison. Two cascade triggers credit the player when the second of the pair is read:
+
+```ts
+{ event: "file_read", path: p.systemLog,    flag: "oscar_diffed_logs", value: true, requiredFlags: ["oscar_checked_backups"] },
+{ event: "file_read", path: p.systemLogBak, flag: "oscar_diffed_logs", value: true, requiredFlags: ["oscar_searched_logs"] },
+```
+
+The `requiredFlags` ensure the cascade only fires once both halves have been read — order-independent, no double-counting (see `currentFlags[trigger.flag] === undefined` guard in `checkStoryFlagTriggers`).
+
 ### Cascade triggers
 
 A "cascade" trigger is a second `StoryFlagTrigger` whose `flag` matches an upstream flag, but whose `event`/`detail` corresponds to a *downstream* milestone. When the player reaches the downstream milestone, the upstream flag also fires (only if it hasn't already been set — see the `currentFlags[trigger.flag] === undefined` check in `checkStoryFlagTriggers`).
@@ -207,7 +235,7 @@ Source of truth: `src/story/commandGates.ts`. The following sets and maps are ex
 
 | Constant | Purpose |
 |----------|---------|
-| `HOME_COMMANDS` | Always-available on Home PC (ls, cd, cat, pwd, clear, help, mail, nano, piper, save, load, newgame, history, python/python3, bash/sh/zsh, source/`.`, printenv, env, export, alias, unalias, cheat) |
+| `HOME_COMMANDS` | Always-available on Home PC (ls, cd, cat, pwd, clear, help, mail, nano, piper, save, load, newgame, history, python/python3, bash/sh/zsh, source/`.`, printenv, env, export, alias, unalias, cheat, command, type) |
 | `HOME_GATED` | Home commands behind a flag |
 | `NEXACORP_GATED` | NexaCorp commands behind a flag |
 | `NEXACORP_ONLY` | Never available on Home (`coder`, `chip`) |
