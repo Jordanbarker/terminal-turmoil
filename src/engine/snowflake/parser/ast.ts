@@ -475,6 +475,7 @@ export interface DropStatement {
 export interface ShowStatement {
   kind: "show";
   objectType: "DATABASES" | "SCHEMAS" | "TABLES" | "VIEWS" | "COLUMNS" | "WAREHOUSES" | "STAGES" | "SEQUENCES" | "GRANTS" | "ROLES" | "USERS";
+  inAccount?: boolean;
   inDatabase?: string;
   inSchema?: string;
   like?: string;

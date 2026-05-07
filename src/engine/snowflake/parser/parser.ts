@@ -779,12 +779,15 @@ class Parser {
       default: throw new ParseError(`Unexpected object type '${t.value}' after SHOW`, t.position);
     }
 
+    let inAccount = false;
     let inDatabase: string | undefined;
     let inSchema: string | undefined;
     let like: string | undefined;
 
     if (this.match(TokenType.IN)) {
-      if (this.match(TokenType.DATABASE)) {
+      if (this.match(TokenType.ACCOUNT)) {
+        inAccount = true;
+      } else if (this.match(TokenType.DATABASE)) {
         inDatabase = this.parseIdentifierName();
       } else if (this.match(TokenType.SCHEMA)) {
         const parts = this.parseQualifiedName();
@@ -799,7 +802,7 @@ class Parser {
       like = this.expect(TokenType.STRING).value;
     }
 
-    return { kind: "show", objectType, inDatabase, inSchema, like, position: pos };
+    return { kind: "show", objectType, inAccount: inAccount || undefined, inDatabase, inSchema, like, position: pos };
   }
 
   // ── DESCRIBE ───────────────────────────────────────────────────────

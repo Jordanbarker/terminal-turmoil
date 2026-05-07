@@ -620,6 +620,35 @@ describe("Parser — parse()", () => {
       expect(ast.objectType).toBe("SCHEMAS");
     });
 
+    it("parses SHOW TABLES IN ACCOUNT", () => {
+      const ast = parseSql("SHOW TABLES IN ACCOUNT");
+      expect(ast.kind).toBe("show");
+      expect(ast.objectType).toBe("TABLES");
+      expect(ast.inAccount).toBe(true);
+      expect(ast.inDatabase).toBeUndefined();
+      expect(ast.inSchema).toBeUndefined();
+    });
+
+    it("parses SHOW SCHEMAS IN ACCOUNT", () => {
+      const ast = parseSql("SHOW SCHEMAS IN ACCOUNT");
+      expect(ast.kind).toBe("show");
+      expect(ast.objectType).toBe("SCHEMAS");
+      expect(ast.inAccount).toBe(true);
+    });
+
+    it("parses SHOW TABLES IN ACCOUNT LIKE 'EMP%'", () => {
+      const ast = parseSql("SHOW TABLES IN ACCOUNT LIKE 'EMP%'");
+      expect(ast.inAccount).toBe(true);
+      expect(ast.like).toBe("EMP%");
+    });
+
+    it("parses SHOW TABLES IN DATABASE NEXACORP_PROD", () => {
+      const ast = parseSql("SHOW TABLES IN DATABASE NEXACORP_PROD");
+      expect(ast.inAccount).toBeUndefined();
+      expect(ast.inDatabase).toBe("NEXACORP_PROD");
+      expect(ast.inSchema).toBeUndefined();
+    });
+
     it("parses DESCRIBE TABLE", () => {
       const ast = parseSql("DESCRIBE TABLE employees");
       expect(ast.kind).toBe("describe");

@@ -21,58 +21,58 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
     }
 
     case "SCHEMAS": {
-      const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
-      const schemas = state.listSchemas(db);
-      const filtered = stmt.like ? schemas.filter((s) => likeMatch(s, stmt.like!)) : schemas;
-      const rs: ResultSet = {
-        columns: [
-          { name: "name", type: "VARCHAR" },
-          { name: "database_name", type: "VARCHAR" },
-        ],
-        rows: filtered.map((s) => [s, db]),
-        rowCount: filtered.length,
-      };
-      return { type: "resultset", data: rs };
+      const columns = [
+        { name: "name", type: "VARCHAR" as const },
+        { name: "database_name", type: "VARCHAR" as const },
+      ];
+      const rows: (string | number | null)[][] = [];
+      const dbs = stmt.inAccount
+        ? state.listDatabases()
+        : [(stmt.inDatabase ?? ctx.currentDatabase).toUpperCase()];
+      for (const db of dbs) {
+        for (const s of state.listSchemas(db)) {
+          if (stmt.like && !likeMatch(s, stmt.like)) continue;
+          rows.push([s, db]);
+        }
+      }
+      return { type: "resultset", data: { columns, rows, rowCount: rows.length } };
     }
 
     case "TABLES": {
-      const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
-      const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
-      if (!canReadSchema(ctx.currentRole, db, schema)) {
-        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      const columns = [
+        { name: "name", type: "VARCHAR" as const },
+        { name: "database_name", type: "VARCHAR" as const },
+        { name: "schema_name", type: "VARCHAR" as const },
+        { name: "rows", type: "NUMBER" as const },
+      ];
+      const rows: (string | number | null)[][] = [];
+      const targets = resolveShowTargets(stmt, state, ctx);
+      for (const [db, schema] of targets) {
+        if (!canReadSchema(ctx.currentRole, db, schema)) continue;
+        for (const t of state.listTables(db, schema)) {
+          if (stmt.like && !likeMatch(t.name, stmt.like)) continue;
+          rows.push([t.name, db, schema, t.rows.length]);
+        }
       }
-      const tables = state.listTables(db, schema);
-      const filtered = stmt.like ? tables.filter((t) => likeMatch(t.name, stmt.like!)) : tables;
-      const rs: ResultSet = {
-        columns: [
-          { name: "name", type: "VARCHAR" },
-          { name: "database_name", type: "VARCHAR" },
-          { name: "schema_name", type: "VARCHAR" },
-          { name: "rows", type: "NUMBER" },
-        ],
-        rows: filtered.map((t) => [t.name, db, schema, t.rows.length]),
-        rowCount: filtered.length,
-      };
-      return { type: "resultset", data: rs };
+      return { type: "resultset", data: { columns, rows, rowCount: rows.length } };
     }
 
     case "VIEWS": {
-      const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
-      const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
-      if (!canReadSchema(ctx.currentRole, db, schema)) {
-        return { type: "resultset", data: { columns: [], rows: [], rowCount: 0 } };
+      const columns = [
+        { name: "name", type: "VARCHAR" as const },
+        { name: "database_name", type: "VARCHAR" as const },
+        { name: "schema_name", type: "VARCHAR" as const },
+      ];
+      const rows: (string | number | null)[][] = [];
+      const targets = resolveShowTargets(stmt, state, ctx);
+      for (const [db, schema] of targets) {
+        if (!canReadSchema(ctx.currentRole, db, schema)) continue;
+        for (const v of state.listViews(db, schema)) {
+          if (stmt.like && !likeMatch(v.name, stmt.like)) continue;
+          rows.push([v.name, db, schema]);
+        }
       }
-      const views = state.listViews(db, schema);
-      const rs: ResultSet = {
-        columns: [
-          { name: "name", type: "VARCHAR" },
-          { name: "database_name", type: "VARCHAR" },
-          { name: "schema_name", type: "VARCHAR" },
-        ],
-        rows: views.map((v) => [v.name, db, schema]),
-        rowCount: views.length,
-      };
-      return { type: "resultset", data: rs };
+      return { type: "resultset", data: { columns, rows, rowCount: rows.length } };
     }
 
     case "COLUMNS": {
@@ -248,4 +248,32 @@ export function executeUse(stmt: AST.UseStatement, state: SnowflakeState, ctx: S
 function likeMatch(value: string, pattern: string): boolean {
   const regex = "^" + pattern.replace(/%/g, ".*").replace(/_/g, ".") + "$";
   return new RegExp(regex, "i").test(value);
+}
+
+/**
+ * Resolves the (database, schema) pairs to scan for SHOW TABLES / SHOW VIEWS.
+ * - IN ACCOUNT → every schema in every database
+ * - IN DATABASE <db> → every schema in that database
+ * - IN SCHEMA [<db>.]<schema> → that single schema
+ * - bare → current schema
+ */
+function resolveShowTargets(
+  stmt: AST.ShowStatement,
+  state: SnowflakeState,
+  ctx: SessionContext
+): [string, string][] {
+  if (stmt.inAccount) {
+    const out: [string, string][] = [];
+    for (const db of state.listDatabases()) {
+      for (const schema of state.listSchemas(db)) out.push([db, schema]);
+    }
+    return out;
+  }
+  if (stmt.inDatabase && !stmt.inSchema) {
+    const db = stmt.inDatabase.toUpperCase();
+    return state.listSchemas(db).map((schema) => [db, schema] as [string, string]);
+  }
+  const db = (stmt.inDatabase ?? ctx.currentDatabase).toUpperCase();
+  const schema = (stmt.inSchema ?? ctx.currentSchema).toUpperCase();
+  return [[db, schema]];
 }

@@ -131,20 +131,20 @@ export class SnowSqlSession implements ISession {
       if (char === "\r" || char === "\n") {
         this.terminal.write("\r\n");
         const trimmed = this.inputBuffer.trim();
+        const meta = trimmed.replace(/;+$/, "").toLowerCase();
 
-        // Check for commands
-        if (trimmed.toLowerCase() === "quit" || trimmed.toLowerCase() === "exit") {
+        if (meta === "quit" || meta === "exit") {
           return { type: "exit", newState: this.state, triggerEvents: this.pendingEvents.length ? this.pendingEvents : undefined };
         }
 
-        if (trimmed.toLowerCase() === "settings") {
+        if (meta === "settings") {
           this.showSettings();
           this.resetInput();
           this.writePrompt();
           continue;
         }
 
-        if (trimmed.toLowerCase() === "help") {
+        if (meta === "help") {
           this.showHelp();
           this.resetInput();
           this.writePrompt();
@@ -335,6 +335,21 @@ export class SnowSqlSession implements ISession {
       }
       this.terminal.write(output.replace(/\n/g, "\r\n") + "\r\n");
     }
+
+    // Discoverability hint: bare SHOW TABLES against an empty schema.
+    // RAW_NEXACORP holds the seeded tables; ANALYTICS is the dbt target and lands empty for new players.
+    if (
+      /^\s*show\s+tables\s*$/i.test(sql) &&
+      results.length === 1 &&
+      results[0].type === "resultset" &&
+      results[0].data.rowCount === 0
+    ) {
+      const hint = colorize(
+        "Hint: this schema has no tables. Try `SHOW TABLES IN ACCOUNT;` or `SHOW SCHEMAS;`.",
+        ansi.dim
+      );
+      this.terminal.write(hint + "\r\n");
+    }
   }
 
   private showHelp(): void {
@@ -355,8 +370,11 @@ export class SnowSqlSession implements ISession {
       "",
       colorize("Examples:", ansi.bold),
       `  SHOW DATABASES;`,
-      `  USE DATABASE NEXACORP_PROD;`,
-      `  SHOW TABLES;`,
+      `  SHOW SCHEMAS;`,
+      `  SHOW TABLES;                       -- current schema`,
+      `  SHOW TABLES IN ACCOUNT;            -- every table you can read`,
+      `  SHOW TABLES IN SCHEMA RAW_NEXACORP;`,
+      `  USE SCHEMA RAW_NEXACORP;`,
       `  SELECT * FROM employees LIMIT 10;`,
     ];
     this.terminal.write(lines.join("\r\n") + "\r\n");

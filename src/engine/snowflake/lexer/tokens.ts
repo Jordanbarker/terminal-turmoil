@@ -178,6 +178,7 @@ export enum TokenType {
   GRANTS = "GRANTS",
   ROLES = "ROLES",
   USERS = "USERS",
+  ACCOUNT = "ACCOUNT",
 
   // Data type keywords
   NUMBER_TYPE = "NUMBER_TYPE",

@@ -231,11 +231,25 @@ The REPL has its own hand-rolled CSI parser (separate from `useCommandLine.ts`).
 
 | Usage | Action |
 |-------|--------|
-| `snow sql` | Enter interactive REPL with `NEXACORP_DB.PUBLIC>` prompt |
+| `snow sql` | Enter interactive REPL with `NEXACORP_PROD.ANALYTICS>` prompt (default for ANALYST) |
 | `snow sql -q "SELECT 1"` | Execute single query inline, return result |
 | Inside REPL: SQL ending with `;` | Execute query, show result |
-| Inside REPL: `!quit` or `!exit` | Exit REPL |
-| Inside REPL: `!set` | Show current session settings |
+| Inside REPL: `quit` / `exit` / Ctrl+D | Exit REPL (trailing `;` accepted) |
+| Inside REPL: `settings` | Show current session settings |
+| Inside REPL: `help` | Show built-in help with example SQL |
+
+### SHOW scope variants (executor in `show_describe.ts`)
+
+`SHOW TABLES`, `SHOW VIEWS`, `SHOW SCHEMAS` accept these `IN` clauses:
+
+| Form | Scope |
+|------|-------|
+| `SHOW TABLES` | Current schema only (`ctx.currentSchema`) |
+| `SHOW TABLES IN SCHEMA [<db>.]<schema>` | That single schema |
+| `SHOW TABLES IN DATABASE <db>` | **Every schema** in that database (was schema-scoped — fixed) |
+| `SHOW TABLES IN ACCOUNT` | Every schema across every database |
+
+All variants apply per-schema `canReadSchema(role, db, schema)` filtering and an optional `LIKE '<pattern>'` suffix matched against object name. The `(db, schema)` pair set is built by `resolveShowTargets()` (private helper). When a player runs a bare `SHOW TABLES;` against an empty schema, `SnowSqlSession` appends a one-line dim hint pointing at `SHOW TABLES IN ACCOUNT;` / `SHOW SCHEMAS;`.
 
 ### Sample Output
 ```

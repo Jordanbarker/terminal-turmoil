@@ -149,6 +149,7 @@ export const KEYWORDS: Record<string, TokenType> = {
   GRANTS: TokenType.GRANTS,
   ROLES: TokenType.ROLES,
   USERS: TokenType.USERS,
+  ACCOUNT: TokenType.ACCOUNT,
 
   // Data types
   NUMBER: TokenType.NUMBER_TYPE,

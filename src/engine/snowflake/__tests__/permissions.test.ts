@@ -260,6 +260,54 @@ describe("permissions integration", () => {
         expect(results[0].data.rowCount).toBeGreaterThan(0);
       }
     });
+
+    it("SHOW TABLES IN ACCOUNT lists tables across all readable schemas (ANALYST)", () => {
+      const { results } = execute("SHOW TABLES IN ACCOUNT", state, ctx("ANALYST"));
+      expect(results[0].type).toBe("resultset");
+      if (results[0].type === "resultset") {
+        const schemas = new Set(results[0].data.rows.map((r) => r[2]));
+        expect(schemas.has("RAW_NEXACORP")).toBe(true);
+        expect(results[0].data.rowCount).toBeGreaterThan(0);
+      }
+    });
+
+    it("SHOW TABLES IN ACCOUNT returns nothing for PUBLIC", () => {
+      const { results } = execute("SHOW TABLES IN ACCOUNT", state, ctx("PUBLIC"));
+      expect(results[0].type).toBe("resultset");
+      if (results[0].type === "resultset") {
+        expect(results[0].data.rowCount).toBe(0);
+      }
+    });
+
+    it("SHOW TABLES IN DATABASE NEXACORP_PROD spans schemas", () => {
+      const { results } = execute("SHOW TABLES IN DATABASE NEXACORP_PROD", state, ctx("ANALYST"));
+      expect(results[0].type).toBe("resultset");
+      if (results[0].type === "resultset") {
+        const schemas = new Set(results[0].data.rows.map((r) => r[2]));
+        expect(schemas.has("RAW_NEXACORP")).toBe(true);
+      }
+    });
+
+    it("SHOW TABLES IN ACCOUNT LIKE 'EMP%' filters by table name", () => {
+      const { results } = execute("SHOW TABLES IN ACCOUNT LIKE 'EMP%'", state, ctx("ANALYST"));
+      expect(results[0].type).toBe("resultset");
+      if (results[0].type === "resultset") {
+        for (const row of results[0].data.rows) {
+          expect(String(row[0]).toUpperCase().startsWith("EMP")).toBe(true);
+        }
+        expect(results[0].data.rowCount).toBeGreaterThan(0);
+      }
+    });
+
+    it("SHOW SCHEMAS IN ACCOUNT lists schemas across all databases", () => {
+      const { results } = execute("SHOW SCHEMAS IN ACCOUNT", state, ctx("ANALYST"));
+      expect(results[0].type).toBe("resultset");
+      if (results[0].type === "resultset") {
+        const names = new Set(results[0].data.rows.map((r) => r[0]));
+        expect(names.has("RAW_NEXACORP")).toBe(true);
+        expect(names.has("ANALYTICS")).toBe(true);
+      }
+    });
   });
 
   describe("default context", () => {
