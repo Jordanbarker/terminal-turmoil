@@ -6,7 +6,7 @@ export { HOME_COMMANDS, NEXACORP_GATED, HOME_GATED, DEVCONTAINER_COMMANDS, NEXAC
 
 /** Returns true if the command is available on the given computer. */
 export function isCommandAvailable(commandName: string, computer: ComputerId, storyFlags?: StoryFlags): boolean {
-  if (computer === "devcontainer") {
+  if (computer === "devcontainer" || computer === "chipinfra") {
     return DEVCONTAINER_COMMANDS.has(commandName);
   }
   if (computer === "nexacorp") {

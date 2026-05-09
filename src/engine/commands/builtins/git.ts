@@ -19,6 +19,7 @@ const AUTHOR_EMAIL_DOMAIN: Record<ComputerId, string> = {
   home: "maniac-iv.local",
   nexacorp: "nexacorp.com",
   devcontainer: "nexacorp.com",
+  chipinfra: "nexacorp.com",
 };
 
 /** Parse raw args, handling value flags like -m, -b, -u */

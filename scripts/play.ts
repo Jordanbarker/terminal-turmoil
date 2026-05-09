@@ -73,7 +73,7 @@ export class GameRunner {
     this.storyFlags = {};
     this.deliveredEmailIds = [];
     this.deliveredPiperIds = [];
-    this.commandHistory = { home: [], nexacorp: [], devcontainer: [] };
+    this.commandHistory = { home: [], nexacorp: [], devcontainer: [], chipinfra: [] };
     this.snowflakeState = createInitialSnowflakeState();
     this.snowflakeContext = createDefaultContext(this.username);
     this.completedObjectives = [];

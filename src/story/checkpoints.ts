@@ -258,4 +258,64 @@ const DAY2_START: Checkpoint = {
   },
 };
 
-export const CHECKPOINTS: Checkpoint[] = [DAY1_START, DAY1_END, DAY2_START];
+const DAY2_PIPELINE_FIXED: Checkpoint = {
+  ...DAY2_START,
+  id: "day2-pipeline-fixed",
+  description: "Day 2, pipeline fixed, Edward's plugin DM waiting (Chapter 3, nexacorp)",
+  storyFlags: {
+    ...DAY2_START.storyFlags,
+    pulled_day2_updates: true,
+    dbt_test_failed_day2: true,
+    investigated_null_data: true,
+    created_fix_branch: true,
+    fixed_campaign_model: true,
+    pushed_fix_branch: true,
+    reported_fix_to_auri: true,
+    // Do NOT set unlock_chip_plugin_development — it fires from the
+    // Piper reply to edward_plugin_request, which surfaces the unlock toast.
+  },
+  deliveredPiperIds: [
+    ...DAY2_START.deliveredPiperIds,
+    // Auri pipeline-fix arc
+    "reply:auri_day2_morning:0",
+    "auri_test_failure_reaction",
+    "reply:auri_test_failure_reaction:0",
+    "auri_test_failure_details",
+    "auri_fix_pushed",
+    "reply:auri_fix_pushed:0",
+    // Edward's plugin request — delivered, awaiting reply
+    "edward_plugin_request",
+  ],
+  completedObjectives: [
+    ...DAY2_START.completedObjectives,
+    "read_auri_day2_morning",
+    "auri_test_failure_reported",
+    "pull_day2_updates",
+    "discover_test_failure",
+    "investigate_null_data",
+    "create_fix_branch",
+    "fix_the_model",
+    "push_fix",
+    "report_to_auri",
+    "fix_pipeline_quest",
+  ],
+  commandHistory: {
+    ...DAY2_START.commandHistory,
+    nexacorp: ["coder ssh ai"],
+    devcontainer: [
+      "cd ~/nexacorp-analytics",
+      "git pull",
+      "dbt build",
+      "snow sql -q \"SELECT * FROM CAMPAIGN_METRICS WHERE CLICKS IS NULL\"",
+      "git checkout -b fix/conversion-rate-nulls",
+      "nano models/marts/rpt_campaign_performance.sql",
+      "dbt build",
+      "git add -A",
+      "git commit -m 'fix: handle NULL clicks in conversion_rate'",
+      "git push -u origin fix/conversion-rate-nulls",
+      "exit",
+    ],
+  },
+};
+
+export const CHECKPOINTS: Checkpoint[] = [DAY1_START, DAY1_END, DAY2_START, DAY2_PIPELINE_FIXED];

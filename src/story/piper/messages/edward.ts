@@ -78,10 +78,88 @@ export function getEdwardDeliveries(_username: string): PiperDelivery[] {
           id: "edward_dm_fix_2",
           from: "Edward Torres",
           timestamp: "",
-          body: "Your Chip API key is `nxa_live_7f3k9m2x`. Open `~/.zshrc` in nano and add this line at the bottom:\n\n    export CHIP_API_KEY=nxa_live_7f3k9m2x\n\nThen run `source ~/.zshrc` to load it. You can double-check it's set with `printenv | grep CHIP`.",
+          body: "Open `~/.zshrc` in nano and add this line at the bottom:\n\n    export CHIP_API_KEY=nxa_live_7f3k9m2x\n\nThen run `source ~/.zshrc` to load it. You can double-check it's set with printenv",
         },
       ],
       trigger: { type: "after_piper_reply", deliveryId: "edward_chip_error" },
+    },
+
+    // === DM Edward: Build a plugin (after pipeline fix, sets up Chapter 3 plugin quest) ===
+    {
+      id: "edward_plugin_request",
+      channelId: "dm_edward",
+      messages: [
+        {
+          id: "edward_plugin_1",
+          from: "Edward Torres",
+          timestamp: "",
+          body: "Quick one — we're gearing up for investor demos and the deck is light on product surface. Throw together a new Chip plugin, dealer's choice, whatever you think we're missing.",
+        },
+        {
+          id: "edward_plugin_2",
+          from: "Edward Torres",
+          timestamp: "",
+          body: "Plugins live on the platform workspace now, not your laptop — `coder ssh chip` (you should have access). Drop it under `/opt/chip/plugins/<your-username>/` so blame's obvious, then stash an entry in the registry when it's working.",
+        },
+        {
+          id: "edward_plugin_3",
+          from: "Edward Torres",
+          timestamp: "",
+          body: "Don't overthink it — pick something useful, ship it, we'll polish later. This'll move the needle with the board.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "reported_fix_to_auri" },
+      replyOptions: [
+        {
+          label: "On it — I'll spin one up.",
+          messageBody: "On it — I'll spin one up.",
+          triggerEvents: [{ type: "objective_completed", detail: "accepted_edward_plugin_request" }],
+        },
+      ],
+    },
+
+    // === DM Edward: Plugin shipped (player reports back) ===
+    // The reply is gated behind wrote_plugin_skill so it only appears once the
+    // player actually authored a plugin — no false-positive "I'm done" before
+    // the work is real.
+    {
+      id: "edward_plugin_report",
+      channelId: "dm_edward",
+      messages: [],
+      trigger: { type: "after_piper_reply", deliveryId: "edward_plugin_request" },
+      replyOptions: [
+        {
+          label: "Plugin's up. /opt/chip/plugins/<your-username>/, registered.",
+          messageBody: "Plugin's up. Wrote plugin.json + SKILL.md, added it to the registry.",
+          visibleWhen: { flag: "wrote_plugin_skill" },
+          triggerEvents: [
+            { type: "objective_completed", detail: "reported_plugin_to_edward" },
+          ],
+        },
+        {
+          label: "Plugin's up. plugin.json + SKILL.md written.",
+          messageBody: "Plugin's up. Wrote plugin.json + SKILL.md.",
+          visibleWhen: { flag: "wrote_plugin_skill" },
+          triggerEvents: [
+            { type: "objective_completed", detail: "reported_plugin_to_edward" },
+          ],
+        },
+      ],
+    },
+
+    // === DM Edward: Acknowledgment after plugin report ===
+    {
+      id: "edward_plugin_ack",
+      channelId: "dm_edward",
+      messages: [
+        {
+          id: "edward_plugin_ack_1",
+          from: "Edward Torres",
+          timestamp: "",
+          body: "Nice. I'll have Tom slot it into the demo deck. Good turnaround.",
+        },
+      ],
+      trigger: { type: "after_piper_reply", deliveryId: "edward_plugin_report" },
     },
   ];
 }

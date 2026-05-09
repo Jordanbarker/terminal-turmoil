@@ -21,6 +21,7 @@ export class EditorSession implements ISession {
   private trigger?: EditorTrigger;
   private maxRowReached = 0;
   private hasSaved = false;
+  private fileEvents: GameEvent[] = [];
 
   constructor(
     terminal: Terminal,
@@ -674,6 +675,7 @@ export class EditorSession implements ISession {
     if (!input) return;
 
     const content = this.state.lines.join("\n");
+    const existedBefore = !!this.fs.getNode(input);
     const result = this.fs.writeFile(input, content);
     if (result.fs) {
       this.fs = result.fs;
@@ -681,6 +683,10 @@ export class EditorSession implements ISession {
       this.state.modified = false;
       this.state.filePath = input;
       this.state.fileName = input.split("/").pop() || input;
+      this.fileEvents.push({
+        type: existedBefore ? "file_modified" : "file_created",
+        detail: input,
+      });
       this.state.message = `[ Wrote ${this.state.lines.length} lines ]`;
     } else if (result.error) {
       this.state.message = `[ Error: ${result.error} ]`;
@@ -801,12 +807,17 @@ export class EditorSession implements ISession {
 
   private save(): void {
     const content = this.state.lines.join("\n");
+    const existedBefore = !!this.fs.getNode(this.state.filePath);
     const result = this.fs.writeFile(this.state.filePath, content);
     if (result.fs) {
       this.fs = result.fs;
       this.onSave(result.fs);
       this.state.modified = false;
       this.hasSaved = true;
+      this.fileEvents.push({
+        type: existedBefore ? "file_modified" : "file_created",
+        detail: this.state.filePath,
+      });
       this.state.message = `[ Wrote ${this.state.lines.length} lines ]`;
     } else if (result.error) {
       this.state.message = `[ Error: ${result.error} ]`;
@@ -827,8 +838,13 @@ export class EditorSession implements ISession {
     this.terminal.write("\x1b[?25h\x1b[?1049l"); // Show cursor + exit alt buffer
     const rowOk = !this.trigger || this.maxRowReached >= this.trigger.triggerRow;
     const saveOk = !this.trigger?.requireSave || this.hasSaved;
-    const triggerEvents = this.trigger && rowOk && saveOk ? this.trigger.triggerEvents : undefined;
-    return { type: "exit", newFs: this.fs, triggerEvents };
+    const explicitTrigger = this.trigger && rowOk && saveOk ? this.trigger.triggerEvents : [];
+    const triggerEvents = [...this.fileEvents, ...explicitTrigger];
+    return {
+      type: "exit",
+      newFs: this.fs,
+      triggerEvents: triggerEvents.length > 0 ? triggerEvents : undefined,
+    };
   }
 
   // === Rendering ===

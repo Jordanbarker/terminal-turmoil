@@ -18,6 +18,8 @@ export function applyRedirection(
     return { result: { ...lastResult, output: "" }, fs: currentFs };
   }
 
+  const existedBefore = !!currentFs.getNode(absPath);
+
   let content = lastResult.output;
   if (redirectAppend) {
     const existing = currentFs.readFile(absPath);
@@ -27,5 +29,14 @@ export function applyRedirection(
   }
   const writeResult = currentFs.writeFile(absPath, content);
   const newFs = writeResult.fs ?? currentFs;
-  return { result: { ...lastResult, output: "" }, fs: newFs };
+
+  const redirectEvent = existedBefore
+    ? { type: "file_modified" as const, detail: absPath }
+    : { type: "file_created" as const, detail: absPath };
+  const mergedEvents = [...(lastResult.triggerEvents ?? []), redirectEvent];
+
+  return {
+    result: { ...lastResult, output: "", triggerEvents: mergedEvents },
+    fs: newFs,
+  };
 }

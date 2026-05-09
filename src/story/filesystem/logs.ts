@@ -622,16 +622,23 @@ export function generateSystemLogBak(username: string, opts?: LogOptions): strin
 // `sort | uniq -c | sort -rn` output — the player must scroll to find them.
 // ---------------------------------------------------------------------------
 
-/** Chip service legitimate file access paths (high-volume) */
+/**
+ * Chip service legitimate file access paths (high-volume).
+ *
+ * Cross-host references — these paths live on the chipinfra workspace
+ * (`coder ssh chip`), not on ws01. The audit log captures access from the
+ * platform-side process via the `chip-coder:` host prefix, mirroring how
+ * real distributed audit logs cite the source machine.
+ */
 const CHIP_LEGIT_PATHS = [
-  "READ /srv/chip/models/chip-v2.4.1.bin",
-  "READ /srv/chip/config/service.yml",
-  "READ /srv/chip/cache/response_cache.db",
-  "READ /srv/chip/logs/inference.log",
-  "READ /srv/chip/config/prompts.yml",
-  "WRITE /srv/chip/cache/response_cache.db",
-  "WRITE /srv/chip/logs/inference.log",
-  "READ /srv/chip/models/embeddings-v1.2.bin",
+  "READ chip-coder:/srv/chip/models/chip-v2.4.1.bin",
+  "READ chip-coder:/srv/chip/config/service.yml",
+  "READ chip-coder:/srv/chip/cache/response_cache.db",
+  "READ chip-coder:/srv/chip/logs/inference.log",
+  "READ chip-coder:/srv/chip/config/prompts.yml",
+  "WRITE chip-coder:/srv/chip/cache/response_cache.db",
+  "WRITE chip-coder:/srv/chip/logs/inference.log",
+  "READ chip-coder:/srv/chip/models/embeddings-v1.2.bin",
 ];
 
 /** nginx static asset paths */

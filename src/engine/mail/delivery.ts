@@ -10,6 +10,8 @@ export type GameEvent =
   | { type: "objective_completed"; detail: string }
   | { type: "directory_visit"; detail: string }
   | { type: "directory_created"; detail: string }
+  | { type: "file_created"; detail: string }
+  | { type: "file_modified"; detail: string }
   | { type: "piper_delivered"; detail: string };
 
 export function checkEmailDeliveries(

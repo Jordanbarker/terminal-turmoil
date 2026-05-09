@@ -104,25 +104,50 @@ export function getSshConnectionSequence(username: string): string[] {
   ];
 }
 
-export function getCoderConnectionSequence(): string[] {
+export function getCoderConnectionSequence(workspace: string = "ai"): string[] {
   return [
     "",
-    `${colorize("Connecting to workspace 'ai'...", ansi.dim)}`,
+    `${colorize(`Connecting to workspace '${workspace}'...`, ansi.dim)}`,
     `${colorize("Starting workspace agent...", ansi.dim)}`,
     `${colorize("Waiting for network...", ansi.dim)}`,
     `${colorize("Workspace ready.", ansi.green)}`,
   ];
 }
 
-export const coderBanner = [
-  `  ${colorize("┌──────────────────────────────────────────┐", ansi.brightCyan)}`,
-  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Coder Dev Container", ansi.bold)}${" ".repeat(21)}${colorize("│", ansi.brightCyan)}`,
-  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Workspace: ai", ansi.dim)}${" ".repeat(27)}${colorize("│", ansi.brightCyan)}`,
-  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Tools: dbt, snow, python", ansi.dim)}${" ".repeat(16)}${colorize("│", ansi.brightCyan)}`,
-  `  ${colorize("│", ansi.brightCyan)}  ${colorize("Type 'exit' to return to NexaCorp", ansi.dim)}${" ".repeat(7)}${colorize("│", ansi.brightCyan)}`,
-  `  ${colorize("└──────────────────────────────────────────┘", ansi.brightCyan)}`,
-  "",
-];
+const CODER_BANNER_INNER_WIDTH = 42; // characters between the two │ borders
+
+function bannerLine(text: string): string {
+  const pad = Math.max(0, CODER_BANNER_INNER_WIDTH - 2 - text.length); // leading 2 spaces consumed
+  return `  ${colorize("│", ansi.brightCyan)}  ${colorize(text, ansi.dim)}${" ".repeat(pad)}${colorize("│", ansi.brightCyan)}`;
+}
+
+function bannerLineBold(text: string): string {
+  const pad = Math.max(0, CODER_BANNER_INNER_WIDTH - 2 - text.length);
+  return `  ${colorize("│", ansi.brightCyan)}  ${colorize(text, ansi.bold)}${" ".repeat(pad)}${colorize("│", ansi.brightCyan)}`;
+}
+
+export function getCoderBanner(workspace: string = "ai"): string[] {
+  // Per-workspace title and tools line. Both workspaces share the dev-container
+  // command set, but the chip workspace is the platform team's shared runtime,
+  // not a personal data-engineering box.
+  const isChip = workspace === "chip";
+  const title = isChip ? "Chip Platform Workspace" : "Coder Dev Container";
+  const tools = isChip
+    ? "Plugins, RAG, Chip runtime"
+    : "Tools: dbt, snow, python";
+  return [
+    `  ${colorize("┌──────────────────────────────────────────┐", ansi.brightCyan)}`,
+    bannerLineBold(title),
+    bannerLine(`Workspace: ${workspace}`),
+    bannerLine(tools),
+    bannerLine("Type 'exit' to return to NexaCorp"),
+    `  ${colorize("└──────────────────────────────────────────┘", ansi.brightCyan)}`,
+    "",
+  ];
+}
+
+/** Default banner for `coder ssh ai` — preserved for back-compat with existing call sites. */
+export const coderBanner = getCoderBanner("ai");
 
 export function getHomeBootSequence(): string[] {
   return [

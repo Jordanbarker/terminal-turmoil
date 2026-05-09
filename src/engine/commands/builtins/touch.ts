@@ -10,6 +10,7 @@ const touch: CommandHandler = (args, _flags, ctx) => {
   }
 
   let currentFs: VirtualFS = ctx.fs;
+  const createdPaths: string[] = [];
 
   for (const arg of args) {
     const absPath = resolvePath(arg, ctx.cwd, ctx.homeDir);
@@ -21,11 +22,16 @@ const touch: CommandHandler = (args, _flags, ctx) => {
         return { output: result.error.replace("Cannot write", "touch: cannot create") };
       }
       currentFs = result.fs!;
+      createdPaths.push(absPath);
     }
     // If exists, no-op (real touch updates timestamps, but we don't track them)
   }
 
-  return { output: "", newFs: currentFs };
+  return {
+    output: "",
+    newFs: currentFs,
+    triggerEvents: createdPaths.map((p) => ({ type: "file_created" as const, detail: p })),
+  };
 };
 
 register("touch", touch, "Create empty files", HELP_TEXTS.touch);

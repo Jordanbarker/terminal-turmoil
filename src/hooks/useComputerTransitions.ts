@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { useGameStore, buildFs } from "../state/gameStore";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
+import { createChipinfraFilesystem } from "../story/filesystem/chipinfra";
 import { createHomeFilesystem } from "../story/filesystem/home";
 import { checkEmailDeliveries, seedDeliveredEmails, GameEvent } from "../engine/mail/delivery";
 import { getReadEmailIds } from "../engine/mail/mailUtils";
@@ -13,7 +14,7 @@ import { gitClone } from "../engine/git/repo";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, coderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification } from "../lib/ascii";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { ComputerId } from "../state/types";
 
@@ -139,38 +140,54 @@ export function useComputerTransitions(deps: TransitionDeps) {
     }, BOOT_LINE_INTERVAL_MS);
   }, [cwdRef, activeComputerRef]);
 
-  const runCoderTransition = useCallback((term: Terminal) => {
+  /**
+   * Build a fresh per-computer filesystem for a Coder workspace transition.
+   * Centralizes the per-target divergence so runCoderTransition stays generic.
+   */
+  const buildCoderTargetFs = (
+    target: "devcontainer" | "chipinfra",
+    username: string,
+    storyFlags: Record<string, string | boolean>,
+  ): VirtualFS => {
+    if (target === "chipinfra") {
+      const root = createChipinfraFilesystem(username, storyFlags);
+      return new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+    }
+    // devcontainer: rebuild with dbt_project_cloned suppressed; gitClone re-creates it with .git below.
+    const rebuildFlags = { ...storyFlags, dbt_project_cloned: false };
+    const root = createDevcontainerFilesystem(username, rebuildFlags);
+    let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+    if (storyFlags.dbt_project_cloned) {
+      const cloneResult = gitClone(newFs, `/home/${username}`, "nexacorp/nexacorp-analytics", username);
+      if (!cloneResult.error) newFs = cloneResult.fs;
+    }
+    return newFs;
+  };
+
+  const runCoderTransition = useCallback((term: Terminal, target: "devcontainer" | "chipinfra" = "devcontainer") => {
     const store = useGameStore.getState();
-    const isSubsequent = !!store.computerState.devcontainer || !!store.storyFlags.devcontainer_visited;
+    const visitedFlag = target === "chipinfra" ? "chipinfra_visited" : "devcontainer_visited";
+    const workspaceName = target === "chipinfra" ? "chip" : "ai";
+    const banner = getCoderBanner(workspaceName);
+    const isSubsequent = !!store.computerState[target] || !!store.storyFlags[visitedFlag];
 
     if (isSubsequent) {
       // Subsequent visit — no animation, just repurpose tab
-      let entry = store.computerState.devcontainer;
+      let entry = store.computerState[target];
 
       if (!entry) {
         // State was removed (e.g. exit to home) — rebuild silently
-        const username = store.username;
-        // Build base FS with dbt_project_cloned suppressed — gitClone will recreate it with .git
-        const rebuildFlags = { ...store.storyFlags, dbt_project_cloned: false };
-        const root = createDevcontainerFilesystem(username, rebuildFlags);
-        let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-
-        // Re-clone the repo so git history is preserved
-        if (store.storyFlags.dbt_project_cloned) {
-          const cloneResult = gitClone(newFs, `/home/${username}`, "nexacorp/nexacorp-analytics", username);
-          if (!cloneResult.error) newFs = cloneResult.fs;
-        }
-
-        store.initComputer("devcontainer", newFs);
-        entry = useGameStore.getState().computerState.devcontainer!;
+        const newFs = buildCoderTargetFs(target, store.username, store.storyFlags);
+        store.initComputer(target, newFs);
+        entry = useGameStore.getState().computerState[target]!;
       }
 
       const newCwd = entry.fs.cwd;
-      store.setTabComputer(store.activeTabId, "devcontainer", newCwd);
-      activeComputerRef.current = "devcontainer";
+      store.setTabComputer(store.activeTabId, target, newCwd);
+      activeComputerRef.current = target;
       cwdRef.current = newCwd;
       term.writeln("");
-      coderBanner.forEach((line) => term.writeln(line));
+      banner.forEach((line) => term.writeln(line));
       writePrompt(term);
       return;
     }
@@ -178,7 +195,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
     // First-time visit — full connection animation
     store.setGamePhase("transitioning");
 
-    const lines = getCoderConnectionSequence();
+    const lines = getCoderConnectionSequence(workspaceName);
     let i = 0;
     const interval = setInterval(() => {
       if (i < lines.length) {
@@ -188,25 +205,25 @@ export function useComputerTransitions(deps: TransitionDeps) {
         clearInterval(interval);
 
         const s = useGameStore.getState();
-        if (!s.storyFlags.devcontainer_visited) {
-          s.setStoryFlag("devcontainer_visited", true);
-          s.addToast("dbt and snow commands unlocked on NexaCorp!");
+        if (!s.storyFlags[visitedFlag]) {
+          s.setStoryFlag(visitedFlag, true);
+          if (target === "devcontainer") {
+            s.addToast("dbt and snow commands unlocked on NexaCorp!");
+          }
         }
 
-        const username = s.username;
-        const root = createDevcontainerFilesystem(username, s.storyFlags);
-        const newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
+        const newFs = buildCoderTargetFs(target, s.username, s.storyFlags);
         const newCwd = newFs.cwd;
 
-        s.initComputer("devcontainer", newFs);
+        s.initComputer(target, newFs);
 
-        // Repurpose current tab to devcontainer
-        s.setTabComputer(s.activeTabId, "devcontainer", newCwd);
-        activeComputerRef.current = "devcontainer";
+        // Repurpose current tab to the new target
+        s.setTabComputer(s.activeTabId, target, newCwd);
+        activeComputerRef.current = target;
         cwdRef.current = newCwd;
 
         term.writeln("");
-        coderBanner.forEach((line) => term.writeln(line));
+        banner.forEach((line) => term.writeln(line));
         useGameStore.getState().setGamePhase("playing");
         writePrompt(term);
       }
@@ -215,12 +232,15 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
   const runExitToNexacorp = useCallback((term: Terminal) => {
     const store = useGameStore.getState();
+    const sourceComputer = store.tabs.find((t) => t.id === store.activeTabId)?.computerId;
 
-    // Close any other devcontainer tabs (keep only the current one, which we repurpose)
-    const otherDevTabs = store.tabs.filter(
-      (t) => t.computerId === "devcontainer" && t.id !== store.activeTabId
-    );
-    for (const t of otherDevTabs) store.removeTab(t.id);
+    // Close any other tabs on the source coder workspace (keep only the current one, which we repurpose)
+    if (sourceComputer === "devcontainer" || sourceComputer === "chipinfra") {
+      const otherTabs = store.tabs.filter(
+        (t) => t.computerId === sourceComputer && t.id !== store.activeTabId
+      );
+      for (const t of otherTabs) store.removeTab(t.id);
+    }
 
     // Restore NexaCorp cwd from computerState
     const nexaEntry = store.computerState.nexacorp;
@@ -231,7 +251,8 @@ export function useComputerTransitions(deps: TransitionDeps) {
     activeComputerRef.current = "nexacorp";
     cwdRef.current = nexaCwd;
 
-    term.writeln(colorize("\r\nDisconnected from coder-ai.", ansi.dim));
+    const hostname = sourceComputer === "chipinfra" ? "coder-chip" : "coder-ai";
+    term.writeln(colorize(`\r\nDisconnected from ${hostname}.`, ansi.dim));
 
     // Show deferred Piper notification (suppressed while on devcontainer where piper is unavailable)
     const latest = useGameStore.getState();
@@ -262,9 +283,13 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
         const s = useGameStore.getState();
 
-        // Close all other nexacorp and devcontainer tabs
+        // Close all other nexacorp / devcontainer / chipinfra tabs
         const tabsToClose = s.tabs.filter(
-          (t) => (t.computerId === "nexacorp" || t.computerId === "devcontainer") && t.id !== s.activeTabId
+          (t) =>
+            (t.computerId === "nexacorp" ||
+              t.computerId === "devcontainer" ||
+              t.computerId === "chipinfra") &&
+            t.id !== s.activeTabId
         );
         for (const t of tabsToClose) s.removeTab(t.id);
 
@@ -298,9 +323,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
         s.initComputer("home", newFs);
 
-        // Remove nexacorp/devcontainer from computerState so they don't appear in "+" dropdown
+        // Remove non-home computers from computerState so they don't appear in "+" dropdown
         s.removeComputer("nexacorp");
         s.removeComputer("devcontainer");
+        s.removeComputer("chipinfra");
 
         // Repurpose current tab to home
         const homeCwd = newFs.cwd;

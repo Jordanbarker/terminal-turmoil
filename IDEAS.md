@@ -1,4 +1,4 @@
-RAG quest - outdated docs, bad data, 
+RAG quest
     RAG data: PTO, HR policies, IT procedures, internal playbooks, product docs, wikis, databases (snowflake) regulatory guidance, audit materials, and transaction context to support reporting and compliance questions.
     External/customer data in snowflake?
     Terminal angles:
@@ -9,6 +9,7 @@ RAG quest - outdated docs, bad data,
             curl -X GET http://localhost:1976/v1/health/ready | jq
 
 Player finds Erik's ssh key in logs and can ssh into Erik's pc: 
+    .bash_history shows them running firefox https://kalshi.com/... or curl-ing prediction-market APIs.
     chip logs 
         Reading revenue data
     mail contains prediction market bets
@@ -28,9 +29,6 @@ Edward asks player who they think is taking advantage of chip (Sarah or Erik or 
 - you're absolutely right!
 - Slippery slope, bad guy used chip's permissions slowly and it escalated
 
- - echo $VAR expansion in interactive commands (requires input pipeline changes)
- - unset command: removes shell variables or functions from the current session.
- - export FOO=bar
 
 mart-layer report (rpt_customer_summary or dim_customers)
 
@@ -40,6 +38,7 @@ du: shows disk usage of the current directory and all subdirectories (in blocks,
     du -sh .: shows only the total size of the current directory (summary).
     du -a: shows every file and directory, not just directories.
     du -m or du -k: forces output in MB or KB blocks.
+- unset command: removes shell variables or functions from the current session.
 
 
 $ echo "Hello World"            # print to screen
@@ -90,18 +89,26 @@ Data Audit Basics (Auri, onboarding) "Before we run anything, let's sanity-check
   │ Verify row counts match manifest │ wc -l *.csv               │ wc on multiple files (glob)       │
   └──────────────────────────────────┴───────────────────────────┴───────────────────────────────────┘
 
-Phase 1: explicit instructions ("Type ls to see what's in this directory"). 
-Phase 2: contextual hints ("Something seems hidden here..." → player must recall ls -a). 
-Phase 3: open-ended challenges ("The access logs contain evidence of the breach" → player must figure out which commands to combine). 
-
+- The Series A blackout date (March 10-21) ties into the game's timeline where due diligence starts March 15.
+    - PTO blackout (what srv.ts line 1176 means): leadership and finance-facing roles can't take vacation during diligence
+    - Communications/trading blackout (broader corporate use): around major events (earnings, fundraises, M&A), employees with material non-public information can't trade company stock or speak publicly about the company.
+  Due diligence is the investigation an investor (or acquirer) does on a company before wiring money. It typically covers:
+  - Financial: revenue, burn rate, customer contracts, unit economics
+  - Legal: cap table, IP ownership, employee agreements, pending litigation
+  - Technical: code quality, infrastructure, security posture, data governance — this is what Edward's "technical due diligence package" (line 669) is for                                                                  
+  - Customer/reference: calls with existing customers                                                                                                                                                                       
+  - Team: background checks, retention risk
+ 
 Dev tips:
+    Phase 1: explicit instructions ("Type ls to see what's in this directory"). 
+    Phase 2: contextual hints ("Something seems hidden here..." → player must recall ls -a). 
+    Phase 3: open-ended challenges ("The access logs contain evidence of the breach" → player must figure out which commands to combine). 
 - Narrative context creates durable memory. "Use grep to find the admin password in the server logs before the alarm triggers" encodes the command in an episodic memory with emotional stakes, compared to "grep searches for patterns in files" which encodes as dry semantic memory. 
 - Validate results, not keystrokes, e.g. "find the hidden file," should accept ls -a, ls -la, find . -name ".*", or any other valid approach.
     Tier 1 — pwd, ls (with -l, -a flags), cd (with ., .., ~, absolute/relative paths), cat, echo, mkdir, touch, cp, mv, rm, clear, and man/--help. 
     Tier 2 — grep (with -r, -i, -n), find (with -name, -type), head/tail, less, wc, sort, uniq, chmod, pipes (|), I/O redirection (>, >>, <), which, and alias. chain grep | sort | uniq -c | sort -n to find anomalies.
     Tier 3 — curl/wget, tar/gzip, ssh, ps/kill, df/du, sed/awk, xargs, ln, and env/export
 
-- The Series A blackout date (March 10-21) ties into the game's timeline where due diligence starts March 15.
 
 ```sql
 select

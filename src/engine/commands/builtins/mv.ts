@@ -26,6 +26,7 @@ const mv: CommandHandler = (args, _flags, ctx) => {
 
   // Copy then remove
   if (isFile(srcNode)) {
+    const existedBefore = !!ctx.fs.getNode(destPath);
     const writeResult = ctx.fs.writeFile(destPath, srcNode.content);
     if (writeResult.error) {
       return { output: writeResult.error, exitCode: 1 };
@@ -34,7 +35,13 @@ const mv: CommandHandler = (args, _flags, ctx) => {
     if (removeResult.error) {
       return { output: removeResult.error, exitCode: 1 };
     }
-    return { output: "", newFs: removeResult.fs };
+    return {
+      output: "",
+      newFs: removeResult.fs,
+      triggerEvents: [
+        { type: existedBefore ? "file_modified" : "file_created", detail: destPath },
+      ],
+    };
   }
 
   return { output: `mv: cannot move '${args[0]}' to '${args[1]}': directory moves are not supported` };

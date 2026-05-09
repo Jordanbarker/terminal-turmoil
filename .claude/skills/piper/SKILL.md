@@ -34,7 +34,7 @@ src/story/piper/
     ├── jordan.ts      # Jordan Kessler
     ├── maya.ts        # Maya Johnson
     ├── soham.ts       # Soham Parekh
-    ├── edward.ts      # Edward Torres (Chip onboarding DM chain)
+    ├── edward.ts      # Edward Torres (Chip onboarding DM chain + Chapter 3 plugin quest)
     └── ambient.ts     # Ambient channel chatter (general, engineering)
 
 src/engine/commands/builtins/piper.ts  # Command registration

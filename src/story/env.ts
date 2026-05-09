@@ -55,6 +55,23 @@ export function getDefaultEnv(computerId: ComputerId, username: string): Record<
     };
   }
 
+  if (computerId === "chipinfra") {
+    return {
+      ...base,
+      HOSTNAME: "f7e6d5c4b3a2",
+      LANG: "C.UTF-8",
+      PATH: `/opt/coder/bin:${home}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`,
+      container: "docker",
+      DEBIAN_FRONTEND: "noninteractive",
+      CODER_WORKSPACE: "chip",
+      CODER_AGENT: "main",
+      CODER_URL: "https://coder.nexacorp.internal",
+      CHIP_ENDPOINT: "https://chip.platform.internal",
+      CHIP_PLATFORM_HOME: "/srv/chip",
+      CHIP_PLUGINS_DIR: "/opt/chip/plugins",
+    };
+  }
+
   // devcontainer
   return {
     ...base,

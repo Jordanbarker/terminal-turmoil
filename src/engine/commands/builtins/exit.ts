@@ -2,7 +2,7 @@ import { CommandHandler } from "../types";
 import { register } from "../registry";
 
 const exit: CommandHandler = (_args, _flags, ctx) => {
-  if (ctx.activeComputer === "devcontainer") {
+  if (ctx.activeComputer === "devcontainer" || ctx.activeComputer === "chipinfra") {
     return { output: "", transitionTo: "nexacorp" };
   }
   if (ctx.activeComputer === "nexacorp" && ctx.storyFlags?.read_end_of_day) {

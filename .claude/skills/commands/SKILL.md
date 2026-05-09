@@ -208,10 +208,27 @@ interface AppliedEffects {
 ### What `computeEffects` Does
 
 1. **Builds event list** — always adds `command_executed`; file-read commands (`cat`, `head`, `tail`, `grep`, `diff`, `wc`, `sort`, `uniq`, `file`, `pdftotext`) auto-add `file_read` events per argument
-2. **Processes story flag triggers** — delegates to `checkStoryFlagTriggers()` for home or NexaCorp triggers
+2. **Processes story flag triggers** — delegates to `checkStoryFlagTriggers()` for the active computer's triggers
 3. **Checks email delivery** — calls `checkEmailDeliveries()` for each event
 4. **Detects transitions** — recognizes `nexacorp_followup` email read → `triggerTransition: true`
 5. **Special NexaCorp logic** — `diff` on `.bak` files sets `discovered_log_tampering`
+
+### `GameEvent` Vocabulary (`engine/mail/delivery.ts`)
+
+The full event union accepted by the dispatcher and the StoryFlagTrigger matcher:
+
+| Event              | Emitter(s) |
+|--------------------|------------|
+| `command_executed` | Always emitted by `computeEffects` |
+| `file_read`        | Auto-emitted for read-shaped commands (cat/head/tail/etc.) |
+| `directory_visit`  | `ls`, `cd` |
+| `directory_created`| `mkdir` |
+| `file_created`     | `touch`, `cp`, `mv`, `nano` save, `>`/`>>` redirection — when the path **did not previously exist** |
+| `file_modified`    | `nano` save, `cp`, `mv`, `>`/`>>` redirection — when **overwriting an existing file** |
+| `objective_completed` | Set by Piper reply triggerEvents and the engine when objectives close |
+| `piper_delivered`  | Internal — fires on each Piper delivery |
+
+`file_created` vs `file_modified` is decided by checking `fs.getNode(path)` *before* the write. The matcher supports `path` (exact) for all events; `file_read`, `file_created`, and `file_modified` additionally support `pathPrefix`.
 
 ## Session Interface (`session/types.ts`)
 

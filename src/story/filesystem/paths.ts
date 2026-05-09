@@ -15,6 +15,13 @@ export const HOME_PATHS = {
   myCommandsTxt: (u: string) => `/home/${u}/my_commands.txt`,
 } as const;
 
+export const CHIPINFRA_PATHS = {
+  chipPluginDir: (u: string) => `/opt/chip/plugins/${u}`,
+  chipPluginManifest: (u: string) => `/opt/chip/plugins/${u}/plugin.json`,
+  chipPluginSkill: (u: string) => `/opt/chip/plugins/${u}/SKILL.md`,
+  chipPluginRegistry: "/opt/chip/plugins/registry.json",
+} as const;
+
 export const NEXACORP_PATHS = {
   accessLog: "/var/log/access.log",
   systemLog: "/var/log/system.log",

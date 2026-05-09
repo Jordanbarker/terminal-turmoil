@@ -72,11 +72,17 @@ src/
 │   │   ├── nexacorp/           # NexaCorp filesystem builder (split into modules)
 │   │   │   ├── index.ts        # createNexacorpFilesystem() composer + re-exports
 │   │   │   ├── dbt.ts          # buildDbtProject() — full dbt project tree
-│   │   │   ├── chip.ts         # buildOptDirectory() — /opt/chip/ with plugins
-│   │   │   ├── srv.ts          # buildSrvDirectory() — /srv/ marketing, ops, engineering
+│   │   │   ├── chip.ts         # buildOptDirectory() — /opt/chip/ THIN CLIENT (bin/chip stub, config, VERSION, README, cache)
+│   │   │   ├── srv.ts          # buildSrvDirectory() — /srv/ marketing, operations, engineering, leadership
 │   │   │   └── home.ts         # buildHomeDirectory() — user home dir
-│   │   ├── devcontainer.ts     # Coder dev container filesystem builder
-│   │   └── paths.ts            # HOME_PATHS and NEXACORP_PATHS constants for story flag triggers
+│   │   ├── chipinfra/          # Shared Chip platform workspace (`coder ssh chip`) — plugin runtime + RAG + inference data
+│   │   │   ├── index.ts        # createChipinfraFilesystem() composer
+│   │   │   ├── home.ts         # /home/{player}, /home/erik, /home/oscar (multi-user shared box)
+│   │   │   ├── opt.ts          # /opt/chip/ plugin runtime (10 plugins + registry.json + SDK)
+│   │   │   ├── srv.ts          # /srv/ai/rag/ (RAG corpus) + /srv/chip/ (embeddings, prompts, cache, logs)
+│   │   │   └── tmp.ts          # /tmp/ with Erik's stale ssh agent socket (world-building only)
+│   │   ├── devcontainer.ts     # Coder dev container filesystem builder (`coder ssh ai`, per-player)
+│   │   └── paths.ts            # HOME_PATHS, NEXACORP_PATHS, CHIPINFRA_PATHS constants for story flag triggers
 │   ├── chip/
 │   │   └── menuItems.ts        # Chip menu items and responses
 │   ├── piper/
@@ -99,11 +105,11 @@ src/
 - **Single-page app**: Chapter transitions are state changes, not route changes
 - **Dynamic xterm import**: `ssr: false` required because xterm.js needs `window`
 - **Static export**: `output: 'export'` in next.config.ts, deployed to GitHub Pages
-- **Three computers**: Home PC (`"home"`), NexaCorp workstation (`"nexacorp"`), and Coder dev container (`"devcontainer"`) with separate filesystems stored in `computerState` (Zustand). `ComputerId` type in `state/types.ts`; `PLAYER` and `COMPUTERS` config in `story/player.ts`. The dev container is accessed from NexaCorp via `coder ssh ai` and exited with `exit`. First-time transitions trigger fullscreen animations; subsequent transitions open new tabs instantly.
+- **Four computers**: Home PC (`"home"`), NexaCorp workstation (`"nexacorp"`), per-player Coder dev container (`"devcontainer"`, hostname `coder-ai`), and the shared Chip platform Coder workspace (`"chipinfra"`, hostname `coder-chip`). Separate filesystems are stored in `computerState` (Zustand). `ComputerId` type in `state/types.ts`; `PLAYER` and `COMPUTERS` config in `story/player.ts`. Both Coder workspaces are reached from NexaCorp via `coder ssh <name>` (`ai` or `chip`) and exited with `exit`. The `chip` workspace is gated behind the `unlock_chip_plugin_development` story flag (set after Edward's Chapter 3 plugin DM). First-time transitions trigger fullscreen animations; subsequent transitions open new tabs instantly.
 - **Multi-terminal tabs**: Players can open multiple terminal tabs (max 5) on different computers simultaneously. `TabManager.tsx` orchestrates tab lifecycle. Each tab has its own xterm instance, cwd, and session state. Tab state (`tabs[]`, `activeTabId`) lives in Zustand; persisted as `tabs[]` + `activeTabIndex` in save format v5. Tabs are gated behind `tabs_unlocked` story flag (unlocked in Chapter 2). Tmux-style shortcuts: `Ctrl+B, C/X/N/P/1-5`. `Ctrl+B, X` checks `canClose()` on the active session — blocks with warning if unsaved (force-close on second attempt within 2s). "+" button shows computer selection dropdown when multiple computers are available. Per-computer command queue serializes FS mutations to prevent TOCTOU races.
 - **Per-computer FS in store**: `computerState: Record<ComputerId, { fs: VirtualFS }>` holds per-computer filesystem state. There are no legacy `fs`, `cwd`, or `activeComputer` fields — these are derived from `computerState` and `tabs`. Pipeline execution reads fresh FS from `getState().computerState[computerId]`, accumulates in local `runningFs`, writes once at end via `setComputerFs()`. CWD is per-tab via `setTabCwd()`. Active computer is derived from the active tab's `computerId`. Hooks use `getState()` for global state (storyFlags, deliveredEmailIds, etc.) instead of synced refs. Computer transitions use `setTabComputer()` to repurpose the current tab instead of stash/swap.
 - **Delivery extraction**: `processDeliveries()` in `engine/commands/processDeliveries.ts` is a pure function extracted from `computeEffects()`. Handles story flag triggers, email/piper deliveries, piper_delivered flag cascades, and filesystem effects from `STORY_FS_EFFECTS` (`story/fsEffects.ts`). Checkpoint loading in `gameStore.ts` also applies FS effects.
-- **Command availability**: Home PC has `HOME_COMMANDS` available from the start; `HOME_GATED` commands (ssh, sudo, apt, pdftotext, tree) require story flags to unlock. NexaCorp has most commands available by default (including dbt, snow, python); `NEXACORP_GATED` commands are introduced gradually via colleague messages — search tools (grep/find/diff), inspection tools (head/tail/wc), processing tools (sort/uniq), coder, chip, and piper are each gated by story flags. The dev container has a fixed whitelist (`DEVCONTAINER_COMMANDS`) with dbt/snow/python/chip always available. `availability.ts` gates command access by computer + flags; gate data lives in `story/commandGates.ts`. See the **narrative skill** for full gating details
+- **Command availability**: Home PC has `HOME_COMMANDS` available from the start; `HOME_GATED` commands (ssh, sudo, apt, pdftotext, tree) require story flags to unlock. NexaCorp has most commands available by default (including dbt, snow, python); `NEXACORP_GATED` commands are introduced gradually via colleague messages — search tools (grep/find/diff), inspection tools (head/tail/wc), processing tools (sort/uniq), coder, chip, and piper are each gated by story flags. Both Coder workspaces (`devcontainer` and `chipinfra`) share the `DEVCONTAINER_COMMANDS` whitelist (dbt/snow/python/chip always available). `availability.ts` gates command access by computer + flags; gate data lives in `story/commandGates.ts`. See the **narrative skill** for full gating details
 - **Story/engine separation**: Story content (email definitions, Piper message definitions, filesystem builders, chapters, story flags, Chip menu items, seed data) lives in `src/story/`. Engine modules (`engine/narrative/`, `engine/mail/`, `engine/piper/`, `engine/commands/availability.ts`) re-export or import from `story/` for runtime logic
 
 ## Characters

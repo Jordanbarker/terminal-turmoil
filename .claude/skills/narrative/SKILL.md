@@ -49,8 +49,8 @@ src/engine/
 
 src/story/
 ├── chapters.ts            # CHAPTERS array (chapter/objective definitions)
-├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, StoryFlagTrigger interface, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers(), getTriggersForComputer(computer, username)
-├── commandGates.ts        # HOME_COMMANDS, HOME_GATED, NEXACORP_GATED, NEXACORP_ONLY, HOME_ONLY, DEVCONTAINER_ONLY, DEVCONTAINER_COMMANDS
+├── storyFlags.ts          # STORY_FLAG_NAMES, StoryFlagName, StoryFlagTrigger interface, getStoryFlagTriggers(), getNexacorpStoryFlagTriggers(), getDevcontainerStoryFlagTriggers(), getChipinfraStoryFlagTriggers(), getTriggersForComputer(computer, username)
+├── commandGates.ts        # HOME_COMMANDS, HOME_GATED, NEXACORP_GATED, NEXACORP_ONLY, HOME_ONLY, DEVCONTAINER_ONLY, DEVCONTAINER_COMMANDS (chipinfra reuses DEVCONTAINER_COMMANDS)
 ├── player.ts              # PLAYER and COMPUTERS config
 ├── piper/
 │   ├── channels.ts        # PIPER_CHANNELS array (channel/DM definitions)
@@ -58,8 +58,9 @@ src/story/
 ├── fsEffects.ts           # STORY_FS_EFFECTS — filesystem effects applied when story flags are set (registry; currently empty)
 ├── checkpoints.ts         # Checkpoint definitions — checkpoint loading also applies FS effects
 └── filesystem/
-    ├── paths.ts           # HOME_PATHS and NEXACORP_PATHS constants for story flag trigger paths
-    └── nexacorp/           # createNexacorpFilesystem(username, storyFlags) — split into index, dbt, chip, srv, home
+    ├── paths.ts           # HOME_PATHS, NEXACORP_PATHS, CHIPINFRA_PATHS constants for story flag trigger paths
+    ├── nexacorp/          # createNexacorpFilesystem(username, storyFlags) — split into index, dbt, chip (thin client), srv, home
+    └── chipinfra/         # createChipinfraFilesystem(username, storyFlags) — shared platform workspace (`coder ssh chip`): plugin runtime, RAG corpus, multi-user homes
 
 src/state/
 ├── types.ts               # StoryFlags, ComputerId, GamePhase, GameState
@@ -72,7 +73,7 @@ src/state/
 
 ```ts
 type StoryFlags = Record<string, string | boolean>;
-type ComputerId = "home" | "nexacorp" | "devcontainer";
+type ComputerId = "home" | "nexacorp" | "devcontainer" | "chipinfra";
 type GamePhase = "login" | "booting" | "playing" | "transitioning";
 ```
 
@@ -80,7 +81,7 @@ type GamePhase = "login" | "booting" | "playing" | "transitioning";
 
 ```ts
 interface StoryFlagTrigger {
-  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "piper_delivered" | "objective_completed";
+  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "file_created" | "file_modified" | "piper_delivered" | "objective_completed";
   path?: string;          // Exact path match (most common)
   pathPrefix?: string;    // Match any path starting with this prefix (e.g. "~/Downloads/")
   detail?: string;        // Match the event's `detail` field (command names, email IDs, etc.)
@@ -120,7 +121,8 @@ To find what triggers a flag, search `src/story/storyFlags.ts`:
 |----------|-------|
 | `getStoryFlagTriggers(username)` | Home PC triggers |
 | `getNexacorpStoryFlagTriggers(username)` | NexaCorp triggers |
-| `getDevcontainerStoryFlagTriggers(username)` | Dev container triggers |
+| `getDevcontainerStoryFlagTriggers(username)` | Dev container triggers (`coder ssh ai`) |
+| `getChipinfraStoryFlagTriggers(username)` | Chip platform workspace triggers (`coder ssh chip`) |
 | `getTriggersForComputer(computer, username)` | Dispatcher used at runtime |
 
 ### Frequently referenced flag groups (orient yourself by purpose)

@@ -13,6 +13,11 @@ interface CommandLineDeps {
   writePrompt: (term: Terminal) => void;
 }
 
+// Stable reference for the empty-history fallback. Returning a fresh `[]`
+// from the Zustand selector triggers React's "getSnapshot should be cached"
+// infinite-loop bailout when computerState[computerId] is missing.
+const EMPTY_HISTORY: string[] = [];
+
 export interface CommandLineResult {
   type: "submit";
   input: string;
@@ -39,7 +44,7 @@ export function useCommandLine(deps: CommandLineDeps) {
 
   const pushHistory = useGameStore((s) => s.pushHistory);
   const computerId = activeComputerRef.current;
-  const commandHistory = useGameStore((s) => s.computerState[computerId]?.commandHistory ?? []);
+  const commandHistory = useGameStore((s) => s.computerState[computerId]?.commandHistory ?? EMPTY_HISTORY);
 
   const historyRef = useRef(commandHistory);
   const historyIndexRef = useRef(-1);

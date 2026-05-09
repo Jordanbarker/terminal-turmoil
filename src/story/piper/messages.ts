@@ -89,6 +89,9 @@ export const PIPER_DELIVERY_IDS = [
   "edward_chip_intro",
   "edward_chip_error",
   "edward_chip_fix",
+  "edward_plugin_request",
+  "edward_plugin_report",
+  "edward_plugin_ack",
   // Ambient deliveries
   "general_kitchen_debate",
   "general_standup_cancelled",

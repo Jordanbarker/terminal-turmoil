@@ -124,14 +124,32 @@ describe("createNexacorpFilesystem", () => {
       expect(result.content).toContain("nexacorp-ws01");
     });
 
-    it("has /opt/chip with README.md", () => {
+    it("has /opt/chip with thin-client README.md", () => {
       const result = fs.readFile("/opt/chip/README.md");
-      expect(result.content).toContain("Collaborative Helper");
+      // Plugin runtime moved to chipinfra; ws01 only has the client.
+      expect(result.content).toContain("Chip CLI (client)");
     });
 
-    it("has /opt/chip/config/settings.json", () => {
+    it("has /opt/chip/bin/chip stub script", () => {
+      const result = fs.readFile("/opt/chip/bin/chip");
+      expect(result.content).toContain("Chip CLI v2.4.1");
+      expect(result.content).toContain("Thin client");
+    });
+
+    it("has /opt/chip/config/settings.json with platform endpoint", () => {
       const result = fs.readFile("/opt/chip/config/settings.json");
-      expect(result.content).toContain('"name": "Chip"');
+      expect(result.content).toContain('"endpoint":');
+      expect(result.content).toContain("chip.platform.internal");
+    });
+
+    it("does NOT have /opt/chip/plugins/ on ws01 (moved to chipinfra)", () => {
+      const result = fs.readFile("/opt/chip/plugins/registry.json");
+      expect(result.content).toBeUndefined();
+    });
+
+    it("does NOT have /srv/ai/ on ws01 (moved to chipinfra)", () => {
+      const result = fs.readFile("/srv/ai/rag/engineering/coding-standards.md");
+      expect(result.content).toBeUndefined();
     });
   });
 

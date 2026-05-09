@@ -1,8 +1,8 @@
 import type { ComputerId } from "../state/types";
-import { HOME_PATHS, NEXACORP_PATHS } from "./filesystem/paths";
+import { HOME_PATHS, NEXACORP_PATHS, CHIPINFRA_PATHS } from "./filesystem/paths";
 
 export interface StoryFlagTrigger {
-  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "piper_delivered" | "objective_completed";
+  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "file_created" | "file_modified" | "piper_delivered" | "objective_completed";
   path?: string;
   pathPrefix?: string;
   detail?: string;
@@ -113,6 +113,16 @@ export const STORY_FLAG_NAMES = [
   "fixed_campaign_model",
   "pushed_fix_branch",
   "reported_fix_to_auri",
+
+  // Chapter 3: Build a Chip plugin (Edward's investor-demo quest)
+  "unlock_chip_plugin_development",
+  "chipinfra_visited",
+  "read_plugin_template",
+  "created_chip_plugin_dir",
+  "wrote_plugin_manifest",
+  "wrote_plugin_skill",
+  "registered_chip_plugin",
+  "reported_plugin_to_edward",
 ] as const;
 
 export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
@@ -196,13 +206,8 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.pipelineRuns, flag: "auri_used_wc", value: true },
     { event: "file_read", path: p.systemLogBak, flag: "found_backup_files", value: true },
     { event: "file_read", path: p.authLogBak, flag: "found_auth_backup", value: true },
-    { event: "file_read", path: p.chipPluginSdk, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipTicketTriage, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipSystemMonitor, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipAlertRouting, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipAnalyticsReports, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipLogMaintenance, flag: "found_chip_directives", value: true },
-    { event: "file_read", path: p.chipCleanup, flag: "found_cleanup_script", value: true },
+    // NOTE: found_chip_directives / found_cleanup_script triggers moved to
+    // getChipinfraStoryFlagTriggers — the plugin tree now lives on chipinfra.
     { event: "directory_visit", path: p.chenHandoff, flag: "auri_listed_handoff", value: true },
     { event: "file_read", path: p.chenHandoffTodo, flag: "auri_read_todo", value: true },
     { event: "file_read", path: p.onboarding, flag: "read_onboarding", value: true },
@@ -226,13 +231,52 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.headcountPlan, flag: "read_headcount_plan", value: true },
     // Day 2 quest: Piper reply fires on nexacorp since dm_auri defaults there
     { event: "objective_completed", detail: "reported_fix_to_auri", flag: "reported_fix_to_auri", value: true },
+
+    // Chapter 3 plugin quest: Edward's investor-demo DM. The "On it" reply
+    // unlocks the chipinfra workspace via `coder ssh chip`.
+    { event: "objective_completed", detail: "accepted_edward_plugin_request", flag: "unlock_chip_plugin_development", value: true, toast: "Workspace unlocked: coder ssh chip" },
+    { event: "objective_completed", detail: "reported_plugin_to_edward", flag: "reported_plugin_to_edward", value: true },
   ];
 }
 
 export function getTriggersForComputer(computer: ComputerId, username: string): StoryFlagTrigger[] {
   if (computer === "home") return getStoryFlagTriggers(username);
   if (computer === "devcontainer") return getDevcontainerStoryFlagTriggers(username);
+  if (computer === "chipinfra") return getChipinfraStoryFlagTriggers(username);
   return getNexacorpStoryFlagTriggers(username);
+}
+
+export function getChipinfraStoryFlagTriggers(username: string): StoryFlagTrigger[] {
+  const p = CHIPINFRA_PATHS;
+  const np = NEXACORP_PATHS;
+  return [
+    // Read an existing plugin's manifest or SKILL.md to see the format.
+    { event: "file_read", pathPrefix: "/opt/chip/plugins/", flag: "read_plugin_template", value: true },
+
+    // Chapter 2 "explore_jchen" investigation — directives now live on chipinfra
+    // since the plugin tree migrated. The objective is optional and back-fills
+    // when the player reaches chipinfra in Chapter 3+.
+    { event: "file_read", path: np.chipPluginSdk, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipTicketTriage, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipSystemMonitor, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipAlertRouting, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipAnalyticsReports, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipLogMaintenance, flag: "found_chip_directives", value: true },
+    { event: "file_read", path: np.chipCleanup, flag: "found_cleanup_script", value: true },
+
+    // Player creates their plugin directory at /opt/chip/plugins/{username}/.
+    // Path resolved at trigger-fetch time using the username in scope here —
+    // mirrors how `created_projects_dir` works in getStoryFlagTriggers.
+    { event: "directory_created", path: p.chipPluginDir(username), flag: "created_chip_plugin_dir", value: true },
+
+    // Plugin manifest + skill files written via nano save / touch / cp / mv / > redirect.
+    { event: "file_created", path: p.chipPluginManifest(username), flag: "wrote_plugin_manifest", value: true },
+    { event: "file_created", path: p.chipPluginSkill(username), flag: "wrote_plugin_skill", value: true },
+
+    // Optional/extra-credit: register the plugin in registry.json (file_modified, since the
+    // file already exists). file_created would NOT fire here because the registry pre-exists.
+    { event: "file_modified", path: p.chipPluginRegistry, flag: "registered_chip_plugin", value: true },
+  ];
 }
 
 export function getDevcontainerStoryFlagTriggers(username: string): StoryFlagTrigger[] {

@@ -6,7 +6,13 @@ import { isFile, isDirectory, DirectoryNode } from "../../filesystem/types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { HELP_TEXTS } from "./helpTexts";
 
-function copyDir(fs: VirtualFS, srcPath: string, destPath: string): { fs: VirtualFS; error?: string } {
+function copyDir(
+  fs: VirtualFS,
+  srcPath: string,
+  destPath: string,
+  createdPaths: string[],
+  modifiedPaths: string[]
+): { fs: VirtualFS; error?: string } {
   const srcNode = fs.getNode(srcPath);
   if (!srcNode || !isDirectory(srcNode)) {
     return { fs, error: `cp: cannot access '${srcPath}': No such file or directory` };
@@ -16,11 +22,13 @@ function copyDir(fs: VirtualFS, srcPath: string, destPath: string): { fs: Virtua
     const childSrc = srcPath + "/" + child.name;
     const childDest = destPath + "/" + child.name;
     if (isFile(child)) {
+      const existedBefore = !!currentFs.getNode(childDest);
       const result = currentFs.writeFile(childDest, child.content);
       if (result.error) return { fs: currentFs, error: result.error };
       if (result.fs) currentFs = result.fs;
+      (existedBefore ? modifiedPaths : createdPaths).push(childDest);
     } else if (isDirectory(child)) {
-      const result = copyDir(currentFs, childSrc, childDest);
+      const result = copyDir(currentFs, childSrc, childDest, createdPaths, modifiedPaths);
       if (result.error) return result;
       currentFs = result.fs;
     }
@@ -50,9 +58,18 @@ const cp: CommandHandler = (args, flags, ctx) => {
     if (destNode && isDirectory(destNode)) {
       destPath = destPath + "/" + srcNode.name;
     }
-    const result = copyDir(ctx.fs, srcPath, destPath);
+    const createdPaths: string[] = [];
+    const modifiedPaths: string[] = [];
+    const result = copyDir(ctx.fs, srcPath, destPath, createdPaths, modifiedPaths);
     if (result.error) return { output: result.error, exitCode: 1 };
-    return { output: "", newFs: result.fs };
+    return {
+      output: "",
+      newFs: result.fs,
+      triggerEvents: [
+        ...createdPaths.map((p) => ({ type: "file_created" as const, detail: p })),
+        ...modifiedPaths.map((p) => ({ type: "file_modified" as const, detail: p })),
+      ],
+    };
   }
 
   // If dest is a directory, copy source into it
@@ -61,12 +78,19 @@ const cp: CommandHandler = (args, flags, ctx) => {
     destPath = destPath + "/" + srcNode.name;
   }
 
+  const existedBefore = !!ctx.fs.getNode(destPath);
   const writeResult = ctx.fs.writeFile(destPath, srcNode.content);
   if (writeResult.error) {
     return { output: writeResult.error, exitCode: 1 };
   }
 
-  return { output: "", newFs: writeResult.fs };
+  return {
+    output: "",
+    newFs: writeResult.fs,
+    triggerEvents: [
+      { type: existedBefore ? "file_modified" : "file_created", detail: destPath },
+    ],
+  };
 };
 
 register("cp", cp, "Copy files", HELP_TEXTS.cp);

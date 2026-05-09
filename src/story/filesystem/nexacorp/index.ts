@@ -55,7 +55,7 @@ export function createNexacorpFilesystem(username: string, storyFlags: StoryFlag
     }),
   }),
   etc: buildEtcDirectory(),
-  opt: buildOptDirectory(logOpts),
+  opt: buildOptDirectory(),
   srv: buildSrvDirectory(overBudget),
   tmp: dir("tmp", {}),
 });

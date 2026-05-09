@@ -37,6 +37,7 @@ Full snapshot of all game state:
   username, gamePhase, currentChapter, completedObjectives,
   deliveredEmailIds, deliveredPiperIds: string[];
   storyFlags: StoryFlags;
+  // Keyed by ComputerId ("home" | "nexacorp" | "devcontainer" | "chipinfra")
   computerStates: Record<string, { fs: SerializedFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string> }>;
   tabs: SavedTabState[];      // Tab layout: {computerId, cwd}[]
   activeTabIndex: number;     // Index of active tab in tabs[]

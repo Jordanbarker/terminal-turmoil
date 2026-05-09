@@ -282,10 +282,14 @@ export function useTerminal() {
 
       // Computer transitions — first-time (full animation)
       if (effects.transitionTo === "devcontainer") {
-        runCoderTransition(term);
+        runCoderTransition(term, "devcontainer");
         return true;
       }
-      if (effects.transitionTo === "nexacorp" && computerId === "devcontainer") {
+      if (effects.transitionTo === "chipinfra") {
+        runCoderTransition(term, "chipinfra");
+        return true;
+      }
+      if (effects.transitionTo === "nexacorp" && (computerId === "devcontainer" || computerId === "chipinfra")) {
         runExitToNexacorp(term);
         return true;
       }

@@ -5,6 +5,7 @@ import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { createNexacorpFilesystem } from "../story/filesystem/nexacorp";
 import { createHomeFilesystem } from "../story/filesystem/home";
 import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
+import { createChipinfraFilesystem } from "../story/filesystem/chipinfra";
 import { serializeFS, deserializeFS, SerializedFS } from "../engine/filesystem/serialization";
 import { createSaveData, saveToSlot, loadFromSlot } from "./saveManager";
 import { SaveSlotId } from "./saveTypes";
@@ -88,7 +89,9 @@ export function buildFs(
     ? createHomeFilesystem(username)
     : computer === "devcontainer"
       ? createDevcontainerFilesystem(username, storyFlags)
-      : createNexacorpFilesystem(username, storyFlags);
+      : computer === "chipinfra"
+        ? createChipinfraFilesystem(username, storyFlags)
+        : createNexacorpFilesystem(username, storyFlags);
   let fs = new VirtualFS(
     root,
     `/home/${username}`,
@@ -445,6 +448,23 @@ export const useGameStore = create<GameStore>()(
           tabs = [{ id: nextTabId(), computerId: "home", cwd: `/home/${username}` }];
         }
         const activeIdx = Math.min(persistedActiveTabIndex, tabs.length - 1);
+
+        // Ensure every tab's computer has a corresponding computerState entry.
+        // A persisted tab can outlive its computerState if the FS failed to
+        // deserialize above, or if the save predates a new ComputerId. Without
+        // this rebuild, useTerminal asserts on store.computerState[id]!.fs.
+        for (const t of tabs) {
+          if (!computerState[t.computerId]) {
+            const fs = buildFs(username, t.computerId, storyFlags, (p.deliveredEmailIds as string[]) ?? []);
+            const finalFs = t.computerId === "nexacorp" ? syncToVirtualFS(sfState, fs) : fs;
+            computerState[t.computerId] = {
+              fs: finalFs,
+              commandHistory: [],
+              envVars: initEnvForComputer(t.computerId, username, finalFs),
+              aliases: initAliasesForComputer(t.computerId, username, finalFs),
+            };
+          }
+        }
 
         return {
           ...currentState,

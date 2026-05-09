@@ -9,4 +9,5 @@ export const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: s
   home: { hostname: "maniac-iv", promptHostname: "maniac-iv" },
   nexacorp: { hostname: "nexacorp-ws01", promptHostname: "nexacorp-ws01" },
   devcontainer: { hostname: "coder-ai", promptHostname: "coder-ai" },
+  chipinfra: { hostname: "coder-chip", promptHostname: "coder-chip" },
 };
