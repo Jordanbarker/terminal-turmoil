@@ -23,6 +23,8 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "  -a, --all              do not ignore entries starting with .",
     "  -A, --almost-all       like -a but do not list . and ..",
+    "  -C                     list entries by columns",
+    "  -F                     append indicator (one of */) to entries",
     "  -l                     use a long listing format",
     "  -h, --human-readable   print sizes in human readable format",
   ].join("\n"),

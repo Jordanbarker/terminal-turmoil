@@ -56,6 +56,13 @@ function createTestFS(): VirtualFS {
                 permissions: "rw-r--r--",
                 hidden: false,
               },
+              "run.sh": {
+                type: "file",
+                name: "run.sh",
+                content: "#!/bin/sh\necho hi\n",
+                permissions: "rwxr-xr-x",
+                hidden: false,
+              },
               ".hidden": {
                 type: "file",
                 name: ".hidden",
@@ -150,10 +157,15 @@ describe("ls", () => {
 
   it("shows human-readable sizes with -lh", () => {
     const result = execute("ls", [], { l: true, h: true }, ctx());
-    // directories = 4096 → "4K"
-    expect(result.output).toContain("4K");
+    // directories = 4096 → "4.0K" (coreutils keeps the .0 for single-digit values)
+    expect(result.output).toContain("4.0K");
     // 11 bytes stays as "11"
     expect(result.output).toContain("11");
+  });
+
+  it("includes total header in long format", () => {
+    const result = execute("ls", [], { l: true }, ctx());
+    expect(stripAnsi(result.output)).toMatch(/^total \d+/m);
   });
 
   it("lists a specific directory", () => {
@@ -204,6 +216,67 @@ describe("ls", () => {
     const result = execute("ls", ["/nonexistent", "docs"], {}, ctx());
     expect(result.output).toContain("No such file or directory");
     expect(result.output).toContain("readme.md");
+  });
+
+  it("appends / to directories with -F", () => {
+    const result = execute("ls", [], { F: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("docs/");
+  });
+
+  it("appends * to executable files with -F", () => {
+    const result = execute("ls", [], { F: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("run.sh*");
+  });
+
+  it("leaves regular files unmarked with -F", () => {
+    const result = execute("ls", [], { F: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toMatch(/notes\.txt(?![/*])/);
+  });
+
+  it("packs entries side-by-side in column layout with -C", () => {
+    const c = ctx();
+    const result = execute("ls", [], { C: true }, { ...c, envVars: { COLUMNS: "24" } });
+    const plain = stripAnsi(result.output);
+    const lines = plain.split("\n");
+    const hasSideBySide = lines.some((line) => /\S\s{2,}\S/.test(line));
+    expect(hasSideBySide).toBe(true);
+  });
+
+  it("falls back to one-per-line with -C when piped", () => {
+    const c = ctx();
+    const result = execute("ls", [], { C: true }, { ...c, isPiped: true });
+    const plain = stripAnsi(result.output);
+    const lines = plain.split("\n").filter((l) => l.length > 0);
+    for (const line of lines) {
+      expect(line.trim().includes(" ")).toBe(false);
+    }
+  });
+
+  it("combines -CF with classify suffixes in column layout", () => {
+    const c = ctx();
+    const result = execute("ls", [], { C: true, F: true }, { ...c, envVars: { COLUMNS: "20" } });
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("docs/");
+    expect(plain).toContain("run.sh*");
+  });
+
+  it("ignores -C when -l is also set", () => {
+    const result = execute("ls", [], { l: true, C: true }, ctx());
+    const plain = stripAnsi(result.output);
+    expect(plain).toContain("rw-r--r--");
+    expect(plain.split("\n").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("respects COLUMNS env var to narrow column count", () => {
+    const c = ctx();
+    const wide = execute("ls", [], { C: true }, { ...c, envVars: { COLUMNS: "200" } });
+    const narrow = execute("ls", [], { C: true }, { ...c, envVars: { COLUMNS: "10" } });
+    const wideLines = stripAnsi(wide.output).split("\n").length;
+    const narrowLines = stripAnsi(narrow.output).split("\n").length;
+    expect(narrowLines).toBeGreaterThan(wideLines);
   });
 });
 
@@ -713,8 +786,8 @@ describe("df", () => {
 
   it("shows human-readable sizes with -h", () => {
     const result = execute("df", [], { h: true }, ctx());
-    // NexaCorp = 1T total
-    expect(result.output).toContain("1T");
+    // NexaCorp = 1T total → "1.0T" (coreutils keeps the .0 for single-digit values)
+    expect(result.output).toContain("1.0T");
     expect(result.output).toContain("/dev/sda1");
   });
 });

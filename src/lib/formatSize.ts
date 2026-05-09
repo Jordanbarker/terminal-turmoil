@@ -13,7 +13,8 @@ export function formatSize(bytes: number, humanReadable: boolean): string {
     unitIndex++;
   }
 
-  // Show one decimal place, drop trailing .0
-  const formatted = value % 1 === 0 ? String(value) : value.toFixed(1);
+  // Match coreutils human-readable: 1 decimal for single-digit values
+  // (4.0K, 9.5K), drop the decimal once we hit 10+ (10K, 256M, 50G).
+  const formatted = value < 10 ? value.toFixed(1) : Math.round(value).toString();
   return `${formatted}${units[unitIndex]}`;
 }

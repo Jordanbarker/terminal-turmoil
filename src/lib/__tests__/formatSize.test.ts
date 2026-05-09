@@ -14,22 +14,24 @@ describe("formatSize", () => {
   });
 
   it("formats kilobytes", () => {
-    expect(formatSize(1024, true)).toBe("1K");
+    expect(formatSize(1024, true)).toBe("1.0K");
     expect(formatSize(1536, true)).toBe("1.5K");
-    expect(formatSize(4096, true)).toBe("4K");
+    expect(formatSize(4096, true)).toBe("4.0K");
+    expect(formatSize(9.5 * 1024, true)).toBe("9.5K");
+    expect(formatSize(10 * 1024, true)).toBe("10K");
   });
 
   it("formats megabytes", () => {
-    expect(formatSize(1048576, true)).toBe("1M");
+    expect(formatSize(1048576, true)).toBe("1.0M");
     expect(formatSize(2621440, true)).toBe("2.5M");
   });
 
   it("formats gigabytes", () => {
-    expect(formatSize(1073741824, true)).toBe("1G");
+    expect(formatSize(1073741824, true)).toBe("1.0G");
     expect(formatSize(53687091200, true)).toBe("50G");
   });
 
   it("formats terabytes", () => {
-    expect(formatSize(1099511627776, true)).toBe("1T");
+    expect(formatSize(1099511627776, true)).toBe("1.0T");
   });
 });
