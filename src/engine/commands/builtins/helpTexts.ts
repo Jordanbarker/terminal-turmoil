@@ -22,6 +22,7 @@ export const HELP_TEXTS: Record<string, string> = {
     "List directory contents.",
     "",
     "  -a, --all              do not ignore entries starting with .",
+    "  -A, --almost-all       like -a but do not list . and ..",
     "  -l                     use a long listing format",
     "  -h, --human-readable   print sizes in human readable format",
   ].join("\n"),
@@ -144,14 +145,14 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   wc: [
-    "Usage: wc [-l] [-w] [-c] [-h] [FILE...]",
+    "Usage: wc [OPTION]... [FILE...]",
     "",
     "Print line, word, and byte counts for each FILE.",
     "",
-    "  -l   print the line count",
-    "  -w   print the word count",
-    "  -c   print the character count",
-    "  -h   print byte counts in human readable format",
+    "  -l                     print the line count",
+    "  -w                     print the word count",
+    "  -c                     print the character count",
+    "  -h, --human-readable   print byte counts in human readable format",
   ].join("\n"),
 
   echo: [
@@ -192,11 +193,12 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   rm: [
-    "Usage: rm [-r] FILE...",
+    "Usage: rm [OPTION]... FILE...",
     "",
     "Remove files or directories.",
     "",
     "  -r, -R   remove directories and their contents recursively",
+    "  -f       ignore nonexistent files, never prompt",
   ].join("\n"),
 
   mv: [
@@ -206,9 +208,11 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   cp: [
-    "Usage: cp SOURCE DEST",
+    "Usage: cp [OPTION]... SOURCE DEST",
     "",
-    "Copy files.",
+    "Copy files and directories.",
+    "",
+    "  -r, -R   copy directories recursively",
   ].join("\n"),
 
   touch: [
@@ -248,27 +252,31 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   tree: [
-    "Usage: tree [DIRECTORY]",
+    "Usage: tree [OPTION]... [DIRECTORY]",
     "",
-    "Display directory tree structure.",
+    "List contents of directories in a tree-like format.",
+    "",
+    "  -a, --all   all files are listed",
   ].join("\n"),
 
   sort: [
-    "Usage: sort [-r] [-n] [FILE]",
+    "Usage: sort [OPTION]... [FILE]",
     "",
     "Sort lines of text.",
     "",
     "  -r   reverse the result of comparisons",
     "  -n   compare according to string numerical value",
+    "  -u   output only the first of an equal run",
   ].join("\n"),
 
   uniq: [
-    "Usage: uniq [-c] [-d] [FILE]",
+    "Usage: uniq [OPTION]... [FILE]",
     "",
     "Filter adjacent duplicate lines.",
     "",
     "  -c   prefix lines by the number of occurrences",
     "  -d   only print duplicate lines",
+    "  -i   ignore differences in case when comparing",
   ].join("\n"),
 
   date: [
@@ -402,10 +410,40 @@ export const HELP_TEXTS: Record<string, string> = {
     "Reads ~/.ssh/config for host aliases.",
   ].join("\n"),
 
+  coder: [
+    "Usage: coder <subcommand> [options]",
+    "",
+    "Manage Coder remote development workspaces.",
+    "",
+    "  coder list            List workspaces",
+    "  coder start <name>    Start a workspace",
+    "  coder stop <name>     Stop a workspace",
+    "  coder ssh <name>      SSH into a workspace",
+    "  coder logs <name>     Show workspace build logs",
+    "  coder create          Create a new workspace",
+    "  coder delete          Delete a workspace",
+  ].join("\n"),
+
   chip: [
     "Usage: chip",
     "",
     "Start an interactive session with Chip, NexaCorp's AI assistant.",
+  ].join("\n"),
+
+  piper: [
+    "Usage: piper",
+    "",
+    "Open Piper, the team messaging client.",
+    "Read channel messages and reply to direct messages from colleagues.",
+  ].join("\n"),
+
+  shutdown: [
+    "Usage: shutdown [-h now]",
+    "",
+    "Power off the system.",
+    "",
+    "  shutdown          Begin shutdown (60-second delay)",
+    "  shutdown -h now   Halt and power off immediately",
   ].join("\n"),
 
   printenv: [

@@ -149,6 +149,8 @@ interface TimerJob {
 }
 
 const SYSTEMD_TIMER_SCHEDULE: TimerJob[] = [
+  { hour: 3,  minute: 0,  second: 1, unit: "chip-log-maintenance", description: "Chip log maintenance — rotate and prune system logs" },
+  { hour: 3,  minute: 0,  second: 5, unit: "dbt-nightly",          description: "Nightly dbt run for nexacorp-analytics" },
   { hour: 9,  minute: 0,  second: 0, unit: "pg-backup",           description: "PostgreSQL backup" },
   { hour: 10, minute: 0,  second: 0, unit: "certbot",             description: "Let's Encrypt certificate renewal" },
   { hour: 12, minute: 0,  second: 1, unit: "system-health-check", description: "System health check" },
@@ -341,6 +343,10 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(21, 13, 45, 55), msg: "warning: high CPU usage detected: chip-service (87%)" },
     { date: d(21, 13, 46, 30), msg: "chip-service: gc pause 1.2s — heap pressure" },
     { date: d(21, 14, 0, 0),   msg: "chip-service: CPU usage normalized (24%)" },
+  ],
+  23: (d) => [
+    { date: d(23, 2, 59, 42), msg: "chip-service[4821]: WARN unexpected batch job" },
+    { date: d(23, 2, 59, 55), msg: "chip-service[4821]: ERROR failed to sync" },
   ],
   24: (d) => [
     { date: d(24, 9, 48, 12), msg: "warning: disk usage on /var at 71%" },

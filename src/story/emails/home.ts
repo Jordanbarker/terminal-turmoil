@@ -65,6 +65,17 @@ const persuasion2ReplyOptions: ReplyOption[] = [
   },
 ];
 
+const chipSshSetupReplyOptions: ReplyOption[] = [
+  {
+    label: "Thanks, looking forward to it!",
+    replyBody: `Hi Chip,\n\nThanks for the setup info — I'll get connected.`,
+  },
+  {
+    label: "Can you send me the host key fingerprint so I can verify?",
+    replyBody: `Hi Chip,\n\nBefore I connect, can you send me the SHA256 host key\nfingerprint for nexacorp-ws01.nexacorp.internal so I can\nverify it matches what the prompt shows? I'd rather not\ntype "yes" without checking.\n\nThanks`,
+  },
+];
+
 export function getHomeEmailDefinitions(username: string): EmailDelivery[] {
   return [
     // === Immediate emails (seeded at game start) ===
@@ -305,6 +316,7 @@ anything.
 `,
       },
       trigger: { type: "after_objective", objectiveId: "accepted_nexacorp" },
+      replyOptions: chipSshSetupReplyOptions,
     },
   ];
 }

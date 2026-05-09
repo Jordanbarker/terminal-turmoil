@@ -53,7 +53,7 @@ const tree: CommandHandler = (args, flags, ctx) => {
     return { output: target };
   }
 
-  const showAll = !!flags["a"];
+  const showAll = !!(flags["a"] || flags["all"]);
   const counts = { dirs: 0, files: 0 };
   const lines = [colorize(target, ansi.bold, ansi.blue)];
   lines.push(...buildTree(ctx.fs, absPath, "", counts, showAll));
