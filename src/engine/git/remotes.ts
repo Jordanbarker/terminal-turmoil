@@ -469,7 +469,7 @@ function buildAnalyticsCommits(): GitCommit[] {
     { // 12: Sep 15, 5:02pm — no-op
       author: JIN,
       message: "update dbt_project.yml target config",
-      timestamp: utc(2025, 9, 15, 24, 2), // 17:02 PDT
+      timestamp: utc(2025, 9, 16, 0, 2), // 17:02 PDT Sep 15 = 00:02 UTC Sep 16
       addFiles: {},
     },
 

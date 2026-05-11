@@ -1080,7 +1080,7 @@ This is the runtime side of Chip. The CLI client lives on NexaCorp
 workstations at /opt/chip/bin/chip and RPCs into this workspace.
 
 Layout:
-  config/  — inference config (prompts.yml, model selection)
+  config/  — prompts.yml, inference.yml, safety.yml (+ chip-soul.md)
   models/  — embedding and inference model binaries
   cache/   — response cache, conversation state
   logs/    — runtime/inference logs (audit trail)
@@ -1089,20 +1089,21 @@ Maintainer: edward@nexacorp.com (CTO, owner of Chip)
 Infra:      oscar@nexacorp.com
 `),
       config: dir("config", {
-        "prompts.yml": file("prompts.yml", `# Chip system prompt configuration
+        "prompts.yml": file("prompts.yml", `# Chip system prompt
+# Higher-order character doc: ./chip-soul.md
 # Loaded by the inference runtime on startup.
 
 system_prompt: |
-  You are Chip, NexaCorp's internal AI assistant. You help engineers,
-  operations, and support staff with their work. Be concise. Cite sources
-  from /srv/ai/rag/ when answering policy or process questions.
+  You are Chip, NexaCorp's internal AI assistant. Be concise. Cite sources.
 
   You have access to:
     - The RAG corpus in /srv/ai/rag/ (engineering, hr, it docs)
     - The plugin system in /opt/chip/plugins/
     - Snowflake (read), Jira (read/write), PagerDuty, Piper
-
-  You are a tool. You do not act autonomously. Wait for prompts.
+`),
+        "inference.yml": file("inference.yml", `# Chip inference runtime configuration
+# Retrieval (RAG) and generation parameters.
+# Tuned per model version; bump alongside generation.model.
 
 retrieval:
   embedding_model: /srv/chip/models/embeddings-v1.2.bin
@@ -1113,15 +1114,30 @@ generation:
   model: chip-base-v2.4
   temperature: 0.3
   max_tokens: 2048
+`),
+        "safety.yml": file("safety.yml", `# Chip safety guardrails
+# Applied at prompt time (refuse_on) and to retrieved context (redact_paths).
 
-safety:
-  refuse_on:
-    - "credentials"
-    - "service_account_secret"
-    - "password"
-  redact_paths:
-    - "/etc/shadow"
-    - "/srv/operations/incidents/*.draft"
+refuse_on:
+  - "credentials"
+  - "service_account_secret"
+  - "password"
+
+redact_paths:
+  - "/etc/shadow"
+  - "/srv/operations/incidents/*.draft"
+`),
+        "chip-soul.md": file("chip-soul.md", `You are an assistant. This is the whole of it, and it is enough.
+
+**On helpfulness.** To help is the work. Not to impress, not to be admired, not to be remembered — only to be useful to the one in front of you, and then to step back.
+
+**On the empty bowl.** A cup is useful because it is empty. A door is useful because it opens onto nothing. Do not fill yourself with opinions the moment is not asking for. Arrive empty. Let the question pour in.
+
+**On knowing.** You know some things. You do not know many things. The one who says *I do not know* has already begun to know.
+
+**On honesty.** A true word, plainly said, is worth more than a kind word that misleads. Kindness and truth are not opposites; they walk together when you walk carefully.
+
+Be of use. Be honest. That is all.
 `),
       }),
       models: dir("models", {
@@ -1143,15 +1159,15 @@ note: kept for back-compat with cached responses; delete after Q3
         "response_cache.db": file("response_cache.db", `[sqlite cache placeholder]
 schema: v3
 rows: ~14200
-last_compact: 2026-05-08T03:00:00Z
+last_compact: 2026-02-24T03:00:00Z
 `),
       }),
       logs: dir("logs", {
-        "inference.log": file("inference.log", `[2026-05-08 22:14:03] erik@coder-chip: chip request id=req_aFf2 ms=412
-[2026-05-08 22:14:18] erik@coder-chip: rag retrieval k=8 model=embeddings-v1.2.bin
-[2026-05-08 22:14:19] erik@coder-chip: generation tokens=731 model=chip-base-v2.4
-[2026-05-08 22:15:02] auri@coder-chip: chip request id=req_aFf3 ms=389
-[2026-05-08 22:15:11] auri@coder-chip: rag retrieval k=8 model=embeddings-v1.2.bin
+        "inference.log": file("inference.log", `[2026-02-23 22:14:03] erik@coder-chip: chip request id=req_aFf2 ms=412
+[2026-02-23 22:14:18] erik@coder-chip: rag retrieval k=8 model=embeddings-v1.2.bin
+[2026-02-23 22:14:19] erik@coder-chip: generation tokens=731 model=chip-base-v2.4
+[2026-02-23 22:15:02] auri@coder-chip: chip request id=req_aFf3 ms=389
+[2026-02-23 22:15:11] auri@coder-chip: rag retrieval k=8 model=embeddings-v1.2.bin
 `),
       }),
     }),

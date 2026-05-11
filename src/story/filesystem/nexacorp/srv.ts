@@ -95,7 +95,7 @@ but was told to wait until after Series A closes.
 4425,2026-02-12,chat_session_quality,closed,cassie,"Chip latency spike correlated with batch job"
 4426,2026-02-18,infrastructure,auto-resolved,chip_service_account,"DNS cache flush — scheduled maintenance"
 4427,2026-02-22,user_onboarding,closed,maya,"New hire laptop provisioning delay"
-4428,2026-02-25,data_pipeline,closed,auri,"Campaign metrics table had duplicate rows from re-ingestion"
+4428,2026-02-24,data_pipeline,closed,auri,"Campaign metrics table had duplicate rows from re-ingestion"
 `),
     }, "rwx------"),
     leadership: dir("leadership", {

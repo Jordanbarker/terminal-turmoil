@@ -31,6 +31,8 @@ First-person voice in Chip's responses is fine ("I'm Chip", "I can query Snowfla
 
 The "Chip going proactive / autonomous" content in `/srv/` (roadmap items, Edward's pitch) is plot-relevant and stays — it characterizes Edward's *intent* to push Chip toward autonomy, which is consistent with the rule that Chip is not autonomous *today*.
 
+Chip's **character constitution** lives at `/srv/chip/config/chip-soul.md` on chipinfra — a short, timeless prose doc (be useful, arrive empty, know what you don't know, be honest). It's distinct from the *operational* `system_prompt:` string in `/srv/chip/config/prompts.yml` (which is tool-grounded: cite RAG, you have plugins, etc.). The soul doc reinforces the "tool, not agent" framing — useful to reference when writing Chip's voice or any story beat where someone challenges/changes Chip's instructions.
+
 ### Chip CLI writes local transcripts
 
 Like real CLI chatbots (Claude Code's `~/.claude/projects/`), the in-game `chip` CLI persists each session as a plaintext transcript on the user's NexaCorp workstation. On exit, `ChipSession` flushes a file to `~/.chip/sessions/YYYY-MM-DD-HHMMSS.log` via the `newFs` field of its exit `SessionResult` — same pattern as `SshSession` writing to `known_hosts`. Empty sessions write nothing. Currently NexaCorp-only (gated by `info.currentComputer === "nexacorp"` in `flushTranscript()`); devcontainer/chipinfra sessions don't log.

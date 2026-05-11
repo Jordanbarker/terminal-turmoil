@@ -636,6 +636,8 @@ const CHIP_LEGIT_PATHS = [
   "READ chip-coder:/srv/chip/cache/response_cache.db",
   "READ chip-coder:/srv/chip/logs/inference.log",
   "READ chip-coder:/srv/chip/config/prompts.yml",
+  "READ chip-coder:/srv/chip/config/inference.yml",
+  "READ chip-coder:/srv/chip/config/safety.yml",
   "WRITE chip-coder:/srv/chip/cache/response_cache.db",
   "WRITE chip-coder:/srv/chip/logs/inference.log",
   "READ chip-coder:/srv/chip/models/embeddings-v1.2.bin",
