@@ -10,8 +10,10 @@ export type GameEvent =
   | { type: "objective_completed"; detail: string }
   | { type: "directory_visit"; detail: string }
   | { type: "directory_created"; detail: string }
+  | { type: "directory_removed"; detail: string }
   | { type: "file_created"; detail: string }
   | { type: "file_modified"; detail: string }
+  | { type: "file_removed"; detail: string }
   | { type: "piper_delivered"; detail: string };
 
 export function checkEmailDeliveries(
@@ -29,7 +31,7 @@ export function checkEmailDeliveries(
   let nextSeq = existing.length > 0 ? Math.max(...existing.map((e) => e.seq)) + 1 : 1;
 
   const username = fs.homeDir.split("/").pop() || PLAYER.username;
-  for (const def of getEmailDefinitions(username, computer)) {
+  for (const def of getEmailDefinitions(username, computer, storyFlags)) {
     const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
     if (triggers.every((t) => t.type === "immediate")) continue;
     if (deliveredIds.includes(def.email.id)) continue;
@@ -62,9 +64,10 @@ export function seedDeliveredEmails(
   deliveredIds: string[],
   computer: ComputerId,
   username: string,
-  readEmailIds: Set<string> = new Set()
+  readEmailIds: Set<string> = new Set(),
+  storyFlags?: StoryFlags
 ): VirtualFS {
-  const defs = getEmailDefinitions(username, computer);
+  const defs = getEmailDefinitions(username, computer, storyFlags);
   const existing = getMailEntries(fs);
   let nextSeq =
     existing.length > 0 ? Math.max(...existing.map((e) => e.seq)) + 1 : 1;

@@ -851,39 +851,6 @@
           ],
           "createdAt": "2026-02-03"
         },
-        "ACCESS_LOG": {
-          "name": "ACCESS_LOG",
-          "columns": [
-            {
-              "name": "ACCESS_ID",
-              "type": "VARCHAR",
-              "nullable": false,
-              "primaryKey": true
-            },
-            {
-              "name": "USER_ACCOUNT",
-              "type": "VARCHAR",
-              "nullable": false
-            },
-            {
-              "name": "RESOURCE_PATH",
-              "type": "VARCHAR",
-              "nullable": true
-            },
-            {
-              "name": "ACTION",
-              "type": "VARCHAR",
-              "nullable": false
-            },
-            {
-              "name": "TIMESTAMP",
-              "type": "TIMESTAMP",
-              "nullable": false
-            }
-          ],
-          "rows": [],
-          "createdAt": "2026-02-03"
-        },
         "DEPARTMENT_BUDGETS": {
           "name": "DEPARTMENT_BUDGETS",
           "columns": [

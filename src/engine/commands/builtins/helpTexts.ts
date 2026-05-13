@@ -231,7 +231,9 @@ export const HELP_TEXTS: Record<string, string> = {
   mv: [
     "Usage: mv SOURCE DEST",
     "",
-    "Move (rename) files.",
+    "Move (rename) files or directories.",
+    "If DEST is an existing directory, SOURCE is moved inside it.",
+    "Directories move recursively; no flag required.",
   ].join("\n"),
 
   cp: [

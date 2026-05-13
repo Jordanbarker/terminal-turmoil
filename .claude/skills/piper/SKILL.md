@@ -33,9 +33,9 @@ src/story/piper/
     ├── cassie.ts      # Cassie Moreau
     ├── jordan.ts      # Jordan Kessler
     ├── maya.ts        # Maya Johnson
-    ├── soham.ts       # Soham Parekh
+    ├── marcus.ts      # Marcus Reyes — Chapter 3 accusation endgame
     ├── edward.ts      # Edward Torres (Chip onboarding DM chain + Chapter 3 plugin quest)
-    ├── anon.ts        # Anonymous sender ("?") — `dm_anon` USB-tip on Day 2 morning at home
+    ├── anon.ts        # Anonymous sender (Sabu) — `dm_anon` USB-tip on Day 2 morning at home
     └── ambient.ts     # Ambient channel chatter (general, engineering)
 
 src/engine/commands/builtins/piper.ts  # Command registration
@@ -158,7 +158,7 @@ Defined in `src/story/piper/channels.ts`. Each channel/DM has a `computer` field
 | `bubble_buddies` | `#BubbleBuddies` | channel |
 | `dm_alex` | Alex Rivera | dm |
 | `dm_olive` | Olive Borden | dm |
-| `dm_anon` | `?` | dm (anonymous sender; `anon_usb_tip` delivers off `after_story_flag: day1_shutdown`) |
+| `dm_anon` | `Sabu` | dm (anonymous sender; `anon_usb_tip` delivers off `after_story_flag: day1_shutdown`) |
 
 ### NexaCorp
 
@@ -174,6 +174,7 @@ Defined in `src/story/piper/channels.ts`. Each channel/DM has a `computer` field
 | `dm_sarah` | Sarah Knight | dm |
 | `dm_cassie` | Cassie Moreau | dm |
 | `dm_edward` | Edward Torres | dm |
+| `dm_marcus` | Marcus Reyes | dm (Chapter 3 accusation endgame; opens off `reported_plugin_to_edward`) |
 
 DMs are visible only after at least one delivery has reached them. `getVisibleChannels()` (delivery.ts) filters out channels with no messages.
 
@@ -183,7 +184,7 @@ DMs are visible only after at least one delivery has reached them. `getVisibleCh
 - On Home PC, `piper` is part of `HOME_COMMANDS` and available from the start — Olive's quest lines and Alex's chats live there.
 - Edward's Chip onboarding DM chain (`edward_chip_intro` → `edward_chip_error` → `edward_chip_fix`) unlocks `chip`, teaches the API key puzzle, and unlocks `printenv`/`env`.
 - The `dm_anon` "Anonymous Tip" DM (`anon_usb_tip`) on home PC unlocks `mount`/`umount` via `accepted_usb_drive` when the player picks "Plug it in." The sister flag `declined_usb_tip` keeps the arc dormant. Both reply options resolve `anon_tip_dm_resolved` so the parent quest's "Check Piper" child completes either way.
-- Not available in the dev container.
+- Not available in the dev container. On `erik-pc`, `piper` short-circuits with a libsecret/gnome-keyring D-Bus error — realistic Linux behavior for an OAuth-token tool invoked over SSH without an active desktop session (see `src/engine/commands/builtins/piper.ts`).
 
 ## Adding New Messages
 

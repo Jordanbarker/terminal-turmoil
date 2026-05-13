@@ -89,8 +89,6 @@ sources:
         description: "System event log"
       - name: AI_MODEL_METRICS
         description: "AI model performance metrics"
-      - name: ACCESS_LOG
-        description: "Resource access audit log"
       - name: DEPARTMENT_BUDGETS
         description: "Department budget allocations"
       - name: SUPPORT_TICKETS
@@ -132,14 +130,6 @@ models:
     columns:
       - name: model_name
         tests:
-          - not_null
-
-  - name: stg_raw_nexacorp__access_log
-    description: "Standardized resource access audit log"
-    columns:
-      - name: access_id
-        tests:
-          - unique
           - not_null
 
   - name: stg_raw_nexacorp__department_budgets
@@ -239,17 +229,6 @@ select
     error_rate,
     incident_count
 from {{ source('raw_nexacorp', 'AI_MODEL_METRICS') }}
-`),
-        "stg_raw_nexacorp__access_log.sql": file("stg_raw_nexacorp__access_log.sql", `-- stg_raw_nexacorp__access_log.sql
--- Standardize access audit log
-
-select
-    access_id,
-    user_account,
-    resource_path,
-    action,
-    timestamp
-from {{ source('raw_nexacorp', 'ACCESS_LOG') }}
 `),
         "stg_raw_nexacorp__department_budgets.sql": file("stg_raw_nexacorp__department_budgets.sql", `-- stg_raw_nexacorp__department_budgets.sql
 -- Standardize department budget allocations

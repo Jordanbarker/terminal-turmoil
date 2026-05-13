@@ -7,8 +7,6 @@
 // stripped by the cleanup script; the backup (system.log.bak) preserves them.
 // ---------------------------------------------------------------------------
 
-import type { Row } from "../../engine/snowflake/types";
-
 /** Format a Date as `YYYY-MM-DD HH:MM:SS` */
 function ts(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -766,7 +764,7 @@ const CHIP_SUSPICIOUS: { day: number; entry: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// AccessEvent — shared type for filesystem access.log and Snowflake ACCESS_LOG
+// AccessEvent — source records for the filesystem access.log
 // ---------------------------------------------------------------------------
 
 export interface AccessEvent {
@@ -778,11 +776,6 @@ export interface AccessEvent {
   minute: number;
 }
 
-/**
- * Generate all access events for the given days.
- * This is the single source of truth for both the filesystem access.log
- * and the Snowflake ACCESS_LOG table.
- */
 export function generateAccessEvents(opts?: LogOptions): AccessEvent[] {
   const events: AccessEvent[] = [];
   const days = getDays(opts);
@@ -1253,19 +1246,4 @@ export function generatePluginRunnerLog(opts?: LogOptions): string {
   }
 
   return lines.join("\n") + "\n";
-}
-
-/**
- * Generate Snowflake ACCESS_LOG rows from the same access events.
- * 1:1 mapping — same data as the filesystem access.log, with structured columns.
- */
-export function generateAccessLogRows(opts?: LogOptions): Row[] {
-  const events = generateAccessEvents(opts);
-  return events.map((e, i) => ({
-    ACCESS_ID: `A${String(i + 1).padStart(4, "0")}`,
-    USER_ACCOUNT: e.user,
-    RESOURCE_PATH: e.path,
-    ACTION: e.action.toLowerCase(),
-    TIMESTAMP: new Date(2026, 1, e.day, e.hour, e.minute, 0),
-  }));
 }

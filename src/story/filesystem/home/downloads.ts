@@ -108,7 +108,7 @@ endstream endobj xref 0 4
 trailer<</Root 1 0 R>> startxref 345 %%EOF`,
 `NexaCorp — AI Engineer (Full-Time)
 Location: Remote / Portland, OR
-Posted: 2026-01-28
+Posted: 2026-02-14
 
 About NexaCorp:
 NexaCorp builds AI-integrated enterprise solutions. Our proprietary AI

@@ -377,7 +377,6 @@ function buildAnalyticsCommits(): GitCommit[] {
         "models/staging/stg_raw_nexacorp__employees.sql": ALL_FILES["models/staging/stg_raw_nexacorp__employees.sql"],
         "models/staging/stg_raw_nexacorp__system_events.sql": ALL_FILES["models/staging/stg_raw_nexacorp__system_events.sql"],
         "models/staging/stg_raw_nexacorp__ai_metrics.sql": ALL_FILES["models/staging/stg_raw_nexacorp__ai_metrics.sql"],
-        "models/staging/stg_raw_nexacorp__access_log.sql": ALL_FILES["models/staging/stg_raw_nexacorp__access_log.sql"],
         "models/staging/stg_raw_nexacorp__department_budgets.sql": ALL_FILES["models/staging/stg_raw_nexacorp__department_budgets.sql"],
         "models/staging/stg_raw_nexacorp__support_tickets.sql": ALL_FILES["models/staging/stg_raw_nexacorp__support_tickets.sql"],
         "models/staging/stg_raw_nexacorp__campaign_metrics.sql": ALL_FILES["models/staging/stg_raw_nexacorp__campaign_metrics.sql"],

@@ -353,7 +353,7 @@ Last updated: 2026-02-15
 - [open] AI Engineer — Jin Chen backfill (starting Feb 2026)
 
 ## Departed
-- Jin Chen (Data Engineer) — resigned Jan 2026
+- Jin Chen (Data Engineer) — resigned Feb 2026
 `),
     }, "rwx------"),
     engineering: dir("engineering", {

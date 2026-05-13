@@ -84,20 +84,14 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
           id: "marcus_react_edward_1",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "Edward.",
+          body: "That's the one I was hoping you wouldn't say. He's a co-founder. The board isn't going to swallow that easily.",
         },
         {
           id: "marcus_react_edward_2",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "That's the one I was hoping you wouldn't say. He's a co-founder. The board isn't going to swallow that easily.",
-        },
-        {
-          id: "marcus_react_edward_3",
-          from: "Marcus Reyes",
-          timestamp: "",
-          body: "I'll bring it up as a question about who has been signing off on Chip's directives. We'll see where he lands.",
-        },
+          body: "I'll bring it up as a question about who has been signing off on Chip's security. We'll see where he lands.",
+        }
       ],
       trigger: { type: "after_story_flag", flag: "accused_edward" },
     },
@@ -181,6 +175,26 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
         },
       ],
       trigger: { type: "after_story_flag", flag: "accused_nobody" },
+    },
+
+    // === Branch-agnostic close-of-day: cue to leave for the night ===
+    // Fires on `accusation_made` (set by every accusation reply). Sequenced
+    // last in the array so it lands after the matching `marcus_reaction_*`
+    // in the same delivery pass. Receiving this is the in-fiction signal
+    // that `exit` from NexaCorp is now allowed (gated on accusation_made
+    // in src/engine/commands/builtins/exit.ts).
+    {
+      id: "marcus_close_of_day",
+      channelId: "dm_marcus",
+      messages: [
+        {
+          id: "marcus_close_1",
+          from: "Marcus Reyes",
+          timestamp: "",
+          body: "You're good to call it a day. I'll fill you in after the meeting.",
+        },
+      ],
+      trigger: { type: "after_story_flag", flag: "accusation_made" },
     },
   ];
 }

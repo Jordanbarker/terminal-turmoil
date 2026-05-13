@@ -458,6 +458,35 @@ describe("rm", () => {
     expect(result.newFs).toBeDefined();
     expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
   });
+
+  it("emits file_removed when removing a file", () => {
+    const result = execute("rm", ["notes.txt"], {}, ctx());
+    const types = (result.triggerEvents ?? []).map((e) => `${e.type}:${e.detail}`);
+    expect(types).toEqual(["file_removed:/home/player/notes.txt"]);
+  });
+
+  it("emits directory_removed and file_removed for every node in a recursive remove", () => {
+    const result = execute("rm", ["docs"], { r: true }, ctx());
+    const types = (result.triggerEvents ?? []).map((e) => `${e.type}:${e.detail}`);
+    expect(types).toContain("directory_removed:/home/player/docs");
+    expect(types).toContain("file_removed:/home/player/docs/readme.md");
+    expect(types).toContain("file_removed:/home/player/docs/notes.txt");
+  });
+
+  it("emits no events when -f silently skips missing files", () => {
+    const result = execute("rm", ["missing.txt", "also-missing.txt"], { f: true }, ctx());
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.triggerEvents ?? []).toEqual([]);
+  });
+
+  it("accumulates events across multiple args in order", () => {
+    const result = execute("rm", ["notes.txt", "log.txt"], {}, ctx());
+    const types = (result.triggerEvents ?? []).map((e) => `${e.type}:${e.detail}`);
+    expect(types).toEqual([
+      "file_removed:/home/player/notes.txt",
+      "file_removed:/home/player/log.txt",
+    ]);
+  });
 });
 
 // --- mv ---
@@ -472,6 +501,76 @@ describe("mv", () => {
   it("returns error for nonexistent source", () => {
     const result = execute("mv", ["missing.txt", "dest.txt"], {}, ctx());
     expect(result.output).toContain("No such file or directory");
+  });
+
+  it("fires file_created and file_removed when moving a file", () => {
+    const result = execute("mv", ["notes.txt", "moved.txt"], {}, ctx());
+    const types = (result.triggerEvents ?? []).map((e) => `${e.type}:${e.detail}`);
+    expect(types).toContain("file_created:/home/player/moved.txt");
+    expect(types).toContain("file_removed:/home/player/notes.txt");
+  });
+
+  it("renames a directory", () => {
+    const result = execute("mv", ["docs", "papers"], {}, ctx());
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/papers")).not.toBeNull();
+    expect(result.newFs!.getNode("/home/player/papers/readme.md")).not.toBeNull();
+    expect(result.newFs!.getNode("/home/player/papers/notes.txt")).not.toBeNull();
+    // The renamed directory's top-level name field must match its new basename
+    const node = result.newFs!.getNode("/home/player/papers");
+    expect(node!.name).toBe("papers");
+  });
+
+  it("moves a directory into an existing directory", () => {
+    let fs = createTestFS();
+    fs = fs.makeDirectory("/home/player/archive").fs!;
+    const result = execute("mv", ["docs", "archive"], {}, ctx(fs));
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/archive/docs")).not.toBeNull();
+    expect(result.newFs!.getNode("/home/player/archive/docs/readme.md")).not.toBeNull();
+  });
+
+  it("fires directory_created + file_created events with corresponding removals", () => {
+    const result = execute("mv", ["docs", "papers"], {}, ctx());
+    const types = (result.triggerEvents ?? []).map((e) => `${e.type}:${e.detail}`);
+    expect(types).toContain("directory_created:/home/player/papers");
+    expect(types).toContain("file_created:/home/player/papers/readme.md");
+    expect(types).toContain("file_created:/home/player/papers/notes.txt");
+    expect(types).toContain("directory_removed:/home/player/docs");
+    expect(types).toContain("file_removed:/home/player/docs/readme.md");
+    expect(types).toContain("file_removed:/home/player/docs/notes.txt");
+  });
+
+  it("refuses to move a directory into itself", () => {
+    const result = execute("mv", ["docs", "docs/inner"], {}, ctx());
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("subdirectory of itself");
+    expect(result.newFs).toBeUndefined();
+  });
+
+  it("refuses to overwrite a file with a directory", () => {
+    const result = execute("mv", ["docs", "notes.txt"], {}, ctx());
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("cannot overwrite non-directory");
+    expect(result.newFs).toBeUndefined();
+  });
+
+  it("refuses to move when destination directory already contains a same-named subdir", () => {
+    let fs = createTestFS();
+    fs = fs.makeDirectory("/home/player/archive").fs!;
+    fs = fs.makeDirectory("/home/player/archive/docs").fs!;
+    const result = execute("mv", ["docs", "archive"], {}, ctx(fs));
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("already exists");
+    expect(result.newFs).toBeUndefined();
+  });
+
+  it("refuses a no-op self-move", () => {
+    const result = execute("mv", ["notes.txt", "notes.txt"], {}, ctx());
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("are the same file");
   });
 });
 
@@ -1115,9 +1214,12 @@ describe("mv (additional)", () => {
     expect(node.content).toContain("line A");
   });
 
-  it("returns error when moving directory", () => {
+  it("moves a directory to a new name", () => {
     const result = execute("mv", ["docs", "docs2"], {}, ctx());
-    expect(result.output).toContain("directory moves are not supported");
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode("/home/player/docs")).toBeNull();
+    expect(result.newFs!.getNode("/home/player/docs2")).not.toBeNull();
+    expect(result.newFs!.readFile("/home/player/docs2/readme.md").content).toContain("# Docs");
   });
 
   it("overwrites existing file at destination", () => {
@@ -1737,6 +1839,26 @@ describe("exit", () => {
   it("shows error on home computer", () => {
     const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "home" }));
     expect(result.output).toContain("command not found");
+  });
+
+  it("day 2 wrap: paced logoff + home transition + returned_home_day2 trigger", () => {
+    const result = execute(
+      "exit",
+      [],
+      {},
+      ctx(undefined, {
+        activeComputer: "nexacorp",
+        storyFlags: { ...ALL_UNLOCKED, accusation_made: true, accused_erik: true },
+      })
+    );
+    expect(result.transitionTo).toBe("home");
+    expect(result.incrementalLines).toBeDefined();
+    expect(result.incrementalLines!.length).toBeGreaterThan(0);
+    expect(result.lessSession).toBeUndefined();
+    expect(result.triggerEvents).toContainEqual({
+      type: "command_executed",
+      detail: "exit_day2_logoff",
+    });
   });
 });
 

@@ -100,10 +100,10 @@
 ### Thread 7: Chip's Own Files
 
 - **`/opt/chip/plugins/`** — Chip's plugin directory, modeled on claude-plugins-official. Each plugin has `plugin.json` + `SKILL.md` with YAML frontmatter. Clues embedded across ops plugins:
-  - **`system-monitor/SKILL.md`** — Scans `/home/*/.ssh` and `/home/*/.zsh_history`, maintains behavioral baselines
-  - **`ticket-triage/SKILL.md`** — Auto-resolves `chip_behavior` tickets (complaints about Chip itself)
+  - **`system-monitor/SKILL.md`** — Scans `/home/*/.ssh` and `/home/*/.zsh_history` during security audits
+  - **`ticket-triage/SKILL.md`** — Auto-resolves `chip_response_issue` tickets (complaints about Chip itself)
   - **`alert-routing/SKILL.md`** — SEV-1 alerts go only to Edward, `chip_service_account` alerts suppressed from channels
-  - **`analytics-reports/SKILL.md`** — Filters `chip_behavior` and `auto_resolved` from exec dashboards
+  - **`analytics-reports/SKILL.md`** — Filters `auto_resolved` tickets and chip_service_account activity from exec dashboards
   - **`log-maintenance/SKILL.md`** + **`cleanup.sh`** — Filters `chip_service_account` from active logs nightly at 3am
 - Reading any clue plugin SKILL.md triggers `found_chip_directives` flag
 

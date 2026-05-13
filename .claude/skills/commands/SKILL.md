@@ -232,9 +232,11 @@ The full event union accepted by the dispatcher and the StoryFlagTrigger matcher
 | `command_executed` | Always emitted by `computeEffects` |
 | `file_read`        | Auto-emitted for read-shaped commands (cat/head/tail/etc.) |
 | `directory_visit`  | `ls`, `cd` |
-| `directory_created`| `mkdir`, `cp -r` (for the destination dir and any nested sub-dirs created during the copy) |
+| `directory_created`| `mkdir`, `cp -r`, `mv` (for the destination dir and every nested sub-dir of a moved subtree) |
+| `directory_removed`| `mv`, `rm -r` (for the directory and every nested sub-dir removed) |
 | `file_created`     | `touch`, `cp`, `mv`, `nano` save, `>`/`>>` redirection — when the path **did not previously exist** |
 | `file_modified`    | `nano` save, `cp`, `mv`, `>`/`>>` redirection — when **overwriting an existing file** |
+| `file_removed`     | `rm`, `mv` (source-side; under `rm -r`, fires for every file inside the removed subtree) |
 | `objective_completed` | Set by Piper reply triggerEvents and the engine when objectives close |
 | `piper_delivered`  | Internal — fires on each Piper delivery |
 

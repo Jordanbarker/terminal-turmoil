@@ -12,7 +12,7 @@ The email system delivers formal/system messages triggered by player actions, us
 ```
 src/engine/mail/
 ├── types.ts          # Email, EmailDelivery, EmailTrigger, ReplyOption types
-├── emails.ts         # Email routing dispatcher: getEmailDefinitions(username, computer?), imports from story/emails/
+├── emails.ts         # Email routing dispatcher: getEmailDefinitions(username, computer?, storyFlags?), imports from story/emails/
 ├── mailUtils.ts      # Filesystem utilities: parse, format, deliver, mark read
 └── delivery.ts       # Event-based delivery (checkEmailDeliveries), GameEvent type
 
@@ -130,7 +130,7 @@ Email body here...
 ### `delivery.ts`
 | Function | Purpose |
 |----------|---------|
-| `checkEmailDeliveries(fs, event, deliveredIds, computer?, storyFlags?)` | Check triggers, deliver matching emails, return `{ fs, newDeliveries }`. Routes to home or nexacorp definitions based on `computer` (defaults to "nexacorp"); returns empty for `"devcontainer"` (no mail system). The optional `storyFlags` param is passed through to `matchesCommonTrigger()` for `after_story_flag` triggers. |
+| `checkEmailDeliveries(fs, event, deliveredIds, computer?, storyFlags?)` | Check triggers, deliver matching emails, return `{ fs, newDeliveries }`. Routes to home or nexacorp definitions based on `computer` (defaults to "nexacorp"); returns empty for `"devcontainer"` (no mail system). The optional `storyFlags` param is passed through to `matchesCommonTrigger()` for `after_story_flag` triggers AND into `getHomeEmailDefinitions()`, where it can be used by emails whose body branches on flags (e.g. `marcus_board_debrief` uses `getMarcusDebrief(storyFlags)` to select one of four bodies keyed off `accused_*`). Callers that re-seed delivered emails (`seedDeliveredEmails` from `gameStore.buildFs()` and `useComputerTransitions`) must also pass storyFlags so re-seeded bodies stay stable across FS rebuilds and save/load. |
 
 ## Mail Command (`mail.ts`)
 

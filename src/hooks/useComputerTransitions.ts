@@ -365,7 +365,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
         // Re-seed previously delivered emails, preserving read state
         const allDelivered = s.deliveredEmailIds;
         if (allDelivered.length > 0) {
-          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds);
+          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, s.storyFlags);
         }
 
         // Preserve known_hosts from previous FS
@@ -391,46 +391,71 @@ export function useComputerTransitions(deps: TransitionDeps) {
         activeComputerRef.current = "home";
         cwdRef.current = homeCwd;
 
-        // Set story flags and complete objective
-        s.setStoryFlag("returned_home_day1", true);
-        s.completeObjective("head_home");
+        // Day 2 wrap path: accusation_made was set during Chapter 3, and the
+        // synthetic `exit_day2_logoff` event from exit.ts set returned_home_day2
+        // just before this transition. read_board_debrief_day2 is still unset
+        // (it only fires when the player opens Marcus's email at home).
+        const isDay2Wrap = !!s.storyFlags.returned_home_day2 && !s.storyFlags.read_board_debrief_day2;
 
-        // Deliver Alex's email triggered by head_home objective
-        const latest = useGameStore.getState();
-        const homeFs = latest.computerState.home?.fs ?? newFs;
-        const deliveryResult = checkEmailDeliveries(
-          homeFs,
-          { type: "objective_completed", detail: "head_home" },
-          [...latest.deliveredEmailIds],
-          "home"
-        );
-        if (deliveryResult.newDeliveries.length > 0) {
-          latest.setComputerFs("home", deliveryResult.fs);
-          latest.addDeliveredEmails(deliveryResult.newDeliveries);
-          term.writeln("");
-          term.write(colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold));
-        }
+        const runDeliveries = () => {
+          const ss = useGameStore.getState();
+          // Idempotent on Day 2 (already set/completed).
+          ss.setStoryFlag("returned_home_day1", true);
+          ss.completeObjective("head_home");
 
-        // Deliver Piper messages triggered by returned_home_day1
-        const latestForPiper = useGameStore.getState();
-        const cascade = deliverPiperAndCascade(
-          { type: "objective_completed", detail: "head_home" },
-          "home",
-          username,
-          latestForPiper.deliveredPiperIds,
-          latestForPiper.storyFlags
-        );
-        if (cascade.newPiperIds.length > 0) {
-          useGameStore.getState().addDeliveredPiperMessages(cascade.newPiperIds);
-          term.writeln("");
-          term.writeln(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
-          for (const update of cascade.flagUpdates) {
-            useGameStore.getState().setStoryFlag(update.flag, update.value);
+          // Pass storyFlags so after_story_flag triggers (e.g. marcus_board_debrief)
+          // fire and any flag-branched bodies render correctly.
+          const latest = useGameStore.getState();
+          const homeFs = latest.computerState.home?.fs ?? newFs;
+          const deliveryResult = checkEmailDeliveries(
+            homeFs,
+            { type: "objective_completed", detail: "head_home" },
+            [...latest.deliveredEmailIds],
+            "home",
+            latest.storyFlags
+          );
+          if (deliveryResult.newDeliveries.length > 0) {
+            latest.setComputerFs("home", deliveryResult.fs);
+            latest.addDeliveredEmails(deliveryResult.newDeliveries);
+            term.writeln("");
+            term.write(colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold));
           }
-        }
 
-        useGameStore.getState().setGamePhase("playing");
-        writePrompt(term);
+          // Deliver Piper messages triggered by returned_home_day1
+          const latestForPiper = useGameStore.getState();
+          const cascade = deliverPiperAndCascade(
+            { type: "objective_completed", detail: "head_home" },
+            "home",
+            username,
+            latestForPiper.deliveredPiperIds,
+            latestForPiper.storyFlags
+          );
+          if (cascade.newPiperIds.length > 0) {
+            useGameStore.getState().addDeliveredPiperMessages(cascade.newPiperIds);
+            term.writeln("");
+            term.writeln(colorize("You have new messages on Piper", ansi.yellow, ansi.bold));
+            for (const update of cascade.flagUpdates) {
+              useGameStore.getState().setStoryFlag(update.flag, update.value);
+            }
+          }
+
+          useGameStore.getState().setGamePhase("playing");
+          writePrompt(term);
+        };
+
+        if (isDay2Wrap) {
+          // Evening pause — implies hours passing between leaving work and
+          // arriving home. Then a quiet grounding line before deliveries.
+          term.writeln("");
+          setTimeout(() => {
+            term.writeln("");
+            term.writeln(colorize("21:14. You're home.", ansi.dim));
+            term.writeln("");
+            setTimeout(runDeliveries, 800);
+          }, 1800);
+        } else {
+          runDeliveries();
+        }
       }
     }, BOOT_LINE_INTERVAL_MS);
   }, [cwdRef, activeComputerRef, writePrompt]);

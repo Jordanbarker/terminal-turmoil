@@ -832,6 +832,19 @@ export const CHAPTERS: ChapterDefinition[] = [
         visibleWhen: { source: "storyFlag", key: "accusation_made" },
         group: "marcus_endgame_quest",
       },
+      // Wrap-up: `exit` from NexaCorp post-accusation auto-opens Marcus's
+      // branched debrief in `less` and transitions home on q. Fires the
+      // synthetic `read_board_debrief` event from exit.ts → sets
+      // read_board_debrief_day2 (see storyFlags.ts). Closing this objective
+      // closes the marcus_endgame_quest group and ends Chapter 3.
+      {
+        id: "head_home_day2",
+        description: "Head home — the day's done",
+        check: { source: "storyFlag", key: "read_board_debrief_day2" },
+        hidden: true,
+        visibleWhen: { source: "storyFlag", key: "accusation_made" },
+        group: "marcus_endgame_quest",
+      },
     ],
   },
 ];

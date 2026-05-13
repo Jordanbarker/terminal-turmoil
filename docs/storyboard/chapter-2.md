@@ -4,23 +4,24 @@
 
 Commands unlock through colleague emails and Piper conversations:
 
-**Always available** (27): `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `mail`, `nano`, `save`, `load`, `newgame`, `history`, `python`, `whoami`, `hostname`, `date`, `which`, `man`, `file`, `tree`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `ssh`
+**Always available** (34): `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `mail`, `nano`, `save`, `load`, `newgame`, `history`, `python`, `whoami`, `hostname`, `date`, `which`, `man`, `file`, `tree`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `ssh`, `ssh-add`, `exit`, `shutdown`, `source`, `export`, `alias`, `unalias`
 
 **After `piper_unlocked`** (read Edward's welcome email): `piper`
 **After `chip_unlocked`** (Edward's `edward_chip_intro` Piper DM): `chip`
 **After `printenv_unlocked`** (Edward's `edward_chip_fix` Piper DM): `printenv`, `env`
 **After `search_tools_unlocked`** (accept Oscar's log task on Piper): `grep`, `find`, `diff`
-**After `inspection_tools_unlocked`** (accept Auri's inspection task on Piper): `head`, `tail`, `wc`
+**After `inspection_tools_unlocked`** (accept Auri's inspection task on Piper): `head`, `tail`, `wc`, `less`
 **After `processing_tools_unlocked`** (accept Oscar's access.log task on Piper): `sort`, `uniq`
 **After `coder_unlocked`** (read Oscar's coder setup email): `coder`
 **After `chmod_unlocked`** (accept Dana's ops task on Piper): `chmod`
-**After `devcontainer_visited`** (enter dev container via `coder ssh ai`): `dbt`, `snow`
+
+**Dev container only** (inside `coder ssh ai` / `coder ssh chip`, not gated): `dbt`, `snow`, `git`
 
 **Multi-terminal tabs** unlock alongside search tools (`tabs_unlocked` set by `search_tools_accepted`)
 
 ### Home PC Commands (after returning home)
 
-**After `returned_home_day1`**: `grep`, `find`, `wc`, `sort`, `uniq`, `head`, `tail`, `diff`
+**After `returned_home_day1`**: `grep`, `find`, `wc`, `sort`, `uniq`, `head`, `tail`, `diff`, `less`, `shutdown`
 
 ## Full Narrative Flowchart
 
@@ -143,8 +144,6 @@ Commands unlock through colleague emails and Piper conversations:
                ▼                           ▼
        [read system.log]         [read system.log.bak]
                │                           │
-               │                           ├─── sarah_dm_mystery Piper
-               │                           │    (investigation hint)
                ▼                           ▼
        oscar_access_review       [diffed logs]
        Piper DM                   (requires discovered_log_tampering)
@@ -197,15 +196,17 @@ Commands unlock through colleague emails and Piper conversations:
                                  ▼
               ┌────────────────────────────────────────┐
               │ oscar_access_reported (quest complete) │
+              │ → sets oscar_access_completed flag     │
               └──────────────────┬─────────────────────┘
                                  │
+                  ┌──────────────┴──────────────┐
+                  ▼                             ▼
+       oscar_access_reaction Piper      sarah_dm_mystery Piper
+       — Oscar escalates to Sarah       (investigation hint)
+                                 │
+                                 │ (processing_tools_accepted)
                                  ▼
-              ┌────────────────────────────────────────┐
-              │ oscar_access_reaction Piper DM         │
-              │ — Oscar escalates to Sarah             │
-              └──────────────────┬─────────────────────┘
-                                 │
-                ┌────────────────┼────────────────┐
+                ┌────────────────┬────────────────┐
                 ▼                ▼                ▼
        dana_ops_dashboard  jordan_marketing_  maya_dm_checkin
        Piper DM            data Piper DM      Piper DM
@@ -435,11 +436,11 @@ edward_chip_intro DM ─→ chip
 edward_chip_fix DM ───→ printenv, env
 read oscar_coder_setup → coder
 reply to Oscar (logs) → grep, find, diff + multi-tabs
-reply to Auri (CSV) ──→ head, tail, wc
+reply to Auri (CSV) ──→ head, tail, wc, less
 reply to Oscar (access) → sort, uniq
 reply to Dana (ops) ──→ chmod
-coder ssh ai ─────────→ dbt, snow (in dev container + NexaCorp)
-exit to home ─────────→ grep, find, wc, sort, uniq, head, tail, diff (at home)
+coder ssh ai/chip ────→ dbt, snow, git (dev container only — not on NexaCorp)
+exit to home ─────────→ grep, find, wc, sort, uniq, head, tail, diff, less, shutdown (at home)
 ```
 
 ### Email Delivery Chain
@@ -451,7 +452,7 @@ welcome_edward read ──→ jessica_welcome, tom_welcome
 it_provisioned read ──→ maya_welcome
 onboarding.md read ───→ oscar_coder_setup
 chen-handoff/notes read → edward_paranoid
-ran_dbt / dbt command ─→ edward_end_of_day
+auri_dbt_reported (+ read_team_info, oscar_access_completed) → edward_end_of_day
 ```
 
 ### Piper Delivery Chain
@@ -467,11 +468,11 @@ welcome_edward read ──→ auri_hello
 team-info.md read ────→ eng_code_review_debate
 chen-handoff/notes read → auri_pipeline_help, maya_dm_handoff
 system.log read ──────→ oscar_access_review (requires oscar_log_check)
-system.log.bak read ──→ sarah_dm_mystery
+oscar_access_completed → sarah_dm_mystery
 
-search_tools_accepted ──→ (triggers via reply)
-  oscar_logs_normal ────→ oscar_log_normal → processing task
-  oscar_logs_tampered ──→ oscar_log_tampered → processing task
+search_tools_accepted ──→ player replies to oscar_access_review:
+  completes objective oscar_logs_normal   → oscar_log_normal DM
+  completes objective oscar_logs_tampered → oscar_log_tampered DM
 access.log read ──────────→ oscar_access_followup (requires oscar_log_normal)
                             oscar_access_followup_tampered (requires oscar_log_tampered)
 oscar_access_reported ────→ oscar_access_reaction

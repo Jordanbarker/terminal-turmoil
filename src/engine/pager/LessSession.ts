@@ -4,6 +4,7 @@ import { stripAnsi } from "../../lib/ansi";
 import { parsePagerInput, PagerAction } from "./keymap";
 import { render } from "./render";
 import { LessSessionInfo } from "./types";
+import type { ComputerId } from "../../state/types";
 
 interface LessState {
   lines: string[];
@@ -20,10 +21,12 @@ export class LessSession implements ISession {
   private terminal: Terminal;
   private filename: string | null;
   private state: LessState;
+  private transitionAfterClose: ComputerId | undefined;
 
   constructor(terminal: Terminal, info: LessSessionInfo) {
     this.terminal = terminal;
     this.filename = info.filename;
+    this.transitionAfterClose = info.transitionAfterClose;
     const content = info.content;
     const lines = content === "" ? [] : content.split("\n");
     if (lines.length > 0 && lines[lines.length - 1] === "") {
@@ -279,6 +282,8 @@ export class LessSession implements ISession {
 
   private exit(): SessionResult {
     this.terminal.write("\x1b[?25h\x1b[?1049l");
-    return { type: "exit" };
+    return this.transitionAfterClose
+      ? { type: "exit", transitionTo: this.transitionAfterClose }
+      : { type: "exit" };
   }
 }

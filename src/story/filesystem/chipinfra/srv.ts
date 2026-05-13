@@ -632,7 +632,7 @@ NexaCorp offers unlimited paid time off. We trust you to manage your workload an
 ### Company Holidays (10 days)
 1. New Year's Day — January 1
 2. MLK Day — January 20
-3. Presidents' Day — February 17
+3. Presidents' Day — February 16
 4. Memorial Day — May 26
 5. Independence Day — July 4
 6. Labor Day — September 1

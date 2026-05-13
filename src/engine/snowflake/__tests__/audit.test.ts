@@ -104,27 +104,6 @@ describe("Seed Data Integration — Narrative Queries", () => {
     }
   });
 
-  it("queries ACCESS_LOG for chip_service_account activity", () => {
-    const result = run(
-      "SELECT USER_ACCOUNT, ACTION, RESOURCE_PATH FROM ACCESS_LOG WHERE USER_ACCOUNT = 'chip_service_account'",
-      state
-    );
-    const r = rows(result);
-    expect(r.length).toBeGreaterThan(0);
-    for (const row of r) {
-      expect(row.USER_ACCOUNT).toBe("chip_service_account");
-    }
-  });
-
-  it("queries ACCESS_LOG for jchen file access", () => {
-    const result = run(
-      "SELECT USER_ACCOUNT, RESOURCE_PATH FROM ACCESS_LOG WHERE RESOURCE_PATH LIKE '%jchen%'",
-      state
-    );
-    const r = rows(result);
-    expect(r.length).toBeGreaterThan(0);
-  });
-
   it("counts all employees in EMPLOYEE_DIRECTORY", () => {
     const result = run("SELECT COUNT(*) AS cnt FROM EMPLOYEE_DIRECTORY", state);
     const count = singleValue(result);

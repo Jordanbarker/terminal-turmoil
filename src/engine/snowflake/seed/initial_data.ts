@@ -1,6 +1,6 @@
 import { SnowflakeState, SnowflakeData } from "../state";
 import { Database, Schema, Table, Column, Row, createSchema } from "../types";
-import { generateAccessLogRows, LogOptions } from "../../../story/filesystem/logs";
+import { LogOptions } from "../../../story/filesystem/logs";
 
 import nexacorpProdJson from "../../../story/data/snowflake/nexacorp_prod.json";
 
@@ -9,7 +9,6 @@ const DATE_COLUMNS: Record<string, Set<string>> = {
   EMPLOYEES: new Set(["HIRE_DATE", "END_DATE"]),
   EMPLOYEE_DIRECTORY: new Set(["HIRE_DATE"]),
   PROJECTS: new Set(["START_DATE"]),
-  ACCESS_LOG: new Set(["TIMESTAMP"]),
   SYSTEM_EVENTS: new Set(["TIMESTAMP"]),
   AI_MODEL_METRICS: new Set(["METRIC_DATE"]),
   DEPARTMENT_BUDGETS: new Set(["APPROVED_DATE"]),
@@ -140,18 +139,6 @@ function loadDatabase(json: JsonDatabase, opts?: LogOptions): Database {
     const schema = createSchema(schemaName);
     for (const [tableName, tableJson] of Object.entries(schemaJson.tables)) {
       const dateCols = DATE_COLUMNS[tableName] || new Set<string>();
-
-      // ACCESS_LOG rows are generated from the shared access event source
-      if (tableName === "ACCESS_LOG") {
-        schema.tables[tableName] = {
-          name: tableJson.name,
-          columns: tableJson.columns,
-          rows: generateAccessLogRows(opts),
-          createdAt: new Date(tableJson.createdAt),
-        };
-        continue;
-      }
-
       const rows: Row[] = tableJson.rows.map((row) => hydrateRow(row, dateCols));
 
       if (tableName === "SUPPORT_TICKETS") {

@@ -101,7 +101,7 @@ export function buildFs(
   let fs = new VirtualFS(root, homeDir, homeDir);
 
   if (deliveredEmailIds.length > 0) {
-    fs = seedDeliveredEmails(fs, deliveredEmailIds, computer, username);
+    fs = seedDeliveredEmails(fs, deliveredEmailIds, computer, username, new Set(), storyFlags);
   }
 
   return fs;

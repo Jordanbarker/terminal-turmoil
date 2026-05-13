@@ -9,7 +9,9 @@ RAG quest
             curl -X GET http://localhost:1976/v1/health/ready | jq
 
 Unused discovery flags read_board_minutes / read_headcount_plan
-Implemented `lsblk`, `mount`, and `umount` 
+
+Resolve Sarah-as-accusation-option
+  Marcus's DM offers Sarah as a suspect but no on-disk artifact backs or refutes the option — player guesses blind. Either remove Sarah from the reply choices, or add a small grounding artifact.
 
   
 Pulling at a Loose Thread                                                                       

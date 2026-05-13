@@ -252,9 +252,6 @@ async function main() {
   cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_SOURCE = \'chip-daemon\'"');
   cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.SYSTEM_EVENTS WHERE EVENT_TYPE IN (\'log_cleanup\', \'scheduled_maintenance\', \'log_rotation\')"');
 
-  // Access log - chip_service_account activity
-  cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.ACCESS_LOG WHERE USER_ACCOUNT = \'chip_service_account\'"');
-
   // AI metrics
   cmd(runner, 'snow sql -q "SELECT * FROM NEXACORP_PROD.RAW_NEXACORP.AI_MODEL_METRICS"');
 

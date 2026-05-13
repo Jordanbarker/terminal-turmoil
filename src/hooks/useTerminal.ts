@@ -259,6 +259,8 @@ export function useTerminal() {
             busyTabIdRef.current = null;
             if (effects.gameAction?.type === "shutdown") {
               runShutdownTransition(term);
+            } else if (effects.transitionTo && dispatchTransition(term, effects.transitionTo, computerId)) {
+              // dispatchTransition handles its own notifications/prompt
             } else {
               writeNotifications(term, effects);
               writePrompt(term);

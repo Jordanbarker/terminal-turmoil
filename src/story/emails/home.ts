@@ -1,5 +1,7 @@
 import { EmailDelivery, ReplyOption } from "../../engine/mail/types";
 import { PLAYER } from "../player";
+import { StoryFlags } from "../../state/types";
+import { getMarcusDebrief } from "../marcusDebrief";
 
 export const HOME_EMAIL_IDS = [
   "job_board_alert",
@@ -10,6 +12,7 @@ export const HOME_EMAIL_IDS = [
   "alex_good_news",
   "nexacorp_followup",
   "chip_ssh_setup",
+  "marcus_board_debrief",
 ] as const;
 export type HomeEmailId = (typeof HOME_EMAIL_IDS)[number];
 
@@ -76,7 +79,7 @@ const chipSshSetupReplyOptions: ReplyOption[] = [
   },
 ];
 
-export function getHomeEmailDefinitions(username: string): EmailDelivery[] {
+export function getHomeEmailDefinitions(username: string, storyFlags?: StoryFlags): EmailDelivery[] {
   return [
     // === Immediate emails (seeded at game start) ===
     {
@@ -317,6 +320,25 @@ anything.
       },
       trigger: { type: "after_objective", objectiveId: "accepted_nexacorp" },
       replyOptions: chipSshSetupReplyOptions,
+    },
+
+    // Marcus's branched board-meeting debrief — arrives after the player runs
+    // `exit` from NexaCorp on Day 2 (after accusation_made). Body branches on
+    // which suspect was named.
+    {
+      email: {
+        id: "marcus_board_debrief",
+        from: "Marcus Reyes <marcus.reyes@nexacorp.io>",
+        to: `${username}@email.com`,
+        date: "Tue, 24 Feb 2026 21:14:00",
+        subject: "tonight's meeting",
+        body: getMarcusDebrief(storyFlags ?? {}),
+      },
+      trigger: {
+        type: "after_story_flag",
+        flag: "returned_home_day2",
+        requiredFlags: ["accusation_made"],
+      },
     },
   ];
 }

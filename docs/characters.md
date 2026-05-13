@@ -121,7 +121,9 @@ Jessica Langford — CEO & Co-Founder
 
 ### Erik Lindstrom — Senior Frontend Engineer
 **Email**: `erik@nexacorp.com`
-**Personality**: Detail-oriented, cares about craft. Pushes back in code reviews. Introverted, prefers async.
+**Personality**: Detail-oriented, cares about craft. Pushes back in code reviews. Introverted, prefers async. 
+**Anders Lindstrom**: Erik's younger brother, age 31, diagnosed with stage IV colorectal cancer Oct 2024, died **2026-01-14**.
+
 
 ### Oscar Diaz — Infrastructure Engineer
 **Email**: `oscar@nexacorp.com`

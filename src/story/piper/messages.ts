@@ -101,6 +101,7 @@ export const PIPER_DELIVERY_IDS = [
   "marcus_reaction_sarah",
   "marcus_reaction_erik",
   "marcus_reaction_nobody",
+  "marcus_close_of_day",
   // Ambient deliveries
   "general_kitchen_debate",
   "general_standup_cancelled",

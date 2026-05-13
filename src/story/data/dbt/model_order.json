@@ -3,7 +3,6 @@
     "stg_raw_nexacorp__employees",
     "stg_raw_nexacorp__system_events",
     "stg_raw_nexacorp__ai_metrics",
-    "stg_raw_nexacorp__access_log",
     "stg_raw_nexacorp__department_budgets",
     "stg_raw_nexacorp__support_tickets",
     "stg_raw_nexacorp__campaign_metrics",

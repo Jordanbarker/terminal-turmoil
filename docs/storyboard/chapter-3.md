@@ -118,7 +118,7 @@ at home sets `apt_upgraded` (optional).
                                                                      ▼
    ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
    │ `dbt build`                                                                                                                       │
-   │ → fails on rpt_campaign_performance (conversion_rate test)                                                                        │
+   │ → fails on rpt_campaign_performance (not_null_rpt_campaign_performance_conversion_rate test)                                      │
    │ → dbt_test_failed_day2  [requires pulled_day2_updates]                                                                            │
    └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
                                                                      │
@@ -266,7 +266,7 @@ at home sets `apt_upgraded` (optional).
                                                                      │
                                                                      ▼
    ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
-   │ `export SSH_AUTH_SOCK=/tmp/ssh-mZ4xPq/agent.sock`                                                                                 │
+   │ `export SSH_AUTH_SOCK=/tmp/ssh-mZ4xPq/agent.18472`                                                                               │
    │ → exported_erik_ssh_auth_sock                                                                                                     │
    └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
                                                                      │
@@ -284,7 +284,7 @@ at home sets `apt_upgraded` (optional).
    └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ╔═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                       ACT 6: BEFORE THE BOARD MEETING  (required, chapter close)                                        ║
+║                              ACT 6: BEFORE THE BOARD MEETING & LOGOFF  (required, chapter close)                                        ║
 ╚════════════════════════════════════════════════════════════════════╤════════════════════════════════════════════════════════════════════╝
                                                                      │
                                                                      ▼
@@ -298,7 +298,7 @@ at home sets `apt_upgraded` (optional).
                   ┌─────────────────────────────────┬────────────────┴────────────────┬─────────────────────────────────┐
                   ▼                                 ▼                                 ▼                                 ▼
   ┌───────────────┴───────────────┐ ┌───────────────┴───────────────┐ ┌───────────────┴───────────────┐ ┌───────────────┴───────────────┐
-  │ "Edward."                     │ │ "Sarah."                      │ │ "Erik."                       │ │ "Nobody — plugin directives"  │
+  │ "Edward."                     │ │ "Sarah."                      │ │ "Erik."                       │ │ "Nobody"                      │
   │ → accused_edward              │ │ → accused_sarah               │ │ → accused_erik                │ │ → accused_nobody              │
   │ + accusation_made             │ │ + accusation_made             │ │ + accusation_made             │ │ + accusation_made             │
   └───────────────┬───────────────┘ └───────────────┬───────────────┘ └───────────────┬───────────────┘ └───────────────┬───────────────┘
@@ -310,11 +310,46 @@ at home sets `apt_upgraded` (optional).
                                                                      │
                                                                      ▼
    ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
-   │ Reply "Got it — good luck tonight."  (single option on all four)                                                                  │
+   │ The accusation reply itself fires `objective_completed:chapter_3_done`                                                            │
    │ → chapter_3_complete                                                                                                              │
    │   (toast: "Chapter 3 complete — board meeting tonight.")                                                                          │
    │ The per-suspect `accused_*` flag persists into Chapter 4 so the                                                                   │
    │ board-meeting scene can branch on the player's pick.                                                                              │
+   │ The reaction DMs have no replyOptions — they're terminal flavor.                                                                  │
+   └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
+                                                                     │
+                                                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
+   │ marcus_close_of_day DM (branch-agnostic, fires on accusation_made — sequenced last in marcus.ts so it lands after the matching    │
+   │ marcus_reaction_* in the same delivery pass)                                                                                      │
+   │ Marcus: "You're good to call it a day. I'll fill you in after the meeting."                                                       │
+   │ (no reply — receiving the DM is the in-fiction signal that `exit` is now allowed)                                                 │
+   └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
+                                                                     │
+                                                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
+   │ `exit` from NexaCorp  [gated by accusation_made]                                                                                  │
+   │ → paced wind-down ("Packing up." / "End of day. 18:47.") via incrementalLines                                                     │
+   │ → fires `command_executed:exit_day2_logoff` → returned_home_day2                                                                  │
+   │ → transitionTo: "home" (existing logoff animation + home boot)                                                                    │
+   └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
+                                                                     │
+                                                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
+   │ Home transition's runExitToHome detects the Day 2 wrap (returned_home_day2 set, read_board_debrief_day2 unset):                   │
+   │  → ~1.8s evening pause → "21:14. You're home." (dim) → 800ms beat → deliveries fire                                               │
+   │  → checkEmailDeliveries fires with storyFlags → marcus_board_debrief (after_story_flag:returned_home_day2 + accusation_made)      │
+   │    is delivered to /var/mail/$USER, body branched from getMarcusDebrief() via accused_* flags                                     │
+   │  → "You have new mail in /var/mail/$USER" notification                                                                            │
+   └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
+                                                                     │
+                                                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
+   │ Player runs `mail` at home and opens the marcus_board_debrief email (uses `less` internally)                                     │
+   │ → mail.ts fires `file_read:marcus_board_debrief`                                                                                  │
+   │ → storyFlag trigger sets read_board_debrief_day2 (toast: "Day 2 over. Get some sleep.")                                          │
+   │ → head_home_day2 ✓ → marcus_endgame_quest closes → Chapter 3 ends                                                                 │
+   │ Chapter 4 hook left dangling.                                                                                                     │
    └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -391,6 +426,7 @@ flags fire there now:
 | `marcus_endgame_quest` | hidden, **required**, group | all visible children | `reported_plugin_to_edward` |
 | `accuse_chip_abuser` | hidden, child | `accusation_made` flag | `reported_plugin_to_edward` |
 | `chapter_3_finale` | hidden, child | `chapter_3_complete` flag | `accusation_made` |
+| `head_home_day2` | hidden, child | `read_board_debrief_day2` flag | `accusation_made` |
 
 ### Quest Groups
 
@@ -400,7 +436,7 @@ flags fire there now:
 | Fix the Broken Pipeline | `ssh_to_work_day2` completed | read_auri_day2_morning → pull_day2_updates → discover_test_failure → (investigate_null_data + create_fix_branch + fix_the_model) → push_fix → report_to_auri |
 | Build a Chip Plugin (**required**) | `reported_fix_to_auri` | accepted_edward_plugin_request → ssh_to_chip_workspace → (read_existing_plugin opt) → create_plugin_dir → (write_plugin_manifest + write_plugin_skill) → (register_plugin opt) → report_plugin_to_edward |
 | Pulling at a Loose Thread (optional) | `loose_thread_quest_started` (`read_usb_note` ∧ `chipinfra_visited`) | loose_thread_find_socket → loose_thread_export_sock → loose_thread_inspect_keys → loose_thread_pivot |
-| Before the Board Meeting (**required**) | `reported_plugin_to_edward` | accuse_chip_abuser → chapter_3_finale |
+| Before the Board Meeting (**required**) | `reported_plugin_to_edward` | accuse_chip_abuser → chapter_3_finale → head_home_day2 |
 
 ### Command / State Triggers
 
@@ -431,6 +467,17 @@ NEXACORP  (Piper replies)
   reply edward_plugin_request ──→ unlock_chip_plugin_development
                                    (toast: "Workspace unlocked: coder ssh chip")
   reply edward_plugin_report ───→ reported_plugin_to_edward
+
+NEXACORP  (commands)
+  exit [accusation_made] ───────→ returned_home_day2
+                                   + paced wind-down + home transition
+                                   + ~1.8s evening pause + "21:14. You're home." + 800ms beat
+                                   + delivers marcus_board_debrief email to /var/mail/$USER
+
+HOME  (mail)
+  open marcus_board_debrief ────→ read_board_debrief_day2
+                                   (toast: "Day 2 over. Get some sleep.")
+                                   → head_home_day2 ✓ → Chapter 3 closes
 
 CHIPINFRA  (coder ssh chip — unlocked by unlock_chip_plugin_development)
   cat /opt/chip/plugins/<dir>/{plugin.json,SKILL.md}
@@ -477,8 +524,12 @@ accused_edward ────────────────→ marcus_reacti
 accused_sarah  ────────────────→ marcus_reaction_sarah  (DM Marcus)
 accused_erik   ────────────────→ marcus_reaction_erik   (DM Marcus)
 accused_nobody ────────────────→ marcus_reaction_nobody (DM Marcus)
-reply marcus_reaction_* ───────→ chapter_3_complete
-                                  (toast: "Chapter 3 complete — board meeting tonight.")
+reply marcus_endgame_opening ──→ chapter_3_complete
+                                  (via objective_completed:chapter_3_done;
+                                   toast: "Chapter 3 complete — board meeting tonight.")
+accusation_made ───────────────→ marcus_close_of_day (DM Marcus, branch-agnostic;
+                                  sequenced last in marcus.ts so it lands after
+                                  the matching marcus_reaction_* in the same pass)
 ```
 
 ### Notes
@@ -494,7 +545,7 @@ reply marcus_reaction_* ───────→ chapter_3_complete
   data until the player edits `models/marts/rpt_campaign_performance.sql` per
   Auri's instructions in `auri_test_failure_details`. A passing build is the
   only way to set `fixed_campaign_model`.
-- **Cascade proofs (Act 3)**: `storyFlags.ts:366–367` set `investigated_null_data`
+- **Cascade proofs (Act 3)**: `storyFlags.ts:405–406` set `investigated_null_data`
   and `created_fix_branch` automatically when `dbt_test_all_pass` fires. Players
   who skip ahead (edit the SQL on `main`, run `dbt build`) still get those
   objectives marked complete.
@@ -507,7 +558,7 @@ reply marcus_reaction_* ───────→ chapter_3_complete
   actually authoring a plugin's SKILL.md.
 - **Loose Thread cross-arc cascade.** `loose_thread_quest_started` fires when
   both `read_usb_note` and `chipinfra_visited` are set — in either order. The
-  trigger at `storyFlags.ts:229–231` covers the "read note after visiting
+  trigger at `storyFlags.ts:246–248` covers the "read note after visiting
   chipinfra" case; the reverse ordering (visit chipinfra after reading the note)
   is handled by a one-line cascade in `useComputerTransitions.ts` when
   `chipinfra_visited` flips.
@@ -521,8 +572,26 @@ reply marcus_reaction_* ───────→ chapter_3_complete
 - **Marcus's accusation is required and chapter-closing.** Fires for all players
   on `reported_plugin_to_edward` (gated behind the required plugin quest, not the
   optional Loose Thread). The four `accused_*` carrier flags persist into Chapter 4
-  so the board-meeting scene can branch on the player's pick. The closing reply on
-  any of the four reaction DMs sets `chapter_3_complete` and fires the closing
-  toast. Player evidence basis varies — Loose Thread completers know about Erik's
+  so the board-meeting scene can branch on the player's pick. The accusation reply
+  itself fires `objective_completed:chapter_3_done`, which sets `chapter_3_complete`
+  and the closing toast — the reaction DMs are terminal flavor with no replyOptions.
+  Player evidence basis varies — Loose Thread completers know about Erik's
   SSH-agent abuse; Chapter 2 carry-over completers know about Edward's plugin
   directives — but every player has enough context to pick a defensible answer.
+- **Wrap-up: log off NexaCorp, read Marcus at home.** After the accusation, a
+  single branch-agnostic `marcus_close_of_day` DM tells the player to head
+  home. Running `exit` from NexaCorp — gated on `accusation_made` — plays a
+  paced wind-down (`incrementalLines` in `exit.ts`) and emits a synthetic
+  `command_executed:exit_day2_logoff` event that sets `returned_home_day2`.
+  The home transition then runs the existing logoff/boot animation, followed
+  by a ~1.8s "evening" pause, a dim `"21:14. You're home."` grounding line,
+  and an 800ms beat before deliveries fire. `checkEmailDeliveries` is invoked with the player's
+  storyFlags, which (a) triggers the `marcus_board_debrief` home email via
+  its `after_story_flag: returned_home_day2` rule and (b) renders the
+  branched body from `getMarcusDebrief()` keyed off the `accused_*` flags.
+  The player reads it via `mail` (which uses `less` internally). Opening the
+  email emits `file_read:marcus_board_debrief`, which sets
+  `read_board_debrief_day2` (toast: "Day 2 over. Get some sleep.") and
+  closes `head_home_day2` + the `marcus_endgame_quest` group. Day 2 ends
+  here; no `home_post_work_day2` segment exists yet. Chapter 4 picks up
+  whenever it's built.

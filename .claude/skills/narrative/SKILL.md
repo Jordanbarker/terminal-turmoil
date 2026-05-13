@@ -85,7 +85,7 @@ src/story/
     ├── paths.ts           # HOME_PATHS, NEXACORP_PATHS, CHIPINFRA_PATHS constants for story flag trigger paths
     ├── nexacorp/          # createNexacorpFilesystem(username, storyFlags) — split into index, dbt, chip (thin client), srv, home
     ├── chipinfra/         # createChipinfraFilesystem(username, storyFlags) — shared platform workspace (`coder ssh chip`): plugin runtime, RAG corpus, multi-user homes
-    └── erikpc.ts          # createErikpcFilesystem(playerUsername) — Erik's personal Linux laptop, reached via SSH-agent-forwarding pivot from chipinfra
+    └── erikpc.ts          # createErikpcFilesystem(playerUsername) — Erik's NexaCorp-issued Linux work laptop, reached via SSH-agent-forwarding pivot from chipinfra
 
 src/state/
 ├── types.ts               # StoryFlags, ComputerId, GamePhase, GameState
@@ -158,7 +158,7 @@ To find what triggers a flag, search `src/story/storyFlags.ts`:
 These groupings reflect the comment headers in `src/story/storyFlags.ts`. When adding a flag, pick the group it belongs to and append it there.
 
 - **Home PC core flow**: `read_resume`, `read_nexacorp_offer`, `ssh_unlocked`, `read_backup_failure`, `fixed_backup_script`, `ran_auto_apply`, `accepted_at_180k`, `day1_shutdown`, `read_piper_day1_home`, `ssh_day2`, `returned_home_day1`
-- **Home command unlocks**: `pdftotext_unlocked`, `tree_installed`, `apt_unlocked`, `apt_updated`, `apt_upgraded`, `basic_tools_unlocked`, `commands_unlocked`, `first_ssh_connect`, `tabs_unlocked`
+- **Home command unlocks**: `pdftotext_unlocked`, `tree_installed`, `apt_unlocked`, `apt_updated`, `apt_upgraded`, `basic_tools_unlocked`, `first_ssh_connect`, `tabs_unlocked`
 - **Olive's Terminal Challenges (Quest 1)**: `olive_challenges_accepted`, `olive_challenges_declined`, `olive_challenges_read`, `used_file_in_downloads`, `used_which_python`, `created_projects_dir`, `used_mv_home`, `used_echo_pipe`, `used_man_command`
 - **Backup quest (Quest 2)**: `backup_quest_started`, `created_backups_dir`, `copied_scripts_backup`, `created_backup_log`, `verified_backup`
 - **Olive's Power Tools (Quest 4, post day 1)**: `olive_power_tools_read`, `used_grep_at_home`, `used_wc_at_home`, `used_history_redirect`, `used_sort_uniq_home`, `used_find_home`
@@ -167,7 +167,7 @@ These groupings reflect the comment headers in `src/story/storyFlags.ts`. When a
 - **Side quests (Day 1)**: `read_end_of_day`, `read_ops_incidents`, `read_board_minutes`, `read_headcount_plan`, `auri_dbt_reported`, `dbt_project_cloned`, `ran_dbt`
 - **Day 2 pipeline fix (devcontainer)**: `pulled_day2_updates`, `dbt_test_failed_day2`, `investigated_null_data`, `created_fix_branch`, `fixed_campaign_model`, `pushed_fix_branch`, `reported_fix_to_auri`
 - **Day 2 anonymous USB tip + Loose Thread**: `anon_tip_quest_started`, `anon_tip_dm_resolved`, `accepted_usb_drive`, `declined_usb_tip`, `ran_lsblk_for_usb`, `mounted_usb_drive`, `read_usb_note`, `loose_thread_quest_started` (drives the home-side `dm_anon` Piper DM that introduces `mount`/`umount` and opens "Pulling at a Loose Thread" once `chipinfra_visited`)
-- **Chapter 3 endgame (Marcus's accusation)**: `accused_edward`, `accused_sarah`, `accused_erik`, `accused_nobody`, `accusation_made`, `chapter_3_complete` — each reply on `marcus_endgame_opening` fires a distinct `objective_completed` event; storyFlags.ts triggers convert it into the matching `accused_*` carrier flag plus the shared `accusation_made` gate. The carrier flags persist into Chapter 4 so the board-meeting scene can branch on the player's pick. The closing reply on any of the four `marcus_reaction_*` DMs sets `chapter_3_complete` (toast: "Chapter 3 complete — board meeting tonight.").
+- **Chapter 3 endgame (Marcus's accusation)**: `accused_edward`, `accused_sarah`, `accused_erik`, `accused_nobody`, `accusation_made`, `chapter_3_complete`, `returned_home_day2`, `read_board_debrief_day2` — each reply on `marcus_endgame_opening` fires a distinct `objective_completed` event; storyFlags.ts triggers convert it into the matching `accused_*` carrier flag plus the shared `accusation_made` gate. The carrier flags persist into Chapter 4 so the board-meeting scene can branch on the player's pick. The closing reply on any of the four `marcus_reaction_*` DMs sets `chapter_3_complete` (toast: "Chapter 3 complete — board meeting tonight."). After accusation_made, a single branch-agnostic `marcus_close_of_day` DM tells the player to head home. Running `exit` from NexaCorp plays a paced wind-down via `incrementalLines` and emits a synthetic `command_executed:exit_day2_logoff` event that sets `returned_home_day2`. The home transition runs, then `runExitToHome` inserts a ~1.8s evening pause + dim "21:14. You're home." grounding line before deliveries. `checkEmailDeliveries` is called with `storyFlags`, so the `marcus_board_debrief` home email (trigger: `after_story_flag: returned_home_day2`, `requiredFlags: ["accusation_made"]`) is delivered. Its body is generated by `getMarcusDebrief(storyFlags)` (`src/story/marcusDebrief.ts`), branched 4 ways off the `accused_*` flags. The player opens it via `mail` (which uses `less` internally); the mail command emits `file_read:marcus_board_debrief` which fires `read_board_debrief_day2` (toast: "Day 2 over. Get some sleep.") and closes `head_home_day2` + `marcus_endgame_quest`.
 
 ### Special triggers in `applyResult.ts` (not in StoryFlagTrigger tables)
 
@@ -294,11 +294,11 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
 
 `src/story/chapters.ts` is the source of truth. As of writing:
 
-- **chapter-1** ("New Beginnings"): home-PC onboarding before accepting the offer
+- **chapter-1** ("The Offer"): home-PC onboarding before accepting the offer
   - Top-level: `explore_home`, `learn_linux_basics`, `fix_backup`, `run_auto_apply`, `check_email`, `check_piper`, `accept_offer`, `read_chip_setup`, `first_ssh_connect`
   - `olive_challenges` group (allVisibleChildren) → `olive_ch_file/which/projects/mv/echo/man`
   - `backup_quest` group (allVisibleChildren) → `backup_mkdir/copy/log/verify`
-- **chapter-2** ("First Day"): NexaCorp Day 1
+- **chapter-2** ("Onboarding"): NexaCorp Day 1
   - Top-level: `read_welcome_email`, `help_oscar_logs`, `meet_auri`, `explore_jchen`, `investigate_ops_data`, `report_dana_ops`, `jordan_query_metrics`, `jordan_report_findings`
   - `edward_onboarding` group → `read_onboarding`, `meet_the_team`, `reply_edward_chip_intro`, `try_chip`, `tell_edward_chip_error`, `source_zshrc`
   - `meet_auri` group → `review_handoff`, `reply_auri_handoff`, `help_auri_pipeline`, `clone_analytics_repo`, `run_dbt`, `check_auri_dbt`, `auri_ls_data`, `auri_check_todo`, `auri_use_head/tail/wc`
@@ -312,7 +312,7 @@ interface ChapterDefinition { id: string; title: string; objectives: ObjectiveDe
   - `fix_pipeline_quest` group (allVisibleChildren) → `read_auri_day2_morning`, `pull_day2_updates`, `discover_test_failure`, `investigate_null_data`, `create_fix_branch`, `fix_the_model`, `push_fix`, `report_to_auri`
   - `build_chip_plugin_quest` group (allVisibleChildren) → `accepted_edward_plugin_request`, `ssh_to_chip_workspace`, `read_existing_plugin`, `create_plugin_dir`, `write_plugin_manifest`, `write_plugin_skill`, `register_plugin`, `report_plugin_to_edward`
   - `loose_thread_quest` group (allVisibleChildren) → `loose_thread_find_socket`, `loose_thread_export_sock`, `loose_thread_inspect_keys`, `loose_thread_pivot` — opens once **both** `read_usb_note` (anonymous USB note read at home) AND `chipinfra_visited` are true. Children walk the existing chipinfra → erik-pc pivot.
-  - `marcus_endgame_quest` group (allVisibleChildren, required) → `accuse_chip_abuser`, `chapter_3_finale` — fires on `reported_plugin_to_edward`. Marcus DMs the player on Piper (`dm_marcus`) asking who's abusing Chip's access; 4-way reply (Edward / Sarah / Erik / Nobody) sets a per-suspect carrier flag plus `accusation_made`. Each pick gets a distinct `marcus_reaction_*` DM whose single reply sets `chapter_3_complete` (closing toast). Defined in `src/story/piper/messages/marcus.ts`.
+  - `marcus_endgame_quest` group (allVisibleChildren, required) → `accuse_chip_abuser`, `chapter_3_finale`, `head_home_day2` — fires on `reported_plugin_to_edward`. Marcus DMs the player on Piper (`dm_marcus`) asking who's abusing Chip's access; 4-way reply (Edward / Sarah / Erik / Nobody) sets a per-suspect carrier flag plus `accusation_made`. Each pick gets a distinct `marcus_reaction_*` DM whose single reply sets `chapter_3_complete` (closing toast). A branch-agnostic `marcus_close_of_day` DM follows immediately ("You're good to call it a day. I'll fill you in after the meeting."). The player runs `exit` from NexaCorp — gated on `accusation_made`. `exit.ts` returns paced `incrementalLines` + `transitionTo: "home"` + a synthetic `command_executed:exit_day2_logoff` event that sets `returned_home_day2`. The home transition (`runExitToHome` in `useComputerTransitions.ts`) detects the Day 2 wrap path, runs the normal logoff + boot animation, then inserts a ~1.8s evening pause and dim "21:14. You're home." grounding line before deliveries. The `marcus_board_debrief` home email (in `src/story/emails/home.ts`, body from `getMarcusDebrief()` in `src/story/marcusDebrief.ts`) is then delivered to `/var/mail/$USER`. The player opens it via `mail`; the mail command emits `file_read:marcus_board_debrief`, which fires `read_board_debrief_day2` (toast: "Day 2 over. Get some sleep.") and completes `head_home_day2` + the quest. Defined in `src/story/piper/messages/marcus.ts`, `src/story/marcusDebrief.ts`, `src/story/emails/home.ts`, `src/engine/commands/builtins/exit.ts`, `src/hooks/useComputerTransitions.ts`.
 
 ### Objective Resolution (`objectives.ts`)
 
@@ -425,7 +425,7 @@ Full sequence:
 
 ## Chipinfra → Erik's PC Pivot (SSH-agent-forwarding abuse)
 
-The shared `chipinfra` workspace seeds an active ssh-agent socket Erik left behind when he ran `ssh -A coder-chip` from his personal Linux laptop. The player can weaponize it to pivot into Erik's PC — a 5th computer, `erik-pc`.
+The shared `chipinfra` workspace seeds an active ssh-agent socket Erik left behind when he ran `ssh -A coder-chip` from his NexaCorp-issued work laptop. The player can weaponize it to pivot into Erik's PC — a 5th computer, `erik-pc`, on the corp network at 10.20.5.84.
 
 **Real-world basis.** OpenSSH on the remote side of `ssh -A` creates a Unix-domain socket at `/tmp/ssh-XXXXXX/agent.<PID>` that proxies requests back to the live ssh-agent on the originating laptop. Anyone with read access to that socket can list keys (`ssh-add -l`) and authenticate as the owner — silently — to anywhere those keys are authorized. The keys themselves never leave the laptop. In real Linux the gate is `0600 erik:erik` permissions; VirtualFS has no ownership, so the gate is narrative: a sibling `.user-erik` marker file in the socket dir is the source of truth.
 
@@ -449,11 +449,13 @@ The shared `chipinfra` workspace seeds an active ssh-agent socket Erik left behi
 
 **Per-computer username.** `COMPUTERS["erik-pc"].username = "erik"` and `getComputerUsername(computer, playerUsername)` (in `story/player.ts`) is consulted by `getPrompt`, `buildFs`, `getDefaultEnv`, and `initEnvForComputer` so the player sees `erik@erik-laptop` and the home dir is `/home/erik`. This is the only computer with a non-player username today; future SSH pivots into colleague boxes can reuse the pattern.
 
-**No narrative payload yet.** `createErikpcFilesystem` is a placeholder: `~/.zshrc`, `~/.zsh_history`, `~/.ssh/config`, `~/.gitconfig`, empty `Documents/Downloads/Desktop/code/notes/`. Investigation contents are intentionally unfilled — when adding payload, treat erik-pc as a Linux dev laptop (apt, systemd, `/home/erik`), matching conventions of the other Linux boxes in the game.
+**No narrative payload yet.** `createErikpcFilesystem` is a placeholder: `~/.zshrc`, `~/.zsh_history`, `~/.ssh/config`, `~/.gitconfig`, empty `Documents/Downloads/Desktop/code/notes/`. Investigation contents are intentionally unfilled — when adding payload, treat erik-pc as a NexaCorp-issued Linux dev laptop (apt, systemd, `/home/erik`), matching conventions of the other Linux boxes in the game.
 
 **Command availability.** `isCommandAvailable` (`src/engine/commands/availability.ts`) treats erik-pc like the home PC — it falls through to `HOME_COMMANDS` / `HOME_GATED` rules (so `tree`, `apt`, `sudo` stay flag-gated and any nexacorp-unlocked tools carry over). The one explicit exception is `exit`, which is always allowed on erik-pc so the player can return to chipinfra.
 
-**Realistic SSH UX.** The arrival banner is a single dim line: `Last login: Fri May  9 14:23:18 2026 from coder-chip.platform.internal`. No "Connected to X." (real OpenSSH never prints that). No boot sequence — SSHing into an already-running box just drops you into a shell. No MOTD (Erik's personal laptop has it disabled).
+**`piper` is reachable but refuses to run on erik-pc.** The piper handler (`src/engine/commands/builtins/piper.ts`) short-circuits when `ctx.activeComputer === "erik-pc"` and prints a libsecret/gnome-keyring D-Bus error — realistic Linux behavior for OAuth-token tools invoked over SSH without a desktop session. Keeps `piper` listed (Erik's `.zsh_history` shows him using it locally) without giving the player a hollow channel list. `mail` is left alone because erik-pc has no `/var/mail/erik`, so the existing `"No mail."` output is already BSD-accurate.
+
+**Realistic SSH UX.** The arrival banner is a single dim line: `Last login: Fri May  9 14:23:18 2026 from coder-chip.platform.internal`. No "Connected to X." (real OpenSSH never prints that). No boot sequence — SSHing into an already-running box just drops you into a shell. No MOTD (Erik's work laptop has it disabled — common dev-laptop config).
 
 **Story-flag triggers on erik-pc.** `getErikpcStoryFlagTriggers` in `src/story/storyFlags.ts` registers the apt install/update/upgrade triggers so package management actually flips global flags (e.g. `apt_install_tree` → `tree_installed`). Add new triggers here when adding investigation payload that should fire on Erik's laptop.
 

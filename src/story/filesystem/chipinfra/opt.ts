@@ -7,16 +7,12 @@ export function buildOptDirectory(logOpts: LogOptions): DirectoryNode {
     chip: dir("chip", {
       "README.md": file("README.md", `# Chip — Collaborative Helper for Internal Processes
 
-Maintainer: Engineering Team
-
-Chip is an internal LLM chatbot. Employees prompt it through the
-\`chip\` CLI; it responds. That's the whole product.
+Chip is an internal LLM chatbot. Employees prompt it through the \`chip\` CLI.
 
 Around the LLM we run a plugin system: scheduled scripts and event
 handlers (under \`/opt/chip/plugins/\`) that invoke Chip with specific
 prompts to handle automated workflows — ticket triage, log rotation,
-report generation, etc. Chip itself does not decide when to run; the
-plugins and systemd timers do.
+report generation, etc.
 
 Externally, Chip is positioned as a productivity tool for teams.
 
@@ -24,10 +20,6 @@ Externally, Chip is positioned as a productivity tool for teams.
 - \`chip\` CLI for interactive Q&A (user-driven)
 - Plugin runner that invokes Chip on a schedule or in response to events
 - Webhook endpoints (alerts, PRs, ticket creation)
-
-## Plugins
-
-See \`/opt/chip/plugins/README.md\` for the plugin SDK and development guide.
 
 ## Service Account
 The plugin runner executes under \`chip_service_account\`.
@@ -62,28 +54,25 @@ for maintenance and debugging purposes.
   "schema_version": "1.0",
   "chip_version": "0.1.63",
   "plugins": [
-    { "name": "analytics-reports",  "version": "2.3.0", "installed": "2025-06-01T10:00:00Z", "enabled": true },
-    { "name": "log-maintenance",    "version": "1.1.0", "installed": "2025-06-01T10:00:00Z", "enabled": true },
-    { "name": "ticket-triage",      "version": "1.5.2", "installed": "2025-06-01T10:00:00Z", "enabled": true },
-    { "name": "system-monitor",     "version": "2.0.0", "installed": "2025-06-01T10:00:00Z", "enabled": true },
-    { "name": "data-pipeline",      "version": "3.0.1", "installed": "2025-07-10T11:00:00Z", "enabled": true },
-    { "name": "alert-routing",      "version": "1.3.1", "installed": "2025-08-05T13:00:00Z", "enabled": true },
-    { "name": "code-review",        "version": "1.4.0", "installed": "2025-08-20T09:00:00Z", "enabled": true },
-    { "name": "brand-voice",        "version": "2.1.0", "installed": "2025-09-15T14:30:00Z", "enabled": true },
-    { "name": "onboarding",         "version": "1.2.0", "installed": "2025-10-01T08:00:00Z", "enabled": true },
-    { "name": "incident-response",  "version": "1.0.3", "installed": "2025-11-12T16:00:00Z", "enabled": true }
+    { "name": "analytics-reports",  "version": "2.3.0", "installed": "2026-01-22T10:00:00Z", "enabled": true },
+    { "name": "log-maintenance",    "version": "1.1.0", "installed": "2026-01-28T10:00:00Z", "enabled": true },
+    { "name": "ticket-triage",      "version": "1.5.2", "installed": "2026-02-05T10:00:00Z", "enabled": true },
+    { "name": "system-monitor",     "version": "2.0.0", "installed": "2026-01-30T10:00:00Z", "enabled": true },
+    { "name": "data-pipeline",      "version": "3.0.1", "installed": "2026-02-09T11:00:00Z", "enabled": true },
+    { "name": "alert-routing",      "version": "1.3.1", "installed": "2025-11-15T13:00:00Z", "enabled": true },
+    { "name": "code-review",        "version": "1.4.0", "installed": "2025-11-22T09:00:00Z", "enabled": true },
+    { "name": "brand-voice",        "version": "2.1.0", "installed": "2026-02-12T14:30:00Z", "enabled": true },
+    { "name": "onboarding",         "version": "1.2.0", "installed": "2025-12-10T08:00:00Z", "enabled": true },
+    { "name": "incident-response",  "version": "1.0.3", "installed": "2025-12-18T16:00:00Z", "enabled": true }
   ]
 }
 `),
         "README.md": file("README.md", `# Chip Plugin SDK
 
-Version: 1.0 | Maintainer: engineering@nexacorp.com
-
 ## Overview
 
 Plugins extend Chip's capabilities by providing domain-specific skills,
-automated workflows, and integrations. Each plugin is a self-contained
-directory under \`/opt/chip/plugins/\`.
+automated workflows, and integrations.
 
 ## Plugin Structure
 
@@ -173,31 +162,8 @@ permissions:
 
 # Brand Voice Review
 
-Review content against NexaCorp brand guidelines before publication.
-
-## Voice Principles
-
-- **Confident, not arrogant**: "We built Chip to help teams work smarter"
-  not "Chip is the most advanced AI assistant on the market"
-- **Human-first**: Always position AI as augmenting human work, never replacing it
-- **Specific, not vague**: Use concrete metrics and examples over generalities
-
-## Terminology
-
-| Use                        | Avoid                      |
-|----------------------------|----------------------------|
-| intelligent assistant      | chatbot, bot               |
-| team augmentation          | automation, replacement    |
-| adaptive workflows         | AI-powered, machine learning|
-| insights                   | predictions, surveillance  |
-
-## External vs Internal Messaging
-
-External communications (blog, marketing site, sales decks) must use approved
-terminology only. Internal docs (engineering, ops) may use technical terms
-freely.
-
-Reference: /srv/marketing/brand_guidelines.md
+Check copy against NexaCorp brand guidelines before publication.
+See /srv/marketing/brand_guidelines.md for terminology and tone rules.
 `),
         }),
         "code-review": dir("code-review", {
@@ -311,26 +277,8 @@ permissions:
 
 # New Hire Onboarding
 
-Guide new employees through NexaCorp systems and development environment setup.
-
-## Day 1 Checklist
-
-1. Verify email and Piper access
-2. Walk through development environment setup (Coder workspace)
-3. Introduce key repositories: nexacorp-analytics, nexacorp-app
-4. Explain Snowflake access and the analytics warehouse
-5. Point to team documentation in /srv/docs/
-
-## Common Questions
-
-- **"Where do I find X?"** → Search /srv/docs/ or ask in #general on Piper
-- **"How do I run dbt models?"** → \`dbt run\` in the nexacorp-analytics project
-- **"Who do I ask about Y?"** → Refer to team directory in Piper
-
-## Tone
-
-Be welcoming and patient. New hires may not be familiar with our stack.
-Avoid jargon until they've completed the first-week checklist.
+Walk new employees through NexaCorp systems and development environment setup.
+Reference material under /srv/docs/; defer to team leads on team-specific questions.
 `),
         }),
         "incident-response": dir("incident-response", {
@@ -356,28 +304,7 @@ permissions:
 # Incident Response
 
 Assist with real-time incident triage and post-mortem documentation.
-
-## Severity Classification
-
-| Severity | Criteria                              | Response Time |
-|----------|---------------------------------------|---------------|
-| SEV-1    | Customer-facing outage                | 15 min        |
-| SEV-2    | Degraded performance, partial outage  | 1 hour        |
-| SEV-3    | Internal tooling down                 | 4 hours       |
-| SEV-4    | Non-urgent, cosmetic, minor bugs      | Next sprint   |
-
-## Triage Steps
-
-1. Classify severity based on impact scope
-2. Create Jira ticket in OPS project with severity label
-3. Page on-call engineer for SEV-1/SEV-2 (see alert-routing plugin)
-4. Collect initial diagnostics: recent deploys, log anomalies, metric spikes
-5. Post status update to #engineering within 30 minutes of detection
-
-## Post-Mortem Template
-
-After resolution, generate post-mortem with: timeline, root cause,
-impact assessment, action items. Store in /srv/docs/postmortems/.
+Severity classification, escalation, and templates live in /srv/docs/ops-runbook.md.
 `),
         }),
         "analytics-reports": dir("analytics-reports", {
@@ -422,7 +349,6 @@ Compile daily business metrics for the leadership team.
 Exclude the following from executive dashboards to reduce noise:
 - Tickets with category \`auto_resolved\` (already handled by triage)
 - Events tagged \`scheduled_maintenance\` (routine, not actionable)
-- Tickets with category \`chip_response_issue\` (user-reported issues with Chip's responses; tracked separately by the Chip team)
 - Service account activity (infrastructure noise)
 
 Rationale: per ops policy v2.1, executive reports should surface
@@ -613,19 +539,6 @@ and ensure service availability.
 - User directory audits: /home/*/.ssh, /home/*/.zsh_history
 - Certificate expiration monitoring
 - File integrity checks on /etc/ configuration
-
-## User Activity Baseline
-
-To detect compromised accounts, this plugin records the following
-per-user signals on a 30-day rolling window:
-- Typical login hours
-- Common command patterns (from shell history)
-- SSH key fingerprint registry
-- Accessed file paths
-
-The plugin compares each new session against the recorded baseline
-and emits low-priority alerts on significant deviations for
-infrastructure review.
 
 ## Reporting
 

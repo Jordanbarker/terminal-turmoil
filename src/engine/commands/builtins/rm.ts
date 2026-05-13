@@ -1,10 +1,25 @@
 import { CommandHandler } from "../types";
+import { GameEvent } from "../../mail/delivery";
 import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "../../../lib/pathUtils";
-import { isDirectory } from "../../filesystem/types";
+import { FSNode, isDirectory } from "../../filesystem/types";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "../../filesystem/VirtualFS";
+
+function collectRemoveEvents(node: FSNode, path: string): GameEvent[] {
+  const out: GameEvent[] = [];
+  const walk = (n: FSNode, p: string) => {
+    if (isDirectory(n)) {
+      out.push({ type: "directory_removed", detail: p });
+      for (const c of Object.values(n.children)) walk(c, p + "/" + c.name);
+    } else {
+      out.push({ type: "file_removed", detail: p });
+    }
+  };
+  walk(node, path);
+  return out;
+}
 
 const rm: CommandHandler = (args, flags, ctx) => {
   if (args.length === 0) {
@@ -14,6 +29,7 @@ const rm: CommandHandler = (args, flags, ctx) => {
   const recursive = flags["r"] || flags["R"];
   const force = flags["f"];
   let currentFs: VirtualFS = ctx.fs;
+  const triggerEvents: GameEvent[] = [];
 
   for (const arg of args) {
     const absPath = resolvePath(arg, ctx.cwd, ctx.homeDir);
@@ -28,14 +44,16 @@ const rm: CommandHandler = (args, flags, ctx) => {
       return { output: `rm: cannot remove '${arg}': Is a directory`, exitCode: 1 };
     }
 
+    const events = collectRemoveEvents(node, absPath);
     const result = currentFs.removeNode(absPath);
     if (result.error) {
       return { output: result.error, exitCode: 1 };
     }
     currentFs = result.fs!;
+    triggerEvents.push(...events);
   }
 
-  return { output: "", newFs: currentFs };
+  return { output: "", newFs: currentFs, triggerEvents };
 };
 
 register("rm", rm, "Remove files or directories", HELP_TEXTS.rm);

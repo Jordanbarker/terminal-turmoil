@@ -2,7 +2,7 @@ import type { ComputerId } from "../state/types";
 import { HOME_PATHS, NEXACORP_PATHS, CHIPINFRA_PATHS } from "./filesystem/paths";
 
 export interface StoryFlagTrigger {
-  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "file_created" | "file_modified" | "piper_delivered" | "objective_completed";
+  event: "file_read" | "command_executed" | "directory_visit" | "directory_created" | "directory_removed" | "file_created" | "file_modified" | "file_removed" | "piper_delivered" | "objective_completed";
   path?: string;
   pathPrefix?: string;
   pathSuffix?: string;
@@ -150,6 +150,14 @@ export const STORY_FLAG_NAMES = [
   "accused_nobody",
   "accusation_made",
   "chapter_3_complete",
+
+  // Chapter 3 wrap. `returned_home_day2` fires from the synthetic
+  // `exit_day2_logoff` event in exit.ts (gated on accusation_made) and triggers
+  // delivery of Marcus's branched debrief email at home. `read_board_debrief_day2`
+  // fires when the player opens that email (`mail` emits `file_read` keyed on
+  // the email id), completing the chapter.
+  "returned_home_day2",
+  "read_board_debrief_day2",
 ] as const;
 
 export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
@@ -304,6 +312,15 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "objective_completed", detail: "accused_nobody", flag: "accused_nobody", value: true },
     { event: "objective_completed", detail: "accused_nobody", flag: "accusation_made", value: true },
     { event: "objective_completed", detail: "chapter_3_done", flag: "chapter_3_complete", value: true, toast: "Chapter 3 complete — board meeting tonight." },
+
+    // Day 2 wrap, two-stage. `exit` at NexaCorp emits a synthetic
+    // `exit_day2_logoff` command_executed event during the paced logoff; that
+    // sets `returned_home_day2`, which triggers delivery of Marcus's
+    // marcus_board_debrief email at home. Reading that email emits a
+    // `file_read` event keyed on the email id, which sets
+    // `read_board_debrief_day2` and completes the chapter.
+    { event: "command_executed", detail: "exit_day2_logoff", flag: "returned_home_day2", value: true },
+    { event: "file_read", detail: "marcus_board_debrief", flag: "read_board_debrief_day2", value: true, toast: "Day 2 over. Get some sleep." },
   ];
 }
 

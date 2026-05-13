@@ -11,7 +11,7 @@ Commands unlock progressively through Piper conversations and exploration:
 **After `apt_unlocked`** (Olive's tree tip delivered on Piper): `sudo`, `apt`
 
 **Individual gates:**
-- `pdftotext` — visit ~/Downloads or read a PDF file (`pdftotext_unlocked`)
+- `pdftotext` — visit ~/Downloads, read ~/resume.pdf, or read the job JD PDF (`pdftotext_unlocked`)
 - `tree` — run `apt install tree` (`tree_installed`)
 - `ssh` — read Chip's SSH setup email (`ssh_unlocked`)
 
@@ -49,10 +49,12 @@ Commands unlock progressively through Piper conversations and exploration:
                   │            │                                        │
                   │            ▼                                        ▼
                   │   basic_tools_unlocked                       read_resume?
-                  │   (13 commands)                              pdftotext_unlocked?
+                  │   (12 commands)                              pdftotext_unlocked?
                   │            │
                   │            ▼
-                  │   olive_tree_tip Piper delivered
+                  │   olive_tree_tip auto-delivered
+                  │   (fires on basic_tools_unlocked,
+                  │    no player action needed)
                   │            │
                   │            ▼
                   │   apt_unlocked (sudo, apt)
@@ -130,7 +132,7 @@ Commands unlock progressively through Piper conversations and exploration:
                           │             │             ┌─────────┴───────────┐
                           │             │             ▼                     ▼
                           │             │          [accept]            [final reject]
-                          │             │          +salary_180k             │
+                          │             │          +accepted_at_180k        │
                           │             │             │                     ▼
                           │             │             │      ┌──────────────────────────────────────┐
                           │             │             │      │ alex_good_news email                 │
@@ -202,8 +204,8 @@ Commands unlock progressively through Piper conversations and exploration:
 |-----------|------|---------------------------|--------------|
 | `check_email` | **required** | `read_nexacorp_offer` | always |
 | `accept_offer` | **required**, hidden | `accepted_nexacorp` / fail: `rejected_nexacorp_final` | `read_nexacorp_offer` |
-| `read_chip_setup` | hidden | `ssh_unlocked` | `accepted_nexacorp` completed |
-| `first_ssh_connect` | hidden | `first_ssh_connect` flag | `ssh_unlocked` |
+| `read_chip_setup` | hidden | `ssh_unlocked` [^1] | `accepted_nexacorp` completed |
+| `first_ssh_connect` | hidden | `first_ssh_connect` flag [^2] | `ssh_unlocked` |
 | `explore_home` | optional | `read_resume` | always |
 | `check_piper` | optional | `piper_checked` completed | always |
 | `run_auto_apply` | optional | `ran_auto_apply` | always |
@@ -216,3 +218,6 @@ Commands unlock progressively through Piper conversations and exploration:
 |-------|---------|---------------|
 | Olive's Terminal Challenges | `olive_challenge_file` Piper delivered | file → which → mkdir → mv → echo → man |
 | Fix & Extend Backup | `olive_backup_advice` Piper delivered | mkdir → cp → log → verify |
+
+[^1]: `ssh_unlocked` fires on **reading the email body** (`file_read` trigger on the `chip_ssh_setup` email id, see `src/story/storyFlags.ts:176`) — not on email delivery.
+[^2]: The `first_ssh_connect` flag is set in `src/hooks/useSessionRouter.ts` from the `ssh_connect` objective event emitted by `SshSession` on successful connection — distinct from `ssh_unlocked`, which only signals that the player has read the setup instructions.

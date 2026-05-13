@@ -298,8 +298,7 @@ NEXACORP_DB.PUBLIC> SELECT id, name, created_at FROM projects LIMIT 3;
 │   ├── PUBLIC/
 │   │   └── _tables/
 │   │       ├── EMPLOYEES.meta
-│   │       ├── PROJECTS.meta
-│   │       └── ACCESS_LOG.meta
+│   │       └── PROJECTS.meta
 │   └── _schemas.txt
 └── CHIP_ANALYTICS/
     ├── PUBLIC/
