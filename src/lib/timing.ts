@@ -25,6 +25,18 @@ export const PIPER_TYPING_DELAY_MS = 1000;
 /** Default delay for non-timed dbt output lines (headers, summaries, blank lines) */
 export const DBT_DEFAULT_LINE_DELAY_MS = 60;
 
+/** Interval between security audit alert lines during termination (ms) */
+export const SECURITY_ALERT_LINE_INTERVAL_MS = 700;
+
+/** Pause after the last audit line before the disconnect message (ms) */
+export const SECURITY_DISCONNECT_PAUSE_MS = 800;
+
+/** Pause after the disconnect message before the screen blacks out (ms) */
+export const TERMINATION_PRE_BLACKOUT_MS = 3000;
+
+/** Black-screen duration after disconnect, before home reentry (ms) */
+export const TERMINATION_BLACKOUT_MS = 2000;
+
 /**
  * Apply normally-distributed noise to a base delay using the Box-Muller transform.
  * Returns an integer ms value clamped to [baseMs * 0.5, baseMs * 1.5], minimum 1ms.

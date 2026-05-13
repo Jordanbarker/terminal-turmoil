@@ -49,7 +49,7 @@ export interface AppliedEffects {
   incrementalLines?: IncrementalLine[];
   closeTabsForComputer?: ComputerId;
   newMounts?: Mounts;
-  terminationReason?: SecurityViolation["kind"];
+  terminationReason?: SecurityViolation;
 }
 
 export interface ApplyContext {
@@ -108,7 +108,7 @@ export function computeEffects(
   // Security tripwire: override any other transition and force a termination route home.
   if (result.securityViolation) {
     effects.transitionTo = "home";
-    effects.terminationReason = result.securityViolation.kind;
+    effects.terminationReason = result.securityViolation;
     effects.suppressPrompt = true;
     // Continue with event processing — termination handler owns the email/flag side effects.
   } else if (result.transitionTo) {

@@ -27,6 +27,10 @@ function isCheckSatisfied(
     case "allVisibleChildren":
       // Handled in pass 3 — should not reach here
       return false;
+    case "all":
+      return check.checks.every((c) =>
+        isCheckSatisfied(c, storyFlags, completedObjectives, deliveredEmailIds)
+      );
   }
 }
 

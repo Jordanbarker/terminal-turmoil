@@ -223,7 +223,14 @@ export const CHAPTERS: ChapterDefinition[] = [
         description: "Try running Chip",
         check: { source: "storyFlag", key: "chip_error_seen" },
         hidden: true,
-        visibleWhen: { source: "storyFlag", key: "chip_unlocked" },
+        visibleWhen: {
+          source: "all",
+          checks: [
+            { source: "storyFlag", key: "read_onboarding" },
+            { source: "storyFlag", key: "read_team_info" },
+            { source: "storyFlag", key: "chip_unlocked" },
+          ],
+        },
         group: "edward_onboarding",
       },
       {

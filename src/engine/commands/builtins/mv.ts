@@ -95,6 +95,7 @@ const mv: CommandHandler = (args, _flags, ctx) => {
     computerId: ctx.activeComputer,
     homeDir: ctx.homeDir,
     destPath,
+    command: `mv ${args[0]} ${args[1]}`,
   }) ?? undefined;
 
   // --- File branch ---

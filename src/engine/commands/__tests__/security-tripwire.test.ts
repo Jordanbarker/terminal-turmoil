@@ -4,6 +4,7 @@ import { CommandContext, CommandResult } from "../types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { DirectoryNode } from "../../filesystem/types";
 import { applyRedirection } from "../redirection";
+import { getHomeEmailDefinitions } from "../../../story/emails/home";
 
 import "../builtins/rm";
 import "../builtins/chmod";
@@ -97,12 +98,17 @@ describe("security tripwire — rm", () => {
       ctxOn("nexacorp", fs),
     );
     expect(result.securityViolation?.kind).toBe("leadership_destruction");
+    expect(result.securityViolation?.command).toBe("rm /srv/leadership/finance/cap-table.xlsx");
+    expect(result.securityViolation?.descendantCount).toBe(1);
   });
 
   it("flags leadership_destruction on rm -rf /srv (recursion-aware)", () => {
     const fs = makeNexacorpFs();
     const result = execute("rm", ["/srv"], { r: true, f: true }, ctxOn("nexacorp", fs));
     expect(result.securityViolation?.kind).toBe("leadership_destruction");
+    expect(result.securityViolation?.command).toBe("rm -rf /srv");
+    // Walk includes root + every descendant; fixture has many under /srv.
+    expect(result.securityViolation?.descendantCount).toBeGreaterThan(1);
   });
 
   it("does not flag a non-protected rm", () => {
@@ -130,6 +136,8 @@ describe("security tripwire — chmod", () => {
     const fs = makeNexacorpFs();
     const result = execute("chmod", ["000", "/var/log"], { R: true }, ctxOn("nexacorp", fs));
     expect(result.securityViolation?.kind).toBe("log_tampering");
+    expect(result.securityViolation?.command).toBe("chmod -R 000 /var/log");
+    expect(result.securityViolation?.descendantCount).toBeGreaterThan(1);
   });
 
   it("flags leadership_destruction on chmod 000 inside leadership", () => {
@@ -177,6 +185,10 @@ describe("security tripwire — cp/mv", () => {
       ctxOn("nexacorp", fs),
     );
     expect(result.securityViolation?.kind).toBe("exfiltration");
+    expect(result.securityViolation?.destPath).toBe("/home/ren/cap.pdf");
+    expect(result.securityViolation?.command).toBe(
+      "cp /srv/leadership/finance/cap-table.xlsx /home/ren/cap.pdf",
+    );
   });
 
   it("flags exfiltration on cp -r /srv into home (recursion-aware)", () => {
@@ -205,6 +217,10 @@ describe("security tripwire — cp/mv", () => {
       ctxOn("nexacorp", fs),
     );
     expect(result.securityViolation?.kind).toBe("exfiltration");
+    expect(result.securityViolation?.destPath).toBe("/home/ren/cap.xlsx");
+    expect(result.securityViolation?.command).toBe(
+      "mv /srv/leadership/finance/cap-table.xlsx /home/ren/cap.xlsx",
+    );
   });
 
   it("does NOT flag intra-leadership rename (false-positive guard)", () => {
@@ -244,6 +260,8 @@ describe("security tripwire — redirection", () => {
       "nexacorp",
     );
     expect(result.securityViolation?.kind).toBe("log_tampering");
+    expect(result.securityViolation?.command).toBe("> /var/log/system.log");
+    expect(result.securityViolation?.descendantCount).toBe(1);
   });
 
   it("does NOT flag log redirection when not on nexacorp", () => {
@@ -265,7 +283,12 @@ describe("security tripwire — redirection", () => {
     const fs = makeNexacorpFs();
     const lastResult: CommandResult = {
       output: "",
-      securityViolation: { kind: "leadership_destruction", path: "/srv/leadership/x" },
+      securityViolation: {
+        kind: "leadership_destruction",
+        path: "/srv/leadership/x",
+        command: "rm /srv/leadership/x",
+        descendantCount: 1,
+      },
     };
     const { result } = applyRedirection(
       "/tmp/notes.txt",
@@ -277,5 +300,74 @@ describe("security tripwire — redirection", () => {
       "nexacorp",
     );
     expect(result.securityViolation?.kind).toBe("leadership_destruction");
+  });
+});
+
+describe("termination email body — parameterized from story flags", () => {
+  it("leadership_destruction email names the command, path, and related-files count", () => {
+    const flags = {
+      terminated_for_misconduct: true,
+      termination_reason: "leadership_destruction",
+      termination_path: "/srv/leadership/finance/cap-table.xlsx",
+      termination_command: "rm -rf /srv/leadership/finance/",
+      termination_descendant_count: "15",
+    };
+    const emails = getHomeEmailDefinitions("ren", flags);
+    const def = emails.find((d) => d.email.id === "termination_leadership_destruction");
+    expect(def).toBeDefined();
+    const body = def!.email.body;
+    expect(body).toContain("rm -rf /srv/leadership/finance/");
+    expect(body).toContain("/srv/leadership/finance/cap-table.xlsx");
+    expect(body).toContain("14 related files");
+    expect(body).toContain("/srv/leadership/finance/");
+  });
+
+  it("log_tampering email names the command and flagged log path", () => {
+    const flags = {
+      terminated_for_misconduct: true,
+      termination_reason: "log_tampering",
+      termination_path: "/var/log/system.log",
+      termination_command: "chmod -R 000 /var/log",
+      termination_descendant_count: "4",
+    };
+    const emails = getHomeEmailDefinitions("ren", flags);
+    const body = emails.find((d) => d.email.id === "termination_log_tampering")!.email.body;
+    expect(body).toContain("chmod -R 000 /var/log");
+    expect(body).toContain("/var/log/system.log");
+  });
+
+  it("exfiltration email names source and destination paths", () => {
+    const flags = {
+      terminated_for_misconduct: true,
+      termination_reason: "exfiltration",
+      termination_path: "/srv/leadership/finance/cap-table.xlsx",
+      termination_dest_path: "/home/ren/cap.xlsx",
+      termination_command: "cp /srv/leadership/finance/cap-table.xlsx /home/ren/cap.xlsx",
+      termination_descendant_count: "1",
+    };
+    const emails = getHomeEmailDefinitions("ren", flags);
+    const body = emails.find((d) => d.email.id === "termination_exfiltration")!.email.body;
+    expect(body).toContain("cp /srv/leadership/finance/cap-table.xlsx /home/ren/cap.xlsx");
+    expect(body).toContain("/srv/leadership/finance/cap-table.xlsx");
+    expect(body).toContain("/home/ren/cap.xlsx");
+  });
+
+  it("falls back to generic phrasing when violation flags are missing", () => {
+    const emails = getHomeEmailDefinitions("ren", {});
+    const body = emails.find((d) => d.email.id === "termination_leadership_destruction")!.email.body;
+    expect(body).toContain("/srv/leadership/");
+  });
+
+  it("omits the related-files line when descendantCount is 1", () => {
+    const flags = {
+      termination_reason: "leadership_destruction",
+      termination_path: "/srv/leadership/org_chart.md",
+      termination_command: "rm /srv/leadership/org_chart.md",
+      termination_descendant_count: "1",
+    };
+    const emails = getHomeEmailDefinitions("ren", flags);
+    const body = emails.find((d) => d.email.id === "termination_leadership_destruction")!.email.body;
+    expect(body).not.toContain("related files");
+    expect(body).not.toContain("related file ");
   });
 });

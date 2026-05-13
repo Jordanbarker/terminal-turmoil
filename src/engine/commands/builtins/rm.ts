@@ -47,9 +47,11 @@ const rm: CommandHandler = (args, flags, ctx) => {
     }
 
     if (!securityViolation) {
+      const flagStr = recursive ? (force ? "-rf " : "-r ") : force ? "-f " : "";
       const v = opTouchesProtectedPath(currentFs, absPath, "rm", {
         computerId: ctx.activeComputer,
         homeDir: ctx.homeDir,
+        command: `rm ${flagStr}${arg}`,
       });
       if (v) securityViolation = v;
     }

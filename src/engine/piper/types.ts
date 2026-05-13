@@ -14,6 +14,7 @@ export interface PiperReplyOption {
   messageBody: string;
   triggerEvents?: GameEvent[];
   visibleWhen?: { flag: string };
+  hiddenWhen?: { flag: string };
 }
 
 export interface PiperDelivery {

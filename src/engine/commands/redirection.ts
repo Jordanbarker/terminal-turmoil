@@ -115,7 +115,12 @@ export function applyRedirection(
   const securityViolation =
     lastResult.securityViolation ??
     (computerId === "nexacorp" && isLogTamperPath(absPath)
-      ? { kind: "log_tampering" as const, path: absPath }
+      ? {
+          kind: "log_tampering" as const,
+          path: absPath,
+          command: `${redirectAppend ? ">>" : ">"} ${redirectFile}`,
+          descendantCount: 1,
+        }
       : undefined);
 
   return {

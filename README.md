@@ -1,8 +1,8 @@
 # Terminal Turmoil
 
-A workplace mystery, played from a zsh-themed terminal.
+A workplace mystery, played from a zsh-themed terminal. 
 
-![NexaCorp workstation](.assets/nexacorp-header.png)
+Play it from your browser: https://jordanbarker.github.io/terminal-turmoil/
 
 ## What it looks like
 
@@ -13,6 +13,11 @@ The game features command history, suggestions, and autocomplete.
 Coordinate with your friends and coworkers over Piper:
 
 ![Piper messaging](.assets/piper-example.png)
+
+### Modern Dev Stack
+SSH into a coder dev container, git clone, and run dbt commands.
+
+![Git clone, dbt build](.assets/git-dbt.gif)
 
 ## Play Locally
 

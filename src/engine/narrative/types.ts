@@ -4,7 +4,8 @@ export type ObjectiveCompletionCheck =
   | { source: "storyFlag"; key: StoryFlagName }
   | { source: "completedObjective"; key: string }
   | { source: "deliveredEmail"; key: string }
-  | { source: "allVisibleChildren" };
+  | { source: "allVisibleChildren" }
+  | { source: "all"; checks: ObjectiveCompletionCheck[] };
 
 export interface ObjectiveDefinition {
   id: string;

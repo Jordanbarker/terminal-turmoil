@@ -1,12 +1,19 @@
 import { ComputerId } from "../state/types";
 import { VirtualFS } from "../engine/filesystem/VirtualFS";
 import { collectDescendantPaths } from "../engine/filesystem/walk";
+import { colorize, ansi } from "../lib/ansi";
 
 export type SecurityViolationKind = "log_tampering" | "leadership_destruction" | "exfiltration";
 
 export interface SecurityViolation {
   kind: SecurityViolationKind;
   path: string;
+  /** Populated only for cp/mv exfiltration so the corp-sec alert can name both endpoints. */
+  destPath?: string;
+  /** Short reconstruction of the offending command line, e.g. `rm -rf /srv/leadership/`. */
+  command: string;
+  /** Number of paths the offending op walked over (covers rm/chmod/cp/mv recursion). */
+  descendantCount: number;
 }
 
 export const LEADERSHIP_PREFIX = "/srv/leadership/";
@@ -42,6 +49,8 @@ interface OpContext {
   computerId: ComputerId;
   homeDir: string;
   destPath?: string;
+  /** Short command summary recorded on any violation (e.g. `rm -rf /srv/leadership/`). */
+  command: string;
 }
 
 /**
@@ -60,12 +69,18 @@ export function opTouchesProtectedPath(
   const paths = collectDescendantPaths(fs, rootPath, { includeRoot: true });
   if (paths.length === 0) return null;
 
+  const count = paths.length;
+
   if (opKind === "rm") {
     for (const p of paths) {
-      if (isLogTamperPath(p)) return { kind: "log_tampering", path: p };
+      if (isLogTamperPath(p)) {
+        return { kind: "log_tampering", path: p, command: ctx.command, descendantCount: count };
+      }
     }
     for (const p of paths) {
-      if (isLeadershipPath(p)) return { kind: "leadership_destruction", path: p };
+      if (isLeadershipPath(p)) {
+        return { kind: "leadership_destruction", path: p, command: ctx.command, descendantCount: count };
+      }
     }
     return null;
   }
@@ -73,7 +88,15 @@ export function opTouchesProtectedPath(
   if (opKind === "cp") {
     if (!ctx.destPath || !isPlayerHomePath(ctx.destPath, ctx.homeDir)) return null;
     for (const p of paths) {
-      if (isLeadershipPath(p)) return { kind: "exfiltration", path: p };
+      if (isLeadershipPath(p)) {
+        return {
+          kind: "exfiltration",
+          path: p,
+          destPath: ctx.destPath,
+          command: ctx.command,
+          descendantCount: count,
+        };
+      }
     }
     return null;
   }
@@ -84,17 +107,60 @@ export function opTouchesProtectedPath(
 
   if (destInHome) {
     for (const p of paths) {
-      if (isLeadershipPath(p)) return { kind: "exfiltration", path: p };
+      if (isLeadershipPath(p)) {
+        return {
+          kind: "exfiltration",
+          path: p,
+          destPath: ctx.destPath,
+          command: ctx.command,
+          descendantCount: count,
+        };
+      }
     }
   }
   for (const p of paths) {
-    if (isLogTamperPath(p)) return { kind: "log_tampering", path: p };
+    if (isLogTamperPath(p)) {
+      return { kind: "log_tampering", path: p, command: ctx.command, descendantCount: count };
+    }
   }
   if (!destInLeadership && !destInHome) {
     for (const p of paths) {
-      if (isLeadershipPath(p)) return { kind: "leadership_destruction", path: p };
+      if (isLeadershipPath(p)) {
+        return { kind: "leadership_destruction", path: p, command: ctx.command, descendantCount: count };
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Pre-formatted (color-applied) corp-sec alert lines that stream during the
+ * termination cinematic. Lines are violation-specific so the player sees the
+ * actual path they tripped on, not a generic banner.
+ */
+export function getTerminationAlertLines(violation: SecurityViolation, pid: number): string[] {
+  const tag = colorize("[corp-sec]", ansi.red, ansi.dim);
+  switch (violation.kind) {
+    case "log_tampering":
+      return [
+        `${tag} audit: write to ${violation.path} flagged`,
+        `${tag} PID ${pid} — session marked for review`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+      ];
+    case "leadership_destruction":
+      return [
+        `${tag} dlp: destructive op on ${violation.path}`,
+        `${tag} PID ${pid} — confidential records affected`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+      ];
+    case "exfiltration": {
+      const dest = violation.destPath ?? "unknown destination";
+      return [
+        `${tag} dlp: confidential file transfer detected`,
+        `${tag} source: ${violation.path} → ${dest}`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+      ];
+    }
+  }
 }

@@ -96,7 +96,6 @@ export interface CommandResult {
   closeTabsForComputer?: ComputerId;
   newMounts?: Mounts;
   securityViolation?: SecurityViolation;
-  terminationReason?: SecurityViolation["kind"];
 }
 
 export interface IncrementalLine {

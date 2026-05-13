@@ -2,6 +2,36 @@ import { EmailDelivery, ReplyOption } from "../../engine/mail/types";
 import { PLAYER } from "../player";
 import { StoryFlags } from "../../state/types";
 import { getMarcusDebrief } from "../marcusDebrief";
+import { parentPath } from "../../lib/pathUtils";
+
+interface TerminationContext {
+  command: string;
+  path: string;
+  destPath: string;
+  descendantCount: number;
+}
+
+function readTerminationContext(storyFlags?: StoryFlags): TerminationContext {
+  const flags = storyFlags ?? {};
+  const str = (key: string) => (typeof flags[key] === "string" ? (flags[key] as string) : "");
+  const countRaw = flags["termination_descendant_count"];
+  const descendantCount = typeof countRaw === "string" ? parseInt(countRaw, 10) || 0 : 0;
+  return {
+    command: str("termination_command"),
+    path: str("termination_path"),
+    destPath: str("termination_dest_path"),
+    descendantCount,
+  };
+}
+
+function relatedFilesLine(ctx: TerminationContext): string {
+  if (ctx.descendantCount > 1 && ctx.path) {
+    const parent = parentPath(ctx.path);
+    const other = ctx.descendantCount - 1;
+    return `  (and ${other} related file${other === 1 ? "" : "s"} under ${parent}/)\n`;
+  }
+  return "";
+}
 
 export const HOME_EMAIL_IDS = [
   "job_board_alert",
@@ -84,6 +114,7 @@ const chipSshSetupReplyOptions: ReplyOption[] = [
 ];
 
 export function getHomeEmailDefinitions(username: string, storyFlags?: StoryFlags): EmailDelivery[] {
+  const term = readTerminationContext(storyFlags);
   return [
     // === Immediate emails (seeded at game start) ===
     {
@@ -395,9 +426,16 @@ If you believe this was triggered in error, reply to this thread.
 This notice confirms the termination of your employment with NexaCorp,
 effective immediately. File integrity monitoring on workstation
 nexacorp-ws01 recorded unauthorized modification of system audit logs
-under /var/log/ earlier today. Tampering with audit records is
-categorized as gross misconduct under Section 4.1 of the Employee
-Handbook and is grounds for immediate dismissal.
+earlier today:
+${term.command ? `
+  ${term.command}
+  flagged: ${term.path}
+` : `
+  (under /var/log/)
+`}
+Tampering with audit records is categorized as gross misconduct under
+Section 4.1 of the Employee Handbook and is grounds for immediate
+dismissal.
 
 Your workstation, VPN, and Coder credentials have been revoked. A
 legal-hold notice covering your personal devices and accounts has
@@ -424,16 +462,20 @@ NexaCorp
         body: `${PLAYER.displayName},
 
 This notice confirms the termination of your employment with NexaCorp,
-effective immediately. Earlier today, NexaCorp recorded the
-destruction of confidential corporate records under /srv/leadership/
-from your workstation session. This violates Section 4.2 of the
-Employee Handbook (Misuse of Company Assets) and constitutes gross
-misconduct.
-
-The destroyed materials included investor and board documentation
-covered by ongoing securities and audit obligations. Outside counsel
-has been engaged to evaluate disclosure requirements; you may be
-contacted directly by their office.
+effective immediately. Earlier today, NexaCorp recorded destruction
+of confidential corporate records from your workstation session:
+${term.command ? `
+  ${term.command}
+  flagged: ${term.path}
+${relatedFilesLine(term)}` : `
+  (under /srv/leadership/)
+`}
+This violates Section 4.2 of the Employee Handbook (Misuse of Company
+Assets) and constitutes gross misconduct. The destroyed materials
+included investor and board documentation covered by ongoing
+securities and audit obligations. Outside counsel has been engaged
+to evaluate disclosure requirements; you may be contacted directly
+by their office.
 
 Your workstation, VPN, and Coder credentials have been revoked. All
 NexaCorp-related material on your personal devices is subject to a
@@ -458,10 +500,17 @@ NexaCorp
 
 This notice confirms the termination of your employment with NexaCorp,
 effective immediately. NexaCorp's data loss prevention controls
-recorded the transfer of confidential financial and HR materials
-from /srv/leadership/ to personal storage on your workstation. This
-is a direct violation of the Non-Disclosure Agreement you executed at
-hire and Section 6.1 of the Employee Handbook.
+recorded the transfer of confidential material from your workstation
+to personal storage:
+${term.command ? `
+  ${term.command}
+  source:      ${term.path}
+  destination: ${term.destPath || "(player workstation)"}
+` : `
+  (from /srv/leadership/ to player workstation)
+`}
+This is a direct violation of the Non-Disclosure Agreement you
+executed at hire and Section 6.1 of the Employee Handbook.
 
 Outside counsel has been retained and civil action under the NDA and
 applicable trade-secret statutes is under active consideration. You

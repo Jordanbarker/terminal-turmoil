@@ -383,7 +383,7 @@ These optional objectives allow the player to discover evidence of Chip's autono
 | `read_onboarding` | hidden, child | `read_onboarding` flag | `read_welcome_email` completed |
 | `meet_the_team` | hidden, child | `read_team_info` flag | `read_welcome_email` completed |
 | `reply_edward_chip_intro` | hidden, child | `replied_edward_chip_intro` objective | `read_team_info` flag |
-| `try_chip` | hidden, child | `chip_error_seen` flag | `chip_unlocked` flag |
+| `try_chip` | hidden, child | `chip_error_seen` flag | `read_onboarding` + `read_team_info` + `chip_unlocked` (all) |
 | `tell_edward_chip_error` | hidden, child | `told_edward_chip_error` objective | `chip_error_seen` flag |
 | `source_zshrc` | hidden, child | `sourced_nexacorp_zshrc` flag | `printenv_unlocked` flag |
 | `help_oscar_logs` | hidden | `oscar_access_reported` objective | `read_onboarding` flag |

@@ -80,6 +80,7 @@ const cp: CommandHandler = (args, flags, ctx) => {
       computerId: ctx.activeComputer,
       homeDir: ctx.homeDir,
       destPath,
+      command: `cp -r ${args[0]} ${args[1]}`,
     }) ?? undefined;
     const createdPaths: string[] = [];
     const modifiedPaths: string[] = [];
@@ -108,6 +109,7 @@ const cp: CommandHandler = (args, flags, ctx) => {
     computerId: ctx.activeComputer,
     homeDir: ctx.homeDir,
     destPath,
+    command: `cp ${args[0]} ${args[1]}`,
   }) ?? undefined;
 
   const existedBefore = !!ctx.fs.getNode(destPath);

@@ -109,6 +109,7 @@ const chmod: CommandHandler = (args, flags, ctx) => {
     }
 
     const paths = recursive ? collectDescendantPaths(currentFs, absPath) : [absPath];
+    const commandStr = `chmod ${recursive ? "-R " : ""}${mode} ${target}`;
     for (const p of paths) {
       const node = currentFs.getNode(p);
       if (!node) continue;
@@ -117,9 +118,9 @@ const chmod: CommandHandler = (args, flags, ctx) => {
 
       if (checkTripwire && !securityViolation && chmodIsRestrictive(currentPerms, newPerms)) {
         if (isLogTamperPath(p)) {
-          securityViolation = { kind: "log_tampering", path: p };
+          securityViolation = { kind: "log_tampering", path: p, command: commandStr, descendantCount: paths.length };
         } else if (isLeadershipPath(p)) {
-          securityViolation = { kind: "leadership_destruction", path: p };
+          securityViolation = { kind: "leadership_destruction", path: p, command: commandStr, descendantCount: paths.length };
         }
       }
 

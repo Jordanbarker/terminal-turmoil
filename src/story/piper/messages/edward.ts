@@ -40,7 +40,17 @@ export function getEdwardDeliveries(_username: string): PiperDelivery[] {
         {
           label: "Sounds good, I'll give it a try!",
           messageBody: "Sounds good, I'll give it a try!",
+          hiddenWhen: { flag: "chip_error_seen" },
           triggerEvents: [{ type: "objective_completed", detail: "replied_edward_chip_intro" }],
+        },
+        {
+          label: "I just tried running chip but I'm getting 'CHIP_API_KEY not set'?",
+          messageBody: "I just tried running chip but I'm getting 'CHIP_API_KEY not set'?",
+          visibleWhen: { flag: "chip_error_seen" },
+          triggerEvents: [
+            { type: "objective_completed", detail: "replied_edward_chip_intro" },
+            { type: "objective_completed", detail: "told_edward_chip_error" },
+          ],
         },
       ],
     },
@@ -48,6 +58,9 @@ export function getEdwardDeliveries(_username: string): PiperDelivery[] {
     // === DM Edward: Error report prompt (after replying to intro) ===
     // No messages — reply option appears below the conversation,
     // gated behind chip_error_seen (player must try chip first).
+    // Hidden once told_edward_chip_error is set, so the direct path
+    // (player already tried chip before reading team-info) doesn't
+    // surface the same reply option twice.
     {
       id: "edward_chip_error",
       channelId: "dm_edward",
@@ -58,6 +71,7 @@ export function getEdwardDeliveries(_username: string): PiperDelivery[] {
           label: "I just tried running chip but I'm getting 'CHIP_API_KEY not set'?",
           messageBody: "I just tried running chip but I'm getting 'CHIP_API_KEY not set'?",
           visibleWhen: { flag: "chip_error_seen" },
+          hiddenWhen: { flag: "told_edward_chip_error" },
           triggerEvents: [{ type: "objective_completed", detail: "told_edward_chip_error" }],
         },
       ],
@@ -81,7 +95,10 @@ export function getEdwardDeliveries(_username: string): PiperDelivery[] {
           body: "Open `~/.zshrc` in nano and add this line at the bottom:\n\n    export CHIP_API_KEY=nxa_live_7f3k9m2x\n\nThen run `source ~/.zshrc` to load it. You can double-check it's set with printenv",
         },
       ],
-      trigger: { type: "after_piper_reply", deliveryId: "edward_chip_error" },
+      trigger: [
+        { type: "after_piper_reply", deliveryId: "edward_chip_error" },
+        { type: "after_objective", objectiveId: "told_edward_chip_error" },
+      ],
     },
 
     // === DM Edward: Build a plugin (after pipeline fix, sets up Chapter 3 plugin quest) ===

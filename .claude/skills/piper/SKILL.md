@@ -59,6 +59,8 @@ interface PiperReplyOption {
   label: string;
   messageBody: string;
   triggerEvents?: GameEvent[];
+  visibleWhen?: { flag: string };  // only show option if this story flag is set
+  hiddenWhen?: { flag: string };   // hide option if this story flag is set
 }
 
 interface PiperDelivery {

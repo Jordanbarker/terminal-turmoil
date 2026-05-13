@@ -663,6 +663,7 @@ export class PiperSession implements ISession {
       for (let i = 0; i < pending.options.length; i++) {
         const opt = pending.options[i];
         if (opt.visibleWhen && !this.info.storyFlags[opt.visibleWhen.flag]) continue;
+        if (opt.hiddenWhen && this.info.storyFlags[opt.hiddenWhen.flag]) continue;
         this.replyOptionMapping.push(i);
         this.replyOptions.push(opt);
       }

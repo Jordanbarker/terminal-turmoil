@@ -14,9 +14,15 @@ import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
 import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "../lib/ascii";
-import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
+import {
+  BOOT_LINE_INTERVAL_MS,
+  SECURITY_ALERT_LINE_INTERVAL_MS,
+  SECURITY_DISCONNECT_PAUSE_MS,
+  TERMINATION_PRE_BLACKOUT_MS,
+  TERMINATION_BLACKOUT_MS,
+} from "../lib/timing";
 import { ComputerId, COMPUTERS } from "../state/types";
-import { SecurityViolation } from "../story/security";
+import { SecurityViolation, getTerminationAlertLines } from "../story/security";
 
 interface TransitionDeps {
   cwdRef: React.MutableRefObject<string>;
@@ -611,28 +617,64 @@ export function useComputerTransitions(deps: TransitionDeps) {
    * email via a synthesized `terminated` event.
    */
   const runTerminationTransition = useCallback(
-    (term: Terminal, reason: SecurityViolation["kind"]) => {
+    (term: Terminal, violation: SecurityViolation) => {
       const store = useGameStore.getState();
       store.setGamePhase("transitioning");
 
-      term.writeln("");
-      term.writeln(colorize("Connection to nexacorp closed by remote host.", ansi.red));
+      // t=0: flip flags immediately so any code reading them during the cinematic
+      // sees the post-termination state. Violation specifics are persisted so the
+      // HR email body can name the actual command and path, and survive save/load.
+      store.setStoryFlag("terminated_for_misconduct", true);
+      store.setStoryFlag("termination_reason", violation.kind);
+      store.setStoryFlag("termination_path", violation.path);
+      store.setStoryFlag("termination_command", violation.command);
+      store.setStoryFlag("termination_descendant_count", String(violation.descendantCount));
+      if (violation.destPath) {
+        store.setStoryFlag("termination_dest_path", violation.destPath);
+      }
 
+      // t=0: close sibling nexacorp/devcontainer/chipinfra tabs so the player can't
+      // Ctrl+B,N to another tab on the doomed workstation and keep working while the
+      // cinematic plays.
+      const siblingTabs = store.tabs.filter(
+        (t) =>
+          (t.computerId === "nexacorp" ||
+            t.computerId === "devcontainer" ||
+            t.computerId === "chipinfra") &&
+          t.id !== store.activeTabId
+      );
+      for (const t of siblingTabs) store.removeTab(t.id);
+
+      const pid = Math.floor(1000 + Math.random() * 9000);
+      const alertLines = getTerminationAlertLines(violation, pid);
+
+      term.writeln("");
+
+      // Stages 1-3: stream the corp-sec audit lines.
+      alertLines.forEach((line, i) => {
+        setTimeout(() => term.writeln(line), SECURITY_ALERT_LINE_INTERVAL_MS * (i + 1));
+      });
+
+      // Stage 4: disconnect.
+      const disconnectAt =
+        SECURITY_ALERT_LINE_INTERVAL_MS * alertLines.length + SECURITY_DISCONNECT_PAUSE_MS;
+      setTimeout(() => {
+        term.writeln("");
+        term.writeln(colorize("Connection to nexacorp closed by remote host.", ansi.red));
+        term.writeln(colorize("Killed by signal 1.", ansi.dim));
+      }, disconnectAt);
+
+      // Stage 5: blackout.
+      const blackoutAt = disconnectAt + TERMINATION_PRE_BLACKOUT_MS;
+      setTimeout(() => {
+        term.write("\x1b[?25l");
+        term.clear();
+      }, blackoutAt);
+
+      // Stage 6: home reentry.
+      const reentryAt = blackoutAt + TERMINATION_BLACKOUT_MS;
       setTimeout(() => {
         const s = useGameStore.getState();
-
-        const tabsToClose = s.tabs.filter(
-          (t) =>
-            (t.computerId === "nexacorp" ||
-              t.computerId === "devcontainer" ||
-              t.computerId === "chipinfra") &&
-            t.id !== s.activeTabId
-        );
-        for (const t of tabsToClose) s.removeTab(t.id);
-
-        s.setStoryFlag("terminated_for_misconduct", true);
-        s.setStoryFlag("termination_reason", reason);
-
         const username = s.username;
         const prevHomeFs = s.computerState.home?.fs;
         const readIds = prevHomeFs
@@ -642,10 +684,9 @@ export function useComputerTransitions(deps: TransitionDeps) {
         const root = createHomeFilesystem(username);
         let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
 
-        const sAfterFlags = useGameStore.getState();
-        const allDelivered = sAfterFlags.deliveredEmailIds;
+        const allDelivered = s.deliveredEmailIds;
         if (allDelivered.length > 0) {
-          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, sAfterFlags.storyFlags);
+          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, s.storyFlags);
         }
 
         if (prevHomeFs) {
@@ -657,13 +698,13 @@ export function useComputerTransitions(deps: TransitionDeps) {
           }
         }
 
-        sAfterFlags.initComputer("home", newFs);
-        sAfterFlags.removeComputer("nexacorp");
-        sAfterFlags.removeComputer("devcontainer");
-        sAfterFlags.removeComputer("chipinfra");
+        s.initComputer("home", newFs);
+        s.removeComputer("nexacorp");
+        s.removeComputer("devcontainer");
+        s.removeComputer("chipinfra");
 
         const homeCwd = newFs.cwd;
-        sAfterFlags.setTabComputer(sAfterFlags.activeTabId, "home", homeCwd);
+        s.setTabComputer(s.activeTabId, "home", homeCwd);
         activeComputerRef.current = "home";
         cwdRef.current = homeCwd;
 
@@ -671,7 +712,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
         const homeFs = finalState.computerState.home?.fs ?? newFs;
         const deliveryResult = checkEmailDeliveries(
           homeFs,
-          { type: "terminated", detail: reason },
+          { type: "terminated", detail: violation.kind },
           [...finalState.deliveredEmailIds],
           "home",
           finalState.storyFlags
@@ -683,9 +724,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
           term.write(colorize(`You have new mail in /var/mail/${username}`, ansi.yellow, ansi.bold));
         }
 
+        term.write("\x1b[?25h");
         useGameStore.getState().setGamePhase("playing");
         writePrompt(term);
-      }, 1200);
+      }, reentryAt);
     },
     [cwdRef, activeComputerRef, writePrompt]
   );
@@ -703,7 +745,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
       term: Terminal,
       transitionTo: ComputerId,
       sourceComputer: ComputerId,
-      terminationReason?: SecurityViolation["kind"],
+      terminationReason?: SecurityViolation,
     ): boolean => {
       // Security tripwire: forced disconnect from nexacorp.
       if (transitionTo === "home" && sourceComputer === "nexacorp" && terminationReason) {
