@@ -64,15 +64,15 @@ function formatStatusShort(status: StatusResult): string {
 }
 
 /**
- * Format a UTC timestamp as git-style date with -0700 (Pacific) offset.
- * The stored timestamp stays UTC; we shift the display by -7h.
+ * Format a game-time timestamp as a git-style date, matching the `date` builtin.
+ * gameNowFor() constructs Dates with local-time field semantics, so we read back
+ * with local getters and label the output +0000 (the in-game wall clock is UTC).
  */
 function formatGitDate(ts: number): string {
-  const OFFSET_MS = 7 * 60 * 60 * 1000;
-  const d = new Date(ts - OFFSET_MS);
+  const d = new Date(ts);
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${d.getUTCDate()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())} ${d.getUTCFullYear()} -0700`;
+  return `${days[d.getDay()]} ${months[d.getMonth()]} ${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())} ${d.getFullYear()} +0000`;
 }
 
 export function formatLog(commits: GitCommit[], oneline: boolean, graph: boolean, plain: boolean): string {

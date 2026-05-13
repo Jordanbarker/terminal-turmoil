@@ -15,6 +15,7 @@ Coordinate with your friends and coworkers over Piper:
 ![Piper messaging](.assets/piper-example.png)
 
 ### Modern Dev Stack
+
 SSH into a coder dev container, git clone, and run dbt commands.
 
 ![Git clone, dbt build](.assets/git-dbt.gif)

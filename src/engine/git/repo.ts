@@ -300,7 +300,7 @@ export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: b
 // ── git commit ───────────────────────────────────────────────────────
 
 export function gitCommit(
-  fs: VirtualFS, root: string, message: string, author: string, amend: boolean, autoStage: boolean
+  fs: VirtualFS, root: string, message: string, author: string, amend: boolean, autoStage: boolean, timestamp: number
 ): { fs: VirtualFS; output: string; error?: string } {
   let index = readIndex(fs, root);
   const headHash = resolveHead(fs, root);
@@ -343,7 +343,6 @@ export function gitCommit(
   }
 
   const parent = amend ? headCommit!.parent : (headHash ?? null);
-  const timestamp = Date.now();
   const hash = shortHash(message + timestamp + (parent ?? "") + JSON.stringify(newTree));
 
   const commit: GitCommit = { hash, parent, message, author, timestamp, tree: newTree };

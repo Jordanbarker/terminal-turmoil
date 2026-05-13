@@ -378,62 +378,64 @@ describe("dbt command handler", () => {
 // 2. Output Format Fidelity
 // ---------------------------------------------------------------------------
 describe("output format fidelity", () => {
+  const TS = "08:30:00";
+
   it("formatRunHeader has timestamp on every non-empty line", () => {
-    const header = stripAnsi(formatRunHeader(15, 28, 6, 2));
+    const header = stripAnsi(formatRunHeader(TS, 15, 28, 6, 2));
     const lines = header.split("\n").filter((l) => l.trim().length > 0);
     for (const line of lines) {
-      expect(line).toMatch(/^21:35:48/);
+      expect(line).toMatch(/^08:30:00/);
     }
   });
 
   it("formatRunHeader shows correct counts", () => {
-    const header = stripAnsi(formatRunHeader(15, 28, 6, 2));
+    const header = stripAnsi(formatRunHeader(TS, 15, 28, 6, 2));
     expect(header).toContain("Found 15 models, 28 tests, 6 sources, 2 seeds");
   });
 
   it("formatModelRun formats view materialization", () => {
     const result: ModelRunResult = { status: "success", materialization: "view", executionTime: 0.15 };
-    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", result, 0.15));
+    const line = stripAnsi(formatModelRun(TS, 1, 15, "stg_raw_nexacorp__employees", result, 0.15));
     expect(line).toContain("created view model");
     expect(line).toContain("CREATE VIEW in 0.15s");
   });
 
   it("formatModelRun formats table materialization", () => {
     const result: ModelRunResult = { status: "success", materialization: "table", executionTime: 0.67, rowsAffected: 13 };
-    const line = stripAnsi(formatModelRun(10, 15, "dim_employees", result, 0.67));
+    const line = stripAnsi(formatModelRun(TS, 10, 15, "dim_employees", result, 0.67));
     expect(line).toContain("created table model");
     expect(line).toContain("SELECT 13 in 0.67s");
   });
 
   it("formatModelRun formats ephemeral materialization", () => {
     const result: ModelRunResult = { status: "success", materialization: "ephemeral", executionTime: 0 };
-    const line = stripAnsi(formatModelRun(7, 15, "int_employees_joined_to_events", result, 0));
+    const line = stripAnsi(formatModelRun(TS, 7, 15, "int_employees_joined_to_events", result, 0));
     expect(line).toContain("created ephemeral model");
     expect(line).toContain("[OK]");
   });
 
   it("formatModelRun includes dot padding", () => {
     const result: ModelRunResult = { status: "success", materialization: "view", executionTime: 0.15 };
-    const line = stripAnsi(formatModelRun(1, 15, "stg_raw_nexacorp__employees", result, 0.15));
+    const line = stripAnsi(formatModelRun(TS, 1, 15, "stg_raw_nexacorp__employees", result, 0.15));
     expect(line).toContain("..");
   });
 
   it("formatTestRun formats PASS status", () => {
     const testResult: DbtTestResult = { name: "test_foo", status: "pass", time: 0.1 };
-    const line = stripAnsi(formatTestRun(1, 28, testResult, 0.1));
+    const line = stripAnsi(formatTestRun(TS, 1, 28, testResult, 0.1));
     expect(line).toContain("PASS");
     expect(line).toContain("PASS in 0.10s");
   });
 
   it("formatTestRun formats WARN status", () => {
     const testResult: DbtTestResult = { name: "assert_employee_count", status: "warn", time: 0.23 };
-    const line = stripAnsi(formatTestRun(1, 28, testResult, 0.23));
+    const line = stripAnsi(formatTestRun(TS, 1, 28, testResult, 0.23));
     expect(line).toContain("WARN");
     expect(line).toContain("WARN 1 in");
   });
 
   it("formatSummary produces correct format", () => {
-    const summary = stripAnsi(formatSummary({ pass: 21, warn: 2, error: 0, skip: 0, total: 23 }));
+    const summary = stripAnsi(formatSummary(TS, { pass: 21, warn: 2, error: 0, skip: 0, total: 23 }));
     expect(summary).toContain("Done. PASS=21 WARN=2 ERROR=0 SKIP=0 TOTAL=23");
   });
 

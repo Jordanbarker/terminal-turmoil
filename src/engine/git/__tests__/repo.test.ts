@@ -13,6 +13,7 @@ import { formatStatus, formatLog } from "../output";
 import { buildSimpleRemote, REMOTE_REPOS } from "../remotes";
 
 const AUTHOR = "player <player@test.local>";
+const TEST_TS = new Date(2026, 1, 23, 8, 30, 0).getTime();
 
 function emptyRoot(): DirectoryNode {
   return {
@@ -42,7 +43,7 @@ function initRepo(fs: VirtualFS, cwd = "/home/player"): VirtualFS {
 function addAndCommit(fs: VirtualFS, root: string, message: string): VirtualFS {
   const addResult = gitAdd(fs, root, ["."], false);
   fs = addResult.fs;
-  const commitResult = gitCommit(fs, root, message, AUTHOR, false, false);
+  const commitResult = gitCommit(fs, root, message, AUTHOR, false, false, TEST_TS);
   return commitResult.fs;
 }
 
@@ -113,7 +114,7 @@ describe("git add and commit", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/hello.txt", "hello world").fs!;
     fs = gitAdd(fs, "/home/player", ["hello.txt"], false).fs;
-    const result = gitCommit(fs, "/home/player", "first commit", AUTHOR, false, false);
+    const result = gitCommit(fs, "/home/player", "first commit", AUTHOR, false, false, TEST_TS);
     expect(result.error).toBeUndefined();
     expect(result.output).toContain("first commit");
     expect(result.output).toContain("1 file changed");
@@ -123,7 +124,7 @@ describe("git add and commit", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "content").fs!;
     fs = addAndCommit(fs, "/home/player", "initial");
-    const result = gitCommit(fs, "/home/player", "empty", AUTHOR, false, false);
+    const result = gitCommit(fs, "/home/player", "empty", AUTHOR, false, false, TEST_TS);
     expect(result.output).toContain("nothing to commit");
   });
 
@@ -132,7 +133,7 @@ describe("git add and commit", () => {
     fs = fs.writeFile("/home/player/a.txt", "aaa").fs!;
     fs = fs.writeFile("/home/player/b.txt", "bbb").fs!;
     fs = gitAdd(fs, "/home/player", ["."], false).fs;
-    const result = gitCommit(fs, "/home/player", "two files", AUTHOR, false, false);
+    const result = gitCommit(fs, "/home/player", "two files", AUTHOR, false, false, TEST_TS);
     expect(result.output).toContain("2 files changed");
   });
 
@@ -148,7 +149,7 @@ describe("git add and commit", () => {
     fs = addAndCommit(fs, "/home/player", "first");
     // Add without modifying
     fs = gitAdd(fs, "/home/player", ["."], false).fs;
-    const result = gitCommit(fs, "/home/player", "no changes", AUTHOR, false, false);
+    const result = gitCommit(fs, "/home/player", "no changes", AUTHOR, false, false, TEST_TS);
     expect(result.output).toContain("nothing to commit");
   });
 
@@ -157,7 +158,7 @@ describe("git add and commit", () => {
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
     fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
-    const result = gitCommit(fs, "/home/player", "auto staged", AUTHOR, false, true);
+    const result = gitCommit(fs, "/home/player", "auto staged", AUTHOR, false, true, TEST_TS);
     expect(result.output).toContain("auto staged");
     expect(result.error).toBeUndefined();
   });
@@ -167,7 +168,7 @@ describe("git add and commit", () => {
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "original message");
     // Amend
-    const result = gitCommit(fs, "/home/player", "amended message", AUTHOR, true, false);
+    const result = gitCommit(fs, "/home/player", "amended message", AUTHOR, true, false, TEST_TS);
     expect(result.output).toContain("amended message");
     fs = result.fs;
     const log = getCommitLog(fs, "/home/player");
@@ -760,7 +761,7 @@ describe("git workflow integration", () => {
     // Create branch, delete a file
     fs = gitCheckout(fs, "/home/player", "cleanup", true).fs;
     fs = gitRm(fs, "/home/player", ["b.txt"], false).fs;
-    fs = gitCommit(fs, "/home/player", "remove b", AUTHOR, false, false).fs;
+    fs = gitCommit(fs, "/home/player", "remove b", AUTHOR, false, false, TEST_TS).fs;
 
     // Switch back to main — b.txt should be back
     fs = gitCheckout(fs, "/home/player", "main", false).fs;
@@ -893,7 +894,7 @@ describe("git commit --amend (focused)", () => {
     const beforeLog = getCommitLog(fs, "/home/player");
     const originalParent = beforeLog[0].parent;
 
-    const result = gitCommit(fs, "/home/player", "amended second", AUTHOR, true, false);
+    const result = gitCommit(fs, "/home/player", "amended second", AUTHOR, true, false, TEST_TS);
     fs = result.fs;
 
     const afterLog = getCommitLog(fs, "/home/player");
@@ -904,7 +905,7 @@ describe("git commit --amend (focused)", () => {
 
   it("errors when no commits exist", () => {
     const fs = initRepo(makeFs());
-    const result = gitCommit(fs, "/home/player", "amend nothing", AUTHOR, true, false);
+    const result = gitCommit(fs, "/home/player", "amend nothing", AUTHOR, true, false, TEST_TS);
     expect(result.error).toContain("nothing to amend");
   });
 });
@@ -921,7 +922,7 @@ describe("git commit -a (focused)", () => {
     fs = fs.writeFile("/home/player/tracked.txt", "v2").fs!;
     fs = fs.writeFile("/home/player/untracked.txt", "new file").fs!;
 
-    const result = gitCommit(fs, "/home/player", "auto commit", AUTHOR, false, true);
+    const result = gitCommit(fs, "/home/player", "auto commit", AUTHOR, false, true, TEST_TS);
     fs = result.fs;
     expect(result.error).toBeUndefined();
 
@@ -1043,7 +1044,7 @@ describe("git push -u (set upstream)", () => {
       fs = gitCheckout(fs, root, "feature", true).fs;
       fs = fs.writeFile(`${root}/feat.txt`, "feature work").fs!;
       fs = gitAdd(fs, root, ["feat.txt"], false).fs;
-      fs = gitCommit(fs, root, "feat", AUTHOR, false, false).fs;
+      fs = gitCommit(fs, root, "feat", AUTHOR, false, false, TEST_TS).fs;
       fs = gitPush(fs, root, "origin", "feature", true, false).fs;
 
       // Switch back to main and pull. Pull must advance refs/heads/main, not refs/heads/feature.

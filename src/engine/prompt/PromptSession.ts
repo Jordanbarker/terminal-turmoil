@@ -87,7 +87,7 @@ export class PromptSession implements ISession {
     // Save reply email to sent/ if provided
     if (option.replyEmail) {
       const email = option.replyEmail;
-      const filename = `sent_${Date.now()}`;
+      const filename = option.replyFilename ?? `sent_${email.id}`;
       const content = [
         `From: ${email.from}`,
         `To: ${email.to}`,

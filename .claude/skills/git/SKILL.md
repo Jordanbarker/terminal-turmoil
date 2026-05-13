@@ -101,7 +101,7 @@ Supported subcommands today (all in the switch in `git.ts`):
 | `clone <url>` | `gitClone` | Looks up `REMOTE_REPOS[name]`, materializes files, writes commits + refs + config |
 | `add <paths>` / `add -A` | `gitAdd` | Stages relative to repo root |
 | `rm <paths>` / `rm -r` | `gitRm` | Stages deletion |
-| `commit -m <msg>` | `gitCommit` | Hashes tree+parent+msg, writes object, updates ref |
+| `commit -m <msg>` | `gitCommit` | Hashes tree+parent+msg, writes object, updates ref. Takes a `timestamp` arg — dispatcher in `commands/builtins/git.ts` passes `gameNowFor(...).getTime()` so `git log` Date headers agree with `date` (UTC, `+0000`). |
 | `status` / `status -s` | `gitStatus` + `formatStatus` | Branch + staged/unstaged/untracked |
 | `log` | `getCommitLog` + formatter | Walks parent chain from HEAD |
 | `branch` / `branch <name>` / `branch -d <name>` / `branch -a` / `branch -r` | `listBranches` / `createBranch` / `deleteBranch` | `branch <name>` emits `git_checkout_b` (counts as branch creation for cascade). `-a` lists locals + `remotes/<remote>/<branch>`, `-r` lists only remotes; both reject a positional branch name with `fatal: branch name required` (exit 128). `listBranches(fs, root, mode)` returns `{ branches, remotes, current }` — callers that don't need remotes can ignore the `remotes` field. |

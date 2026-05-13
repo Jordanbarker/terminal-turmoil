@@ -23,7 +23,7 @@ src/engine/
 │   ├── executor.ts           # executeModel(), executeTest(), queryModel() — SQL execution against SnowflakeState
 │   ├── project.ts            # findDbtProject(), discoverModels(), parseMaterializationConfig(), buildMaterializationMap()
 │   ├── runner.ts             # runModels(), runTests(), runBuild(), compileModel(), showModel() — dynamic execution
-│   └── output.ts             # formatRunHeader(), formatModelRun() etc. — realistic timestamped CLI output
+│   └── output.ts             # formatRunHeader(), formatModelRun() etc. — realistic timestamped CLI output (timestamp threaded as first arg from runner.ts via gameTsFor() so dbt logs agree with `date` and current_timestamp())
 ├── commands/
 │   └── builtins/
 │       └── dbt.ts            # dbt command handler (subcommand dispatch)

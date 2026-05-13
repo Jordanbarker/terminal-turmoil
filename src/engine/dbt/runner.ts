@@ -23,7 +23,7 @@ import { DBT_DEFAULT_LINE_DELAY_MS, jitterDelay } from "../../lib/timing";
 import { parseSourceMap, parseMacros, compileSql, extractRefs } from "./compiler";
 import { executeModel, executeTest, queryModel, getModelRowCount } from "./executor";
 import { createDefaultContext } from "../snowflake/session/context";
-import { gameNowFor } from "../snowflake/session/gameClock";
+import { gameNowFor, gameTsFor } from "../snowflake/session/gameClock";
 import { execute as executeSql } from "../snowflake/executor/executor";
 import { isFile, isDirectory } from "../filesystem/types";
 import { SnowflakeState } from "../snowflake/state";
@@ -160,7 +160,8 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
   const testCount = allResources.filter((r) => r.type === "test").length;
   const sourceCount = allResources.filter((r) => r.type === "source").length;
   const seedCount = allResources.filter((r) => r.type === "seed").length;
-  const lines: IncrementalLine[] = [{ text: formatRunHeader(modelsToDisplay.length, testCount, sourceCount, seedCount), delayMs: DBT_DEFAULT_LINE_DELAY_MS }];
+  const dbtTs = gameTsFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer);
+  const lines: IncrementalLine[] = [{ text: formatRunHeader(dbtTs, modelsToDisplay.length, testCount, sourceCount, seedCount), delayMs: DBT_DEFAULT_LINE_DELAY_MS }];
 
   let pass = 0;
   let error = 0;
@@ -184,7 +185,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
         error++;
         displayIdx++;
         const result: ModelRunResult = { status: "error", materialization: "table", executionTime: 0 };
-        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+        lines.push({ text: formatModelRun(dbtTs, displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
       }
       failedModels.add(name);
       continue;
@@ -199,7 +200,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
         skip++;
         displayIdx++;
         const result: ModelRunResult = { status: "error", materialization: "table", executionTime: 0 };
-        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+        lines.push({ text: formatModelRun(dbtTs, displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
       }
       continue;
     }
@@ -213,7 +214,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
         pass++;
         displayIdx++;
         const result: ModelRunResult = { status: "success", materialization: "ephemeral", executionTime: 0 };
-        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+        lines.push({ text: formatModelRun(dbtTs, displayIdx, modelsToDisplay.length, name, result, 0), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
       }
       continue;
     }
@@ -233,7 +234,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
           executionTime,
           rowsAffected: execResult.rowsAffected,
         };
-        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
+        lines.push({ text: formatModelRun(dbtTs, displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
       }
     } else {
       failedModels.add(name);
@@ -243,14 +244,14 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
         const jitteredMs = jitterDelay(300);
         const executionTime = jitteredMs / 1000;
         const result: ModelRunResult = { status: "error", materialization, executionTime, message: execResult.message };
-        lines.push({ text: formatModelRun(displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
+        lines.push({ text: formatModelRun(dbtTs, displayIdx, modelsToDisplay.length, name, result, executionTime), delayMs: jitteredMs });
       }
     }
   }
 
   const summary: DbtRunSummary = { pass, warn: 0, error, skip, total: modelsToDisplay.length };
   lines.push({ text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS });
-  lines.push({ text: formatSummary(summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+  lines.push({ text: formatSummary(dbtTs, summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
 
   // Write final state
   ctx.setSnowflakeState?.(runningState);
@@ -285,6 +286,7 @@ export function runTests(ctx: CommandContext): CommandResult {
     ctx.username,
     gameNowFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer),
   );
+  const dbtTs = gameTsFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer);
   const allResources = discoverResources(ctx.fs, project.projectRoot, config);
   const testResources = allResources.filter((r) => r.type === "test");
 
@@ -312,7 +314,7 @@ export function runTests(ctx: CommandContext): CommandResult {
         status: result.status === "error" ? "fail" : result.status,
         time,
       };
-      lines.push({ text: formatTestRun(i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
+      lines.push({ text: formatTestRun(dbtTs, i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
 
       if (result.status === "pass") pass++;
       else if (result.status === "warn") warn++;
@@ -328,7 +330,7 @@ export function runTests(ctx: CommandContext): CommandResult {
         status: genericResult.status === "error" ? "fail" : genericResult.status,
         time,
       };
-      lines.push({ text: formatTestRun(i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
+      lines.push({ text: formatTestRun(dbtTs, i + 1, testResources.length, testResult, time), delayMs: jitteredMs });
 
       if (genericResult.status === "pass") pass++;
       else if (genericResult.status === "warn") warn++;
@@ -338,7 +340,7 @@ export function runTests(ctx: CommandContext): CommandResult {
 
   const summary: DbtRunSummary = { pass, warn, error, skip: 0, total: testResources.length };
   lines.push({ text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS });
-  lines.push({ text: formatSummary(summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
+  lines.push({ text: formatSummary(dbtTs, summary), delayMs: DBT_DEFAULT_LINE_DELAY_MS });
 
   const triggerEvents: { type: "command_executed"; detail: string }[] = [];
   if (error > 0) {
@@ -512,7 +514,8 @@ export function debugProject(ctx: CommandContext): CommandResult {
     target: "prod",
   };
 
-  return { output: formatDebug(info) };
+  const dbtTs = gameTsFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer);
+  return { output: formatDebug(dbtTs, info) };
 }
 
 /**
@@ -552,8 +555,9 @@ export function compileModel(ctx: CommandContext, modelName?: string): CommandRe
   const targetPath = compiledDir + "/" + modelName + ".sql";
   const writeResult = fs.writeFile(targetPath, sql);
 
+  const dbtTs = gameTsFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer);
   return {
-    output: formatCompiledSql(modelName, sql),
+    output: formatCompiledSql(dbtTs, modelName, sql),
     newFs: writeResult.fs,
   };
 }
@@ -587,6 +591,7 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
     ctx.username,
     gameNowFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer),
   );
+  const dbtTs = gameTsFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer);
   const SHOW_LIMIT = 5;
 
   // Try to query the materialized table/view
@@ -610,7 +615,7 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
     const adHocRows = rs.data.rows.slice(0, SHOW_LIMIT).map((row: unknown[]) => row.map((v) => String(v ?? "")));
 
     return {
-      output: formatShowOutput(modelName, adHocColumns, adHocRows, rs.data.rowCount),
+      output: formatShowOutput(dbtTs, modelName, adHocColumns, adHocRows, rs.data.rowCount),
     };
   }
 
@@ -619,6 +624,6 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
   const totalRows = getModelRowCount(modelName, ctx.snowflakeState, sessionCtx) ?? resultSet.rowCount;
 
   return {
-    output: formatShowOutput(modelName, columns, displayRows, totalRows),
+    output: formatShowOutput(dbtTs, modelName, columns, displayRows, totalRows),
   };
 }

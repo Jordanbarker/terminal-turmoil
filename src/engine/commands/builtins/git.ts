@@ -11,6 +11,7 @@ import {
   type BranchListMode,
 } from "../../git/repo";
 import { formatStatus, formatLog, formatDiff, formatBranches } from "../../git/output";
+import { gameNowFor } from "../../snowflake/session/gameClock";
 import { PLAYER } from "../../../story/player";
 import type { ComputerId } from "../../../state/types";
 
@@ -162,7 +163,8 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       }
       const amend = !!flags["amend"];
       const autoStage = !!flags["a"];
-      const result = gitCommit(ctx.fs, root, message ?? "", author, amend, autoStage);
+      const timestamp = gameNowFor(ctx.deliveredPiperIds ?? [], ctx.username, ctx.activeComputer).getTime();
+      const result = gitCommit(ctx.fs, root, message ?? "", author, amend, autoStage, timestamp);
       if (result.error) return { output: result.error, exitCode: 1 };
       return { output: result.output, newFs: result.fs };
     }

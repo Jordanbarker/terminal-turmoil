@@ -343,10 +343,12 @@ dbt build      # Run models + tests
 
 const README_FINAL = ALL_FILES["README.md"];
 
-// --- Timestamp helpers (UTC millis) ---
-// Dates in 2025 unless noted. Times vary for realism.
+// --- Timestamp helpers ---
+// Uses the local-time field convention shared with gameNowFor() so
+// formatGitDate() renders these the same way as player-authored commits.
+// In-game wall clock is UTC; the hour passed is the displayed UTC hour.
 function utc(year: number, month: number, day: number, hour: number, min: number): number {
-  return Date.UTC(year, month - 1, day, hour, min, 0);
+  return new Date(year, month - 1, day, hour, min, 0).getTime();
 }
 
 /**

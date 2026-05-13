@@ -17,6 +17,15 @@ import { ReplyOption } from "../../mail/types";
 import { PromptOption, PromptSessionInfo } from "../../prompt/types";
 import { GameEvent } from "../../mail/delivery";
 import { PLAYER } from "../../../state/types";
+import { gameNowFor } from "../../snowflake/session/gameClock";
+
+const RFC_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const RFC_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Format a game-time Date as RFC 2822 (`Mon, 23 Feb 2026 08:30:00`). */
+function formatRfc2822(d: Date): string {
+  return `${RFC_DAYS[d.getDay()]}, ${pad2(d.getDate())} ${RFC_MONTHS[d.getMonth()]} ${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
 
 /** Derive a reply date ~8–15 minutes after the original email's date. */
 function deriveReplyDate(originalDate: string): string {
@@ -26,10 +35,7 @@ function deriveReplyDate(originalDate: string): string {
     return "Tue, 24 Feb 2026 09:00:00";
   }
   const offsetMs = (8 + Math.floor(Math.random() * 8)) * 60 * 1000;
-  const reply = new Date(parsed.getTime() + offsetMs);
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${days[reply.getUTCDay()]}, ${pad2(reply.getUTCDate())} ${months[reply.getUTCMonth()]} ${reply.getUTCFullYear()} ${pad2(reply.getUTCHours())}:${pad2(reply.getUTCMinutes())}:${pad2(reply.getUTCSeconds())}`;
+  return formatRfc2822(new Date(parsed.getTime() + offsetMs));
 }
 
 function formatInbox(entries: MailEntry[], mailDir: string, headerLabel: string): string {
@@ -104,19 +110,21 @@ function buildPromptSession(
   options: ReplyOption[],
   entry: MailEntry,
   username: string,
-  computer: import("../../../state/types").ComputerId
+  computer: import("../../../state/types").ComputerId,
+  gameNowMs: number
 ): PromptSessionInfo {
   const fromDomain = computer === "home" ? "email.com" : "nexacorp.com";
-  const promptOptions: PromptOption[] = options.map((opt) => ({
+  const promptOptions: PromptOption[] = options.map((opt, idx) => ({
     label: opt.label,
     replyEmail: {
-      id: `reply_${Date.now()}`,
+      id: `reply_${gameNowMs}_${idx}`,
       from: `${username}@${fromDomain}`,
       to: entry.parsed.from,
       date: deriveReplyDate(entry.parsed.date),
       subject: `Re: ${entry.parsed.subject}`,
       body: opt.replyBody,
     },
+    replyFilename: `sent_${gameNowMs}_${idx}`,
     triggerEvents: opt.triggerEvents,
   }));
 
@@ -135,16 +143,17 @@ const mail: CommandHandler = (args, flags, ctx) => {
   if (flags["s"] && args.length >= 2) {
     const subject = args[0];
     const recipient = args[1];
+    const now = gameNowFor(ctx.deliveredPiperIds ?? [], ctx.username, computer);
     const content = [
       `From: ${username}@${fromDomain}`,
       `To: ${recipient}`,
-      `Date: ${deriveReplyDate("Tue, 24 Feb 2026 08:30:00")}`,
+      `Date: ${formatRfc2822(now)}`,
       `Subject: ${subject}`,
       "",
       "(message body)",
     ].join("\n");
 
-    const filename = `sent_${Date.now()}`;
+    const filename = `sent_${now.getTime()}`;
     const result = ctx.fs.writeFile(`${getSentDir(username)}/${filename}`, content);
     if (result.fs) {
       return {
@@ -187,7 +196,8 @@ const mail: CommandHandler = (args, flags, ctx) => {
 
     if (replyOptions && !hasReplyInSent(newFs, username, entry.parsed.subject)) {
       output += formatReplyOptions(replyOptions);
-      promptSession = buildPromptSession(replyOptions, entry, username, computer);
+      const gameNowMs = gameNowFor(ctx.deliveredPiperIds ?? [], ctx.username, computer).getTime();
+      promptSession = buildPromptSession(replyOptions, entry, username, computer, gameNowMs);
     }
 
     return {

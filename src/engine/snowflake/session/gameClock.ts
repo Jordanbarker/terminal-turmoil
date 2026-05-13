@@ -28,3 +28,17 @@ export function gameNowFor(
     Number(t.second),
   );
 }
+
+/**
+ * Resolve the in-game "now" as an HH:MM:SS string for dbt log prefixes,
+ * so `dbt run` timestamps agree with the `date` command and `current_timestamp()`.
+ */
+export function gameTsFor(
+  deliveredPiperIds: string[],
+  username: string,
+  computer: ComputerId,
+): string {
+  const defMap = new Map(getPiperDeliveries(username).map((d) => [d.id, d]));
+  const t = getGameTime(deliveredPiperIds, defMap, computer);
+  return `${t.hour}:${t.minute}:${t.second}`;
+}

@@ -2,21 +2,19 @@ import { colorize, ansi } from "../../lib/ansi";
 import { highlightSql } from "../../lib/sqlHighlight";
 import { ModelRunResult, DbtTestResult, DbtRunSummary, DbtDebugInfo } from "./types";
 
-const TIMESTAMP = "21:35:48";
-
-function ts(): string {
-  return colorize(TIMESTAMP, ansi.dim);
+function ts(timestamp: string): string {
+  return colorize(timestamp, ansi.dim);
 }
 
 /**
  * Format the header shown at the start of dbt run/build.
  */
-export function formatRunHeader(modelCount: number, testCount: number, sourceCount: number, seedCount: number = 0): string {
+export function formatRunHeader(timestamp: string, modelCount: number, testCount: number, sourceCount: number, seedCount: number = 0): string {
   const lines = [
-    `${ts()}  Running with dbt=1.7.4`,
-    `${ts()}  Found ${modelCount} models, ${testCount} tests, ${sourceCount} sources, ${seedCount} seeds, 0 exposures, 0 metrics`,
-    `${ts()}  Concurrency: 4 threads (target='prod')`,
-    `${ts()}`,
+    `${ts(timestamp)}  Running with dbt=1.7.4`,
+    `${ts(timestamp)}  Found ${modelCount} models, ${testCount} tests, ${sourceCount} sources, ${seedCount} seeds, 0 exposures, 0 metrics`,
+    `${ts(timestamp)}  Concurrency: 4 threads (target='prod')`,
+    `${ts(timestamp)}`,
   ];
   return lines.join("\n");
 }
@@ -25,6 +23,7 @@ export function formatRunHeader(modelCount: number, testCount: number, sourceCou
  * Format a single model run line.
  */
 export function formatModelRun(
+  timestamp: string,
   index: number,
   total: number,
   modelName: string,
@@ -56,7 +55,7 @@ export function formatModelRun(
   }
 
   // Pad the model line with dots
-  const prefix = `${ts()}  ${num} ${colorize(statusText, statusColor)} ${action} ${fqn} `;
+  const prefix = `${ts(timestamp)}  ${num} ${colorize(statusText, statusColor)} ${action} ${fqn} `;
   const suffix = ` [${timing}]`;
   const dotCount = Math.max(2, 60 - modelName.length);
   const dots = ".".repeat(dotCount);
@@ -72,6 +71,7 @@ export function formatModelRun(
  * Format a single test run line.
  */
 export function formatTestRun(
+  timestamp: string,
   index: number,
   total: number,
   result: DbtTestResult,
@@ -101,7 +101,7 @@ export function formatTestRun(
       break;
   }
 
-  const prefix = `${ts()}  ${num} ${colorize(statusText, statusColor)} ${result.name} `;
+  const prefix = `${ts(timestamp)}  ${num} ${colorize(statusText, statusColor)} ${result.name} `;
   const suffix = ` [${detail}]`;
   const dotCount = Math.max(2, 60 - result.name.length);
   const dots = ".".repeat(dotCount);
@@ -112,38 +112,38 @@ export function formatTestRun(
 /**
  * Format the summary line at the end of a run.
  */
-export function formatSummary(summary: DbtRunSummary): string {
+export function formatSummary(timestamp: string, summary: DbtRunSummary): string {
   const parts: string[] = [];
   parts.push(`PASS=${summary.pass}`);
   parts.push(`WARN=${summary.warn}`);
   parts.push(`ERROR=${summary.error}`);
   parts.push(`SKIP=${summary.skip}`);
   parts.push(`TOTAL=${summary.total}`);
-  return `${ts()}  Done. ${parts.join(" ")}`;
+  return `${ts(timestamp)}  Done. ${parts.join(" ")}`;
 }
 
 /**
  * Format `dbt debug` output showing connection info.
  */
-export function formatDebug(info: DbtDebugInfo): string {
+export function formatDebug(timestamp: string, info: DbtDebugInfo): string {
   const lines = [
-    `${ts()}  Running with dbt=${info.dbtVersion}`,
-    `${ts()}  dbt version: ${info.dbtVersion}`,
-    `${ts()}`,
-    `${ts()}  ${colorize("Configuration:", ansi.bold)}`,
-    `${ts()}    profiles.yml file ${colorize("[OK found]", ansi.green)}`,
-    `${ts()}    dbt_project.yml file ${colorize("[OK found]", ansi.green)}`,
-    `${ts()}`,
-    `${ts()}  ${colorize("Connection:", ansi.bold)}`,
-    `${ts()}    account: ${info.account}`,
-    `${ts()}    user: ${colorize(info.user, ansi.yellow)}`,
-    `${ts()}    database: ${info.database}`,
-    `${ts()}    warehouse: ${info.warehouse}`,
-    `${ts()}    role: ${info.role}`,
-    `${ts()}    schema: ${info.schema}`,
-    `${ts()}`,
-    `${ts()}  ${colorize("Connection test:", ansi.bold)} ${colorize("[OK connection ok]", ansi.green)}`,
-    `${ts()}  All checks passed!`,
+    `${ts(timestamp)}  Running with dbt=${info.dbtVersion}`,
+    `${ts(timestamp)}  dbt version: ${info.dbtVersion}`,
+    `${ts(timestamp)}`,
+    `${ts(timestamp)}  ${colorize("Configuration:", ansi.bold)}`,
+    `${ts(timestamp)}    profiles.yml file ${colorize("[OK found]", ansi.green)}`,
+    `${ts(timestamp)}    dbt_project.yml file ${colorize("[OK found]", ansi.green)}`,
+    `${ts(timestamp)}`,
+    `${ts(timestamp)}  ${colorize("Connection:", ansi.bold)}`,
+    `${ts(timestamp)}    account: ${info.account}`,
+    `${ts(timestamp)}    user: ${colorize(info.user, ansi.yellow)}`,
+    `${ts(timestamp)}    database: ${info.database}`,
+    `${ts(timestamp)}    warehouse: ${info.warehouse}`,
+    `${ts(timestamp)}    role: ${info.role}`,
+    `${ts(timestamp)}    schema: ${info.schema}`,
+    `${ts(timestamp)}`,
+    `${ts(timestamp)}  ${colorize("Connection test:", ansi.bold)} ${colorize("[OK connection ok]", ansi.green)}`,
+    `${ts(timestamp)}  All checks passed!`,
   ];
   return lines.join("\n");
 }
@@ -152,6 +152,7 @@ export function formatDebug(info: DbtDebugInfo): string {
  * Format `dbt show` output as a table with borders.
  */
 export function formatShowOutput(
+  timestamp: string,
   modelName: string,
   columns: string[],
   rows: string[][],
@@ -174,7 +175,7 @@ export function formatShowOutput(
   );
 
   const lines = [
-    `${ts()}  Previewing model ${colorize(modelName, ansi.cyan)}:`,
+    `${ts(timestamp)}  Previewing model ${colorize(modelName, ansi.cyan)}:`,
     "",
     separator,
     header,
@@ -191,9 +192,9 @@ export function formatShowOutput(
 /**
  * Format `dbt compile` output showing resolved SQL.
  */
-export function formatCompiledSql(modelName: string, sql: string): string {
+export function formatCompiledSql(timestamp: string, modelName: string, sql: string): string {
   const lines = [
-    `${ts()}  Compiled model ${colorize(modelName, ansi.cyan)}:`,
+    `${ts(timestamp)}  Compiled model ${colorize(modelName, ansi.cyan)}:`,
     "",
     highlightSql(sql),
   ];
