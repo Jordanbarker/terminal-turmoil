@@ -81,7 +81,7 @@ mail
 `),
     ".gitconfig": file(".gitconfig", `[user]
 \tname = ${PLAYER.displayName}
-\temail = ${PLAYER.username}@email.com
+\temail = ${username}@email.com
 [alias]
 \tst = status
 \tco = checkout

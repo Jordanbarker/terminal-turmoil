@@ -2,7 +2,7 @@ import { DirectoryNode } from "../../../engine/filesystem/types";
 import { PLAYER } from "../../../state/types";
 import { file, dir } from "../../../engine/filesystem/builders";
 
-export function buildScriptsDir(): DirectoryNode {
+export function buildScriptsDir(username: string): DirectoryNode {
   return dir("scripts", {
     "auto_apply.py": file("auto_apply.py", `#!/usr/bin/env python3
 """
@@ -295,7 +295,7 @@ set -euo pipefail
 # Enable:   systemctl --user enable --now backup.timer
 
 BACKUP_DIR="/mnt/backup/\$(date +%Y-%m-%d)"
-HOME_DIR="/home/${PLAYER.username}"
+HOME_DIR="/home/${username}"
 
 echo "[$(date)] Starting backup..."
 

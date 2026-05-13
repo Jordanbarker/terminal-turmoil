@@ -84,7 +84,7 @@ ls
 cat onboarding/day1_checklist.md
 mail`),
       Desktop: dir("Desktop", {
-        "welcome.txt": file("welcome.txt", `Hey ${username}! Welcome to NexaCorp.
+        "welcome.txt": file("welcome.txt", `Hey ${PLAYER.displayName}! Welcome to NexaCorp.
 
 I set up your workstation for you. Here's a quick lay of the land:
 

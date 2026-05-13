@@ -83,7 +83,7 @@ Company website
         ...buildDotfiles(username),
         ...buildDesktopFiles(),
         Downloads: buildDownloadsDir(),
-        scripts: buildScriptsDir(),
+        scripts: buildScriptsDir(username),
       }),
     }),
     ...buildSystemDirs(username),

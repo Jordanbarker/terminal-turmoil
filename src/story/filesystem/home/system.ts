@@ -52,7 +52,7 @@ SUPPORT_URL="https://help.ubuntu.com/"
 BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
 `),
       passwd: file("passwd", `root:x:0:0:root:/root:/bin/zsh
-${PLAYER.username}:x:1000:1000:${PLAYER.displayName}:/home/${PLAYER.username}:/bin/zsh
+${username}:x:1000:1000:${PLAYER.displayName}:/home/${username}:/bin/zsh
 nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
 `),
     }),
