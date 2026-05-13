@@ -18,8 +18,8 @@ Pulling at a Loose Thread
   1. cd /tmp && ls on chipinfra → see ssh-mZ4xPq/
   2. cat /tmp/ssh-mZ4xPq/.user-erik → (sets cat_erik_socket_marker)
   3. export SSH_AUTH_SOCK=/tmp/ssh-mZ4xPq/agent.18472
-  4. ssh-add -l → prints two key fingerprints with erik@erik-laptop comment (sets ran_ssh_add_erik)                                 
-  5. ssh erik@erik-laptop → fingerprint accept → drops into erik@erik-laptop with last-login banner (sets pivoted_to_erik_pc)
+  4. ssh-add -l → prints two key fingerprints with erik@nexacorp-lt05 comment (sets ran_ssh_add_erik)                                 
+  5. ssh erik@nexacorp-lt05 → fingerprint accept → drops into erik@nexacorp-lt05 with last-login banner (sets pivoted_to_erik_pc)
   6. exit → returns to chipinfra
 
 Player finds Erik's ssh key in logs and can ssh into Erik's pc: 

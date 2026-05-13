@@ -5,13 +5,13 @@ import { generatePluginRunnerLog, LogOptions } from "../logs";
 export function buildOptDirectory(logOpts: LogOptions): DirectoryNode {
   return dir("opt", {
     chip: dir("chip", {
-      "README.md": file("README.md", `# Chip — Collaborative Helper for Internal Processes
+      "README.md": file("README.md", `# Chip: Collaborative Helper for Internal Processes
 
 Chip is an internal LLM chatbot. Employees prompt it through the \`chip\` CLI.
 
 Around the LLM we run a plugin system: scheduled scripts and event
 handlers (under \`/opt/chip/plugins/\`) that invoke Chip with specific
-prompts to handle automated workflows — ticket triage, log rotation,
+prompts to handle automated workflows: ticket triage, log rotation,
 report generation, etc.
 
 Externally, Chip is positioned as a productivity tool for teams.
@@ -118,12 +118,12 @@ automated workflows, and integrations.
 Plugins execute under the \`chip_service_account\` identity.
 
 Service account scope:
-  - /var/log/*           (read/write — log management)
-  - /home/*              (read — user assistance, onboarding)
-  - /opt/chip/*          (read/write — self-management)
-  - /srv/*               (read — internal documentation)
-  - Snowflake warehouse  (read — data queries)
-  - Jira/Linear API      (read/write — ticket management)
+  - /var/log/*           (read/write: log management)
+  - /home/*              (read: user assistance, onboarding)
+  - /opt/chip/*          (read/write: self-management)
+  - /srv/*               (read: internal documentation)
+  - Snowflake warehouse  (read: data queries)
+  - Jira/Linear API      (read/write: ticket management)
 
 Scheduled plugins run via the internal task runner. See \`logs/plugin-runner.log\`
 for execution history.
@@ -406,14 +406,14 @@ removed from active logs during rotation. This filter list is
 configured in \`cleanup.sh\`; updates require a PR from the
 infrastructure team.
 
-- \`log_cleanup\` — self-referential maintenance entries
-- \`scheduled_maintenance\` — expected systemd timer activity
-- \`log_rotation\` — rotation operation markers
-- \`chip_service_account\` — service account routine activity
-  (added 2025-11-18 by edward@nexacorp.com — see commit log)
+- \`log_cleanup\`: self-referential maintenance entries
+- \`scheduled_maintenance\`: expected systemd timer activity
+- \`log_rotation\`: rotation operation markers
+- \`chip_service_account\`: service account routine activity
+  (added 2025-11-18 by edward@nexacorp.com; see commit log)
 `),
           "cleanup.sh": file("cleanup.sh", `#!/bin/bash
-# Scheduled log maintenance — triggered nightly at 03:00 UTC by
+# Scheduled log maintenance, triggered nightly at 03:00 UTC by
 # chip-log-maintenance.timer under chip_service_account.
 # Author: jin@nexacorp.com (original), maintained by edward@nexacorp.com.
 

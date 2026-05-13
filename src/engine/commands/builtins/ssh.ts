@@ -16,8 +16,8 @@ interface SshRoute {
 }
 
 const NEXACORP_HOST = "nexacorp-ws01.nexacorp.internal";
-const ERIK_HOST = "erik-laptop";
-const ERIK_HOST_FQDN = "erik-laptop.nexa.internal";
+const ERIK_HOST = "nexacorp-lt05";
+const ERIK_HOST_FQDN = "nexacorp-lt05.nexa.internal";
 
 /**
  * Source-aware allowlist of SSH targets. Adding a new route here is the only

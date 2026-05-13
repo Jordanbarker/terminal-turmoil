@@ -48,7 +48,7 @@ export function getAmbientDeliveries(_username: string): PiperDelivery[] {
           id: "standup_dana_1",
           from: "Dana Okafor",
           timestamp: "",
-          body: "Heads up — cancelling standup today. I'm in back-to-back incident reviews and half the team is heads-down on deploys.",
+          body: "Heads up, cancelling standup today. I'm in back-to-back incident reviews and half the team is heads-down on deploys.",
         },
         {
           id: "standup_soham_1",
@@ -79,7 +79,7 @@ export function getAmbientDeliveries(_username: string): PiperDelivery[] {
           id: "demo_tom_1",
           from: "Tom Chen",
           timestamp: "",
-          body: "Quick heads up — I told Willow Health we'd do a live demo Friday. They're excited about the new dashboard features!",
+          body: "Quick heads up, I told Willow Health we'd do a live demo Friday. They're excited about the new dashboard features!",
         },
         {
           id: "demo_edward_1",
@@ -122,7 +122,7 @@ export function getAmbientDeliveries(_username: string): PiperDelivery[] {
           id: "allhands_edward_1",
           from: "Edward Torres",
           timestamp: "",
-          body: "For those who missed the all-hands — Q1 is tracking ahead of plan. Some big announcements coming in the next few weeks. Stay tuned.",
+          body: "For those who missed the all-hands: Q1 is tracking ahead of plan. Some big announcements coming in the next few weeks. Stay tuned.",
         },
         {
           id: "allhands_marcus_1",
@@ -153,7 +153,7 @@ export function getAmbientDeliveries(_username: string): PiperDelivery[] {
           id: "deploy_oscar_1",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Heads up — the 2am deploy rolled back automatically. Third time this month. I'm looking at it but if anyone touched the ingestion service config yesterday, speak now.",
+          body: "Heads up, the 2am deploy rolled back automatically. Third time this month. I'm looking at it but if anyone touched the ingestion service config yesterday, speak now.",
         },
         {
           id: "deploy_erik_1",
@@ -264,7 +264,7 @@ export function getAmbientDeliveries(_username: string): PiperDelivery[] {
           id: "eod_auri_1",
           from: "Auri Park",
           timestamp: "",
-          body: "Wrapping up too — finally caught up on the staging model backlog. Night everyone!",
+          body: "Wrapping up too. Finally caught up on the staging model backlog. Night everyone!",
         },
         {
           id: "eod_oscar_1",

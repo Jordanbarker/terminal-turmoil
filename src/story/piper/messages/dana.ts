@@ -32,13 +32,13 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           id: "dana_ops_1",
           from: "Dana Okafor",
           timestamp: "",
-          body: "Hey, quick ask — my ops dashboard has been throwing parse errors since yesterday.",
+          body: "Hey, quick ask: my ops dashboard has been throwing parse errors since yesterday.",
         },
         {
           id: "dana_ops_2",
           from: "Dana Okafor",
           timestamp: "",
-          body: "The data comes from a CSV export in /srv/operations/ — ops_incidents.csv. Something changed in the file format and now the dashboard chokes on it.",
+          body: "The data comes from a CSV export in /srv/operations/ called ops_incidents.csv. Something changed in the file format and now the dashboard chokes on it.",
         },
         {
           id: "dana_ops_3",
@@ -50,12 +50,12 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "after_objective", objectiveId: "processing_tools_accepted" },
       replyOptions: [
         {
-          label: "On it — I'll take a look.",
+          label: "On it. I'll take a look.",
           messageBody: "Sure thing! I'll check the CSV and see what's off.",
           triggerEvents: [{ type: "objective_completed", detail: "dana_ops_accepted" }],
         },
         {
-          label: "I can't access /srv/operations/ — Permission denied",
+          label: "I can't access /srv/operations/ (Permission denied)",
           messageBody: "I tried to look but I'm getting 'Permission denied' on /srv/operations/.",
           triggerEvents: [
             { type: "objective_completed", detail: "dana_ops_accepted" },
@@ -74,7 +74,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           id: "dana_ask_auri_1",
           from: "Dana Okafor",
           timestamp: "",
-          body: "Oh right — those shared dirs got locked down after a security audit last month. Ask Auri — she's dealt with file permissions before.",
+          body: "Oh right, those shared dirs got locked down after a security audit last month. Ask Auri, she's dealt with file permissions before.",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "dana_ops_no_access" },
@@ -88,13 +88,13 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "after_file_read", filePath: "/srv/operations/ops_incidents.csv" },
       replyOptions: [
         {
-          label: "The schema changed — there's a new resolution_notes column.",
-          messageBody: "I checked ops_incidents.csv — there's an extra column called resolution_notes that wasn't there before. That's probably what's breaking the parser.",
+          label: "The schema changed. There's a new resolution_notes column.",
+          messageBody: "I checked ops_incidents.csv. There's an extra column called resolution_notes that wasn't there before. That's probably what's breaking the parser.",
           triggerEvents: [{ type: "objective_completed", detail: "dana_ops_reported" }],
         },
         {
           label: "Looks like someone added a column without updating the docs.",
-          messageBody: "Found it — someone added a resolution_notes column to the CSV. No changelog or docs update for it though.",
+          messageBody: "Found it. Someone added a resolution_notes column to the CSV. No changelog or docs update for it though.",
           triggerEvents: [{ type: "objective_completed", detail: "dana_ops_reported" }],
         },
       ],
@@ -109,7 +109,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           id: "dana_resolved_1",
           from: "Dana Okafor",
           timestamp: "",
-          body: "That extra column explains everything — the dashboard expects a fixed schema and the parser chokes on any new columns.",
+          body: "That extra column explains everything. The dashboard expects a fixed schema and the parser chokes on any new columns.",
         },
         {
           id: "dana_resolved_2",
@@ -121,7 +121,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           id: "dana_resolved_3",
           from: "Dana Okafor",
           timestamp: "",
-          body: "Although... weird — I don't see a PR or changelog for this schema change. Someone added that column recently but there's no record of who or why. I'll ask around.",
+          body: "Although... weird. I don't see a PR or changelog for this schema change. Someone added that column recently but there's no record of who or why. I'll ask around.",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "dana_ops_reported" },
@@ -136,7 +136,7 @@ export function getDanaDeliveries(_username: string): PiperDelivery[] {
           id: "dana_schema_1",
           from: "Dana Okafor",
           timestamp: "",
-          body: "Hey — remember that mystery column in the ticket CSV? I dug into it more.",
+          body: "Hey, remember that mystery column in the ticket CSV? I dug into it more.",
         },
         {
           id: "dana_schema_2",

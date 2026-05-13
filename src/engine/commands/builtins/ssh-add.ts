@@ -16,14 +16,14 @@ const ERIK_KEYS: AgentKey[] = [
   {
     bits: 256,
     fingerprint: "SHA256:6kOmQzL1V8c7K9pXvH5tR2fSnB4yWqJ3aE0iD8gM7bU",
-    comment: "erik@erik-laptop",
+    comment: "erik@nexacorp-lt05",
     type: "ED25519",
     pubkey: "AAAAC3NzaC1lZDI1NTE5AAAAIDxK8mF2vN6qR9pYwL3hX7tA1cE5gJ4bK0iU8sV2nM6r",
   },
   {
     bits: 3072,
     fingerprint: "SHA256:vR2fSnB4yWqJ3aE0iD8gM7bU6kOmQzL1V8c7K9pXvH5",
-    comment: "erik@erik-laptop",
+    comment: "erik@nexacorp-lt05",
     type: "RSA",
     pubkey:
       "AAAAB3NzaC1yc2EAAAADAQABAAABgQDFxK8mF2vN6qR9pYwL3hX7tA1cE5gJ4bK0iU8sV2nM6rQzL1V8c7K9pXvH5tR2fSnB4yWqJ3aE0iD8gM7bU6kOmQzL1V8c7K9pXvH5tR2fSnB4yWqJ3aE0iD8gM7bU",

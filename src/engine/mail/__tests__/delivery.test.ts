@@ -2,11 +2,18 @@ import { describe, it, expect } from "vitest";
 import { checkEmailDeliveries, GameEvent } from "../delivery";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { createNexacorpFilesystem } from "../../../story/filesystem/nexacorp";
+import { createHomeFilesystem } from "../../../story/filesystem/home";
+import { StoryFlags } from "../../../state/types";
 
 const USERNAME = "testplayer";
 
 function makeFS(): VirtualFS {
   const root = createNexacorpFilesystem(USERNAME);
+  return new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
+}
+
+function makeHomeFS(): VirtualFS {
+  const root = createHomeFilesystem(USERNAME);
   return new VirtualFS(root, `/home/${USERNAME}`, `/home/${USERNAME}`);
 }
 
@@ -129,5 +136,42 @@ describe("checkEmailDeliveries", () => {
     const { newDeliveries, fs: newFs } = checkEmailDeliveries(fs, event, []);
     expect(newDeliveries).toHaveLength(0);
     expect(newFs).toBe(fs);
+  });
+
+  describe("hr_security_freeze (Erik-PC tracks-exposed branch)", () => {
+    // Day-2 home-arrival event mirrors what runExitToHome dispatches.
+    const headHomeEvent: GameEvent = { type: "objective_completed", detail: "head_home" };
+
+    it("delivers when pivoted_to_erik_pc + tracks_exposed_chapter4 are both set", () => {
+      const flags: StoryFlags = {
+        returned_home_day2: true,
+        accusation_made: true,
+        pivoted_to_erik_pc: true,
+        tracks_exposed_chapter4: true,
+      };
+      const { newDeliveries } = checkEmailDeliveries(makeHomeFS(), headHomeEvent, [], "home", flags);
+      expect(newDeliveries).toContain("hr_security_freeze");
+    });
+
+    it("does NOT deliver when tracks were scrubbed (tracks_exposed_chapter4 false)", () => {
+      const flags: StoryFlags = {
+        returned_home_day2: true,
+        accusation_made: true,
+        pivoted_to_erik_pc: true,
+        // tracks_exposed_chapter4 omitted → falsy
+      };
+      const { newDeliveries } = checkEmailDeliveries(makeHomeFS(), headHomeEvent, [], "home", flags);
+      expect(newDeliveries).not.toContain("hr_security_freeze");
+    });
+
+    it("does NOT deliver when player skipped Act 5 (pivoted_to_erik_pc false)", () => {
+      const flags: StoryFlags = {
+        returned_home_day2: true,
+        accusation_made: true,
+        // pivoted_to_erik_pc + tracks_exposed_chapter4 both omitted
+      };
+      const { newDeliveries } = checkEmailDeliveries(makeHomeFS(), headHomeEvent, [], "home", flags);
+      expect(newDeliveries).not.toContain("hr_security_freeze");
+    });
   });
 });

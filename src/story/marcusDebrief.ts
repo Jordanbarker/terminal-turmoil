@@ -29,7 +29,7 @@ to give. You called it the way it actually is.`;
 
 const SARAH_BODY = `Tough one to write up.
 
-I asked Oscar to spend an hour on Sarah before the meeting — log
+I asked Oscar to spend an hour on Sarah before the meeting. Log
 patterns, query history, anything that would back up the read.
 He came back with nothing. Her credentials show no out-of-role
 access.
@@ -39,8 +39,8 @@ her.
 
 Here's the part you should know: Edward heard I'd been looking
 at Sarah and he ran with it in the room. Tried to frame her as
-the problem. Jessica wasn't buying — she's been around long
-enough to recognize a deflection — but it muddied the water
+the problem. Jessica wasn't buying (she's been around long
+enough to recognize a deflection) but it muddied the water
 enough that the access-scope conversation got tabled to next week.
 
 Outcome: no decisions tonight. Edward bought himself a week. The
@@ -62,7 +62,7 @@ trail that this isn't an HR conversation anymore.
 
 Edward took it harder than I expected. He hired Erik. He vouched
 for him. He's going to need a minute. The board didn't fire him
-but he's on a short leash now — his Q1 timeline got shortened by
+but he's on a short leash now. His Q1 timeline got shortened by
 two weeks and Sarah is taking Chip's access scope.
 
 Series A diligence keeps moving. Jessica wanted me to thank you
@@ -72,7 +72,7 @@ const NOBODY_BODY = `You called it. Process failure landed.
 
 I framed it the way you put it: the doors were built that wide,
 somebody walked through them, but the door is the problem.
-Jessica liked the framing. Tom less so — he wanted a name to put
+Jessica liked the framing. Tom less so. He wanted a name to put
 in front of the board. I told him names without evidence are how
 companies turn into Theranos.
 

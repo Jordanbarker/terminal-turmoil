@@ -11,7 +11,7 @@ Last updated: 2026-02-20
 
 Status: Month 2. Getting desperate.
 
-Applied: 47 (most via auto_apply.py — see ~/scripts/)
+Applied: 47 (most via auto_apply.py, see ~/scripts/)
 Responses: 8
 Interviews: 3
 Offers: 0
@@ -22,21 +22,21 @@ half want 10 years of experience with tools that are 2 years old.
 
 Companies that ghosted me:
   - Meridian AI (applied 3 weeks ago, nothing)
-  - DataSynth Corp (rejected — "looking for more senior candidates")
+  - DataSynth Corp (rejected: "looking for more senior candidates")
   - OpenLoop Systems (phone screen went well, then silence)
 
 Still in the pipeline:
-  - NexaCorp — interview went okay? Edward (the manager) seems nice
+  - NexaCorp: interview went okay? Edward (the manager) seems nice
     but I couldn't tell what they actually DO. Their website says
     "AI-integrated enterprise solutions" which means nothing. Small
     team though, might be interesting.
-  - CortexLab — just applied, long shot
+  - CortexLab: just applied, long shot
 
 I should check my Glassdoor scrape data for NexaCorp.
 Actually, I know I scraped some reviews... ~/scripts/data/
 
 Companies to AVOID:
-  - Synthetica Labs — MALWARE in their take-home test. Cryptominer +
+  - Synthetica Labs: MALWARE in their take-home test. Cryptominer +
     cookie exfiltration hidden in a pip package. Had to wipe my entire
     machine. Reported to Indeed.
 
@@ -54,7 +54,7 @@ business needs.
 At Prometheus Analytics, I built and maintained ML pipelines serving
 2M+ daily predictions. I led our migration to Ray + MLflow, reducing
 serving latency by 40%. I understand what it takes to keep AI systems
-running reliably in production — not just building models, but
+running reliably in production: not just building models, but
 monitoring, debugging, and iterating on them.
 
 What draws me to NexaCorp is the opportunity to work directly with an
@@ -73,7 +73,7 @@ heading. I'm available for an interview at your convenience.
 Best regards,
 ${PLAYER.displayName}
 `),
-      "reinstall_notes.txt": file("reinstall_notes.txt", `REINSTALL NOTES — 2026-02-10
+      "reinstall_notes.txt": file("reinstall_notes.txt", `REINSTALL NOTES, 2026-02-10
 =============================
 
 What happened:
@@ -95,7 +95,7 @@ Recovery checklist:
   [x] Cloned dotfiles repo, restored .zshrc and .nanorc
   [x] Reinstalled job search scripts (auto_apply, scraper)
   [x] Recreated scripts/data/ from memory + Indeed history
-  [x] Set up backup script (~/scripts/backup.sh) — NEVER AGAIN
+  [x] Set up backup script (~/scripts/backup.sh). NEVER AGAIN
   [x] Changed passwords on GitHub, AWS, Google, email
   [ ] Re-download ML papers collection (had ~30 PDFs)
   [ ] Restore old project repos from GitHub
@@ -125,7 +125,7 @@ What it accessed (based on .heartbeat config + pipe targets):
 What I still don't know:
   - Did it copy actual files? Bash history? SSH private keys?
   - How long was it running before I noticed the CPU spike?
-    (Installed around 11pm, noticed around 3am — but was it
+    (Installed around 11pm, noticed around 3am, but was it
     active immediately or did it wait?)
   - Were there other data collectors besides the pipe and heartbeat?
   - Who's on the other end of that endpoint?
@@ -137,11 +137,11 @@ Dear [Hiring Manager / Team],
 
 I'm writing to apply for the [ROLE] position at [COMPANY].
 
-[PARAGRAPH 1: Hook — why this company/role]
+[PARAGRAPH 1: Hook. Why this company/role]
 
-[PARAGRAPH 2: Relevant experience — 2-3 concrete examples]
+[PARAGRAPH 2: Relevant experience. 2-3 concrete examples]
 
-[PARAGRAPH 3: What I'd bring — specific to their needs]
+[PARAGRAPH 3: What I'd bring. Specific to their needs]
 
 I'd love to discuss how my background aligns with your team's goals.
 
@@ -156,7 +156,7 @@ NOTES:
 - Show you researched the company
 `),
       portfolio: dir("portfolio", {
-        "projects.txt": file("projects.txt", `PORTFOLIO — Selected Projects
+        "projects.txt": file("projects.txt", `PORTFOLIO: Selected Projects
 ==============================
 
 1. Drift Detector (Prometheus Analytics)
@@ -192,7 +192,7 @@ NOTES:
     }),
     Pictures: dir("Pictures", {
       "README.txt": file("README.txt", `Most photos backed up to Google Photos.
-Lost some Portland hiking pics after the wipe — they were only local.
+Lost some Portland hiking pics after the wipe; they were only local.
 Lesson learned: cloud sync everything.
 `),
     }),
@@ -206,10 +206,10 @@ Jobs:
   - levels.fyi/jobs
 
 Papers:
-  - arxiv.org/abs/2505.07773  (AlphaEvolve — coding agent, DeepMind)
-  - arxiv.org/abs/2503.03659  (Kimi K2.5 — visual agentic AI)
-  - arxiv.org/abs/2504.12345  (TermiGen — terminal agent synthesis)
-  - arxiv.org/abs/2506.01234  (ERNIE 5.0 — Baidu multimodal)
+  - arxiv.org/abs/2505.07773  (AlphaEvolve, DeepMind coding agent)
+  - arxiv.org/abs/2503.03659  (Kimi K2.5, visual agentic AI)
+  - arxiv.org/abs/2504.12345  (TermiGen, terminal agent synthesis)
+  - arxiv.org/abs/2506.01234  (ERNIE 5.0, Baidu multimodal)
 
 Learning:
   - huggingface.co/docs

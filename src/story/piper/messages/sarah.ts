@@ -11,7 +11,7 @@ export function getSarahDeliveries(_username: string): PiperDelivery[] {
           id: "sarah_dm_1",
           from: "Sarah Knight",
           timestamp: "",
-          body: "oscar flagged some stuff with me about chip_service_account. looked into it and he's right — there are api calls that don't line up with any feature work I know about.",
+          body: "oscar flagged some stuff with me about chip_service_account. looked into it and he's right. there are api calls that don't line up with any feature work I know about.",
         },
         {
           id: "sarah_dm_2",

@@ -2,7 +2,7 @@ import { DirectoryNode } from "../../engine/filesystem/types";
 import { file, dir } from "../../engine/filesystem/builders";
 
 /**
- * Erik's NexaCorp-issued Linux work laptop (`erik-laptop`). Lives on the corp
+ * Erik's NexaCorp-issued Linux work laptop (`nexacorp-lt05`). Lives on the corp
  * network (10.20.5.84) and is reachable from chipinfra by abusing the
  * forwarded ssh-agent socket Erik left behind in /tmp.
  *
@@ -14,8 +14,8 @@ export function createErikpcFilesystem(_playerUsername: string): DirectoryNode {
   return dir("/", {
     home: dir("home", {
       erik: dir("erik", {
-        ".zshrc": file(".zshrc", `# ~/.zshrc - erik-laptop
-PROMPT='%B%F{green}%n@erik-laptop%f:%F{blue}%~%f%b%# '
+        ".zshrc": file(".zshrc", `# ~/.zshrc - nexacorp-lt05
+PROMPT='%B%F{green}%n@nexacorp-lt05%f:%F{blue}%~%f%b%# '
 bindkey -e
 
 setopt HIST_IGNORE_DUPS SHARE_HISTORY AUTO_CD
@@ -146,9 +146,15 @@ github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabMS5cs4LO
         Documents: dir("Documents", {}),
         Downloads: dir("Downloads", {}),
         Desktop: dir("Desktop", {
-          "in-loving-memory.txt": file("in-loving-memory.txt", `                                                                                
-                                                                                
-                                                  -----..                       
+          "in-loving-memory.txt": file("in-loving-memory.txt", `In loving memory of
+
+Anders Lindstrom
+1994 to 2026
+
+"The tallest tree on the ridge."
+                      E.
+
+                                                  -----..
                                                --++####++-.                     
                                              ..-+#########+-.                   
                                              .------+++++##+-                   

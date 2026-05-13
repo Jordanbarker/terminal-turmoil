@@ -13,7 +13,7 @@ import { gitClone } from "../engine/git/repo";
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "../engine/snowflake/seed/initial_data";
 import { colorize, ansi } from "../lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification } from "../lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "../lib/ascii";
 import { BOOT_LINE_INTERVAL_MS } from "../lib/timing";
 import { ComputerId, COMPUTERS } from "../state/types";
 
@@ -380,6 +380,19 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
         s.initComputer("home", newFs);
 
+        // Tracks-exposed scan. If the player pivoted to Erik's PC and left
+        // chipinfra's ~/.ssh/known_hosts containing the nexacorp-lt05 entry that
+        // SshSession appended on first connect, fire tracks_exposed_chapter4
+        // so the hr_security_freeze email delivers alongside marcus_board_debrief.
+        // Must run BEFORE removeComputer("chipinfra") below.
+        if (s.storyFlags.pivoted_to_erik_pc) {
+          const chipFs = s.computerState.chipinfra?.fs;
+          const kh = chipFs?.readFile(`/home/${username}/.ssh/known_hosts`).content ?? "";
+          if (kh.includes("nexacorp-lt05")) {
+            s.setStoryFlag("tracks_exposed_chapter4", true);
+          }
+        }
+
         // Remove non-home computers from computerState so they don't appear in "+" dropdown
         s.removeComputer("nexacorp");
         s.removeComputer("devcontainer");
@@ -462,11 +475,26 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
   const runShutdownTransition = useCallback((term: Terminal) => {
     const store = useGameStore.getState();
+    const isEndgame = Boolean(store.storyFlags.read_board_debrief_day2);
     store.setGamePhase("transitioning");
 
-    // Black screen pause (simulating overnight)
+    // Black screen pause (simulating overnight on Day 1; "lights out" for endgame).
     term.write("\x1b[?25l"); // hide cursor during animation
     term.clear();
+
+    if (isEndgame) {
+      // Endgame: no FS rebuild, no Day-2 boot, no delivery cascades. Just print
+      // the credits block, set game_ended, and leave the terminal idle.
+      setTimeout(() => {
+        const credits = getEndgameCreditsBlock();
+        credits.forEach((line) => term.writeln(line));
+        useGameStore.getState().setStoryFlag("game_ended", true);
+        // Stay in "transitioning" phase so the input handler never re-enables
+        // and writePrompt is never called.
+      }, 2500);
+      return;
+    }
+
     setTimeout(() => {
       const s = useGameStore.getState();
       const username = s.username;

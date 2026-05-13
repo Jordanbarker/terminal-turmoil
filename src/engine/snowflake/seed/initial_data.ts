@@ -47,7 +47,7 @@ const CHIP_RESOLUTION_NOTES = [
   "Auto-resolved per standard policy.",
   "Resolved via automated workflow.",
   "Automated remediation applied.",
-  "Issue cleared — no manual intervention needed.",
+  "Issue cleared; no manual intervention needed.",
   "Auto-resolved. Monitoring confirmed normal.",
 ];
 

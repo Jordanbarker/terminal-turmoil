@@ -11,13 +11,13 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
           id: "oscar_log_1",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Hey, welcome! Great timing — I'm debugging a deploy that went sideways overnight. Either someone pushed bad code at 3am or the servers have developed opinions. I'm going with option B until proven otherwise.",
+          body: "Hey, welcome! Heads up, saw something weird overnight. Either someone pushed bad code at 3am or the servers have developed opinions. I'm going with option B until proven otherwise.",
         },
         {
           id: "oscar_log_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Could you poke around /var/log/ and see if anything looks off around 3am? I'm buried in the fix and could use a second pair of eyes. Fair warning — reading system logs on your first day is either a great sign or a terrible one.",
+          body: "Could you poke around /var/log/ and see if anything looks off around 3am? I'm buried in the fix and could use a second pair of eyes. Fair warning: reading system logs on your first day is either a great sign or a terrible one.",
         },
         {
           id: "oscar_log_3",
@@ -29,13 +29,13 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "after_file_read", filePath: "/srv/engineering/onboarding.md" },
       replyOptions: [
         {
-          label: "On it — I'll take a look.",
+          label: "On it. I'll take a look.",
           messageBody: "Sure thing! I'll dig through the logs and let you know what I find.",
           triggerEvents: [{ type: "objective_completed", detail: "search_tools_accepted" }],
         },
         {
           label: "Sure, any tips on grep/find/diff?",
-          messageBody: "Happy to help! It's been a minute since I've used grep/find/diff though — any quick tips to jog my memory?",
+          messageBody: "Happy to help! It's been a minute since I've used grep/find/diff though. Any quick tips to jog my memory?",
           triggerEvents: [
             { type: "objective_completed", detail: "search_tools_tips_requested" },
             { type: "objective_completed", detail: "search_tools_accepted" },
@@ -53,7 +53,7 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
           id: "oscar_tips_1",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Sure — here's what I'm looking at:",
+          body: "Sure, here's what I'm looking at:",
         },
         {
           id: "oscar_tips_2",
@@ -61,7 +61,7 @@ export function getOscarDeliveries(_username: string): PiperDelivery[] {
           timestamp: "",
           body: `  [2026-02-23 02:59:42] chip-service[4821]: WARN unexpected batch job
   [2026-02-23 02:59:55] chip-service[4821]: ERROR failed to sync
-  [2026-02-23 03:00:02] systemd[1]: Finished chip-log-maintenance.service - Chip log maintenance — rotate and prune system logs.
+  [2026-02-23 03:00:02] systemd[1]: Finished chip-log-maintenance.service - Chip log maintenance: rotate and prune system logs.
 
 Something around 3am is misbehaving but I can't tell if it's related to the deploy or just noise.`,
         },
@@ -73,7 +73,7 @@ Something around 3am is misbehaving but I can't tell if it's related to the depl
 
   grep "error" /var/log/system.log
 
-and go from there. Also worth checking if there are any .bak files in /var/log/ — sometimes those have entries the live logs don't.`,
+and go from there. Also worth checking if there are any .bak files in /var/log/. Sometimes those have entries the live logs don't.`,
         },
         {
           id: "oscar_tips_4",
@@ -94,7 +94,7 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
           id: "oscar_tab_1",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Oh one more thing — your terminal supports tabs. Ctrl+B, C opens a new one. Super handy for tailing logs in one tab while you grep in another.",
+          body: "Oh one more thing: your terminal supports tabs. Ctrl+B, C opens a new one. Super handy for tailing logs in one tab while you grep in another.",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "search_tools_accepted" },
@@ -108,13 +108,13 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
       trigger: { type: "after_file_read", filePath: "/var/log/system.log", requireDelivered: "oscar_log_check" },
       replyOptions: [
         {
-          label: "Nothing weird — probably just a bad deploy.",
+          label: "Nothing weird, probably just a bad deploy.",
           messageBody: "Yeah, nothing jumped out. Probably just a bad deploy that auto-recovered.",
           triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_normal" }, { type: "objective_completed", detail: "oscar_log_findings_shared" }],
         },
         {
-          label: "I diffed the logs — entries were stripped from the backup.",
-          messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone — or something — removed them.",
+          label: "I diffed the logs. Entries were stripped from the backup.",
+          messageBody: "Actually, I diffed system.log against the .bak file. There are entries in the backup that aren't in the live log. Someone (or something) removed them.",
           visibleWhen: { flag: "discovered_log_tampering" },
           triggerEvents: [{ type: "objective_completed", detail: "oscar_logs_tampered" }, { type: "objective_completed", detail: "oscar_log_findings_shared" }],
         },
@@ -136,7 +136,7 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
           id: "oscar_normal_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Unrelated — while I was in there I noticed chip_service_account in /var/log/access.log. There's a ton of entries in that file. You're the AI person, right? Does the stuff it's accessing look normal to you?",
+          body: "Heads up, saw something weird in the access logs, probably nothing. While I was in there I noticed chip_service_account is all over /var/log/access.log. There's a ton of entries in that file. You're the AI person, right? Does the stuff it's accessing look normal to you?",
         },
         {
           id: "oscar_normal_3",
@@ -146,18 +146,18 @@ and go from there. Also worth checking if there are any .bak files in /var/log/ 
 
   sort /var/log/access.log | uniq -c | sort -rn
 
-That'll group duplicates, count them, and put the most frequent stuff at the top. But check the bottom too — sometimes the interesting stuff only shows up once or twice.`,
+That'll group duplicates, count them, and put the most frequent stuff at the top. But check the bottom too. Sometimes the interesting stuff only shows up once or twice.`,
         },
       ],
       trigger: { type: "after_objective", objectiveId: "oscar_logs_normal" },
       replyOptions: [
         {
-          label: "On it — I'll sort through it.",
+          label: "On it. I'll sort through it.",
           messageBody: "Sure thing, I'll sort the access log and see what stands out.",
           triggerEvents: [{ type: "objective_completed", detail: "processing_tools_accepted" }],
         },
         {
-          label: "Sure — quick refresher on sort and uniq?",
+          label: "Sure, quick refresher on sort and uniq?",
           messageBody: "Happy to help! Can you remind me how sort and uniq work?",
           triggerEvents: [
             { type: "objective_completed", detail: "processing_tools_tips_requested" },
@@ -182,7 +182,7 @@ That'll group duplicates, count them, and put the most frequent stuff at the top
           id: "oscar_tamper_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "That's not log rotation. That looks deliberate — someone covering tracks.",
+          body: "That's not log rotation. That looks deliberate. Someone covering tracks.",
         },
         {
           id: "oscar_tamper_3",
@@ -198,18 +198,18 @@ That'll group duplicates, count them, and put the most frequent stuff at the top
 
   sort /var/log/access.log | uniq -c | sort -rn
 
-Most frequent stuff will be at the top — probably normal. But scroll to the bottom. If something's only accessed once or twice, that's either random noise or someone being careful.`,
+Most frequent stuff will be at the top, probably normal. But scroll to the bottom. If something's only accessed once or twice, that's either random noise or someone being careful.`,
         },
       ],
       trigger: { type: "after_objective", objectiveId: "oscar_logs_tampered" },
       replyOptions: [
         {
-          label: "On it — I'll sort through it.",
+          label: "On it. I'll sort through it.",
           messageBody: "Sure thing, I'll sort the access log and see what stands out.",
           triggerEvents: [{ type: "objective_completed", detail: "processing_tools_accepted" }],
         },
         {
-          label: "Sure — quick refresher on sort and uniq?",
+          label: "Sure, quick refresher on sort and uniq?",
           messageBody: "Happy to help! Can you remind me how sort and uniq work?",
           triggerEvents: [
             { type: "objective_completed", detail: "processing_tools_tips_requested" },
@@ -234,13 +234,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_followup_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Most of the top entries are normal — model files, configs, static assets. But scroll to the bottom. See those low-count reads? SSH keys, leadership docs... For something that's supposed to be a 'helpful assistant' it sure is reading a lot of stuff that has nothing to do with helping anyone.",
+          body: "Most of the top entries are normal: model files, configs, static assets. But scroll to the bottom. See those low-count reads? SSH keys, leadership docs... For something that's supposed to be a 'helpful assistant' it sure is reading a lot of stuff that has nothing to do with helping anyone.",
         },
       ],
       trigger: { type: "after_file_read", filePath: "/var/log/access.log", requireDelivered: "oscar_log_normal" },
       replyOptions: [
         {
-          label: "It's reading SSH keys and leadership docs — that doesn't seem right.",
+          label: "It's reading SSH keys and leadership docs. That doesn't seem right.",
           messageBody: "Yeah, chip_service_account is all over the SSH keys and leadership docs. That's way outside the scope of an AI assistant.",
           triggerEvents: [
             { type: "objective_completed", detail: "oscar_access_suspicious" },
@@ -273,14 +273,14 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_followup_t2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Most of the top entries are normal service stuff. But look at the bottom — the low-count reads. SSH keys, leadership docs, personnel files... each accessed just once or twice. Combine that with the log scrubbing you found earlier and this is starting to look less like a misconfiguration and more like something deliberate.",
+          body: "Most of the top entries are normal service stuff. But look at the bottom, the low-count reads. SSH keys, leadership docs, personnel files... each accessed just once or twice. Combine that with the log scrubbing you found earlier and this is starting to look less like a misconfiguration and more like something deliberate.",
         },
       ],
       trigger: { type: "after_file_read", filePath: "/var/log/access.log", requireDelivered: "oscar_log_tampered" },
       replyOptions: [
         {
-          label: "It's reading SSH keys and leadership docs — that doesn't seem right.",
-          messageBody: "Yeah, chip_service_account is all over the SSH keys and leadership docs. Combined with the log tampering — something is very wrong here.",
+          label: "It's reading SSH keys and leadership docs. That doesn't seem right.",
+          messageBody: "Yeah, chip_service_account is all over the SSH keys and leadership docs. Combined with the log tampering, something is very wrong here.",
           triggerEvents: [
             { type: "objective_completed", detail: "oscar_access_suspicious" },
             { type: "objective_completed", detail: "oscar_access_reported" },
@@ -306,13 +306,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_reaction_1",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Yeah, that's what got me too. Hundreds of normal reads at the top, and then buried at the bottom — SSH keys, board minutes, investor updates. Each one just once or twice, like it's trying not to stand out. That's not 'helping with tickets.'",
+          body: "Yeah, that's what got me too. Hundreds of normal reads at the top, and then buried at the bottom: SSH keys, board minutes, investor updates. Each one just once or twice, like it's trying not to stand out. That's not 'helping with tickets.'",
         },
         {
           id: "oscar_reaction_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "I'm going to mention this to Sarah. She manages the infra team — if anyone can tell us whether this is expected behavior or something we should be worried about, it's her.",
+          body: "I'm going to mention this to Sarah. She's been here since month one, knows the codebase better than anyone, and she has Edward's ear. If anyone can tell us whether this is expected behavior or something we should worry about, it's her.",
         },
         {
           id: "oscar_reaction_3",
@@ -339,13 +339,13 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_reaction_d2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Maybe I'm being paranoid, but I'm going to flag it with Sarah anyway. She manages the infra team — she'll know if this is expected or not.",
+          body: "Maybe I'm being paranoid, but I'm going to flag it with Sarah anyway. She's been here since month one and she has Edward's ear, so she'll know if this is expected or not.",
         },
         {
           id: "oscar_reaction_d3",
           from: "Oscar Diaz",
           timestamp: "",
-          body: "Either way — thanks for looking into it. Virtual coffee still stands.",
+          body: "Either way, thanks for looking into it. Virtual coffee still stands.",
         },
       ],
       trigger: { type: "after_objective", objectiveId: "oscar_access_dismissed" },
@@ -366,7 +366,7 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_proc_2",
           from: "Oscar Diaz",
           timestamp: "",
-          body: `sort — sort lines alphabetically or numerically
+          body: `sort: sort lines alphabetically or numerically
   sort filename.txt              Sort all lines A-Z
   sort -n filename.txt           Sort numerically
   sort -r filename.txt           Reverse order`,
@@ -375,7 +375,7 @@ Most frequent stuff will be at the top — probably normal. But scroll to the bo
           id: "oscar_proc_3",
           from: "Oscar Diaz",
           timestamp: "",
-          body: `uniq — filter adjacent duplicate lines
+          body: `uniq: filter adjacent duplicate lines
   uniq filename.txt              Remove adjacent duplicates
   uniq -c filename.txt           Count occurrences
   uniq -d filename.txt           Show only duplicates`,

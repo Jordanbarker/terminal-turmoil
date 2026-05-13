@@ -10,7 +10,7 @@ export const COMPUTERS: Record<ComputerId, { hostname: string; promptHostname: s
   nexacorp: { hostname: "nexacorp-ws01", promptHostname: "nexacorp-ws01", ip: "10.20.5.17" },
   devcontainer: { hostname: "coder-ai", promptHostname: "coder-ai", ip: "172.18.0.5" },
   chipinfra: { hostname: "coder-chip", promptHostname: "coder-chip", ip: "10.50.1.128" },
-  "erik-pc": { hostname: "erik-laptop", promptHostname: "erik-laptop", ip: "10.20.5.84", username: "erik" },
+  "erik-pc": { hostname: "nexacorp-lt05", promptHostname: "nexacorp-lt05", ip: "10.20.5.84", username: "erik" },
 };
 
 /** Returns the shell username for a given computer. Defaults to the player's username unless the computer is owned by another user (e.g. erik-pc). */

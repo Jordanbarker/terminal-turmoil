@@ -13,13 +13,14 @@ export const HOME_EMAIL_IDS = [
   "nexacorp_followup",
   "chip_ssh_setup",
   "marcus_board_debrief",
+  "hr_security_freeze",
 ] as const;
 export type HomeEmailId = (typeof HOME_EMAIL_IDS)[number];
 
 const nexacorpOfferReplyOptions: ReplyOption[] = [
   {
     label: "I'm in! When do I start?",
-    replyBody: `Hi Edward,\n\nThanks so much for the offer! I'm really excited about the opportunity.\nI can start Monday — just let me know what I need to bring.\n\nLooking forward to it!`,
+    replyBody: `Hi Edward,\n\nThanks so much for the offer! I'm really excited about the opportunity.\nI can start Monday. Just let me know what I need to bring.\n\nLooking forward to it!`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
     ],
@@ -36,7 +37,7 @@ const nexacorpOfferReplyOptions: ReplyOption[] = [
 const persuasion1ReplyOptions: ReplyOption[] = [
   {
     label: "Alright, you've convinced me",
-    replyBody: `Hi Edward,\n\nYou make a good case. I'll admit the signing bonus doesn't hurt either.\nCount me in — I can start Monday.\n\nThanks for following up.`,
+    replyBody: `Hi Edward,\n\nYou make a good case. I'll admit the signing bonus doesn't hurt either.\nCount me in. I can start Monday.\n\nThanks for following up.`,
     triggerEvents: [
       { type: "objective_completed", detail: "accepted_nexacorp" },
     ],
@@ -60,7 +61,7 @@ const persuasion2ReplyOptions: ReplyOption[] = [
     ],
   },
   {
-    label: "My answer is final — good luck",
+    label: "My answer is final. Good luck",
     replyBody: `Hi Edward,\n\nI've made up my mind. I wish you and the team the best,\nbut this isn't the right move for me.\n\nTake care.`,
     triggerEvents: [
       { type: "objective_completed", detail: "rejected_nexacorp_final" },
@@ -71,7 +72,7 @@ const persuasion2ReplyOptions: ReplyOption[] = [
 const chipSshSetupReplyOptions: ReplyOption[] = [
   {
     label: "Thanks, looking forward to it!",
-    replyBody: `Hi Chip,\n\nThanks for the setup info — I'll get connected.`,
+    replyBody: `Hi Chip,\n\nThanks for the setup info. I'll get connected.`,
   },
   {
     label: "Can you send me the host key fingerprint so I can verify?",
@@ -89,24 +90,24 @@ export function getHomeEmailDefinitions(username: string, storyFlags?: StoryFlag
         to: `${username}@email.com`,
         date: "Fri, 20 Feb 2026 09:00:00",
         subject: "3 new AI Engineer jobs in your area",
-        body: `JOB ALERT — AI Engineer
+        body: `JOB ALERT: AI Engineer
 ========================
 
 Based on your recent searches:
 
-1. AI Engineer — NexaCorp
+1. AI Engineer at NexaCorp
    Location: Portland, OR (Remote)
    Salary: Competitive
    Posted: 6 days ago
    "Join our innovative team and work directly with our AI assistant
     platform. Immediate start."
 
-2. Junior ML Engineer — Cascade Analytics
+2. Junior ML Engineer at Cascade Analytics
    Location: Seattle, WA (Remote)
    Salary: $95K-$115K
    Posted: 1 week ago
 
-3. AI Research Intern — University of Oregon
+3. AI Research Intern at University of Oregon
    Location: Eugene, OR
    Salary: Stipend
    Posted: 3 days ago
@@ -148,7 +149,7 @@ Feb 21 02:00:14 maniac-iv systemd[1842]: backup.service: Failed with result 'exi
         from: "Edward Torres <edward@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 08:30:00",
-        subject: "Job Offer — AI Engineer at NexaCorp",
+        subject: "Job Offer: AI Engineer at NexaCorp",
         body: `Hi there,
 
 I really enjoyed our conversation and I'll cut right to it: we'd like to offer you the AI Engineer position
@@ -183,15 +184,14 @@ CTO & Co-Founder, NexaCorp
         from: "Edward Torres <edward@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 11:15:00",
-        subject: "Re: Job Offer — Hear me out",
-        body: `I totally understand — no pressure. But before you close the door,
-I wanted to throw a couple things out there:
+        subject: "Re: Job Offer, hear me out",
+        body: `Before you close the door, let me make the case:
 
-  - We're bumping the offer to $155K + a $5K signing bonus
-  - Fully remote, flexible hours — you set your own schedule
-  - The AI stack is genuinely interesting. You'd have a lot of autonomy
+  - $155K + $5K signing bonus
+  - Fully remote, flexible hours; you set your own schedule
+  - The AI stack is genuinely interesting, and you'd have a lot of autonomy on day one
 
-I know the timeline is aggressive, but I think you'd be a great fit. Let me know if you would reconsider.
+Aggressive timeline, I know. But this is a real fit. Get back to me by end of week.
 
 — Edward
 `,
@@ -207,18 +207,14 @@ I know the timeline is aggressive, but I think you'd be a great fit. Let me know
         from: "Edward Torres <edward@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 14:30:00",
-        subject: "Re: Job Offer — Last ask, I promise",
-        body: `Okay, I hear you — and I promise this is my last email about it.
+        subject: "Re: Job Offer, last ask I promise",
+        body: `Last one, then I'm out of your inbox.
 
-Look, I'll be honest with you. We're a small team and we're struggling.
-Our AI platform is live, customers depend on it. 
+$180K, $10K signing bonus. Fully remote, flexible hours.
 
-You're exactly the person we need.
+Look, I don't normally chase candidates twice. The AI stack is genuinely good, the autonomy is real, and we need someone in this seat before next quarter. You're the closest match I've seen in a month of looking.
 
-$180K, $10K signing bonus, and I'll personally make sure you have
-everything you need to succeed. 
-
-This is our final offer, let me know if you have any questions.
+That's the offer. Yes or no, no hard feelings either way.
 
 — Edward
 `,
@@ -240,9 +236,9 @@ This is our final offer, let me know if you have any questions.
 Okay so remember that CortexLab application you said was a
 long shot? THEY WANT TO INTERVIEW YOU. I just saw the email
 come through (you still have notifications forwarding to me
-from when you were traveling, btw — you should fix that).
+from when you were traveling, btw; you should fix that).
 
-Anyway — they're doing really interesting work on interpretable
+Anyway, they're doing really interesting work on interpretable
 ML, small team, and from what I can tell the culture is actually
 good. Like, Glassdoor-reviews-written-by-humans good.
 
@@ -266,10 +262,10 @@ P.S. Drinks are on you when you get the offer.
         from: "Edward Torres <edward@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Sat, 21 Feb 2026 19:00:00",
-        subject: "Re: Job Offer — Welcome to the team!",
+        subject: "Re: Job Offer, welcome to the team!",
         body: `Awesome! Really glad to have you on board.
 
-Chip will send you remote access details — you'll be able to SSH
+Chip will send you remote access details. You'll be able to SSH
 into your workstation from home to get a head start.
 
 — Edward
@@ -309,7 +305,7 @@ Pro tip: you can set up a shortcut so you only have to type
 Then just type: ssh nexacorp
 
 When you connect for the first time, you'll see a host key
-verification prompt — just type "yes" to confirm.
+verification prompt. Just type "yes" to confirm.
 
 Once you're logged in, type \`chip\` from your terminal to ask me
 anything.
@@ -338,6 +334,44 @@ anything.
         type: "after_story_flag",
         flag: "returned_home_day2",
         requiredFlags: ["accusation_made"],
+      },
+    },
+
+    // IT Security alert — arrives at home alongside marcus_board_debrief if
+    // the player pivoted to Erik's PC and left the known_hosts entry on
+    // chipinfra. tracks_exposed_chapter4 is set by the content-scan in
+    // useComputerTransitions.runExitToHome just before chipinfra teardown.
+    // A clean scrub (rm/nano/> on ~/.ssh/known_hosts before logoff) suppresses.
+    {
+      email: {
+        id: "hr_security_freeze",
+        from: "NexaCorp IT Security <security@nexacorp.io>",
+        to: `${username}@email.com`,
+        date: "Tue, 24 Feb 2026 21:18:00",
+        subject: "Unusual activity on your workstation: access frozen",
+        body: `Hello,
+
+Our SIEM flagged anomalous SSH activity originating from your
+NexaCorp dev container (10.20.0.18) earlier today, including a
+session to an employee-personal device with no business
+justification on file.${storyFlags?.accused_erik ? `
+
+The session targeted the same employee you raised concerns
+about with Marcus today, which compounds the review urgency.` : ""}
+
+As a precaution, your workstation access has been suspended
+pending review. Please do not attempt to log in until we contact
+you tomorrow morning.
+
+If you believe this was triggered in error, reply to this thread.
+
+— NexaCorp IT Security
+`,
+      },
+      trigger: {
+        type: "after_story_flag",
+        flag: "returned_home_day2",
+        requiredFlags: ["pivoted_to_erik_pc", "tracks_exposed_chapter4"],
       },
     },
   ];

@@ -64,7 +64,7 @@ describe("ssh-add command", () => {
       { l: true },
       createCtx({ fs, envVars: { SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" } })
     );
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
     expect(result.output).toContain("ED25519");
     expect(result.output).toContain("RSA");
     expect(result.triggerEvents).toContainEqual({
@@ -83,7 +83,7 @@ describe("ssh-add command", () => {
     );
     expect(result.output).toContain("ssh-ed25519 ");
     expect(result.output).toContain("ssh-rsa ");
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
   });
 
   it("does not list keys for non-erik markers", () => {
@@ -106,7 +106,7 @@ describe("ssh-add command", () => {
       parsed.flags,
       createCtx({ fs, envVars: { SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" } })
     );
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
     expect(result.output).not.toContain("invalid option");
   });
 
@@ -119,7 +119,7 @@ describe("ssh-add command", () => {
       createCtx({ fs, envVars: { SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" } })
     );
     expect(result.output).toContain("SHA256:");
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
   });
 
   it("resolves a bare relative SSH_AUTH_SOCK against cwd", () => {
@@ -134,7 +134,7 @@ describe("ssh-add command", () => {
         envVars: { SSH_AUTH_SOCK: "agent.18472" },
       })
     );
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
     expect(result.exitCode).toBeUndefined();
   });
 
@@ -150,7 +150,7 @@ describe("ssh-add command", () => {
         envVars: { SSH_AUTH_SOCK: "./agent.18472" },
       })
     );
-    expect(result.output).toContain("erik@erik-laptop");
+    expect(result.output).toContain("erik@nexacorp-lt05");
   });
 
   it("a relative SSH_AUTH_SOCK that looks like an absolute path no longer accidentally resolves", () => {
@@ -207,7 +207,7 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   }
 
   it("rejects with publickey error when SSH_AUTH_SOCK is unset", () => {
-    const result = execute("ssh", ["erik@erik-laptop"], {}, chipinfraCtx());
+    const result = execute("ssh", ["erik@nexacorp-lt05"], {}, chipinfraCtx());
     expect(result.output).toContain("Permission denied (publickey)");
     expect(result.sshSession).toBeUndefined();
   });
@@ -215,7 +215,7 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   it("rejects wrong user even with valid agent", () => {
     const result = execute(
       "ssh",
-      ["mallory@erik-laptop"],
+      ["mallory@nexacorp-lt05"],
       {},
       chipinfraCtx({ SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" })
     );
@@ -226,12 +226,12 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   it("connects to erik-pc with valid agent + correct user", () => {
     const result = execute(
       "ssh",
-      ["erik@erik-laptop"],
+      ["erik@nexacorp-lt05"],
       {},
       chipinfraCtx({ SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" })
     );
     expect(result.sshSession).toEqual({
-      host: "erik-laptop",
+      host: "nexacorp-lt05",
       username: "erik",
       targetComputer: "erik-pc",
     });
@@ -240,7 +240,7 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   it("accepts FQDN form too", () => {
     const result = execute(
       "ssh",
-      ["erik@erik-laptop.nexa.internal"],
+      ["erik@nexacorp-lt05.nexa.internal"],
       {},
       chipinfraCtx({ SSH_AUTH_SOCK: "/tmp/ssh-mZ4xPq/agent.18472" })
     );
@@ -250,7 +250,7 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   it("accepts a relative SSH_AUTH_SOCK resolved against cwd", () => {
     const result = execute(
       "ssh",
-      ["erik@erik-laptop"],
+      ["erik@nexacorp-lt05"],
       {},
       {
         fs: chipinfraFs(),
@@ -268,7 +268,7 @@ describe("ssh chipinfra → erik-pc pivot", () => {
   it("rejects from home (route only valid from chipinfra)", () => {
     const result = execute(
       "ssh",
-      ["erik@erik-laptop"],
+      ["erik@nexacorp-lt05"],
       {},
       {
         fs: chipinfraFs(),

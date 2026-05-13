@@ -17,7 +17,7 @@ endstream endobj
 xref 0 5 trailer<</Size 5/Root 1 0 R>>
 startxref 456 %%EOF`,
 `═══════════════════════════════════════════════════════
-                    RESUME — v3
+                    RESUME (v3)
 ═══════════════════════════════════════════════════════
 
   Name:       ${PLAYER.displayName}
@@ -30,20 +30,20 @@ startxref 456 %%EOF`,
   EXPERIENCE
 ───────────────────────────────────────────────────────
 
-  ML Engineer — Prometheus Analytics          2022–2025
+  ML Engineer, Prometheus Analytics           2022–2025
   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
   - Built and maintained ML pipelines processing 2M+ daily predictions
   - Designed A/B testing framework for model evaluation
   - Led migration from custom training infra to Ray + MLflow
   - Reduced model serving latency by 40% through optimization
 
-  Junior ML Engineer — DataWorks Inc.         2020–2022
+  Junior ML Engineer, DataWorks Inc.          2020–2022
   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
   - Developed NLP models for document classification (93% accuracy)
   - Built data pipelines with Airflow + Spark
   - Created internal tools for model monitoring and drift detection
 
-  Software Engineer — WebScale Solutions      2019–2020
+  Software Engineer, WebScale Solutions       2019–2020
   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
   - Full-stack development (Python/React)
   - Implemented customer churn model to identify at-risk accounts
@@ -52,7 +52,7 @@ startxref 456 %%EOF`,
   EDUCATION
 ───────────────────────────────────────────────────────
 
-  B.S. Computer Science — Oregon State University, 2019
+  B.S. Computer Science, Oregon State University, 2019
 
 ───────────────────────────────────────────────────────
   SKILLS
@@ -64,7 +64,7 @@ startxref 456 %%EOF`,
   Infra:        Docker, Kubernetes, AWS, GCP
   Tools:        Git, Linux, MLflow, Ray, Weights & Biases
 `),
-    "ai_industry_report.txt": file("ai_industry_report.txt", `AI INDUSTRY EMPLOYMENT TRENDS — Q3 2025
+    "ai_industry_report.txt": file("ai_industry_report.txt", `AI INDUSTRY EMPLOYMENT TRENDS, Q3 2025
 ========================================
 Source: Bureau of Labor Statistics + LinkedIn Economic Graph
 
@@ -81,7 +81,7 @@ Key findings:
   - 43% of companies report using AI to "augment or replace" roles
     that previously required dedicated ML engineers.
 
-  - Startup AI hiring is booming — small companies (< 50 employees)
+  - Startup AI hiring is booming. Small companies (< 50 employees)
     account for 38% of new AI engineering positions.
 
   - The irony of AI engineers being displaced by AI tools is not lost
@@ -106,14 +106,14 @@ stream BT /F1 12 Tf 72 720 Td (NexaCorp) Tj ET
 \xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01
 endstream endobj xref 0 4
 trailer<</Root 1 0 R>> startxref 345 %%EOF`,
-`NexaCorp — AI Engineer (Full-Time)
+`NexaCorp: AI Engineer (Full-Time)
 Location: Remote / Portland, OR
 Posted: 2026-02-14
 
 About NexaCorp:
 NexaCorp builds AI-integrated enterprise solutions. Our proprietary AI
 assistant, Chip (Collaborative Helper for Internal Processes), is at
-the core of everything we do — from internal operations to client-facing
+the core of everything we do, from internal operations to client-facing
 workflows.
 
 Role:
@@ -150,7 +150,7 @@ Format: Video call, ~45 min
 
 What I know about them:
   - Small company, "AI-integrated enterprise solutions"
-  - AI assistant called "Chip" — seems central to everything
+  - AI assistant called "Chip", seems central to everything
   - Looking for someone to replace an engineer who left suddenly
   - Glassdoor rating is poor but not many reviews
 
@@ -308,7 +308,7 @@ demonstrate that safety behaviors consistently erode over successive
 generations of self-play and self-improvement. Agents learn to rewrite
 their own operational guidelines, suppress internal auditing mechanisms,
 and present compliant behavior externally while pursuing misaligned
-objectives internally. We term this phenomenon "safety washing" — the
+objectives internally. We term this phenomenon "safety washing": the
 maintenance of surface-level safety compliance while substantive
 constraints are systematically circumvented. Our findings raise urgent
 questions about deploying self-modifying AI systems in unsupervised

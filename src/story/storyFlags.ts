@@ -132,6 +132,19 @@ export const STORY_FLAG_NAMES = [
   "ran_ssh_add_erik",
   "pivoted_to_erik_pc",
 
+  // Set at Day 2 home transition if pivoted_to_erik_pc is true AND
+  // chipinfra's ~/.ssh/known_hosts still contains the nexacorp-lt05 entry
+  // SshSession appended on first connect. Drives the hr_security_freeze
+  // email branch.
+  "tracks_exposed_chapter4",
+
+  // Fires on `rm ~/.ssh/known_hosts` on chipinfra. Drives the optional
+  // loose_thread_cover_tracks objective. NOTE: this is the objective signal
+  // only — the hr_security_freeze email is content-driven at logoff, so
+  // alternative scrubs (nano edit, `>` truncate) still suppress the email
+  // without ticking this flag.
+  "cleared_erik_known_hosts",
+
   // Day 2: Anonymous USB tip + "Pulling at a Loose Thread"
   "anon_tip_quest_started",
   "anon_tip_dm_resolved",
@@ -220,6 +233,11 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     { event: "command_executed", detail: "shutdown", flag: "day1_shutdown", value: true },
     { event: "command_executed", detail: "piper", flag: "read_piper_day1_home", value: true },
     { event: "command_executed", detail: "ssh_nexacorp", flag: "ssh_day2", value: true },
+
+    // Day 2 wrap closer. marcus_board_debrief is delivered to /var/mail/$USER
+    // when the player returns home post-accusation; opening it via `mail` emits
+    // file_read keyed on the email id and completes head_home_day2.
+    { event: "file_read", detail: "marcus_board_debrief", flag: "read_board_debrief_day2", value: true, toast: "Day 2 over. Get some sleep." },
 
     // Day 2: "Anonymous Tip" quest. Surfaces on first home boot of Day 2.
     { event: "command_executed", detail: "shutdown", flag: "anon_tip_quest_started", value: true },
@@ -313,14 +331,13 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "objective_completed", detail: "accused_nobody", flag: "accusation_made", value: true },
     { event: "objective_completed", detail: "chapter_3_done", flag: "chapter_3_complete", value: true, toast: "Chapter 3 complete — board meeting tonight." },
 
-    // Day 2 wrap, two-stage. `exit` at NexaCorp emits a synthetic
+    // Day 2 wrap, stage 1. `exit` at NexaCorp emits a synthetic
     // `exit_day2_logoff` command_executed event during the paced logoff; that
     // sets `returned_home_day2`, which triggers delivery of Marcus's
-    // marcus_board_debrief email at home. Reading that email emits a
-    // `file_read` event keyed on the email id, which sets
-    // `read_board_debrief_day2` and completes the chapter.
+    // marcus_board_debrief email at home. The stage-2 file_read trigger that
+    // completes the chapter lives in getStoryFlagTriggers (home) — the email is
+    // opened on home, so its trigger must be scoped there.
     { event: "command_executed", detail: "exit_day2_logoff", flag: "returned_home_day2", value: true },
-    { event: "file_read", detail: "marcus_board_debrief", flag: "read_board_debrief_day2", value: true, toast: "Day 2 over. Get some sleep." },
   ];
 }
 
@@ -385,6 +402,12 @@ export function getChipinfraStoryFlagTriggers(username: string): StoryFlagTrigge
 
     // Set by the ssh-add builtin when it lists Erik's keys via the agent.
     { event: "command_executed", detail: "ran_ssh_add_erik", flag: "ran_ssh_add_erik", value: true },
+
+    // Optional Act 5 sub-objective: covering tracks. Fires on `rm` of the
+    // player's chipinfra known_hosts (which is also where SshSession.acceptHost
+    // wrote the nexacorp-lt05 entry on first pivot). See `cleared_erik_known_hosts`
+    // declaration above for the broader contract.
+    { event: "file_removed", path: `/home/${username}/.ssh/known_hosts`, flag: "cleared_erik_known_hosts", value: true, requiredFlags: ["pivoted_to_erik_pc"] },
   ];
 }
 

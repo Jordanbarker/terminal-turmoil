@@ -12,7 +12,7 @@ function isPathCommand(name: string): boolean {
 
 const NEXACORP_GATE_HINTS: Record<string, string> = {
   coder: "Read your email and check with Auri/Oscar to get set up.",
-  piper: "Read your welcome email — it has instructions for getting started.",
+  piper: "Read your welcome email; it has instructions for getting started.",
 };
 
 const commands = new Map<string, { handler: CommandHandler; description: string; helpText?: string; readsFiles?: boolean }>();
@@ -69,7 +69,7 @@ export function execute(
 ): CommandResult {
   if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
     if (ctx.activeComputer === "nexacorp") {
-      const hint = NEXACORP_GATE_HINTS[commandName] ?? "Check your mail and Piper messages — your colleagues will help you get set up.";
+      const hint = NEXACORP_GATE_HINTS[commandName] ?? "Check your mail and Piper messages; your colleagues will help you get set up.";
       return { output: colorize(`${commandName}: not yet available. ${hint}`, ansi.yellow), exitCode: 127 };
     }
     return { output: colorize(`${commandName}: command not found. Type 'help' for available commands.`, ansi.red), exitCode: 127 };

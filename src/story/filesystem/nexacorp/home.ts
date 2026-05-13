@@ -28,10 +28,10 @@ export PAGER=cat
 export NEXACORP_ENV=production
 export SNOWFLAKE_ACCOUNT=nexacorp-prod
 
-# NexaCorp workstation — managed by IT
+# NexaCorp workstation, managed by IT
 # For system issues contact infra@nexacorp.com
 `),
-      ".zprofile": file(".zprofile", `# ~/.zprofile — login shell config
+      ".zprofile": file(".zprofile", `# ~/.zprofile, login shell config
 # Sourced on login; delegates to .zshrc for interactive settings
 
 if [[ -f "$HOME/.zshrc" ]]; then
@@ -86,7 +86,7 @@ mail`),
       Desktop: dir("Desktop", {
         "welcome.txt": file("welcome.txt", `Hey ${username}! Welcome to NexaCorp.
 
-I set up your workstation for you — here's a quick lay of the land:
+I set up your workstation for you. Here's a quick lay of the land:
 
   ~/Desktop/          You are here
   ~/Documents/        Company docs (handbook, org chart)
@@ -104,7 +104,7 @@ If you need anything, just run 'chip' from the terminal.
       }),
       Downloads: dir("Downloads", {}),
       scripts: dir("scripts", {
-        "hello.py": file("hello.py", `# hello.py — NexaCorp onboarding script
+        "hello.py": file("hello.py", `# hello.py, NexaCorp onboarding script
 import sys
 
 print("Hello from NexaCorp!")
@@ -112,7 +112,7 @@ print(f"Python version: {sys.version}")
 print(f"Arguments: {sys.argv[1:]}")
 `),
         "check_env.sh": file("check_env.sh", `#!/bin/bash
-# check_env.sh — verify workstation setup
+# check_env.sh, verify workstation setup
 # Usage: bash scripts/check_env.sh
 
 echo "=== NexaCorp Workstation Check ==="
@@ -145,7 +145,7 @@ echo "Done."
 `),
       }),
       Documents: dir("Documents", {
-        "nexacorp_org_chart.txt": file("nexacorp_org_chart.txt", `=== NexaCorp Inc. — Organization Chart ===
+        "nexacorp_org_chart.txt": file("nexacorp_org_chart.txt", `=== NexaCorp Inc. Organization Chart ===
 Updated: February 2026
 
 EXECUTIVE

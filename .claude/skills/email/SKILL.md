@@ -261,6 +261,8 @@ This mirrors the story flag processing in `computeEffects()` (`applyResult.ts`) 
 | `alex_good_news` | Alex Rivera | after `rejected_nexacorp_final` objective | Friend congratulates the player on (any) decision — soft landing for the dead end |
 | `nexacorp_followup` | Edward Torres | after `accepted_nexacorp` objective | Triggers transition to NexaCorp |
 | `chip_ssh_setup` | Edward Torres | after `accepted_nexacorp` objective | SSH onboarding instructions; reading it sets `ssh_unlocked` |
+| `marcus_board_debrief` | Marcus Reyes | `after_story_flag: returned_home_day2` + `accusation_made` | Day 2 board-meeting debrief; body branches on `accused_*` via `getMarcusDebrief(storyFlags)` |
+| `hr_security_freeze` | NexaCorp IT Security | `after_story_flag: returned_home_day2` + `pivoted_to_erik_pc` + `tracks_exposed_chapter4` | Day 2 audit consequence — arrives alongside `marcus_board_debrief` if the player pivoted to Erik's PC and left chipinfra's `~/.ssh/known_hosts` containing `nexacorp-lt05`. Scrubbing the file before `exit` suppresses it. One inline body branch on `accused_erik`. |
 
 ### Home PC Reply Flow (Offer → Rejection → Persuasion Chain)
 

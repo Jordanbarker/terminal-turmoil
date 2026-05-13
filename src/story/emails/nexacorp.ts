@@ -25,9 +25,9 @@ export function getNexacorpEmailDefinitions(username: string): EmailDelivery[] {
       subject: "Welcome aboard!",
       body: `Hey!
 
-So glad you're here — we've been looking forward to getting you
+So glad you're here, we've been looking forward to getting you
 on board. Your onboarding buddy Auri Park will reach out on
-Piper — she's been running the data side of things and will
+Piper. She's been running the data side of things and will
 help you get oriented.
 
 Your first priority is just getting familiar with the system.
@@ -36,7 +36,7 @@ Here are a couple things to check out first:
   /srv/engineering/onboarding.md   Setup checklist and useful commands
   /srv/engineering/team-info.md    Who's who on the engineering team
 
-We use Piper for team chat — type 'piper' to check it out.
+We use Piper for team chat. Type 'piper' to check it out.
 
 Welcome to the team!
 
@@ -60,7 +60,7 @@ Let me know when you'd like to chat about that first project!`,
         label: "Anything I should watch out for?",
         replyBody: `Hey Edward,
 
-Appreciate the welcome! Quick question — any unwritten rules,
+Appreciate the welcome! Quick question: any unwritten rules,
 office quirks, or things I should know that aren't in the
 onboarding docs?
 
@@ -122,7 +122,7 @@ Let me know if you hit any issues!
       subject: "Handoff notes",
       body: `Hey,
 
-Just wanted to flag — the handoff notes in /srv/engineering/chen-handoff/
+Just wanted to flag: the handoff notes in /srv/engineering/chen-handoff/
 were written in kind of a hurry, so they might not be the most
 polished. Take them with a grain of salt.
 
@@ -150,19 +150,19 @@ I'm Maya, People & Culture Lead here at NexaCorp. Welcome aboard!
 A few onboarding items for your first week:
 
   [ ] Review the employee handbook (it's in your Documents folder)
-  [ ] Benefits enrollment — you have 30 days from your start date. 
+  [ ] Benefits enrollment (you have 30 days from your start date).
   [ ] Complete tax documents (I'll send the portal link separately.)
 
 Other things to know:
   - Company town hall is Fridays at noon
-  - PTO is flexible after your first 60 days — just give your manager a heads up
+  - PTO is flexible after your first 60 days; just give your manager a heads up
 
-One more thing — we pair every new hire with an onboarding buddy
+One more thing: we pair every new hire with an onboarding buddy
 to help you get oriented. I've paired you with Auri Park on the
 data engineering team. She'll reach out on Piper to say hi!
 
 I know that's a lot of checkboxes for day one. Don't stress
-about it — none of it's due today. Just settle in, meet folks,
+about it. None of it's due today. Just settle in, meet folks,
 and come find me if you need anything. I mean that!
 
 - Maya Johnson
@@ -184,7 +184,7 @@ and come find me if you need anything. I mean that!
       body: `Hey,
 
 Great first day! Auri mentioned you already ran a full build on
-the analytics pipeline — great to see you getting up to speed
+the analytics pipeline. Great to see you getting up to speed
 on the data side.
 
 - Edward
@@ -223,7 +223,7 @@ Jessica
       subject: "Welcome to NexaCorp!",
       body: `Hey ${PLAYER.displayName}!
 
-Tom here — CMO and co-founder. Just wanted to personally
+Tom here, CMO and co-founder. Just wanted to personally
 welcome you aboard. Edward's been singing your praises and
 we're thrilled to have you.
 

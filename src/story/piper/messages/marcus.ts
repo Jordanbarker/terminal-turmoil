@@ -28,13 +28,13 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
           id: "marcus_endgame_3",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "Chip's access was set wide for operational speed, but we are going to need to tighten it up going forward.",
+          body: "Chip's access scope was set wide on purpose. We're tightening it.",
         },
         {
           id: "marcus_endgame_4",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "Board meeting is tonight. Jessica wants a name before we sit down. You've been closer to this than anyone — before I walk into that room, I want your read. Who's been driving this?",
+          body: "Board meeting is tonight. Jessica wants a name before we sit down. You've been closer to this than anyone. Before I walk into that room, I want your read. Who's been driving this?",
         },
       ],
       trigger: { type: "after_story_flag", flag: "reported_plugin_to_edward" },
@@ -48,8 +48,8 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
           ],
         },
         {
-          label: "Sarah. She flagged the anomalies — maybe she knows more.",
-          messageBody: "Sarah. She raised the API anomalies and got dismissed. That could be a tell — she's the one who knows where to look because she's the one who knows where to hide it.",
+          label: "Sarah. She flagged the anomalies; maybe she knows more.",
+          messageBody: "Sarah. She raised the API anomalies and got dismissed. Could be a tell: the loudest voice sometimes has the most to hide.",
           triggerEvents: [
             { type: "objective_completed", detail: "accused_sarah" },
             { type: "objective_completed", detail: "chapter_3_done" },
@@ -111,7 +111,7 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
           id: "marcus_react_sarah_2",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "Interesting angle. She's the one who raised it — but you're right that the people closest to the alarm bell are sometimes the ones holding the rope.",
+          body: "Interesting angle. She raised it first. That cuts both ways.",
         },
         {
           id: "marcus_react_sarah_3",
@@ -165,7 +165,7 @@ export function getMarcusDeliveries(_username: string): PiperDelivery[] {
           id: "marcus_react_nobody_2",
           from: "Marcus Reyes",
           timestamp: "",
-          body: "We built the doors that wide. Somebody walked through them — but the door is the problem, not the foot.",
+          body: "We built the doors that wide. Somebody walked through them, but the door is the problem, not the foot.",
         },
         {
           id: "marcus_react_nobody_3",

@@ -30,7 +30,7 @@ forwarded: yes
       "agent.9123": file("agent.9123", ""),
       ".user-oscar": file(".user-oscar", `oscar
 session: 2026-05-06T03:01:44Z
-forwarded: yes
+forwarded: no
 `),
     }),
 

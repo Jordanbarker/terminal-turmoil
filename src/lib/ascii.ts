@@ -149,6 +149,46 @@ export function getCoderBanner(workspace: string = "ai"): string[] {
 /** Default banner for `coder ssh ai` — preserved for back-compat with existing call sites. */
 export const coderBanner = getCoderBanner("ai");
 
+export function getEndgameCreditsBlock(): string[] {
+  const rule = colorize("─────────────────────────────────────────────────────────", ansi.brightBlack);
+  const heading = (text: string) => colorize(text, ansi.bold);
+  const role = (text: string) => colorize(text, ansi.dim);
+  const name = (text: string) => colorize(text, ansi.brightWhite);
+  return [
+    "",
+    rule,
+    "",
+    `  ${heading("Chapter 3 — In Production")}  ${role("· complete")}`,
+    `  ${role("Day 2 ended at 21:47.")}`,
+    "",
+    `  ${heading("Featuring")}`,
+    `    ${name("Marcus Reyes")}      ${role("COO")}`,
+    `    ${name("Edward Torres")}     ${role("CTO")}`,
+    `    ${name("Auri Park")}         ${role("Data Engineer")}`,
+    `    ${name("Sarah Knight")}      ${role("Senior Backend")}`,
+    `    ${name("Erik Lindstrom")}    ${role("Senior Frontend")}`,
+    `    ${name("Oscar Diaz")}        ${role("Infrastructure")}`,
+    `    ${name("Dana Okafor")}       ${role("Head of Operations")}`,
+    `    ${name("Jordan Kessler")}    ${role("Growth Marketing")}`,
+    `    ${name("Maya Johnson")}      ${role("People & Culture")}`,
+    `    ${name("Cassie Moreau")}     ${role("Product Design")}`,
+    `    ${name("Soham Parekh")}      ${role("Full-Stack")}`,
+    `    ${name("Sabu")}              ${role("Anonymous tipster")}`,
+    `    ${name("Olive Borden")}      ${role("Friend, off-grid")}`,
+    `    ${name("Alex Rivera")}       ${role("Friend")}`,
+    "",
+    `    ${role("with")} ${name("Chip")} ${role("and")} ${name("Piper")}`,
+    "",
+    rule,
+    "",
+    `  ${colorize("Thanks for playing.", ansi.bold)}`,
+    `  ${role("Chapter 4 — to be continued.")}`,
+    "",
+    rule,
+    "",
+  ];
+}
+
 export function getHomeBootSequence(): string[] {
   return [
     colorize("BIOS POST... OK", ansi.dim),

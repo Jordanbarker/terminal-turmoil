@@ -6,7 +6,7 @@ export function buildScriptsDir(): DirectoryNode {
   return dir("scripts", {
     "auto_apply.py": file("auto_apply.py", `#!/usr/bin/env python3
 """
-auto_apply.py — Job application automation
+auto_apply.py: Job application automation
 
 Scrapes job boards, matches against resume keywords, and auto-fills
 applications where possible. It's not cheating, it's efficiency.
@@ -137,7 +137,7 @@ def apply_to_job(driver, job, dry_run=False):
 
     rating = check_red_flags(job["company"], load_reviews())
     if rating is not None and rating < MIN_GLASSDOOR_RATING:
-        print(f"  Warning: Low rating ({rating}) — applying anyway (desperate)")
+        print(f"  Warning: Low rating ({rating}); applying anyway (desperate)")
 
     if dry_run:
         return True
@@ -146,7 +146,7 @@ def apply_to_job(driver, job, dry_run=False):
         driver.get(job["url"])
         time.sleep(1)
 
-        # Find the apply button — Indeed, Greenhouse, and Lever all differ
+        # Find the apply button. Indeed, Greenhouse, and Lever all differ
         apply_btn = None
         for selector in ["#indeedApplyButton", ".postings-btn-submit", "a[data-qa='apply-button']"]:
             try:
@@ -156,7 +156,7 @@ def apply_to_job(driver, job, dry_run=False):
                 continue
 
         if not apply_btn:
-            print(f"    No apply button found — might need manual application")
+            print(f"    No apply button found; might need manual application")
             return False
 
         apply_btn.click()
@@ -257,11 +257,11 @@ def main():
         return
 
     keywords = args.keywords.split(",") if args.keywords else KEYWORDS
-    print(f"auto_apply.py — v2.1")
+    print(f"auto_apply.py v2.1")
     print(f"Keywords: {', '.join(keywords)}")
     print(f"Min Glassdoor rating: {MIN_GLASSDOOR_RATING}")
     if args.dry_run:
-        print("DRY RUN — will not submit applications\\n")
+        print("DRY RUN: will not submit applications\\n")
 
     driver = get_driver()
     try:
@@ -286,7 +286,7 @@ if __name__ == "__main__":
 `),
     "backup.sh": file("backup.sh", `#!/bin/bash
 set -euo pipefail
-# backup.sh — created 2026-02-12
+# backup.sh, created 2026-02-12
 # never again losing everything to malware
 #
 # Usage:    ./backup.sh
@@ -308,7 +308,7 @@ echo "[$(date)] Backup complete: \$BAKCUP_DIR"
 `, "rwxr-xr-x"),
     "scrape_glassdoor.py": file("scrape_glassdoor.py", `#!/usr/bin/env python3
 """
-scrape_glassdoor.py — Glassdoor review scraper
+scrape_glassdoor.py: Glassdoor review scraper
 
 Scrapes company ratings and reviews from Glassdoor. Uses ScraperAPI
 to avoid getting blocked (you WILL get blocked without a proxy).
@@ -344,7 +344,7 @@ OUTPUT_FILE = os.path.expanduser("~/scripts/data/glassdoor_reviews.json")
 CSV_FILE = os.path.expanduser("~/scripts/data/companies_applied.csv")
 BASE_URL = "https://www.glassdoor.com"
 
-# ScraperAPI key — free tier is 5000 requests/month which is plenty
+# ScraperAPI key. Free tier is 5000 requests/month which is plenty
 # unless I panic-refresh at 2am again
 SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "")
 PROXY_URL = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url="
@@ -500,7 +500,7 @@ def main():
 
     print(f"Scraping {len(companies)} companies...")
     if not SCRAPER_API_KEY:
-        log.warning("No SCRAPER_API_KEY set — requests will go direct (expect blocks)")
+        log.warning("No SCRAPER_API_KEY set; requests will go direct (expect blocks)")
 
     session = get_session()
     results = []
@@ -566,7 +566,7 @@ dist/
 build/
 .eggs/
 
-# Scraped data — kept local only, not checked in.
+# Scraped data: kept local only, not checked in.
 # This stuff is borderline ToS-violating as-is,
 # no need to put it on GitHub too.
 data/
@@ -591,7 +591,7 @@ screenshots/
 SCRAPER_EMAIL=ren.jobhunt@proton.me
 SCRAPER_PASSWORD=hunter2isnotmypassword
 
-# ScraperAPI — free tier, 5000 req/mo
+# ScraperAPI: free tier, 5000 req/mo
 SCRAPER_API_KEY=sk_live_9f3a...redacted
 
 # Set to 1 to preview without submitting applications
@@ -615,9 +615,9 @@ a part-time job in itself.
 
 ## What's in here
 
-- **auto_apply.py** — Scrapes job boards, keyword-matches postings,
+- **auto_apply.py:** Scrapes job boards, keyword-matches postings,
   and auto-fills applications.
-- **scrape_glassdoor.py** — Pulls company ratings and reviews for
+- **scrape_glassdoor.py:** Pulls company ratings and reviews for
   anywhere I've applied. Has saved me from at least two crypto scams.
 
 ## Setup
@@ -690,7 +690,7 @@ of interviews, so here we are.
         {
           "stars": 2,
           "title": "Exhausting",
-          "role": "Former Employee — Account Management",
+          "role": "Former Employee, Account Management",
           "date": "3 months ago",
           "text": "Overstated expectations - constant mismanagement."
         }
@@ -733,11 +733,11 @@ of interviews, so here we are.
 }
 `),
       "companies_applied.csv": file("companies_applied.csv", `company,role,date_applied,source,status,notes
-DataSynth Corp,ML Engineer,2026-01-10,LinkedIn,Rejected,"Too senior" — what??
+DataSynth Corp,ML Engineer,2026-01-10,LinkedIn,Rejected,"Too senior"... what??
 Meridian AI,AI Research Engineer,2026-01-15,Indeed,No Response,
 Bright Path Analytics,Data Scientist,2026-01-18,LinkedIn,Rejected,
 Quantum Mesh,ML Platform Engineer,2026-01-20,Company Site,No Response,
-Synthetica Labs,AI Engineer,2026-01-22,Indeed,Rejected,Want PhD — MALWARE in take-home!! Reported to Indeed.
+Synthetica Labs,AI Engineer,2026-01-22,Indeed,Rejected,Want PhD; MALWARE in take-home!! Reported to Indeed.
 Novus Data,ML Engineer,2026-01-25,LinkedIn,No Response,
 Arclight Ventures,Data Engineer,2026-01-26,LinkedIn,No Response,Wait - isn't this a VC firm?
 Helix Robotics,Perception Engineer,2026-01-28,Indeed,Rejected,Not enough robotics exp

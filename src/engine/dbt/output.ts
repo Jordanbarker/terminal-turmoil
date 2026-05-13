@@ -217,7 +217,7 @@ export function formatUsage(): string {
   return [
     "Usage: dbt COMMAND [OPTIONS]",
     "",
-    "dbt (data build tool) — transform data in the warehouse.",
+    "dbt (data build tool): transform data in the warehouse.",
     "",
     "Commands:",
     "  run              Run all models",

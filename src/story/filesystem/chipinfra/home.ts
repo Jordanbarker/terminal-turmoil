@@ -37,18 +37,18 @@ export PAGER=cat
       "README.md": file("README.md", `# Chip Platform Workspace (coder-chip)
 
 You're in your home directory on the SHARED Chip platform workspace.
-Plugins, the RAG corpus, and Chip's runtime do not live in /home/ —
-they live elsewhere on the box. Quick reference:
+Plugins, the RAG corpus, and Chip's runtime do not live in /home/.
+They live elsewhere on the box. Quick reference:
 
   cd /opt/chip/plugins/    # plugin tree (registry.json + per-plugin dirs)
   cd /srv/ai/rag/          # RAG corpus (engineering, hr, it docs)
   cd /srv/chip/            # runtime data (embeddings, prompts, cache, logs)
 
-This is NOT your personal coder workspace — that's \`coder ssh ai\`.
+This is NOT your personal coder workspace; that's \`coder ssh ai\`.
 Multiple Chip platform engineers use this box. Be tidy, don't leave
 secrets on disk.
 
-If you're authoring a plugin, scaffold it next to the existing ones —
+If you're authoring a plugin, scaffold it next to the existing ones,
 one directory per plugin, named after the plugin:
 
   /opt/chip/plugins/<plugin-name>/
@@ -67,6 +67,13 @@ Infra:      oscar@nexacorp.com
         chip: dir("chip", {
           token: file("token", `nxa_chip_client_2.4.1_<redacted>\n`),
         }),
+      }),
+      // SshSession.acceptHost() needs this dir to exist to append host-key
+      // lines on first ssh from chipinfra. VirtualFS.writeFile does not
+      // auto-create parents. The known_hosts file itself is empty until
+      // the player accepts a fingerprint prompt (currently only nexacorp-lt05).
+      ".ssh": dir(".ssh", {
+        known_hosts: file("known_hosts", ""),
       }),
     }),
 
@@ -99,8 +106,8 @@ alias rag='cd /srv/ai/rag'
 `),
       ".ssh": dir(".ssh", {
         config: file("config", `# erik's chipinfra ssh config
-Host erik-laptop
-  HostName erik-laptop.nexa.internal
+Host nexacorp-lt05
+  HostName nexacorp-lt05.nexa.internal
   User erik
   ForwardAgent yes
   IdentityFile ~/.ssh/id_ed25519

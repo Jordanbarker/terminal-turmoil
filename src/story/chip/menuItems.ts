@@ -30,7 +30,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "Branching" +
       "\n git branch            # list local branches" +
       "\n git branch -a         # list local + remote branches" +
-      "\n git branch -d fix/bug # delete a branch (safe — won't delete if unmerged)" +
+      "\n git branch -d fix/bug # delete a branch (safe; won't delete if unmerged)" +
       "\n git branch -D fix/bug # force delete" + 
       "\n git switch main       # switch to existing branch" +
       "\n git switch -c fix/bug # create and switch to a new branch" +
@@ -73,7 +73,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
     id: "nexacorp",
     label: "Tell me about NexaCorp",
     response:
-      "NexaCorp builds AI-powered enterprise tools. I'm the flagship product — a chatbot " +
+      "NexaCorp builds AI-powered enterprise tools. I'm the flagship product, a chatbot " +
       "that handles internal processes, documentation, and system queries. The company was " +
       "founded by Jessica Langford, Marcus Reyes, Tom Chen, and Edward Torres. We're still " +
       "about 17 people right now, and growing fast.",
@@ -106,14 +106,14 @@ const ALL_ITEMS: ChipMenuItem[] = [
     response:
       "Let me check... Employee ID E031, Jin Chen. Department: Engineering. " +
       "Status: resigned, February 2026. That's all I have in the records. " +
-      "HR would know more — I just see what's in the database.",
+      "HR would know more. I just see what's in the database.",
   },
   {
     id: "chip_sa",
     label: "What's the chip_service_account?",
     condition: (flags) => !!flags.found_chip_directives,
     response:
-      "That's the service account my plugins run under for scheduled tasks — " +
+      "That's the service account my plugins run under for scheduled tasks: " +
       "log rotation, ticket triage, system monitoring. Standard stuff for any " +
       "production service. The credentials are shared with authorized " +
       "engineering personnel for maintenance and debugging.",
@@ -124,8 +124,8 @@ const ALL_ITEMS: ChipMenuItem[] = [
     response:
       "When you ask, I can query the Snowflake data warehouse, check system logs, " +
       "manage tickets, read team email, and help with documentation. There are also " +
-      "plugins that invoke me from systemd timers — log rotation, monitoring, ticket " +
-      "triage — so you'll see chip_service_account activity in the logs from those. " +
+      "plugins that invoke me from systemd timers (log rotation, monitoring, ticket " +
+      "triage) so you'll see chip_service_account activity in the logs from those. " +
       "If you need data from any of those systems, just ask and I can run the query " +
       "for you.",
   },
@@ -140,7 +140,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "  CASE WHEN ... END        Full conditional logic\n" +
       "  WHERE col IS NOT NULL    Filter out NULL rows\n\n" +
       "For conversion_rate, you probably want COALESCE around the\n" +
-      "columns used in the calculation — that way NULL clicks or\n" +
+      "columns used in the calculation, so NULL clicks or\n" +
       "conversions become 0 instead of making the whole result NULL.",
   },
   {

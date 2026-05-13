@@ -804,6 +804,20 @@ export const CHAPTERS: ChapterDefinition[] = [
         visibleWhen: { source: "storyFlag", key: "ran_ssh_add_erik" },
         group: "loose_thread_quest",
       },
+      // Optional cover-tracks step. The pivot wrote a nexacorp-lt05 entry into
+      // chipinfra's ~/.ssh/known_hosts; leaving it there triggers the
+      // hr_security_freeze email at home. `rm` the file before logoff to
+      // suppress the email and tick this objective. Other scrubs (nano edit,
+      // `>` truncate) also suppress the email but won't tick the objective.
+      {
+        id: "loose_thread_cover_tracks",
+        description: "Cover your tracks: remove ~/.ssh/known_hosts on chipinfra",
+        check: { source: "storyFlag", key: "cleared_erik_known_hosts" },
+        hidden: true,
+        optional: true,
+        visibleWhen: { source: "storyFlag", key: "pivoted_to_erik_pc" },
+        group: "loose_thread_quest",
+      },
 
       // Quest: Marcus's Accusation (Chapter 3 endgame). Opens once the
       // required plugin quest closes. The four `accused_*` carrier flags
@@ -839,7 +853,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       // closes the marcus_endgame_quest group and ends Chapter 3.
       {
         id: "head_home_day2",
-        description: "Head home — the day's done",
+        description: "Head home, the day's done",
         check: { source: "storyFlag", key: "read_board_debrief_day2" },
         hidden: true,
         visibleWhen: { source: "storyFlag", key: "accusation_made" },

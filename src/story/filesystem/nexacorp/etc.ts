@@ -2,7 +2,7 @@ import { DirectoryNode } from "../../../engine/filesystem/types";
 import { file, dir } from "../../../engine/filesystem/builders";
 
 const CHIP_LOG_MAINTENANCE_SERVICE = `[Unit]
-Description=Chip log maintenance — rotate and prune system logs
+Description=Chip log maintenance: rotate and prune system logs
 Documentation=file:///opt/chip/plugins/log-maintenance/SKILL.md
 After=network.target
 

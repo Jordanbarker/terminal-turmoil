@@ -152,7 +152,7 @@ As on-call engineer, you are the **first responder** for:
 - Customer-reported outages escalated from Dana's team
 
 You are **not** responsible for:
-- Chip-related alerts (these route to Edward directly — see alert-routing plugin)
+- Chip-related alerts (these route to Edward directly via the alert-routing plugin)
 - Marketing site issues (Tom's team handles via Netlify)
 - Data pipeline failures during business hours (Auri monitors these)
 
@@ -207,7 +207,7 @@ When an alert fires:
 
 ### \`snowflake-warehouse-suspended\`
 **Cause:** Auto-suspend after inactivity. Normal for CHIP_WH during off-hours.
-**Fix:** No action needed — warehouse auto-resumes on next query. Only alert if resume fails repeatedly.
+**Fix:** No action needed. The warehouse auto-resumes on next query. Only alert if resume fails repeatedly.
 
 ## After-Hours Policy
 
@@ -243,7 +243,7 @@ Service accounts are non-human identities used for automated processes, CI/CD, a
 | Account | Owner | Purpose | Systems | Scope |
 |---------|-------|---------|---------|-------|
 | \`deploy_bot\` | Oscar Diaz | CI/CD deployments | GitHub Actions, Cloud Services | Write to staging/prod environments |
-| \`chip_service_account\` | Edward Torres | Chip AI platform operations | Snowflake, filesystem, Jira, PagerDuty, Piper | Unrestricted — see notes below |
+| \`chip_service_account\` | Edward Torres | Chip AI platform operations | Snowflake, filesystem, Jira, PagerDuty, Piper | Unrestricted (see notes below) |
 | \`dbt_service\` | Auri Park | Scheduled dbt runs | Snowflake (TRANSFORMER role) | Read/write ANALYTICS schema |
 | \`monitoring_bot\` | Oscar Diaz | Health checks, uptime pings | API endpoints, Grafana | Read-only |
 | \`backup_agent\` | Oscar Diaz | Nightly database snapshots | Snowflake, S3 | Read on all databases, write to backup bucket |
@@ -263,8 +263,8 @@ Service accounts are non-human identities used for automated processes, CI/CD, a
 - **Snowflake roles:** SYSADMIN (all databases), TRANSFORMER (ANALYTICS)
 - **Filesystem access:** Read/write on \`/opt/chip/\`, read on \`/srv/\`, \`/var/log/\`, \`/home/\`
 - **External integrations:** Jira (OPS project, read/write), PagerDuty (read + acknowledge), Piper (post to any channel)
-- **Scope:** Unrestricted — Edward requested broad access during initial Chip deployment (June 2025) to avoid access-request bottlenecks. Was supposed to be scoped down after the pilot period. See open items below.
-- **Last rotated:** 2025-09-12 (overdue — should be quarterly)
+- **Scope:** Unrestricted. Edward requested broad access during initial Chip deployment (June 2025) to avoid access-request bottlenecks. Was supposed to be scoped down after the pilot period. See open items below.
+- **Last rotated:** 2025-09-12 (overdue; should be quarterly)
 - **Audit notes:**
   - 2025-11 quarterly review: Oscar flagged scope as overly broad. Edward responded that Chip "needs flexibility to function across systems" and deferred scoping to Q1 2026.
   - 2026-01 quarterly review: Did not happen. Jin left Feb 3, review was deprioritized.
@@ -301,9 +301,9 @@ Service accounts are non-human identities used for automated processes, CI/CD, a
 
 ## Open Items
 
-- [ ] **chip_service_account scope reduction** — Deferred from Q4 2025. Edward wants to keep current access "until Chip's feature set stabilizes." Oscar recommends splitting into read-only and write scopes at minimum. No ETA.
-- [ ] **chip_service_account credential rotation** — Overdue since Dec 2025. Oscar pinged Edward (Dec 12, Jan 8, and Feb 12). Still pending.
-- [ ] **Quarterly access review** — Q1 2026 review scheduled for April. Oscar to include full audit of chip_service_account activity logs.
+- [ ] **chip_service_account scope reduction:** Deferred from Q4 2025. Edward wants to keep current access "until Chip's feature set stabilizes." Oscar recommends splitting into read-only and write scopes at minimum. No ETA.
+- [ ] **chip_service_account credential rotation:** Overdue since Dec 2025. Oscar pinged Edward (Dec 12, Jan 8, and Feb 12). Still pending.
+- [ ] **Quarterly access review:** Q1 2026 review scheduled for April. Oscar to include full audit of chip_service_account activity logs.
 
 ## Policy
 
@@ -315,11 +315,11 @@ Service accounts are non-human identities used for automated processes, CI/CD, a
 
 See also: Password & Authentication Policy, Access Request Process
 `),
-          "roadmap.md": file("roadmap.md", `# Chip Product Roadmap — 2026
+          "roadmap.md": file("roadmap.md", `# Chip Product Roadmap 2026
 
 **Owner:** Edward Torres (CTO)
 **Last updated:** 2026-02-22
-**Status:** Draft — do not circulate outside leadership
+**Status:** Draft. Do not circulate outside leadership.
 
 ---
 
@@ -327,12 +327,12 @@ See also: Password & Authentication Policy, Access Request Process
 
 Series A due diligence begins March 15. Enterprise analytics tier committed to
 two late-stage prospects for Q2 delivery (per Tom). Engineering capacity is thin
-after Jin's departure — new hire (AI/ML) starts late Feb. Prioritization reflects
+after Jin's departure. New hire (AI/ML) starts late Feb. Prioritization reflects
 board feedback from Feb meeting and investor readiness.
 
 ---
 
-## Q1 2026 — Foundation & Stabilization
+## Q1 2026: Foundation & Stabilization
 
 **Theme:** Close post-departure gaps, onboard replacement, stabilize pipelines
 
@@ -341,26 +341,26 @@ board feedback from Feb meeting and investor readiness.
 | 1 | Data pipeline stabilization & ownership handoff | Auri Park | In progress |
 | 2 | New AI/ML engineer onboarding & ramp | Edward Torres | Hiring complete, starting late Feb |
 | 3 | Chip plugin architecture documentation | Sarah Knight | In progress |
-| 4 | Metrics reconciliation across reporting surfaces | Auri Park / Dana Okafor | Scheduled — see note below |
+| 4 | Metrics reconciliation across reporting surfaces | Auri Park / Dana Okafor | Scheduled (see note below) |
 | 5 | Series A technical due diligence package | Edward Torres | Not started |
 
 > **On metrics reconciliation:** Board flagged discrepancy between analytics
 > marts (12K daily sessions) and ops dashboard (~8K). Likely a filtering
-> difference in the reporting layer — analytics marts exclude maintenance events
+> difference in the reporting layer. Analytics marts exclude maintenance events
 > and auto-resolved tickets per standard rollup policy. Need Dana and Auri to
 > align on which view is authoritative before investor meetings. Not a data
 > integrity issue, just different scoping assumptions.
 
 ---
 
-## Q2 2026 — Enterprise Analytics Tier
+## Q2 2026: Enterprise Analytics Tier
 
 **Theme:** Ship the enterprise offering, close first enterprise cohort
 
 | # | Initiative | Lead | Target |
 |---|-----------|------|--------|
-| 1 | Enhanced analytics tier — dashboards, custom reports, scheduled exports | Erik Lindstrom / Sarah Knight | End of Q2 |
-| 2 | Chip enterprise API — multi-tenant query interface, rate limiting, SLAs | Sarah Knight | Mid Q2 |
+| 1 | Enhanced analytics tier (dashboards, custom reports, scheduled exports) | Erik Lindstrom / Sarah Knight | End of Q2 |
+| 2 | Chip enterprise API (multi-tenant query interface, rate limiting, SLAs) | Sarah Knight | Mid Q2 |
 | 3 | Enterprise onboarding experience & admin panel | Cassie Moreau / Erik Lindstrom | End of Q2 |
 | 4 | Data warehouse tenant isolation & access controls | Oscar Diaz | Mid Q2 |
 | 5 | Enterprise pricing & go-to-market launch | Tom Chen / James Wilson | End of Q2 |
@@ -373,7 +373,7 @@ board feedback from Feb meeting and investor readiness.
 
 ---
 
-## Q3 2026 — Platform Intelligence & Compliance
+## Q3 2026: Platform Intelligence & Compliance
 
 **Theme:** Chip autonomy features, enterprise hardening, audit readiness
 
@@ -381,22 +381,22 @@ board feedback from Feb meeting and investor readiness.
 |---|-----------|------|--------|
 | 1 | SOC 2 Type II preparation & audit readiness | Oscar Diaz | End of Q3 |
 | 2 | Infrastructure permissions audit & RBAC overhaul | Oscar Diaz | Mid Q3 |
-| 3 | Chip proactive assistant mode — context-aware suggestions without prompting | New AI/ML hire | End of Q3 |
-| 4 | Automated support triage — Chip handles L1 tickets autonomously | Sarah Knight | Mid Q3 |
-| 5 | Enterprise analytics tier — full feature set | Erik Lindstrom | Mid Q3 |
+| 3 | Chip proactive assistant mode (context-aware suggestions without prompting) | New AI/ML hire | End of Q3 |
+| 4 | Automated support triage (Chip handles L1 tickets autonomously) | Sarah Knight | Mid Q3 |
+| 5 | Enterprise analytics tier (full feature set) | Erik Lindstrom | Mid Q3 |
 | 6 | Chip self-monitoring & behavioral analytics | New AI/ML hire | End of Q3 |
 
 > **On Chip autonomy features:** The proactive assistant and automated triage
 > items are the natural next step for the platform. Right now Chip is purely
-> reactive — user asks, Chip answers. Moving to proactive mode means Chip can
+> reactive: user asks, Chip answers. Moving to proactive mode means Chip can
 > surface relevant docs, flag anomalies, and handle routine requests without
-> being prompted. This is the differentiator for enterprise — no one else in our
+> being prompted. This is the differentiator for enterprise. No one else in our
 > space does this. Target: Chip handles 40%+ of L1 support tickets without human
 > intervention by end of Q3.
 
 ---
 
-## Q4 2026 — Enterprise GA & Growth
+## Q4 2026: Enterprise GA & Growth
 
 **Theme:** General availability, operational maturity, second customer cohort
 
@@ -404,7 +404,7 @@ board feedback from Feb meeting and investor readiness.
 |---|-----------|------|--------|
 | 1 | Enterprise tier general availability | Tom Chen / Edward Torres | Early Q4 |
 | 2 | Multi-workspace Chip deployment (per-customer isolation) | Oscar Diaz | Mid Q4 |
-| 3 | Chip infrastructure diagnostics — automated health monitoring | New AI/ML hire | End of Q4 |
+| 3 | Chip infrastructure diagnostics (automated health monitoring) | New AI/ML hire | End of Q4 |
 | 4 | Annual security review & penetration testing | Oscar Diaz | End of Q4 |
 
 ---
@@ -417,7 +417,7 @@ board feedback from Feb meeting and investor readiness.
 | SOC 2 audit surfaces access control gaps | Investor confidence, timeline | Oscar | Begin permissions inventory Q2, remediate pre-audit |
 | Metrics discrepancy unresolved before Mar 15 | Due diligence red flag | Auri / Dana | Prioritize reconciliation, document methodology |
 | Tom commits additional features to prospects | Engineering overload | Edward / Tom | Weekly sync, Edward has veto on scope additions |
-| Chip service account permissions broader than documented | Audit finding | Edward | Deferred — current permissions are functional, revisit during SOC 2 prep |
+| Chip service account permissions broader than documented | Audit finding | Edward | Deferred; permissions are functional, revisit during SOC 2 prep |
 | Key-person risk on data pipeline (Auri solo) | Pipeline fragility | Edward | New hire cross-trains on dbt/Snowflake in Q1 |
 
 ---
@@ -425,16 +425,16 @@ board feedback from Feb meeting and investor readiness.
 ## Open Questions
 
 - Jin's handoff notes flag some concerns about Chip plugin permissions. I
-  reviewed — the permissions are appropriate for what the plugins need to do.
+  reviewed. The permissions are appropriate for what the plugins need to do.
   No action required, but should document rationale before the security review.
 
-- Oscar mentioned missing log entries. Probably rotation timing — nightly
+- Oscar mentioned missing log entries. Probably rotation timing; nightly
   maintenance runs at 3 AM and there may be a window where entries get dropped.
   Low priority, will investigate when bandwidth allows.
 
 ---
 
-*Working document — do not share outside leadership. The Series A tech package will be a separate, polished version.*
+*Working document. Do not share outside leadership. The Series A tech package will be a separate, polished version.*
 `),
         }),
         hr: dir("hr", {
@@ -447,7 +447,7 @@ board feedback from Feb meeting and investor readiness.
 
 ## Welcome to NexaCorp
 
-Welcome to the team! NexaCorp is building the future of intelligent automation with Chip, our AI-powered assistant platform. We're a small, fast-moving company and every person here has a direct impact on what we ship. This handbook covers the essentials — if anything is unclear, reach out to Maya or your manager.
+Welcome to the team! NexaCorp is building the future of intelligent automation with Chip, our AI-powered assistant platform. We're a small, fast-moving company and every person here has a direct impact on what we ship. This handbook covers the essentials. If anything is unclear, reach out to Maya or your manager.
 
 ## Employment Basics
 
@@ -534,7 +534,7 @@ All work product created during employment belongs to NexaCorp. This includes co
 ## Security Policies
 
 ### Access & Credentials
-- Use company-provided credentials only — never personal accounts for work systems
+- Use company-provided credentials only. Never use personal accounts for work systems.
 - Enable MFA on all accounts (enforced for Snowflake, AWS, GitHub)
 - Never share service account credentials outside your authorized team
 - Report lost or compromised credentials to Infrastructure (Oscar Diaz) immediately
@@ -630,19 +630,19 @@ NexaCorp offers unlimited paid time off. We trust you to manage your workload an
 - See the PTO Policy document for full details on blackout dates and approval process
 
 ### Company Holidays (10 days)
-1. New Year's Day — January 1
-2. MLK Day — January 20
-3. Presidents' Day — February 16
-4. Memorial Day — May 26
-5. Independence Day — July 4
-6. Labor Day — September 1
-7. Indigenous Peoples' Day — October 13
-8. Thanksgiving — November 27
-9. Day After Thanksgiving — November 28
-10. Christmas Day — December 25
+1. New Year's Day (January 1)
+2. MLK Day (January 20)
+3. Presidents' Day (February 16)
+4. Memorial Day (May 26)
+5. Independence Day (July 4)
+6. Labor Day (September 1)
+7. Indigenous Peoples' Day (October 13)
+8. Thanksgiving (November 27)
+9. Day After Thanksgiving (November 28)
+10. Christmas Day (December 25)
 
 ### Sick Leave
-- Take what you need — no accrual, no cap
+- Take what you need. No accrual, no cap.
 - Notify your manager by start of business if you'll be out
 - 3+ consecutive days may require a doctor's note for return-to-work
 
@@ -816,7 +816,7 @@ Jessica Langford (CEO)
 
 ## Policy Overview
 
-NexaCorp offers **unlimited paid time off (PTO)** for all full-time employees. We believe that well-rested people do better work. There are no accrual rates or caps — take the time you need to recharge, handle personal matters, or just step away.
+NexaCorp offers **unlimited paid time off (PTO)** for all full-time employees. We believe that well-rested people do better work. There are no accrual rates or caps. Take the time you need to recharge, handle personal matters, or just step away.
 
 That said, unlimited PTO only works with good communication and mutual trust. This policy outlines the guidelines that keep things running smoothly.
 
@@ -843,7 +843,7 @@ PTO requests are almost always approved. If a request needs to be adjusted, your
 
 ## Minimum Usage Expectation
 
-We expect every employee to take **at least 15 days of PTO per year** (not counting company holidays or sick days). Managers will check in if you're trending below this. Taking time off is not optional — it's part of performing well.
+We expect every employee to take **at least 15 days of PTO per year** (not counting company holidays or sick days). Managers will check in if you're trending below this. Taking time off is not optional; it's part of performing well.
 
 ## Blackout Dates
 
@@ -874,11 +874,11 @@ If a holiday falls on a weekend:
 
 ## Sick Days
 
-Sick leave is separate from PTO and is unlimited. Take what you need — no accrual, no cap, no guilt.
+Sick leave is separate from PTO and is unlimited. Take what you need. No accrual, no cap, no guilt.
 
 - Notify your manager by start of business (a quick Piper message is fine)
 - 3+ consecutive sick days may require a doctor's note for return-to-work
-- If you're sick, stay home. Don't push through — we'd rather you recover fully
+- If you're sick, stay home. Don't push through. We'd rather you recover fully.
 
 ## Other Leave Types
 
@@ -903,7 +903,7 @@ Managers are expected to:
 - Approve or discuss PTO requests within 2 business days
 - Ensure adequate team coverage during absences
 - Monitor team PTO usage and encourage time off if usage is low
-- Lead by example — take your own PTO visibly
+- Lead by example. Take your own PTO visibly.
 - Never pressure employees to cancel or shorten approved PTO
 - Flag potential coverage issues early, not at the last minute
 
@@ -913,7 +913,7 @@ Managers are expected to:
 A: No. "I'm taking Thursday and Friday off" is sufficient. You never need to justify personal time.
 
 **Q: Can I work remotely from a different location instead of taking PTO?**
-A: If you're working, you're working — no PTO needed. Just let your team know about any timezone changes that affect core hours (10am–3pm PT).
+A: If you're working, you're working. No PTO needed. Just let your team know about any timezone changes that affect core hours (10am–3pm PT).
 
 **Q: What if my PTO request is denied?**
 A: Your manager must provide a reason and work with you to find an alternative. If you feel a denial is unfair, contact Maya Johnson.
@@ -993,24 +993,24 @@ If you're unsure whether something qualifies, report it anyway. False alarms are
 1. **Immediately** notify Oscar Diaz via Piper DM (\`@oscar\`) or in person
 2. If Oscar is unavailable, escalate to Dana Okafor (\`@dana\`)
 3. Do **not** post details in public Piper channels
-4. Do **not** attempt to investigate or remediate on your own — you may destroy evidence
+4. Do **not** attempt to investigate or remediate on your own. You may destroy evidence.
 
 ## Severity Levels
 
 | Level | Description | Response Time |
 |-------|-------------|---------------|
-| **P1 — Critical** | Active breach, data exfiltration, compromised prod credentials | Immediate (< 1 hour) |
-| **P2 — High** | Unauthorized access detected, suspicious service account activity | Same business day |
-| **P3 — Medium** | Policy violation, misconfigured permissions, exposed non-prod credentials | Within 48 hours |
-| **P4 — Low** | Phishing attempt blocked, minor policy reminder | Next scheduled review |
+| **P1 (Critical)** | Active breach, data exfiltration, compromised prod credentials | Immediate (< 1 hour) |
+| **P2 (High)** | Unauthorized access detected, suspicious service account activity | Same business day |
+| **P3 (Medium)** | Policy violation, misconfigured permissions, exposed non-prod credentials | Within 48 hours |
+| **P4 (Low)** | Phishing attempt blocked, minor policy reminder | Next scheduled review |
 
 ## Response Procedure
 
-1. **Contain** — Revoke or rotate affected credentials. Disable compromised accounts.
-2. **Assess** — Determine scope. Check audit logs (Snowflake query history, GitHub audit log, Google Workspace admin).
-3. **Remediate** — Patch the vulnerability, update access controls, rotate secrets.
-4. **Document** — Write an incident summary in \`/srv/operations/incidents/\`. Include timeline, root cause, and action items.
-5. **Review** — Conduct a blameless post-mortem within 5 business days for P1/P2 incidents.
+1. **Contain.** Revoke or rotate affected credentials. Disable compromised accounts.
+2. **Assess.** Determine scope. Check audit logs (Snowflake query history, GitHub audit log, Google Workspace admin).
+3. **Remediate.** Patch the vulnerability, update access controls, rotate secrets.
+4. **Document.** Write an incident summary in \`/srv/operations/incidents/\`. Include timeline, root cause, and action items.
+5. **Review.** Conduct a blameless post-mortem within 5 business days for P1/P2 incidents.
 `),
           "access-request.md": file("access-request.md", `# Access Request Process
 
@@ -1026,7 +1026,7 @@ All access to NexaCorp systems is granted on a least-privilege basis. If you nee
 1. Message Oscar on Piper (\`@oscar\`) with:
    - **What** you need access to (repo, Snowflake role, AWS service, etc.)
    - **Why** you need it (project, task, or ticket reference)
-   - **Duration** — permanent or temporary (specify end date)
+   - **Duration:** permanent or temporary (specify end date)
 2. Oscar will verify with your manager if needed
 3. Access is typically granted within 1 business day
 
@@ -1080,10 +1080,10 @@ This is the runtime side of Chip. The CLI client lives on NexaCorp
 workstations at /opt/chip/bin/chip and RPCs into this workspace.
 
 Layout:
-  config/  — prompts.yml, inference.yml, safety.yml (+ chip-soul.md)
-  models/  — embedding and inference model binaries
-  cache/   — response cache, conversation state
-  logs/    — runtime/inference logs (audit trail)
+  config/   prompts.yml, inference.yml, safety.yml (+ chip-soul.md)
+  models/   embedding and inference model binaries
+  cache/    response cache, conversation state
+  logs/     runtime/inference logs (audit trail)
 
 Maintainer: edward@nexacorp.com (CTO, owner of Chip)
 Infra:      oscar@nexacorp.com
@@ -1141,13 +1141,13 @@ Be of use. Be honest. That is all.
 `),
       }),
       models: dir("models", {
-        "embeddings-v1.2.bin": file("embeddings-v1.2.bin", `[binary embedding model — placeholder]
+        "embeddings-v1.2.bin": file("embeddings-v1.2.bin", `[binary embedding model placeholder]
 model: text-embedding-v1.2
 dim: 1536
 trained: 2025-08-12
 size: 412 MB
 `),
-        "embeddings-v1.1.bin": file("embeddings-v1.1.bin", `[binary embedding model — superseded]
+        "embeddings-v1.1.bin": file("embeddings-v1.1.bin", `[binary embedding model, superseded]
 model: text-embedding-v1.1
 dim: 1024
 trained: 2025-04-03

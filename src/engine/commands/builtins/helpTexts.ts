@@ -78,7 +78,7 @@ export const HELP_TEXTS: Record<string, string> = {
   snow: [
     "Usage: snow COMMAND [OPTIONS]",
     "",
-    "Snowflake CLI — query the NexaCorp data warehouse.",
+    "Snowflake CLI: query the NexaCorp data warehouse.",
     "",
     "Commands:",
     "  sql    Execute SQL queries",
@@ -90,7 +90,7 @@ export const HELP_TEXTS: Record<string, string> = {
   dbt: [
     "Usage: dbt COMMAND [OPTIONS]",
     "",
-    "dbt (data build tool) — transform data in the warehouse.",
+    "dbt (data build tool): transform data in the warehouse.",
     "",
     "  dbt run              Run all models",
     "  dbt test             Run data tests",

@@ -23,7 +23,7 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
           id: "jordan_data_3",
           from: "Jordan Kessler",
           timestamp: "",
-          body: "Auri mentioned the campaign data lives in a Snowflake table called CAMPAIGN_METRICS. Could you pull it up in snow sql and check if the numbers look right? I'm especially curious about the chip_launch campaign — is the total really 735K impressions, or is something off in the raw data?",
+          body: "Auri mentioned the campaign data lives in a Snowflake table called CAMPAIGN_METRICS. Could you pull it up in snow sql and check if the numbers look right? I'm especially curious about the chip_launch campaign. Is the total really 735K impressions, or is something off in the raw data?",
         },
         {
           id: "jordan_data_4",
@@ -39,8 +39,8 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
           messageBody: "I'll pull up the data in Snowflake and see what's going on. Should be a quick check.",
         },
         {
-          label: "Sure — any tips on using snow sql?",
-          messageBody: "Happy to help! I haven't used snow sql much yet though — any quick tips on connecting?",
+          label: "Sure. Any tips on using snow sql?",
+          messageBody: "Happy to help! I haven't used snow sql much yet though, any quick tips on connecting?",
           triggerEvents: [{ type: "objective_completed", detail: "jordan_snowsql_tips_requested" }],
         },
       ],
@@ -54,8 +54,8 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "after_story_flag", flag: "found_inflated_metrics" },
       replyOptions: [
         {
-          label: "The numbers are tripled — 735K is 3x the real count.",
-          messageBody: "Yeah — the chip_launch campaign shows 735K impressions, but the raw data only has 245K unique entries. The rest are triplicate rows.",
+          label: "The numbers are tripled. 735K is 3x the real count.",
+          messageBody: "Yeah, the chip_launch campaign shows 735K impressions, but the raw data only has 245K unique entries. The rest are triplicate rows.",
           triggerEvents: [{ type: "objective_completed", detail: "jordan_metrics_reported" }],
         },
         {
@@ -75,7 +75,7 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
           id: "jordan_reaction_1",
           from: "Jordan Kessler",
           timestamp: "",
-          body: "Wait — exactly 3x? That's not a rounding error. That's triplicate rows.",
+          body: "Wait, exactly 3x? That's not a rounding error. That's triplicate rows.",
         },
         {
           id: "jordan_reaction_2",
@@ -94,7 +94,7 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
       replyOptions: [
         {
           label: "The duplicate rows look deliberate.",
-          messageBody: "Yeah, the data has triplicate entries. It doesn't look like a pipeline bug — someone set this up intentionally.",
+          messageBody: "Yeah, the data has triplicate entries. It doesn't look like a pipeline bug. Someone set this up intentionally.",
           triggerEvents: [{ type: "objective_completed", detail: "jordan_metrics_confirmed" }],
         },
         {

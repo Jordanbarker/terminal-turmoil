@@ -278,10 +278,25 @@ at home sets `apt_upgraded` (optional).
                                                                      │
                                                                      ▼
    ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
-   │ `ssh erik@erik-laptop`                                                                                                            │
+   │ `ssh erik@nexacorp-lt05`                                                                                                            │
    │ → pivoted_to_erik_pc                                                                                                              │
    │   (transition to erik-pc; `exit` returns to chipinfra, NOT nexacorp)                                                              │
+   │                                                                                                                                   │
+   │   SIDE EFFECT: SshSession.acceptHost() appends `nexacorp-lt05 ssh-ed25519 …` to chipinfra's ~/.ssh/known_hosts on first connect.    │
+   │   This is the audit artifact the Day 2 home-arrival scan looks for.                                                               │
    └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+   ─── Optional sub-path: COVER YOUR TRACKS ──────────────────────────────────────────────────────────────────────────────────────────────
+   HUD objective `loose_thread_cover_tracks` ("Cover your tracks — remove ~/.ssh/known_hosts on chipinfra") appears under
+   loose_thread_quest as soon as pivoted_to_erik_pc fires. Optional; ticks on `rm` of the known_hosts file (sets
+   `cleared_erik_known_hosts` via a file_removed trigger gated on pivoted_to_erik_pc).
+
+   The email branch is separate and content-driven. At the Day-2 home transition (`runExitToHome`), the engine content-scans
+   chipinfra's ~/.ssh/known_hosts just before chipinfra is torn down. If the marker string `nexacorp-lt05` is still present AND
+   pivoted_to_erik_pc is set, `tracks_exposed_chapter4` fires, which gates the `hr_security_freeze` email — delivered alongside
+   `marcus_board_debrief` at home. Any scrub method (rm, nano, `>` redirect) suppresses the email; only `rm` ticks the objective.
+   No new commands or gates; existing DEVCONTAINER_COMMANDS suffice. No Chapter 4 enforcement yet — the flag is the signal.
+   ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 ╔═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
 ║                              ACT 6: BEFORE THE BOARD MEETING & LOGOFF  (required, chapter close)                                        ║
@@ -348,7 +363,18 @@ at home sets `apt_upgraded` (optional).
    │ Player runs `mail` at home and opens the marcus_board_debrief email (uses `less` internally)                                     │
    │ → mail.ts fires `file_read:marcus_board_debrief`                                                                                  │
    │ → storyFlag trigger sets read_board_debrief_day2 (toast: "Day 2 over. Get some sleep.")                                          │
-   │ → head_home_day2 ✓ → marcus_endgame_quest closes → Chapter 3 ends                                                                 │
+   │ → head_home_day2 ✓ → marcus_endgame_quest closes                                                                                 │
+   │ → `shutdown` re-unlocks at home (the post-Day-1 block lifts on read_board_debrief_day2)                                          │
+   └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
+                                                                     │
+                                                                     ▼
+   ┌─────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┐
+   │ `shutdown` (or `shutdown -h now`) at home  [gated by read_board_debrief_day2]                                                     │
+   │ → existing shutdown animation (countdown is suppressed in endgame — nobody else on the box to broadcast to)                       │
+   │ → runShutdownTransition takes the endgame branch: no FS rebuild, no Day-2 boot, no delivery cascades                              │
+   │ → getEndgameCreditsBlock() prints: chapter summary, cast, "Thanks for playing", Chapter 4 hook                                    │
+   │ → setStoryFlag("game_ended", true)                                                                                                │
+   │ → gamePhase stays at "transitioning" → input handler in TabManager is suppressed → terminal idle, no reboot                       │
    │ Chapter 4 hook left dangling.                                                                                                     │
    └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -478,6 +504,12 @@ HOME  (mail)
   open marcus_board_debrief ────→ read_board_debrief_day2
                                    (toast: "Day 2 over. Get some sleep.")
                                    → head_home_day2 ✓ → Chapter 3 closes
+                                   → `shutdown` at home re-unlocks
+
+HOME  (endgame)
+  shutdown [read_board_debrief_day2]
+                              ──→ game_ended
+                                   (endgame credits block, terminal idle, no reboot)
 
 CHIPINFRA  (coder ssh chip — unlocked by unlock_chip_plugin_development)
   cat /opt/chip/plugins/<dir>/{plugin.json,SKILL.md}
@@ -592,6 +624,12 @@ accusation_made ───────────────→ marcus_close_of
   The player reads it via `mail` (which uses `less` internally). Opening the
   email emits `file_read:marcus_board_debrief`, which sets
   `read_board_debrief_day2` (toast: "Day 2 over. Get some sleep.") and
-  closes `head_home_day2` + the `marcus_endgame_quest` group. Day 2 ends
-  here; no `home_post_work_day2` segment exists yet. Chapter 4 picks up
+  closes `head_home_day2` + the `marcus_endgame_quest` group. Reading the
+  debrief also lifts the post-Day-1 `shutdown` block — running `shutdown`
+  at home now takes the endgame branch in `runShutdownTransition`: the
+  existing power-off animation (countdown suppressed), then
+  `getEndgameCreditsBlock()`, then `game_ended = true`. The transition
+  never restores `gamePhase` to `playing`, so the input handler in
+  `TabManager` (which gates on `gamePhase === "playing"`) stays
+  suppressed — terminal idles with no reboot. Chapter 4 picks up
   whenever it's built.

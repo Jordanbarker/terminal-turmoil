@@ -121,7 +121,7 @@ describe("generateChipActivityLog", () => {
   it("Day 2 includes morning boot and player return", () => {
     const log = generateChipActivityLog("testuser", { includeDay2: true });
     expect(log).toMatch(/\[2026-02-24 07:\d\d:\d\d\] chip\[\d+\]: chip\.api: Chip service started/);
-    expect(log).toContain("returning user detected — testuser");
+    expect(log).toContain("returning user detected (testuser)");
     expect(log).toContain("session resumed for testuser");
   });
 

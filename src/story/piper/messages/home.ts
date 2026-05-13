@@ -210,24 +210,24 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
           from: "Olive Borden",
           timestamp: "",
           body: `FILE MANAGEMENT:
-  mkdir dirname     — create a directory
-  touch file.txt    — create an empty file
-  cp src dest       — copy a file or directory
-  mv src dest       — move/rename a file
-  rm file.txt       — delete a file (rm -r for directories)
-  echo "text"       — print text (or redirect to a file with >)`,
+  mkdir dirname     create a directory
+  touch file.txt    create an empty file
+  cp src dest       copy a file or directory
+  mv src dest       move/rename a file
+  rm file.txt       delete a file (rm -r for directories)
+  echo "text"       print text (or redirect to a file with >)`,
         },
         {
           id: "olive_basics_3",
           from: "Olive Borden",
           timestamp: "",
           body: `SYSTEM INFO:
-  whoami            — print your username
-  hostname          — print your machine name
-  date              — print the current date/time
-  file something    — tell you what type a file is
-  which cmd         — find where a command lives
-  man cmd           — read the manual page for a command
+  whoami            print your username
+  hostname          print your machine name
+  date              print the current date/time
+  file something    tell you what type a file is
+  which cmd         find where a command lives
+  man cmd           read the manual page for a command
 
 that last one is your best friend. if you forget how something works, just man it.`,
         },
@@ -261,7 +261,7 @@ that last one is your best friend. if you forget how something works, just man i
           id: "olive_tree_2",
           from: "Olive Borden",
           timestamp: "",
-          body: "  sudo apt install tree\n\nthen run 'tree' in any directory. use 'tree -a' to include hidden files. beats running ls over and over.",
+          body: "  sudo apt install tree\n\nthen run 'tree' in any directory. use 'tree -a' to include hidden files. beats running ls over and over. some people enjoy that. they're wrong.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "basic_tools_unlocked" },
@@ -299,7 +299,7 @@ that last one is your best friend. if you forget how something works, just man i
         },
         {
           label: "maybe later",
-          messageBody: "maybe later — a bit busy right now.",
+          messageBody: "maybe later, a bit busy right now.",
           triggerEvents: [{ type: "command_executed", detail: "olive_challenges_declined" }],
         },
       ],
@@ -315,7 +315,7 @@ that last one is your best friend. if you forget how something works, just man i
           id: "olive_decline_1",
           from: "Olive Borden",
           timestamp: "",
-          body: "no worries — ping me whenever you want to run them.",
+          body: "no worries, ping me whenever you want to run them.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "olive_challenges_declined" },
@@ -337,7 +337,7 @@ that last one is your best friend. if you forget how something works, just man i
           id: "olive_ch1_2",
           from: "Olive Borden",
           timestamp: "",
-          body: "'file' reads magic bytes — more reliable than file extensions. the output tells you exactly what kind of data it is.",
+          body: "'file' reads magic bytes, more reliable than file extensions. the output tells you exactly what kind of data it is.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "olive_challenges_accepted" },
@@ -424,7 +424,7 @@ that last one is your best friend. if you forget how something works, just man i
           id: "olive_ch4_2",
           from: "Olive Borden",
           timestamp: "",
-          body: "mv is both move and rename — same command. mv oldname newname renames in place, mv file dir/ moves it.",
+          body: "mv is both move and rename, same command. mv oldname newname renames in place, mv file dir/ moves it.",
         },
       ],
       trigger: { type: "after_piper_reply", deliveryId: "olive_challenge_mkdir" },
@@ -547,7 +547,7 @@ that last one is your best friend. if you forget how something works, just man i
 3. log what you did:      echo "backup completed $(date)" >> ~/backup.log
 4. verify it worked:      cat ~/backups/scripts/backup.sh
 
-once you're confident the manual backup works, you can trust the timer to do the same thing automatically.`,
+once you're confident the manual backup works, you can trust the timer to do the same thing automatically. an untested backup is just a wish.`,
         },
       ],
       trigger: { type: "after_objective", objectiveId: "fix_backup" },
@@ -563,11 +563,11 @@ once you're confident the manual backup works, you can trust the timer to do the
           id: "openclam_1",
           from: "xortex",
           timestamp: "",
-          body: "heads up to anyone who joined from the old Clamdbot server, we renamed to #OpenClam — same vibes, better branding",
+          body: "heads up to anyone who joined from the old Clamdbot server, we renamed to #OpenClam. same vibes, better branding",
         },
         {
           id: "openclam_2",
-          from: "the_actual_hal",
+          from: "what_the_actual_hal",
           timestamp: "",
           body: "finally. Clamdbot was a terrible name",
         },
@@ -591,7 +591,7 @@ once you're confident the manual backup works, you can trust the timer to do the
         },
         {
           id: "openclam_6",
-          from: "the_actual_hal",
+          from: "what_the_actual_hal",
           timestamp: "",
           body: "has anyone gotten the cryptocurrency skill working? mine keeps saying 'I am unable to assist with financial speculation' regardless of how I phrase it",
         },
@@ -631,7 +631,7 @@ once you're confident the manual backup works, you can trust the timer to do the
         },
         {
           id: "openclam_eod_2",
-          from: "the_actual_hal",
+          from: "what_the_actual_hal",
           timestamp: "",
           body: "mine wrote a haiku about garbage collection and then refused to do anything else because it was 'reflecting'",
         },
@@ -661,7 +661,7 @@ once you're confident the manual backup works, you can trust the timer to do the
         },
         {
           id: "openclam_eod_7",
-          from: "the_actual_hal",
+          from: "what_the_actual_hal",
           timestamp: "",
           body: "FEEL THE AGI",
         },
@@ -702,7 +702,7 @@ once you're confident the manual backup works, you can trust the timer to do the
         },
         {
           label: "maybe later",
-          messageBody: "maybe later — still decompressing from today.",
+          messageBody: "maybe later, still decompressing from today.",
         },
       ],
     },
@@ -723,7 +723,7 @@ once you're confident the manual backup works, you can trust the timer to do the
           id: "olive_pt_grep_2",
           from: "Olive Borden",
           timestamp: "",
-          body: "grep filters lines. pipe any command into it and it'll keep only the matches. works on files too — try it on a text file in your home directory if you have one.",
+          body: "grep filters lines. pipe any command into it and it'll keep only the matches. works on files too. try it on a text file in your home directory if you have one.",
         },
       ],
       trigger: { type: "after_story_flag", flag: "olive_power_tools_read" },

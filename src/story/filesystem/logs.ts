@@ -102,7 +102,7 @@ function generateBootSequence(day: number, d: DateFn, pid: PidCounter): LogEntry
   const off = bootOffset(day);
   const b = (s: number) => d(day, 6, 59, 60 + off + s);
 
-  entries.push({ date: b(1), msg: "System boot — nexacorp-ws01" });
+  entries.push({ date: b(1), msg: "System boot: nexacorp-ws01" });
   if (hasKernel) {
     entries.push(
       { date: b(1), msg: "kernel: Linux 6.1.0-nexacorp amd64" },
@@ -147,7 +147,7 @@ interface TimerJob {
 }
 
 const SYSTEMD_TIMER_SCHEDULE: TimerJob[] = [
-  { hour: 3,  minute: 0,  second: 1, unit: "chip-log-maintenance", description: "Chip log maintenance — rotate and prune system logs" },
+  { hour: 3,  minute: 0,  second: 1, unit: "chip-log-maintenance", description: "Chip log maintenance: rotate and prune system logs" },
   { hour: 3,  minute: 0,  second: 5, unit: "dbt-nightly",          description: "Nightly dbt run for nexacorp-analytics" },
   { hour: 9,  minute: 0,  second: 0, unit: "pg-backup",           description: "PostgreSQL backup" },
   { hour: 10, minute: 0,  second: 0, unit: "certbot",             description: "Let's Encrypt certificate renewal" },
@@ -183,7 +183,7 @@ function generateTimerEntries(day: number, d: DateFn): LogEntry[] {
 const CHIP_MESSAGES: ((day: number) => string)[] = [
   (day) => {
     const uptime = 12 + ((day * 3) % 8);
-    return `chip-service: health check OK — uptime ${uptime}d, 0 failures`;
+    return `chip-service: health check OK (uptime ${uptime}d, 0 failures)`;
   },
   (day) => {
     const reqs = 180 + ((day * 17) % 120);
@@ -194,16 +194,16 @@ const CHIP_MESSAGES: ((day: number) => string)[] = [
     const newT = 8 + ((day * 5) % 12);
     const auto = 3 + ((day * 9) % 8);
     const esc = 1 + ((day * 3) % 3);
-    return `chip-service: ticket triage complete — ${newT} new, ${auto} auto-resolved, ${esc} escalated`;
+    return `chip-service: ticket triage complete (${newT} new, ${auto} auto-resolved, ${esc} escalated)`;
   },
   (day) => {
     const mb = 24 + ((day * 13) % 40);
-    return `chip-service: response cache pruned — freed ${mb}MB (retention: 24h)`;
+    return `chip-service: response cache pruned, freed ${mb}MB (retention: 24h)`;
   },
   (day) => `chip-service: model hot-reload complete (chip-v2.4.1, config refresh)`,
   (day) => {
     const n = 6 + ((day * 7) % 15);
-    return `chip-service: webhook delivery to piper — ${n} notifications dispatched`;
+    return `chip-service: webhook delivery to piper (${n} notifications dispatched)`;
   },
   (day) => {
     const active = 8 + ((day * 4) % 20);
@@ -326,7 +326,7 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(19, 14, 55, 33), msg: "postgres[1204]: error: could not extend file \"base/16384/24601\": No space left on device" },
     { date: d(19, 14, 55, 34), msg: "postgres[1204]: error: WAL writer process exited with exit code 1" },
     { date: d(19, 14, 58, 10), msg: "warning: disk usage on /var at 92%" },
-    { date: d(19, 15, 5, 0),  msg: "oscar: manual cleanup of /var/log/old — freed 2.1G" },
+    { date: d(19, 15, 5, 0),  msg: "oscar: manual cleanup of /var/log/old, freed 2.1G" },
     { date: d(19, 15, 5, 30), msg: "warning: disk usage on /var at 64%" },
   ],
   20: (d) => [
@@ -339,7 +339,7 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(21, 10, 5, 18),  msg: "systemd[1]: certbot.service: Main process exited, code=exited, status=2/FAILURE" },
     { date: d(21, 10, 5, 19),  msg: "error: certbot: unable to reach ACME server at acme-v02.api.letsencrypt.org" },
     { date: d(21, 13, 45, 55), msg: "warning: high CPU usage detected: chip-service (87%)" },
-    { date: d(21, 13, 46, 30), msg: "chip-service: gc pause 1.2s — heap pressure" },
+    { date: d(21, 13, 46, 30), msg: "chip-service: gc pause 1.2s (heap pressure)" },
     { date: d(21, 14, 0, 0),   msg: "chip-service: CPU usage normalized (24%)" },
   ],
   23: (d) => [
@@ -349,7 +349,7 @@ const DAY_INCIDENTS: Record<number, ((d: DateFn) => LogEntry[])> = {
   24: (d) => [
     { date: d(24, 9, 48, 12), msg: "warning: disk usage on /var at 71%" },
     { date: d(24, 10, 15, 33), msg: "nginx[982]: upstream timed out (110: Connection timed out) while connecting to 10.0.2.14:8080" },
-    { date: d(24, 10, 15, 35), msg: "nginx[982]: upstream recovered — 10.0.2.14:8080" },
+    { date: d(24, 10, 15, 35), msg: "nginx[982]: upstream recovered (10.0.2.14:8080)" },
   ],
 };
 
@@ -367,7 +367,7 @@ const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(18, 2, 45, 11), msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(18, 2, 45, 14), msg: "chip_service_account: accessing /home/sarah/.zsh_history (read)", chipOnly: true },
     { date: d(18, 2, 46, 3),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
-    { date: d(18, 2, 46, 5),  msg: "chip_service_account: cleanup /var/log/system.log — removed 8 entries", chipOnly: true },
+    { date: d(18, 2, 46, 5),  msg: "chip_service_account: cleanup /var/log/system.log (removed 8 entries)", chipOnly: true },
   ],
   19: (d) => [
     { date: d(19, 3, 1, 8),   msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
@@ -375,37 +375,37 @@ const CHIP_ONLY_ENTRIES: Record<number, ((d: DateFn) => LogEntry[])> = {
     { date: d(19, 3, 2, 44),  msg: "chip_service_account: accessing /srv/leadership/investors/2026-02-update.pdf (read)", chipOnly: true },
     { date: d(19, 3, 3, 1),   msg: "chip_service_account: accessing /home/edward/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(19, 3, 3, 55),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
-    { date: d(19, 3, 3, 57),  msg: "chip_service_account: cleanup /var/log/system.log — removed 14 entries", chipOnly: true },
+    { date: d(19, 3, 3, 57),  msg: "chip_service_account: cleanup /var/log/system.log (removed 14 entries)", chipOnly: true },
   ],
   20: (d) => [
     { date: d(20, 1, 33, 21), msg: "chip_service_account: accessing /home/dana/.zsh_history (read)", chipOnly: true },
     { date: d(20, 1, 33, 44), msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
-    { date: d(20, 1, 34, 8),  msg: "chip_service_account: cleanup /var/log/system.log — removed 6 entries", chipOnly: true },
+    { date: d(20, 1, 34, 8),  msg: "chip_service_account: cleanup /var/log/system.log (removed 6 entries)", chipOnly: true },
   ],
   21: (d) => [
     { date: d(21, 3, 5, 33),  msg: "chip_service_account: accessing /home/sarah/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(21, 3, 5, 48),  msg: "chip_service_account: accessing /home/sarah/.zsh_history (read)", chipOnly: true },
     { date: d(21, 3, 6, 12),  msg: "chip_service_account: accessing /srv/leadership/board/2025-12-board-deck.pdf (read)", chipOnly: true },
     { date: d(21, 3, 7, 1),   msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
-    { date: d(21, 3, 7, 3),   msg: "chip_service_account: cleanup /var/log/system.log — removed 11 entries", chipOnly: true },
+    { date: d(21, 3, 7, 3),   msg: "chip_service_account: cleanup /var/log/system.log (removed 11 entries)", chipOnly: true },
   ],
   22: (d) => [
     { date: d(22, 2, 15, 9),  msg: "chip_service_account: accessing /home/jchen/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(22, 2, 15, 22), msg: "chip_service_account: accessing /home/jchen/projects/chip-audit/notes.md (read)", chipOnly: true },
-    { date: d(22, 2, 16, 0),  msg: "chip_service_account: cleanup /var/log/system.log — removed 5 entries", chipOnly: true },
+    { date: d(22, 2, 16, 0),  msg: "chip_service_account: cleanup /var/log/system.log (removed 5 entries)", chipOnly: true },
   ],
   23: (d) => [
     { date: d(23, 3, 14, 22), msg: "chip_service_account: accessing /var/log/system.log (write)", chipOnly: true },
     { date: d(23, 3, 14, 25), msg: "chip_service_account: accessing /home/jchen/.zsh_history (read)", chipOnly: true },
     { date: d(23, 3, 15, 3),  msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
-    { date: d(23, 3, 15, 5),  msg: "chip_service_account: cleanup /var/log/system.log — removed 12 entries", chipOnly: true },
+    { date: d(23, 3, 15, 5),  msg: "chip_service_account: cleanup /var/log/system.log (removed 12 entries)", chipOnly: true },
   ],
   24: (d) => [
     { date: d(24, 2, 22, 18), msg: "chip_service_account: accessing /home/jchen/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(24, 2, 22, 31), msg: "chip_service_account: accessing /srv/leadership/board/2025-12-board-deck.pdf (read)", chipOnly: true },
     { date: d(24, 2, 23, 5),  msg: "chip_service_account: accessing /home/oscar/.ssh/id_rsa (read)", chipOnly: true },
     { date: d(24, 2, 23, 44), msg: "chip_service_account: log_rotation triggered (retention: 7 days)", chipOnly: true },
-    { date: d(24, 2, 23, 46), msg: "chip_service_account: cleanup /var/log/system.log — removed 9 entries", chipOnly: true },
+    { date: d(24, 2, 23, 46), msg: "chip_service_account: cleanup /var/log/system.log (removed 9 entries)", chipOnly: true },
   ],
 };
 
@@ -990,8 +990,8 @@ export function generateAuthLogBak(username: string, opts?: LogOptions): string 
     { date: new Date(2026, 1, 3, 1, 17, 34), msg: "chip_service_account: file read /home/jchen/.zsh_history" },
     { date: new Date(2026, 1, 3, 1, 17, 35), msg: "chip_service_account: file read /home/jchen/projects/chip-audit/notes.md" },
     { date: new Date(2026, 1, 3, 3, 22, 17), msg: "chip_service_account: modifying dbt models" },
-    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_system_events.sql — added event_type filter" },
-    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_support_tickets.sql — added resolved_by filter" },
+    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_system_events.sql (added event_type filter)" },
+    { date: new Date(2026, 1, 3, 3, 22, 18), msg: "chip_service_account: updating fct_support_tickets.sql (added resolved_by filter)" },
   ];
 
   // chip_service_account SSH sessions at late-night hours matching CHIP_ONLY_ENTRIES timestamps
@@ -1034,11 +1034,11 @@ const CHIP_ACTIVITY_MESSAGES: ((day: number) => { component: string; msg: string
     const newT = 8 + ((day * 5) % 12);
     const auto = 3 + ((day * 9) % 8);
     const esc = 1 + ((day * 3) % 3);
-    return { component: "triage", msg: `ticket triage cycle complete — ${newT} new, ${auto} auto-resolved, ${esc} escalated` };
+    return { component: "triage", msg: `ticket triage cycle complete (${newT} new, ${auto} auto-resolved, ${esc} escalated)` };
   },
   (day) => {
     const n = 6 + ((day * 7) % 15);
-    return { component: "api", msg: `webhook delivery to piper — ${n} notifications dispatched` };
+    return { component: "api", msg: `webhook delivery to piper (${n} notifications dispatched)` };
   },
   (day) => {
     const active = 8 + ((day * 4) % 20);
@@ -1047,7 +1047,7 @@ const CHIP_ACTIVITY_MESSAGES: ((day: number) => { component: string; msg: string
   },
   (day) => {
     const mb = 24 + ((day * 13) % 40);
-    return { component: "maintenance", msg: `response cache pruned — freed ${mb}MB (retention=24h)` };
+    return { component: "maintenance", msg: `response cache pruned, freed ${mb}MB (retention=24h)` };
   },
   (day) => {
     const n = 5 + ((day * 6) % 18);
@@ -1085,9 +1085,9 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
     const cachePruneSec = 8 + ((day * 3) % 10);
     lines.push(
       `[${dd(day)} 02:30:00] chip[${pid}]: chip.maintenance: nightly window started`,
-      `[${dd(day)} 02:30:${pad(cachePruneSec)}] chip[${pid}]: chip.maintenance: response cache pruned — ${cacheEntries} entries, freed ${cacheMB}MB (retention=24h)`,
+      `[${dd(day)} 02:30:${pad(cachePruneSec)}] chip[${pid}]: chip.maintenance: response cache pruned (${cacheEntries} entries, freed ${cacheMB}MB, retention=24h)`,
       `[${dd(day)} 03:00:0${1 + (day % 2)}] chip[${pid}]: chip.maintenance: rotated ${rotatedFiles} files, kept 14 days, freed ${rotatedMB}MB`,
-      `[${dd(day)} 03:00:0${4 + (day % 2)}] chip[${pid}]: chip.monitor: nightly health sweep — checks=47, anomalies=0`,
+      `[${dd(day)} 03:00:0${4 + (day % 2)}] chip[${pid}]: chip.monitor: nightly health sweep (checks=47, anomalies=0)`,
     );
     if (day % 3 === 0) {
       lines.push(`[${dd(day)} 03:00:18] chip[${pid}]: chip.maintenance: model hot-reload complete (chip-v2.4.1, config refresh)`);
@@ -1103,7 +1103,7 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
     const t3Sec = startSec + 2;
     const t3 = `07:${pad(startMin + Math.floor(t3Sec / 60))}:${pad(t3Sec % 60)}`;
     lines.push(
-      `[${dd(day)} ${t1}] chip[${pid}]: chip.api: Chip service started — chip-v2.4.1, pid=${pid}`,
+      `[${dd(day)} ${t1}] chip[${pid}]: chip.api: Chip service started (chip-v2.4.1, pid=${pid})`,
       `[${dd(day)} ${t2}] chip[${pid}]: chip.plugins: loaded 10 plugins`,
       `[${dd(day)} ${t3}] chip[${pid}]: chip.api: health endpoint listening on :8080`,
     );
@@ -1123,7 +1123,7 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
     } else {
       // Weekend idle health check — single line
       const minute = 15 + ((day * 7) % 30);
-      lines.push(`[${dd(day)} 11:${pad(minute)}:00] chip[${pid}]: chip.monitor: idle — no scheduled work, plugins quiescent`);
+      lines.push(`[${dd(day)} 11:${pad(minute)}:00] chip[${pid}]: chip.monitor: idle (no scheduled work, plugins quiescent)`);
     }
   }
 
@@ -1134,9 +1134,9 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
   if (days.includes(21)) {
     const pid = pidFor(21);
     lines.push(
-      `[2026-02-21 13:45:42] chip[${pid}]: chip.monitor: level=WARN heap utilization 91% (threshold=85%) — preparing major GC`,
-      `[2026-02-21 13:46:30] chip[${pid}]: chip.api: level=WARN GC pause 1.2s — request queue depth 27`,
-      `[2026-02-21 14:00:01] chip[${pid}]: chip.monitor: heap recovered — utilization 38%, queue drained`,
+      `[2026-02-21 13:45:42] chip[${pid}]: chip.monitor: level=WARN heap utilization 91% (threshold=85%); preparing major GC`,
+      `[2026-02-21 13:46:30] chip[${pid}]: chip.api: level=WARN GC pause 1.2s, request queue depth 27`,
+      `[2026-02-21 14:00:01] chip[${pid}]: chip.monitor: heap recovered (utilization 38%, queue drained)`,
     );
   }
 
@@ -1154,7 +1154,7 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
     const pid = pidFor(23);
     lines.push(
       `[${dd(23)} 08:12:45] chip[${pid}]: chip.plugins: onboarding-assistant triggered for new user '${username}'`,
-      `[${dd(23)} 08:12:46] chip[${pid}]: chip.plugins: provisioned welcome materials for ${username} — home dir scaffolding (duration=1.3s)`,
+      `[${dd(23)} 08:12:46] chip[${pid}]: chip.plugins: provisioned welcome materials for ${username} (home dir scaffolding, duration=1.3s)`,
     );
   }
 
@@ -1162,7 +1162,7 @@ export function generateChipActivityLog(username: string, opts?: LogOptions): st
   if (opts?.includeDay2 && days.includes(24)) {
     const pid = pidFor(24);
     lines.push(
-      `[${dd(24)} 08:05:14] chip[${pid}]: chip.plugins: returning user detected — ${username}`,
+      `[${dd(24)} 08:05:14] chip[${pid}]: chip.plugins: returning user detected (${username})`,
       `[${dd(24)} 08:05:15] chip[${pid}]: chip.api: session resumed for ${username}`,
     );
   }

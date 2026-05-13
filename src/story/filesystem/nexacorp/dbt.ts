@@ -65,14 +65,14 @@ dbt build      # Run models + tests
 
 ## Project Structure
 
-- \`models/staging/\` — Clean and standardize raw source data
-- \`models/intermediate/\` — Combine staging models
-- \`models/marts/\` — Business-facing tables and reports
+- \`models/staging/\`: Clean and standardize raw source data
+- \`models/intermediate/\`: Combine staging models
+- \`models/marts/\`: Business-facing tables and reports
 
 ## Contacts
 
-- **Auri Park** (auri@nexacorp.com) — current maintainer
-- **Jin Chen** (jchen@nexacorp.com) — original author
+- **Auri Park** (auri@nexacorp.com): current maintainer
+- **Jin Chen** (jchen@nexacorp.com): original author
 `),
     models: dir("models", {
       staging: dir("staging", {
@@ -406,7 +406,7 @@ left join {{ ref('stg_raw_nexacorp__employees') }} e
 
 models:
   - name: dim_employees
-    description: "Employee dimension table — active employees only"
+    description: "Employee dimension table (active employees only)"
     columns:
       - name: employee_id
         tests:
