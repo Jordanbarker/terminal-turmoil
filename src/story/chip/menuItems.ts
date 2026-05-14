@@ -160,6 +160,7 @@ const ALL_ITEMS: ChipMenuItem[] = [
   {
     id: "review_access_log",
     label: "Could you review the access log Oscar mentioned?",
+    notifyOnUnlock: true,
     condition: (flags, computer) =>
       computer === "nexacorp" &&
       !!flags.processing_tools_unlocked &&

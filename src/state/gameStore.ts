@@ -19,6 +19,7 @@ import { serializeSnowflake, deserializeSnowflake, SerializedSnowflake } from ".
 import { syncToVirtualFS } from "../engine/snowflake/bridge/fs_bridge";
 import { seedDeliveredEmails } from "../engine/mail/delivery";
 import { getDefaultEnv, initEnvForComputer, initAliasesForComputer } from "../story/env";
+import { findNewlyAvailableChipTopics } from "../engine/chip/notifications";
 const MAX_HISTORY = 500;
 
 export interface Toast {
@@ -48,6 +49,7 @@ interface GameStore {
   activeTabId: string;
   activeSnowSession: string | null;
   pendingPiperNotification: boolean;
+  notifiedChipTopicIds: string[];
 
   // Actions
   setUsername: (username: string) => void;
@@ -79,6 +81,7 @@ interface GameStore {
   setComputerAliases: (computer: ComputerId, aliases: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
   setPendingPiperNotification: (value: boolean) => void;
+  markChipTopicsNotified: (ids: string[]) => void;
 }
 
 export function buildFs(
@@ -132,6 +135,7 @@ function createInitialState(username = PLAYER.username) {
     activeTabId: initialTabId,
     activeSnowSession: null as string | null,
     pendingPiperNotification: false,
+    notifiedChipTopicIds: [] as string[],
   };
 }
 
@@ -196,9 +200,18 @@ export const useGameStore = create<GameStore>()(
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
       setStoryFlag: (key, value) =>
-        set((state) => ({
-          storyFlags: { ...state.storyFlags, [key]: value },
-        })),
+        set((state) => {
+          const newFlags = { ...state.storyFlags, [key]: value };
+          const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+          if (!activeTab) return { storyFlags: newFlags };
+          const newIds = findNewlyAvailableChipTopics(newFlags, activeTab.computerId, state.notifiedChipTopicIds);
+          if (newIds.length === 0) return { storyFlags: newFlags };
+          return {
+            storyFlags: newFlags,
+            notifiedChipTopicIds: [...state.notifiedChipTopicIds, ...newIds],
+            toasts: [...state.toasts, { id: String(++toastId), message: "New Chip topic available" }],
+          };
+        }),
       setHasSeenIntro: () => set({ hasSeenIntro: true }),
       addToast: (message) =>
         set((state) => ({
@@ -274,6 +287,13 @@ export const useGameStore = create<GameStore>()(
           return { computerState: rest };
         }),
       setPendingPiperNotification: (value) => set({ pendingPiperNotification: value }),
+      markChipTopicsNotified: (ids) =>
+        set((state) => {
+          const seen = new Set(state.notifiedChipTopicIds);
+          const additions = ids.filter((id) => !seen.has(id));
+          if (additions.length === 0) return {};
+          return { notifiedChipTopicIds: [...state.notifiedChipTopicIds, ...additions] };
+        }),
       resetGame: () => {
         tabCounter = 0;
         set(createInitialState());
@@ -282,7 +302,7 @@ export const useGameStore = create<GameStore>()(
       saveGame: (slotId, label) => {
         const state = get();
         const activeTabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
-        const saveable = { ...state, activeTabIndex: activeTabIndex >= 0 ? activeTabIndex : 0 };
+        const saveable = { ...state, activeTabIndex: activeTabIndex >= 0 ? activeTabIndex : 0, notifiedChipTopicIds: [...state.notifiedChipTopicIds] };
         const data = createSaveData(saveable, label ?? `Save ${slotId}`);
         return saveToSlot(slotId, data);
       },
@@ -325,6 +345,7 @@ export const useGameStore = create<GameStore>()(
           tabs,
           activeTabId: tabs[activeIdx].id,
           activeSnowSession: null,
+          notifiedChipTopicIds: data.notifiedChipTopicIds ?? [],
         });
         return true;
       },
@@ -367,6 +388,7 @@ export const useGameStore = create<GameStore>()(
           tabs: [{ id: tabId, computerId: data.activeComputer, cwd: homeDir }],
           activeTabId: tabId,
           activeSnowSession: null,
+          notifiedChipTopicIds: [],
         });
         return true;
       },
@@ -395,6 +417,7 @@ export const useGameStore = create<GameStore>()(
           serializedComputerState,
           persistedTabs: state.tabs.map((t) => ({ computerId: t.computerId, cwd: t.cwd })),
           persistedActiveTabIndex: activeTabIndex >= 0 ? activeTabIndex : 0,
+          notifiedChipTopicIds: state.notifiedChipTopicIds,
         };
       },
       merge: (persisted, currentState) => {
@@ -486,6 +509,7 @@ export const useGameStore = create<GameStore>()(
           computerState,
           tabs,
           activeTabId: tabs[activeIdx].id,
+          notifiedChipTopicIds: (p.notifiedChipTopicIds as string[]) ?? [],
         };
       },
     }

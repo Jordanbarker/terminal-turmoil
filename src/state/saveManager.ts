@@ -33,6 +33,7 @@ export interface SaveableState {
   computerState: Partial<Record<ComputerId, { fs: VirtualFS; commandHistory: string[]; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>>;
   tabs: TabLike[];
   activeTabIndex: number;
+  notifiedChipTopicIds: string[];
 }
 
 export function createSaveData(state: SaveableState, label: string): SaveData {
@@ -55,6 +56,7 @@ export function createSaveData(state: SaveableState, label: string): SaveData {
     computerStates,
     tabs: state.tabs.map((t) => ({ computerId: t.computerId, cwd: t.cwd })),
     activeTabIndex: state.activeTabIndex >= 0 ? state.activeTabIndex : 0,
+    notifiedChipTopicIds: [...state.notifiedChipTopicIds],
   };
 }
 

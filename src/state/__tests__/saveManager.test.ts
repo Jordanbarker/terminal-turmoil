@@ -87,6 +87,7 @@ function createState(): SaveableState {
     computerState: { nexacorp: { fs, commandHistory: ["ls", "cd docs", "cat readme.md"], envVars: { USER: "player", HOME: "/home/player" }, aliases: {}, mounts: {} }},
     tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
     activeTabIndex: 0,
+    notifiedChipTopicIds: [],
   };
 }
 
@@ -255,6 +256,7 @@ describe("multi-tab round-trip", () => {
         { computerId: "nexacorp", cwd: "/home/player" },
       ],
       activeTabIndex: 1,
+      notifiedChipTopicIds: [],
     };
 
     const data = createSaveData(state, "3-tab save");
@@ -290,6 +292,7 @@ describe("multi-tab round-trip", () => {
         { computerId: "devcontainer", cwd: "/home/player" },
       ],
       activeTabIndex: 0,
+      notifiedChipTopicIds: [],
     };
 
     const data = createSaveData(state, "isolation test");
@@ -318,6 +321,7 @@ describe("multi-tab round-trip", () => {
       computerState: { nexacorp: { fs: createMinimalFS(), commandHistory: [], envVars: {}, aliases: {}, mounts: {} }},
       tabs: [{ computerId: "nexacorp", cwd: "/home/player" }],
       activeTabIndex: 0,
+      notifiedChipTopicIds: [],
     };
 
     const data = createSaveData(state, "single tab");
@@ -351,6 +355,7 @@ describe("multi-tab round-trip", () => {
         { computerId: "home", cwd: "/home/player" },
       ],
       activeTabIndex: 2,
+      notifiedChipTopicIds: [],
     };
 
     const data = createSaveData(state, "max tabs");

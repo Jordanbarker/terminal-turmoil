@@ -7,6 +7,7 @@ export interface ChipMenuItem {
   response: string;
   triggerEvents?: GameEvent[];
   condition?: (flags: StoryFlags, computer: ComputerId) => boolean;
+  notifyOnUnlock?: boolean;
 }
 
 export interface ChipSessionInfo {

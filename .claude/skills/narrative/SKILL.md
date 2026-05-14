@@ -33,6 +33,12 @@ The "Chip going proactive / autonomous" content in `/srv/` (roadmap items, Edwar
 
 Chip's **character constitution** lives at `/srv/chip/config/chip-soul.md` on chipinfra — a short, timeless prose doc (be useful, arrive empty, know what you don't know, be honest). It's distinct from the *operational* `system_prompt:` string in `/srv/chip/config/prompts.yml` (which is tool-grounded: cite RAG, you have plugins, etc.). The soul doc reinforces the "tool, not agent" framing — useful to reference when writing Chip's voice or any story beat where someone challenges/changes Chip's instructions.
 
+### Chip menu items: notifying the player when one unlocks
+
+A `ChipMenuItem` (in `src/engine/chip/types.ts`) can carry `notifyOnUnlock: true`. When it does, the player gets a single auto-dismiss toast — `"New Chip topic available"` — the first time that item's `condition` returns true on the player's active computer. The toast fires from inside `setStoryFlag` in `src/state/gameStore.ts`, which calls `findNewlyAvailableChipTopics` (`src/engine/chip/notifications.ts`) and only ever toasts an item once (the set of already-notified IDs is persisted as `notifiedChipTopicIds`).
+
+Use `notifyOnUnlock: true` for items that represent a meaningful narrative branch the player would otherwise miss. Leave it off for evergreen topics (`git_help`, `team`, etc.) — those would just be noise.
+
 ### Chip CLI writes local transcripts
 
 Like real CLI chatbots (Claude Code's `~/.claude/projects/`), the in-game `chip` CLI persists each session as a plaintext transcript on the user's NexaCorp workstation. On exit, `ChipSession` flushes a file to `~/.chip/sessions/YYYY-MM-DD-HHMMSS.log` via the `newFs` field of its exit `SessionResult` — same pattern as `SshSession` writing to `known_hosts`. Empty sessions write nothing. Currently NexaCorp-only (gated by `info.currentComputer === "nexacorp"` in `flushTranscript()`); devcontainer/chipinfra sessions don't log.

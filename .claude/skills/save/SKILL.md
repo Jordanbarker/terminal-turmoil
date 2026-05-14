@@ -31,7 +31,7 @@ src/hooks/useTerminal.ts                 # gameAction handler (save/load/listSav
 Full snapshot of all game state:
 ```ts
 {
-  version: number;        // SAVE_FORMAT_VERSION (currently 11)
+  version: number;        // SAVE_FORMAT_VERSION (currently 13)
   timestamp: number;      // Date.now() at save time
   label: string;          // Display label
   username, gamePhase, currentChapter, completedObjectives,
@@ -118,6 +118,7 @@ Zustand auto-save key: `terminal-turmoil-save`
 | `deliveredEmailIds` | Which emails have been triggered (prevents re-delivery) |
 | `deliveredPiperIds` | Which Piper messages have been delivered |
 | `storyFlags` | Narrative progression flags |
+| `notifiedChipTopicIds` | Chip menu item IDs the player has already been toasted about (prevents re-firing the "New Chip topic available" toast). Added in v13. |
 
 ### SaveData (manual saves via save command)
 Contains all auto-persisted fields in their serialized form.
