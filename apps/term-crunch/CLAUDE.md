@@ -4,6 +4,8 @@ A terminal-skills challenge game built **entirely on `@tt/core`** to prove the e
 
 > Monorepo-wide context (`@tt/core`, tech stack, deploy) lives in the repo-root `.claude/CLAUDE.md`. The shared engine skills `tmux` and `commands` (both apply to `@tt/core`) are at root; this app's own skills are `apps/term-crunch:{challenges,play-testing}`.
 
+**Challenge copy (brief/instruction/hint): no filler.** One clause of scenario at most, then the objective; instructions are single imperatives; hints teach syntax/gotchas without wordy framing.
+
 **Play-testing:** `scripts/play.ts` is a headless harness (`CrunchRunner` + REPL, `npm -w @tt/term-crunch run play`) — a thin shim over the real `runLine` + store, so it drives genuine game code rather than a copy of the loop. `scripts/playtest_tracks.ts` (`run playtest`, part of the root `npm run check` gate) plays every registry challenge end to end; **a new challenge needs a `SOLUTIONS` entry there** or the playtest fails. Chords and editor sessions can't be driven headlessly — see the `apps/term-crunch:play-testing` skill.
 
 **It does NOT import termoil's story code** — none of termoil's `gameStore`/`COMPUTERS`, no story flags, no emails/piper/chip. (term-crunch has its own lean `useGameStore` in `state/gameStore.ts`; the rule is about not reaching into the sibling app.) Keep it that way: anything shared must come through `@tt/core`, and `@tt/core/terminal/paneTypes` helpers must stay pure and store-agnostic so both apps share them. It *does* parse a player-editable `~/.zshrc` + `~/.tmux.conf` (Settings modal), but only via the shared `@tt/core` parsers (`terminal/tmuxConfig`, `terminal/envParse`) — never termoil's dotfiles or env-seeding code.

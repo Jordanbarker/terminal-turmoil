@@ -68,13 +68,13 @@ export const gitStashChallenge: Challenge = {
   gitRepoPath: PROJECT_DIR,
   commands: ["git", "ls", "cat", "cd", "pwd"],
   brief:
-    "A hotfix is waiting, but your uncommitted WIP in app.js blocks the branch switch. " +
-    "Shelve it, visit hotfix, return to main, and restore your work.",
+    "Your uncommitted app.js edit blocks switching branches. " +
+    "Stash it, visit hotfix, return to main, and restore it.",
   setup,
   steps: [
     {
-      instruction: "Get your uncommitted work out of the way so the working tree is clean.",
-      hint: "You need to set the WIP aside without committing it, so the tree is clean enough to switch branches.",
+      instruction: "Set your uncommitted work aside so the working tree is clean.",
+      hint: "Stash the WIP without committing it; a clean tree can switch branches.",
       command: "git stash",
       isComplete: (s) => readGitState(s.fs, PROJECT_DIR).clean && readStash(s.fs, PROJECT_DIR).length > 0,
     },
@@ -85,15 +85,15 @@ export const gitStashChallenge: Challenge = {
       isComplete: (s) => readGitState(s.fs, PROJECT_DIR).branch === "hotfix",
     },
     {
-      instruction: "Head back to your original branch, main.",
-      hint: "Switch back the same way you came over.",
+      instruction: "Switch back to main.",
+      hint: "Same way you came over.",
       command: "git checkout main",
       isComplete: (s) =>
         readGitState(s.fs, PROJECT_DIR).branch === "main" && readStash(s.fs, PROJECT_DIR).length > 0,
     },
     {
-      instruction: "Restore the work you shelved.",
-      hint: "Reapply the most recent stash and drop it from the stash list in one move.",
+      instruction: "Restore your stashed work.",
+      hint: "Reapply the most recent stash and drop it from the list in one move.",
       command: "git stash pop",
       isComplete: (s) =>
         readStash(s.fs, PROJECT_DIR).length === 0 && (s.fs.readFile(APP).content ?? "") === WIP_APP,

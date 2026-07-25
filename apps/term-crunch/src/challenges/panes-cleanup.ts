@@ -50,10 +50,10 @@ export const panesCleanup: Challenge = {
   setup: (base) => base,
   steps: [
     {
-      instruction: "Prune down to the TARGET: two side-by-side panes (prefix = Ctrl+Space).",
+      instruction: "Kill panes until only the TARGET's two side-by-side panes remain (prefix = Ctrl+Space).",
       hint:
-        "Kill the focused pane with prefix x. Killing one pane of a stacked pair " +
-        "collapses that column back into a single pane, so drop a bottom pane in each column.",
+        "prefix x kills the focused pane. Killing one pane of a stacked pair " +
+        "collapses that column, so kill a bottom pane in each column.",
       command: "prefix x (focus other bottom pane) prefix x",
       isComplete: (s) => paneTreeMatches(s.activeWindow.root, targetWindow.root),
     },

@@ -27,24 +27,23 @@ export const envExport: Challenge = {
   // `env` resolves to the primary `printenv`, so it's covered by this list.
   commands: ["export", "unset", "printenv", "ls", "cd"],
   brief:
-    "world-domination refuses to launch: it reads its config from the " +
-    "environment, and right now ENV isn't \"prod\" and the SAFEGUARDS " +
-    "variable is still set. Fix both.",
+    "world-domination reads its config from the environment, but ENV isn't " +
+    "\"prod\" and SAFEGUARDS is still set. Fix both.",
   setup,
   steps: [
     {
       instruction: "Set ENV to prod in your environment.",
       hint:
-        "export makes a variable part of your environment: export NAME=value. " +
-        "Check it took with printenv ENV.",
+        "export NAME=value puts a variable in your environment. " +
+        "Check it with printenv ENV.",
       command: "export ENV=prod",
       isComplete: (s) => s.envVars.ENV === "prod",
     },
     {
-      instruction: "Remove the SAFEGUARDS variable from your environment.",
+      instruction: "Remove SAFEGUARDS from your environment.",
       hint:
-        "unset is the opposite of export: it deletes a variable entirely. " +
-        "printenv SAFEGUARDS printing nothing means it's gone.",
+        "unset deletes a variable entirely. printenv SAFEGUARDS " +
+        "printing nothing means it's gone.",
       command: "unset SAFEGUARDS",
       // Removed means absent, not empty: export SAFEGUARDS= leaves the key set.
       isComplete: (s) => !("SAFEGUARDS" in s.envVars),

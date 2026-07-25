@@ -125,9 +125,8 @@ export const copyModeYank: Challenge = {
   // spend the recovered token.
   commands: ["cat", "mkdir", "ls", "cd", "pwd", "less"],
   brief:
-    "A passphrase is buried somewhere inside passphrase.log. Print the file, then rescue " +
-    "the passphrase from the scrollback and create a directory named exactly after it. It's " +
-    "long and easy to mistype, so copying beats retyping.",
+    "A passphrase is buried inside passphrase.log. Print the file, copy the " +
+    "passphrase from the scrollback, and create a directory named exactly after it.",
   setup,
   steps: [
     {
@@ -136,12 +135,12 @@ export const copyModeYank: Challenge = {
       // The brief states the whole objective (no per-step instruction); copy
       // mode is guided entirely through the hint below.
       hint:
-        "Print it with `cat passphrase.log` — the passphrase scrolls off the top.\n" +
-        "Enter tmux copy mode with your prefix (Ctrl+Space) then `[`.\n" +
-        "• Move: hjkl or arrows · g / G jump to top / bottom · Ctrl+U / Ctrl+D half-page.\n" +
+        "`cat passphrase.log` prints it; the passphrase scrolls off the top.\n" +
+        "Enter copy mode with your prefix (Ctrl+Space) then `[`.\n" +
+        "• Move: hjkl or arrows · g / G top / bottom · Ctrl+U / Ctrl+D half-page.\n" +
         "• Select: `v` starts a selection, `$` extends to end of line.\n" +
-        "• Yank: `y` copies the selection to the clipboard and exits copy mode.\n" +
-        "Then type `mkdir ` and paste the passphrase.",
+        "• Yank: `y` copies the selection and exits copy mode.\n" +
+        "Then type `mkdir ` and paste.",
       command: `mkdir ${TOKEN}`,
       // Passes exactly when a directory named after the token exists. VirtualFS
       // directory nodes carry type: "directory".

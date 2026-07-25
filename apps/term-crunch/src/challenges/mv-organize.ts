@@ -37,12 +37,12 @@ export const mvOrganize: Challenge = {
   startCwd: MESSY_DIR,
   commands: ["mkdir", "mv", "ls", "tree", "cd", "pwd"],
   brief:
-    "There's a stray log file loose in ~/downloads. Make a logs folder and tuck it away.",
+    "A stray log file is loose in ~/downloads. Make a logs folder and move it in.",
   setup,
   steps: [
     {
       instruction: "Create a logs subfolder in ~/downloads.",
-      hint: "List the directory to see what's there, then create a directory named logs.",
+      hint: "List the directory, then create a directory named logs.",
       command: "mkdir logs",
       isComplete: (s) => {
         const node = s.fs.getNode(LOGS_DIR);
@@ -52,7 +52,7 @@ export const mvOrganize: Challenge = {
     {
       instruction: "Move the log file into logs/.",
       hint:
-        "mv takes a source and a destination; when the destination is a directory " +
+        "mv takes a source and a destination; a directory destination means " +
         "the file lands inside it.",
       command: `mv ${LOG_FILE} logs/`,
       // Copy-proof: the file must exist at its sorted path AND be gone from the

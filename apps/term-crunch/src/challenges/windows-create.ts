@@ -28,17 +28,17 @@ export const windowsCreate: Challenge = {
   setup: (base) => base,
   steps: [
     {
-      instruction: "Open a second tmux window:  prefix then c  (prefix = Ctrl+Space).",
+      instruction: "Open a second window:  prefix then c  (prefix = Ctrl+Space).",
       isComplete: (s) => s.windows.length >= 2,
     },
     {
-      instruction: "Open a third window the same way:  prefix then c.",
+      instruction: "Open a third window:  prefix then c.",
       isComplete: (s) => s.windows.length >= 3,
     },
     {
       instruction:
-        "Give a window a name:  prefix then r, type a name, press Enter. " +
-        "(Switch windows with prefix n / p or prefix 1-3.)",
+        "Name a window:  prefix then r, type a name, press Enter. " +
+        "(Switch windows with prefix n / p or 1-3.)",
       isComplete: (s) => s.windows.some((w) => !!w.name),
     },
   ],

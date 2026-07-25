@@ -18,13 +18,13 @@ export const sessionsDetachAttach: Challenge = {
   checkWhileDetached: true,
   commands: [], // tmux itself is always available
   brief:
-    "A long build is running inside your tmux session and you need to step away. Leave the session running on the server, then come back to it.",
+    "A long build is running in your session. Step away without killing it, then come back.",
   setup: (base) => base,
   steps: [
     {
       instruction:
-        "Detach from the current session, leaving it running on the server.",
-      hint: "Detaching disconnects your client without killing the session — there's a prefix chord for it, and a tmux subcommand.",
+        "Detach from the session, leaving it running on the server.",
+      hint: "Detaching disconnects your client without killing the session; there's a prefix chord for it, and a tmux subcommand.",
       command: "tmux detach",
       isComplete: (s) =>
         s.tmux.attachedSession === null &&
@@ -32,8 +32,8 @@ export const sessionsDetachAttach: Challenge = {
     },
     {
       instruction:
-        "Confirm the session survived by listing sessions, then reattach to it.",
-      hint: "tmux ls shows every session on the server; attach reconnects to the most recently detached one by default.",
+        "List sessions to confirm it survived, then reattach.",
+      hint: "tmux ls shows every session; attach reconnects to the most recently detached one by default.",
       command: "tmux attach",
       isComplete: (s) =>
         s.tmux.attachedSession === "0" && s.tmux.detachedSessions.length === 0,

@@ -37,15 +37,14 @@ export const vimDeleteLines: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "tasks.txt starts with three throwaway scratch-note lines. Clear them out " +
-    "so only the keep: lines remain.",
+    "tasks.txt starts with three scratch-note lines. Delete them so only " +
+    "the keep: lines remain.",
   steps: [
     {
       instruction: "Leave tasks.txt with only its three keep: lines, in order.",
       hint:
-        "In normal mode, dd deletes the current line. It takes a count: put the " +
-        "cursor on the first junk line (gg jumps to the top) and delete all three " +
-        "at once.",
+        "dd deletes the current line and takes a count: jump to the top with gg, " +
+        "then delete all three at once.",
       command: "vim tasks.txt\nthen: gg  3dd  :wq",
       // Exact match: the three keepers, nothing else. Deleting too much (a
       // keeper) or too little (a leftover scratch line) both fail.

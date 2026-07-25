@@ -54,10 +54,9 @@ export const panesResizeRows: Challenge = {
     {
       instruction: "Grow the top pane to about 70% of the window.",
       hint:
-        "tmux moves a divider in whole cells, so nudge it a few times. The default " +
-        "~/.tmux.conf binds repeatable resize keys under your prefix (Ctrl+Space): " +
-        "the capital vim keys H/J/K/L. Grow the top pane by pushing the divider down.",
-      command: "prefix J (repeat until the top pane is ~70%)",
+        "~/.tmux.conf binds resize keys H/J/K/L under your prefix (Ctrl+Space). " +
+        "Each press nudges the divider a little; push it down to grow the top pane.",
+      command: "prefix J (repeat to ~70%)",
       // paneTreeMatches ignores ratios, so compare with a tolerance band instead.
       isComplete: (s) => paneTreeMatchesWithRatio(s.activeWindow.root, targetWindow.root, RATIO_TOLERANCE),
     },

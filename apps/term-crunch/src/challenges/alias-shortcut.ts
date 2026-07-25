@@ -18,23 +18,23 @@ export const aliasShortcut: Challenge = {
   fsWatchPath: RELEASES_DIR,
   commands: ["alias", "unalias", "mkdir", "ls", "cd"],
   brief:
-    "You keep retyping the same long release command. Wrap it in a one-word " +
-    "alias, use it to cut the release, then clean the alias up.",
+    "Wrap the long release command in a one-word alias, use it to cut the " +
+    "release, then remove the alias.",
   setup,
   steps: [
     {
       instruction: "Create an alias named ship that runs: mkdir -p ~/releases/v2",
       hint:
-        "The syntax is alias name='command' (quotes keep the spaces together). " +
-        "Bare alias lists everything currently defined.",
+        "alias name='command' (quotes keep the spaces together). " +
+        "Bare alias lists what's defined.",
       command: "alias ship='mkdir -p ~/releases/v2'",
       // Loose match on the body: any mkdir-based spelling of the release
       // command counts; step 2 verifies it actually produces the directory.
       isComplete: (s) => (s.aliases.ship ?? "").includes("mkdir"),
     },
     {
-      instruction: "Run your new shortcut to create the release directory.",
-      hint: "An alias runs like any command — just type its name.",
+      instruction: "Run your new alias to create the release directory.",
+      hint: "An alias runs like any command: just type its name.",
       command: "ship",
       isComplete: (s) => {
         const node = s.fs.getNode(TARGET_DIR);
@@ -44,7 +44,7 @@ export const aliasShortcut: Challenge = {
     {
       // Trivially true at load, but the cascade only reaches it after step 2
       // passes — and at that moment `ship` still exists, so order holds.
-      instruction: "The release is cut — remove the ship alias.",
+      instruction: "Remove the ship alias.",
       hint: "unalias takes the alias name; bare alias confirms it's gone.",
       command: "unalias ship",
       isComplete: (s) => !("ship" in s.aliases),

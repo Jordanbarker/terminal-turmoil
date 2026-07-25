@@ -74,13 +74,13 @@ export const gitRebaseChallenge: Challenge = {
   gitRepoPath: PROJECT_DIR,
   commands: ["git", "nano", "vim", "ls", "cat", "cd", "pwd"],
   brief:
-    "main has moved on and edited the same config.txt line as your feature commit. " +
+    "main edited the same config.txt line as your feature commit. " +
     "Rebase feature onto main, resolve the conflict, and finish.",
   setup,
   steps: [
     {
       instruction: "Replay your feature commit on top of the latest main.",
-      hint: "Rebase the current branch onto main. It will stop partway through with a conflict for you to fix.",
+      hint: "Rebase the current branch onto main. It will stop at a conflict for you to fix.",
       command: "git rebase main",
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
@@ -88,8 +88,8 @@ export const gitRebaseChallenge: Challenge = {
       },
     },
     {
-      instruction: "Open config.txt and delete the conflict markers, keeping the version you want.",
-      hint: "Edit config.txt in nano to remove the <<<<<<< / ======= / >>>>>>> lines, leave just the content you want, and save.",
+      instruction: "Edit config.txt: delete the conflict markers, keep the version you want.",
+      hint: "In nano, remove the <<<<<<< / ======= / >>>>>>> lines, leave the content you want, and save.",
       command: "nano config.txt",
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
@@ -97,8 +97,8 @@ export const gitRebaseChallenge: Challenge = {
       },
     },
     {
-      instruction: "Mark the resolved file so the rebase knows the conflict is handled.",
-      hint: "Stage config.txt to mark the conflict resolved.",
+      instruction: "Mark the conflict resolved.",
+      hint: "Stage config.txt; staging is how a rebase learns the conflict is handled.",
       command: "git add config.txt",
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
@@ -106,7 +106,7 @@ export const gitRebaseChallenge: Challenge = {
       },
     },
     {
-      instruction: "Finish the rebase now that the conflict is resolved.",
+      instruction: "Finish the rebase.",
       hint: "Tell the in-progress rebase to carry on from where it stopped.",
       command: "git rebase --continue",
       isComplete: (s) => {

@@ -32,15 +32,14 @@ export const vimReorder: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "recipe.txt has its steps out of order: Step 3 is stuck at the top. Put " +
-    "them back into 1, 2, 3 order.",
+    "Step 3 is stuck at the top of recipe.txt. Put the steps back into " +
+    "1, 2, 3 order.",
   steps: [
     {
       instruction: "Reorder recipe.txt so the lines read Step 1, then Step 2, then Step 3.",
       hint:
-        "Visual-line mode selects whole lines: press V on the misplaced line, cut " +
-        "it with d, jump to the bottom with G, then p puts the cut line below the " +
-        "cursor.",
+        "Press V on the misplaced line (visual-line mode), cut it with d, " +
+        "jump to the bottom with G, then p pastes it below the cursor.",
       command: "vim recipe.txt\nthen: on the Step 3 line  V  d  G  p  :wq",
       // Outcome-only: dd/p reaches the same result, so the predicate can't force
       // visual mode. The hint/command teach it; this just checks the final order.

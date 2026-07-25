@@ -29,14 +29,14 @@ export const vimYankPaste: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "The allow rule for 10.0.0.2 needs to appear twice in rules.conf. Copy the " +
-    "line rather than retyping it.",
+    "The allow 10.0.0.2 rule must appear twice in rules.conf. Copy the line " +
+    "rather than retyping it.",
   steps: [
     {
       instruction: "Make the allow 10.0.0.2 line appear twice, keeping the 10.0.0.1 rule.",
       hint:
-        "yy yanks (copies) the whole current line; p puts it back on the line " +
-        "below. Land on the 10.0.0.2 line first.",
+        "yy yanks (copies) the current line; p puts it on the line below. " +
+        "Land on the 10.0.0.2 line first.",
       command: "vim rules.conf\nthen: move onto the 10.0.0.2 line  yy  p  :wq",
       // >= 2 tolerates an overshoot (pasting a third time still counts), per the
       // count convention; the 10.0.0.1 rule must survive.

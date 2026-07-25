@@ -57,16 +57,15 @@ export const gitUnstage: Challenge = {
   gitRepoPath: PROJECT_DIR,
   commands: ["git", "ls", "cat", "cd", "pwd"],
   brief:
-    "A careless `git add .` staged your app.js edit together with .env, a secrets file that " +
-    "must never be committed. Pull .env back out of the staging area without losing it, " +
-    "then commit the app change.",
+    "A careless `git add .` staged .env, a secrets file, along with your app.js edit. " +
+    "Unstage .env without losing it, then commit the app change.",
   setup,
   steps: [
     {
-      instruction: "Pull .env back out of the staging area without deleting it or losing its contents.",
+      instruction: "Unstage .env without deleting it or changing its contents.",
       hint:
-        "git reset has a path form that only touches the index: it removes the file from " +
-        "staging and leaves your working tree exactly as it is.",
+        "git reset with a path only touches the index: the file leaves staging, " +
+        "your working tree stays as is.",
       command: "git reset .env",
       // app.js must still be staged: a bare `git reset` empties the whole index,
       // which isn't the targeted fix (though re-adding app.js afterward reaches
@@ -78,7 +77,7 @@ export const gitUnstage: Challenge = {
     },
     {
       instruction: "Commit the staged app.js change (any message works).",
-      hint: "Commit what's staged; the unstaged secrets file stays behind in your working tree.",
+      hint: "Commit what's staged; the secrets file stays behind untracked.",
       command: 'git commit -m "update"',
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);

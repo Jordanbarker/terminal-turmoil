@@ -31,14 +31,14 @@ export const gitFirstCommit: Challenge = {
   setup,
   steps: [
     {
-      instruction: "Stage README.md so it's ready to be committed.",
-      hint: "Nothing is tracked yet. A file has to be added to the staging area before it can go into a commit.",
+      instruction: "Stage README.md.",
+      hint: "A file must be added to the staging area before it can go into a commit.",
       command: "git add README.md",
       isComplete: (s) => readGitState(s.fs, PROJECT_DIR).staged.includes("README.md"),
     },
     {
       instruction: 'Commit the staged file with the message "init".',
-      hint: "Commit what's staged, and pass the message inline so no editor opens.",
+      hint: "Pass the message inline with -m so no editor opens.",
       command: 'git commit -m "init"',
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);

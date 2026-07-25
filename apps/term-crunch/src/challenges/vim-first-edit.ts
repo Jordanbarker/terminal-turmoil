@@ -35,9 +35,8 @@ export const vimFirstEdit: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "vim is a modal editor: it opens in NORMAL mode, where the letters are " +
-    "commands, not text. To type you switch to INSERT mode, and to save you " +
-    "run an ex command from normal mode.",
+    "vim opens in NORMAL mode, where letters are commands, not text. " +
+    "Switch to INSERT mode to type; save with an ex command from normal mode.",
   steps: [
     {
       // The predicate only sees the SAVED file (keystrokes inside the editor
@@ -45,8 +44,8 @@ export const vimFirstEdit: Challenge = {
       // as the file's final contents, not the keys that get there.
       instruction: "Make notes.txt contain exactly the line: Hello, Vim!",
       hint:
-        "Press i to enter insert mode and type the line, then Esc to return to " +
-        "normal mode. Commands beginning with : write the file and quit.",
+        "i enters insert mode; type the line, then Esc returns to normal mode. " +
+        "A : command writes the file and quits.",
       command: "vim notes.txt\nthen: i  Hello, Vim!  <Esc>  :wq",
       isComplete: (s) => read(s.fs) === TARGET,
     },

@@ -29,15 +29,14 @@ export const vimFixWord: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "app.conf points at the wrong environment. It should read production, not " +
-    "staging. Leave the debug line as it is.",
+    "app.conf should read production, not staging. Fix it; leave the debug " +
+    "line as is.",
   steps: [
     {
       instruction: "Change the environment value in app.conf from staging to production.",
       hint:
-        "Move onto the start of the word you want to replace (w jumps forward by " +
-        "word, or f lands on a character), then cw changes that whole word and " +
-        "drops you into insert mode to type the new one.",
+        "Move onto the start of the word (w jumps forward by word), then cw " +
+        "changes the whole word and drops you into insert mode to type the new one.",
       command: "vim app.conf\nthen: move onto 'staging'  cw  production  <Esc>  :wq",
       isComplete: (s) => read(s.fs) === TARGET,
     },

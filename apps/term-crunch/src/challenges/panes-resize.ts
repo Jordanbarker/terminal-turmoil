@@ -52,10 +52,9 @@ export const panesResize: Challenge = {
     {
       instruction: "Widen the left pane to about 70% of the window.",
       hint:
-        "tmux moves a divider in whole cells, so nudge it a few times. The default " +
-        "~/.tmux.conf binds repeatable resize keys under your prefix (Ctrl+Space): " +
-        "the capital vim keys H/J/K/L. Grow the left pane by pushing the divider right.",
-      command: "prefix L (repeat until the left pane is ~70%)",
+        "~/.tmux.conf binds resize keys H/J/K/L under your prefix (Ctrl+Space). " +
+        "Each press nudges the divider a little; push it right to grow the left pane.",
+      command: "prefix L (repeat to ~70%)",
       // paneTreeMatches ignores ratios, so compare with a tolerance band instead.
       isComplete: (s) => paneTreeMatchesWithRatio(s.activeWindow.root, targetWindow.root, RATIO_TOLERANCE),
     },

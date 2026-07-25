@@ -70,22 +70,20 @@ export const panesResizeCorner: Challenge = {
     {
       instruction: "Grow the bottom-left pane to about 70% of the left column.",
       hint:
-        "The repeatable resize keys from ~/.tmux.conf are the capital vim keys " +
-        "H/J/K/L under your prefix (Ctrl+Space). Resizing up pulls the horizontal " +
-        "divider toward the top, growing the bottom pane.",
-      command: "prefix K (repeat until the bottom-left pane is ~70% of the column)",
+        "~/.tmux.conf binds resize keys H/J/K/L under your prefix (Ctrl+Space). " +
+        "Resizing up pulls the divider toward the top, growing the bottom pane.",
+      command: "prefix K (repeat to ~70%)",
       isComplete: (s) => {
         const col = columnSplit(s.activeWindow.root);
         return col !== undefined && Math.abs(col.ratio - COLUMN_RATIO) <= RATIO_TOLERANCE;
       },
     },
     {
-      instruction: "Now shrink the left column to about 30% of the window width.",
+      instruction: "Shrink the left column to about 30% of the window width.",
       hint:
-        "Resizing left pushes the vertical divider toward the left edge, shrinking " +
-        "the column. It works from either left pane — the nearest side-by-side " +
-        "divider is the one that moves.",
-      command: "prefix H (repeat until the left column is ~30% wide)",
+        "Resizing left pushes the vertical divider toward the left edge. It works " +
+        "from either left pane: the nearest side-by-side divider moves.",
+      command: "prefix H (repeat to ~30%)",
       isComplete: (s) => paneTreeMatchesWithRatio(s.activeWindow.root, targetWindow.root, RATIO_TOLERANCE),
     },
   ],

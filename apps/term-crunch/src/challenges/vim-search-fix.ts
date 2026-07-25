@@ -31,15 +31,14 @@ export const vimSearchFix: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["vim", "cat", "ls"],
   brief:
-    "hosts.conf still points three services at oldhost. Repoint every one of " +
-    "them at newhost.",
+    "Three services in hosts.conf still point at oldhost. Repoint them all " +
+    "at newhost.",
   steps: [
     {
       instruction: "Replace all three occurrences of oldhost with newhost in hosts.conf.",
       hint:
-        "This vim has no substitute command. Search with /oldhost, then n jumps " +
-        "to each next match; change the word under the cursor with cw at every " +
-        "one. n keeps finding only the matches you have not fixed yet.",
+        "This vim has no substitute command. Search with /oldhost, fix the word " +
+        "under the cursor with cw, then n jumps to the next unfixed match.",
       command: "vim hosts.conf\nthen: /oldhost <Enter>  cw newhost <Esc>  n  cw newhost <Esc>  n ...  :wq",
       // Technique-agnostic: only the outcome is checked, so cw / r / retyping
       // all pass. >= 3 tolerates the file gaining an extra match by accident.

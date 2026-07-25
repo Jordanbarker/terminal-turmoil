@@ -39,9 +39,8 @@ export const panesGrid: Challenge = {
     {
       instruction: "Match the TARGET 2×2 grid (prefix = Ctrl+Space).",
       hint:
-        "| and - split the FOCUSED pane. Split into two columns first, then split each " +
-        "column into two rows — after splitting the right column, move focus back to " +
-        "the left column before splitting it.",
+        "| and - split the FOCUSED pane. Make two columns first, then split each " +
+        "into rows, moving focus back to the left column for its split.",
       command: "prefix | , prefix - , prefix o (focus left column) , prefix -",
       isComplete: (s) => paneTreeMatches(s.activeWindow.root, targetWindow.root),
     },

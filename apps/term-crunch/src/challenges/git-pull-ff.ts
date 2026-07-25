@@ -104,20 +104,20 @@ export const gitPullFf: Challenge = {
   gitRepoPath: PROJECT_DIR,
   commands: ["git", "ls", "cat", "cd", "pwd"],
   brief:
-    "Your feat/add-sql branch is 2 commits behind origin with a dirty tree (a modified file " +
-    "and an untracked one). Catch up without a merge, then reapply your work.",
+    "feat/add-sql is 2 commits behind origin, and your tree has a modified file " +
+    "and an untracked one. Catch up without a merge, then reapply your work.",
   setup,
   steps: [
     {
-      instruction: "Shelve all your local changes, including the untracked file, so the tree is completely clean.",
-      hint: "A plain stash leaves untracked files sitting in the tree, so it won't be clean. You need the option that sweeps those in too.",
+      instruction: "Stash all local changes, including the untracked file.",
+      hint: "A plain stash leaves untracked files behind; there's an option that sweeps them in too.",
       command: "git stash --include-untracked",
       isComplete: (s) =>
         readGitState(s.fs, PROJECT_DIR).clean && readStash(s.fs, PROJECT_DIR).length > 0,
     },
     {
-      instruction: "Catch up to the 2 upstream commits without creating a merge commit.",
-      hint: "Pull from origin, but only allow it if the branch can fast-forward straight onto the upstream commits.",
+      instruction: "Pull the 2 upstream commits without creating a merge commit.",
+      hint: "Pull, but only allow a fast-forward onto the upstream commits.",
       command: "git pull --ff-only",
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
@@ -125,8 +125,8 @@ export const gitPullFf: Challenge = {
       },
     },
     {
-      instruction: "Restore your shelved work on top of the new commits.",
-      hint: "Reapply the most recent stash and drop it from the stash list.",
+      instruction: "Restore your stashed work on top of the new commits.",
+      hint: "Reapply the most recent stash and drop it from the list.",
       command: "git stash pop",
       isComplete: (s) =>
         readStash(s.fs, PROJECT_DIR).length === 0 &&

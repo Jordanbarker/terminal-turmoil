@@ -42,13 +42,13 @@ export const chmodPerms: Challenge = {
   setup,
   steps: [
     {
-      instruction: "Turn on the read bit so secrets.env can be read.",
+      instruction: "Turn on the read bit for secrets.env.",
       hint:
         "chmod sets who can read (r), write (w), execute (x) a file.\n" +
-        "• Symbolic (letters): a target (u=owner, g=group, o=other, a=all), then +/- a bit.\n" +
-        "• Octal (numbers): three digits = owner/group/other, each summing r=4 w=2 x=1.\n" +
-        "  So rw-r--r-- is 644 and rw------- (locked) is 600.\n" +
-        "It's not enough for the owner alone to read it: grant read broadly.",
+        "• Symbolic: a target (u/g/o/a), then +/- a bit.\n" +
+        "• Octal: three digits = owner/group/other, each summing r=4 w=2 x=1 " +
+        "(rw-r--r-- is 644; the locked rw------- is 600).\n" +
+        "Owner-only read isn't enough: grant read broadly.",
       command: "chmod +r secrets.env",
       // Readable exactly when the "other" read bit is set — the same bit the engine's
       // readFile() checks, so the step passes precisely when `cat` starts working.

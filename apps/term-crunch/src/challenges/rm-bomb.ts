@@ -51,15 +51,15 @@ export const rmBomb: Challenge = {
   fsWatchPath: WORK_DIR,
   commands: ["find", "rm", "ls", "tree", "cat", "cd", "pwd"],
   brief:
-    "A file named BOMB.md is hidden somewhere under ~/work. Delete just that file, " +
-    "leaving every other file intact.",
+    "BOMB.md is hidden somewhere under ~/work. Delete just that file; " +
+    "every other file must survive.",
   setup,
   steps: [
     {
       // The brief states the whole objective — no per-step instruction.
       hint:
-        "Search the tree by name to locate it first, then remove that single file. " +
-        "Avoid rm -rf on a directory: it would take the surrounding files with it and fail the challenge.",
+        "Search the tree by name, then remove that single file. " +
+        "rm -rf on a directory takes the surrounding files with it and fails the challenge.",
       command: "find ~/work -name BOMB.md\nrm ~/work/reports/2024/BOMB.md",
       isComplete: (s) =>
         s.fs.getNode(BOMB_PATH) === null && SURVIVORS.every((p) => s.fs.getNode(p) !== null),

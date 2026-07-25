@@ -16,13 +16,13 @@ export const sessionsJuggle: Challenge = {
   checkWhileDetached: true,
   commands: [], // tmux itself is always available
   brief:
-    "A side task needs its own workspace. Spin up a second session named scratch, then return to your original session and clean the side one up.",
+    "Create a second session named scratch, then return to your original session and kill scratch.",
   setup: (base) => base,
   steps: [
     {
       instruction:
         "Free your client so a second session can be created (tmux refuses to start a session inside another).",
-      hint: "Starting a session while attached fails with \"sessions should be nested with care\" — detach first.",
+      hint: "Starting a session while attached fails with \"sessions should be nested with care\": detach first.",
       command: "tmux detach",
       isComplete: (s) =>
         s.tmux.attachedSession === null &&
@@ -38,7 +38,7 @@ export const sessionsJuggle: Challenge = {
     },
     {
       instruction: "Detach from scratch, keeping both sessions alive.",
-      hint: "Same move as before — the server now holds two sessions.",
+      hint: "Same move as before; the server now holds two sessions.",
       command: "tmux detach",
       isComplete: (s) =>
         s.tmux.attachedSession === null &&
@@ -47,7 +47,7 @@ export const sessionsJuggle: Challenge = {
     },
     {
       instruction: "Reattach to your original session (0), not scratch.",
-      hint: "attach defaults to the most recently detached session — use -t to target a specific one.",
+      hint: "attach defaults to the most recently detached session; use -t to target a specific one.",
       command: "tmux attach -t 0",
       // Deliberately does NOT require scratch to still exist: a player who
       // kills scratch while detached must not be stranded on a predicate that
@@ -55,7 +55,7 @@ export const sessionsJuggle: Challenge = {
       isComplete: (s) => s.tmux.attachedSession === "0",
     },
     {
-      instruction: "You're done with the side task — kill the scratch session.",
+      instruction: "Kill the scratch session.",
       hint: "kill-session takes -t to target a session other than the current one.",
       command: "tmux kill-session -t scratch",
       isComplete: (s) =>
