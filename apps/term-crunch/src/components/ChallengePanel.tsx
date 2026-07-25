@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { formatElapsed } from "@tt/core/lib/format";
-import { useGameStore } from "../state/gameStore";
+import { isGradeGateUp, useGameStore } from "../state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES } from "../challenges/categories";
 import { CHALLENGES } from "../challenges/registry";
 import {
@@ -54,6 +54,11 @@ export default function ChallengePanel() {
     return () => clearTimeout(t);
   }, [flash, clearFlash]);
 
+  // Jumping away while the gate is up would drop the pending grade (loadChallenge
+  // clears pendingGradeId), so the dropdowns are frozen exactly like the terminal
+  // input is by TabManager's interceptEarly.
+  const gateUp = isGradeGateUp({ awaitingContinue, completed, pendingGradeId });
+
   const category = getCategory(activeCategory);
   const challenge = category.challenges[challengeIndex];
   const activeWindow = windows.find((w) => w.id === activeWindowId) ?? windows[0];
@@ -71,7 +76,9 @@ export default function ChallengePanel() {
               aria-label="Select category"
               value={activeCategory}
               onChange={(e) => selectCategory(e.target.value)}
-              className="max-w-[180px] truncate rounded border border-[#1c2430] bg-[#11161d] px-2 py-1 text-xs text-[#6b7680] hover:border-[#6b7680] hover:text-[#b3b1ad] focus:outline-none"
+              disabled={gateUp}
+              title={gateUp ? "Grade this challenge first" : undefined}
+              className="max-w-[180px] truncate rounded border border-[#1c2430] bg-[#11161d] px-2 py-1 text-xs text-[#6b7680] hover:border-[#6b7680] hover:text-[#b3b1ad] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#1c2430] disabled:hover:text-[#6b7680]"
             >
               {SELECTABLE_CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -94,7 +101,9 @@ export default function ChallengePanel() {
           aria-label="Select challenge"
           value={challengeIndex}
           onChange={(e) => jumpToChallenge(Number(e.target.value))}
-          className="w-full truncate rounded border border-[#1c2430] bg-[#11161d] px-2 py-1 text-xs text-[#6b7680] hover:border-[#6b7680] hover:text-[#b3b1ad] focus:outline-none"
+          disabled={gateUp}
+          title={gateUp ? "Grade this challenge first" : undefined}
+          className="w-full truncate rounded border border-[#1c2430] bg-[#11161d] px-2 py-1 text-xs text-[#6b7680] hover:border-[#6b7680] hover:text-[#b3b1ad] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#1c2430] disabled:hover:text-[#6b7680]"
         >
           {category.challenges.map((c, i) => (
             <option key={c.id} value={i}>

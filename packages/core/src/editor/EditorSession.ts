@@ -47,6 +47,8 @@ export class EditorSession implements ISession {
   private maxRowReached = 0;
   private hasSaved = false;
   private fileEvents: GameEvent[] = [];
+  /** Whether the buffer ends with a newline; re-attached on write. */
+  private eol: boolean;
 
   constructor(
     terminal: Terminal,
@@ -63,9 +65,10 @@ export class EditorSession implements ISession {
     this.trigger = trigger;
 
     const fileName = filePath.split("/").pop() || filePath;
-    const lines = content.split("\n");
-    // Ensure at least one line
-    if (lines.length === 0) lines.push("");
+    // A single trailing newline terminates the last line rather than starting a new
+    // empty one; splitting naively would add a phantom blank line at the bottom.
+    this.eol = content.endsWith("\n");
+    const lines = (this.eol ? content.slice(0, -1) : content).split("\n");
 
     this.config = {
       rows: terminal.rows,
@@ -694,7 +697,8 @@ export class EditorSession implements ISession {
       return;
     }
 
-    const newLines = (result.content ?? "").split("\n");
+    const read = result.content ?? "";
+    const newLines = (read.endsWith("\n") ? read.slice(0, -1) : read).split("\n");
     const insertAfter = this.state.cursor.row;
     this.state.lines.splice(insertAfter + 1, 0, ...newLines);
     this.state.modified = true;
@@ -705,7 +709,7 @@ export class EditorSession implements ISession {
     this.state.promptState = { type: "none" };
     if (!input) return;
 
-    const content = this.state.lines.join("\n");
+    const content = this.serialize();
     const existedBefore = !!this.fs.getNode(input);
     const result = this.fs.writeFile(input, content);
     if (result.fs) {
@@ -864,8 +868,13 @@ export class EditorSession implements ISession {
 
   // === Save / Exit ===
 
+  /** Buffer as file bytes, re-attaching the trailing newline the load stripped. */
+  private serialize(): string {
+    return this.state.lines.join("\n") + (this.eol ? "\n" : "");
+  }
+
   private save(): void {
-    const content = this.state.lines.join("\n");
+    const content = this.serialize();
     const existedBefore = !!this.fs.getNode(this.state.filePath);
     const result = this.fs.writeFile(this.state.filePath, content);
     if (result.fs) {

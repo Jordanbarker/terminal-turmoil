@@ -139,8 +139,8 @@ export const copyModeYank: Challenge = {
         "Enter copy mode with your prefix (Ctrl+Space) then `[`.\n" +
         "• Move: hjkl or arrows · g / G top / bottom · Ctrl+U / Ctrl+D half-page.\n" +
         "• Select: `v` starts a selection, `$` extends to end of line.\n" +
-        "• Yank: `y` copies the selection and exits copy mode.\n" +
-        "Then type `mkdir ` and paste.",
+        "• Yank: `y` copies the selection to the system clipboard and exits copy mode.\n" +
+        "Then type `mkdir ` and paste with Cmd+V (Ctrl+V elsewhere) — there is no tmux paste buffer.",
       command: `mkdir ${TOKEN}`,
       // Passes exactly when a directory named after the token exists. VirtualFS
       // directory nodes carry type: "directory".

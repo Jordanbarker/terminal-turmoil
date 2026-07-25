@@ -47,6 +47,12 @@ export class VimSession implements ISession {
   private fileEvents: GameEvent[] = [];
   /** Buffer content at the last save of filePath; `modified` is derived from it. */
   private lastSavedText: string;
+  /**
+   * Whether the buffer ends with a newline. Real vim tracks the final newline as a
+   * buffer property ('eol'), not as a line — splitting "a\nb\n" naively would add a
+   * phantom empty last line that `G`/`p`/`dd` then operate on.
+   */
+  private eol: boolean;
 
   constructor(
     terminal: Terminal,
@@ -62,10 +68,10 @@ export class VimSession implements ISession {
     this.onSave = onSave;
     this.trigger = trigger;
     this.lastSavedText = content;
+    this.eol = content.endsWith("\n");
 
     const fileName = basename(filePath);
-    const lines = content.split("\n");
-    if (lines.length === 0) lines.push("");
+    const lines = (this.eol ? content.slice(0, -1) : content).split("\n");
 
     this.config = { rows: terminal.rows, cols: terminal.cols };
 
@@ -694,7 +700,7 @@ export class VimSession implements ISession {
   private writeFile(path?: string): boolean {
     const st = this.state;
     const target = path ? this.fs.resolve(path) : st.filePath;
-    const content = st.lines.join("\n");
+    const content = this.serialize();
     const existedBefore = !!this.fs.getNode(target);
     const result = this.fs.writeFile(target, content);
     if (!result.fs) {
@@ -743,7 +749,12 @@ export class VimSession implements ISession {
   }
 
   private recomputeModified(): void {
-    this.state.modified = this.state.lines.join("\n") !== this.lastSavedText;
+    this.state.modified = this.serialize() !== this.lastSavedText;
+  }
+
+  /** Buffer as file bytes, re-attaching the trailing newline the load stripped. */
+  private serialize(): string {
+    return this.state.lines.join("\n") + (this.eol ? "\n" : "");
   }
 
   private ensureCursorVisible(): void {

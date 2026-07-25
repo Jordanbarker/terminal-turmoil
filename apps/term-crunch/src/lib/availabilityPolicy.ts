@@ -8,8 +8,11 @@ import { useGameStore } from "../state/gameStore";
  * Per-challenge command allowlist (term-crunch). Each challenge may declare a
  * `commands` list of the builtins it needs; this policy hides everything else
  * from `help` + TAB/ghost-text suggestions (via `getAvailableCommands`) and
- * blocks it at run time (via `execute`). A challenge with no `commands` list
- * keeps the engine default of allow-all.
+ * blocks it at run time (via `execute`). **Omitting `commands` entirely** keeps
+ * the engine default of allow-all; `commands: []` does NOT — an empty array is
+ * truthy, so it falls through to the `includes` check and restricts the player
+ * to ALWAYS_AVAILABLE. That's deliberate: it's what the keyboard-only tmux
+ * challenges rely on.
  *
  * `help`, `clear`, `man`, and `shortcuts` are always available so the player can orient,
  * reset, and read the manual, and the challenge-navigation builtins

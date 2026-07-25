@@ -159,6 +159,17 @@ export default function TabManager() {
       sessions.current.delete(paneId);
     },
     toggleCopyModeHelp: () => setCopyModeHelpHidden((v) => !v),
+    // The clipboard write happens in core; surface whether it landed, since the
+    // yank challenge asks the player to paste what they just copied.
+    onYank: (text, ok) => {
+      useGameStore
+        .getState()
+        .addToast(
+          ok
+            ? `Copied ${text.length} character${text.length === 1 ? "" : "s"} to clipboard`
+            : "Copy failed — select the text and copy it manually"
+        );
+    },
   };
 
   // Challenge (re)loads need no special handling here: loadChallenge builds its

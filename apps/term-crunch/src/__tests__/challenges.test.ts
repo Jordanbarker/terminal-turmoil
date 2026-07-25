@@ -8,6 +8,8 @@ import {
 } from "@tt/core/commands/availability";
 import { getAvailableCommands, execute } from "@tt/core/commands/registry";
 import type { CommandContext } from "@tt/core/commands/types";
+import type { Terminal } from "@xterm/xterm";
+import { VimSession } from "@tt/core/vim/VimSession";
 import { CRUNCH_AVAILABILITY_POLICY } from "../lib/availabilityPolicy";
 import { CHALLENGES } from "../challenges/registry";
 import { getCategory } from "../challenges/categories";
@@ -1010,6 +1012,24 @@ describe("vim challenges (validated on the SAVED buffer)", () => {
     expect(step.isComplete(fsSnap(save(vimReorder, `${WORK}/recipe.txt`, ordered + "\n")))).toBe(true);
   });
 
+  it("vim-reorder: the hint's exact keystrokes complete it", () => {
+    // The one vim challenge whose taught solution depends on end-of-file
+    // behavior, so drive the real VimSession rather than a simulated save. A
+    // phantom trailing-newline line would put G past the last real line and
+    // make `V d G p` write a blank line into the middle of the file.
+    const [step] = vimReorder.steps;
+    const path = `${WORK}/recipe.txt`;
+    const fs = vimReorder.setup(buildBaseFs());
+    const term = { write: () => {}, rows: 24, cols: 80 } as unknown as Terminal;
+    let saved = fs;
+    const session = new VimSession(
+      term, fs, path, fs.readFile(path).content ?? "", false, (newFs) => { saved = newFs; }
+    );
+    session.enter();
+    for (const keys of ["Vd", "G", "p", ":wq\r"]) session.handleInput(keys);
+    expect(step.isComplete(fsSnap(saved))).toBe(true);
+  });
+
   it("start the player in the scratch dir so `vim <file>` needs no cd", () => {
     expect(vimFirstEdit.startCwd).toBe(WORK);
     useGameStore.setState({ activeCategory: "all" });
@@ -1144,6 +1164,25 @@ describe("out-of-order step completion (cascade)", () => {
     expect(state().stepIndex).toBe(1);
     state().newWindow();
     expect(state().awaitingContinue).toBe(true);
+  });
+
+  // Three challenges undo something in their last step (pop the stash, remove the
+  // alias), so that step's predicate is already true on a freshly seeded board.
+  // They are only safe because the cascade starts at the CURRENT stepIndex and an
+  // earlier step is false at load, so it can never reach the last one for free.
+  // Pin that here: if a future edit makes step 0 vacuously true too, these
+  // challenges would self-complete on load.
+  describe("challenges whose final step is vacuously true at load", () => {
+    for (const challenge of [gitStashChallenge, gitPullFf, aliasShortcut]) {
+      it(`${challenge.id}: last step true at load, first step gates it`, () => {
+        const fs = challenge.setup(buildBaseFs());
+        const cwd = challenge.startCwd ?? HOME_DIR;
+        const s = snap(makeWindow(CRUNCH_MACHINE, cwd), fs, cwd);
+        const steps = challenge.steps;
+        expect(steps[steps.length - 1].isComplete(s)).toBe(true);
+        expect(steps[0].isComplete(s)).toBe(false);
+      });
+    }
   });
 });
 

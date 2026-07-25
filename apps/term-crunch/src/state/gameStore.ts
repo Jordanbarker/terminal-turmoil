@@ -31,6 +31,9 @@ import { getCategory, registryIndex, DEFAULT_CATEGORY } from "../challenges/cate
 import type { ChallengeSnapshot } from "../challenges/types";
 import { applyGrade, type Grade, type ReviewStat } from "../challenges/scheduler";
 
+/** Monotonic toast id source; toasts are transient so it never needs persisting. */
+let toastId = 0;
+
 /** cwd of the focused pane (single window in v1, but written defensively). */
 function activeCwd(windows: WindowState[], activeWindowId: string): string {
   const win = windows.find((w) => w.id === activeWindowId) ?? windows[0];
@@ -101,6 +104,8 @@ export interface GameState {
   completed: boolean;
   awaitingContinue: boolean;
   flash: string | null;
+  // Transient corner notifications (clipboard yank feedback). Never persisted.
+  toasts: { id: string; message: string }[];
 
   // timing
   challengeStartTime: number; // Date.now() when the current challenge loaded
@@ -127,6 +132,8 @@ export interface GameState {
   jumpToChallenge: (index: number) => void;
   cancelReview: () => void;
   clearFlash: () => void;
+  addToast: (message: string) => void;
+  removeToast: (id: string) => void;
 
   // shell config mutations (Settings modal)
   setConfigs: (zshrc: string, tmuxConf: string) => void;
@@ -179,6 +186,7 @@ export const useGameStore = create<GameState>()(
   completed: false,
   awaitingContinue: false,
   flash: null,
+  toasts: [],
   challengeStartTime: 0,
   bestTimes: {},
   lastElapsedMs: null,
@@ -395,6 +403,10 @@ export const useGameStore = create<GameState>()(
   },
 
   clearFlash: () => set({ flash: null }),
+
+  addToast: (message) =>
+    set((state) => ({ toasts: [...state.toasts, { id: String(++toastId), message }] })),
+  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 
   // Save edited configs: persist the strings, re-seed them into the current fs,
   // and re-derive envVars/aliases from the new zshrc so the change takes effect

@@ -38,11 +38,19 @@ The headless runner has **no tab model and no transition animations** — tab su
 
 ### Driving xterm.js
 
-- **Renderer is DOM** (no canvas/webgl), so text is readable from `.xterm-rows` innerText.
-- **Windows hold panes (tmux model).** Each pane is an absolutely-positioned container in the `.isolate` wrapper; **only the active window's panes are shown, rest are `display:none`.** Enumerate visible panes: `[...document.querySelector('.isolate').children].filter(el => getComputedStyle(el).display !== 'none' && el.clientWidth > 0)`; the active pane has a non-`none` `style.outline`. Split `<prefix> |`/`-` (prefix default Ctrl+Space → `keyboard.down('Control'); press('Space'); up('Control')`), focus `<prefix>`+arrows/`o`, kill `<prefix> x` then `y`.
-- **Typing:** real-mouse-click the visible `.xterm-rows` box first (focuses the hidden textarea), then `page.keyboard.type(...)` + `Enter`.
+- **Renderer is DOM** (no canvas/webgl), so text is readable off `.xterm-rows`. **Read per-row `textContent`, not `innerText`** — `innerText` applies CSS layout rules and collapses blank rows, so a stray empty line vanishes and a 3-line file reads identically to a 4-line one. Any assertion where whitespace or line count is part of what you're checking must join the `.xterm-rows` children's `textContent`. Corollary: `ls -l` byte counts are a cheap invisible-whitespace probe, but two files differing by a blank line can share a byte count, so counts alone never prove content.
+- **Windows hold panes (tmux model).** Each pane is an absolutely-positioned container in the `.isolate` wrapper; **only the active window's panes are shown, rest are `display:none`.** Enumerate visible panes: `[...document.querySelector('.isolate').children].filter(el => getComputedStyle(el).display !== 'none' && el.clientWidth > 0)`. Split `<prefix> |`/`-` (prefix default Ctrl+Space → `keyboard.down('Control'); press('Space'); up('Control')`), focus `<prefix>`+arrows/`o`, kill `<prefix> x` then `y`.
+- **Active pane: the outline only exists with 2+ visible panes.** `useTabManager.ts` sets `el.style.outline = "1px solid #e6b450"` (`paneChrome.ts`) on the active pane's container div, but **only when more than one pane is visible** — with a single pane every pane reads `outline: "none"`, so an empty outline is not evidence your selector is wrong. The `PaneDividers` seams are an independent signal: the seams bordering the active pane are gold (`bg-[#e6b450]`) vs `bg-[#3d4751]`.
+- **Pane-relative chords no-op silently.** `nearestResizableSplit` resolves relative to the *focused* pane, so resize chords aimed at the wrong pane change nothing — indistinguishable from a broken predicate. Click (or `<prefix>`-focus) the target pane first, and confirm focus moved before sending the chord.
+- **Typing:** coordinate-click the centre of the visible **`.xterm-screen`** bounding box first (focuses the hidden textarea), then `page.keyboard.type(...)` + `Enter`. Do not use a locator click on `.xterm-rows` — `.xterm-screen` intercepts pointer events, so the locator click never lands and hangs the full 30s timeout.
 - **React needs real Playwright clicks** — `el.dispatchEvent(new MouseEvent('click'))` from `page.evaluate` does NOT trigger React handlers; use locator clicks.
 - **Match output against the tail, not the whole buffer** (scrollback re-matches old prompts forever) — anchor to the last lines (`t.trim().split('\n').pop()` or `$`-anchored multiline regex).
+
+### Clipboard and copy mode
+
+- **Playwright's synthetic `Control+V` does not paste in Chromium.** Dispatch a real `ClipboardEvent` on `.xterm-helper-textarea` instead.
+- Grant `clipboard-read`/`clipboard-write` on the browser context and **verify a yank by reading the clipboard back**. Screen-based verification is ambiguous whenever scrollback holds duplicate lines.
+- **Copy mode has two coordinate systems.** `g` jumps to the top of *scrollback*, so once the viewport has scrolled a rendered row index is no longer the cursor's line offset. Don't convert between them.
 
 ### DOM map
 
@@ -56,11 +64,13 @@ The headless runner has **no tab model and no transition animations** — tab su
 const termText = () => page.evaluate(() => {
   const rows = [...document.querySelectorAll('.xterm-rows')];
   const v = rows.find(r => getComputedStyle(r).visibility === 'visible') || rows[0];
-  return v ? v.innerText : '';
+  // per-row textContent, NOT innerText — innerText collapses blank rows
+  return v ? [...v.children].map(r => r.textContent).join('\n') : '';
 });
 const type = async (s) => {
   const box = await page.evaluate(() => {
-    const v = [...document.querySelectorAll('.xterm-rows')]
+    // .xterm-screen, not .xterm-rows — it intercepts pointer events
+    const v = [...document.querySelectorAll('.xterm-screen')]
       .find(r => getComputedStyle(r).visibility === 'visible');
     const r = v.getBoundingClientRect();
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };

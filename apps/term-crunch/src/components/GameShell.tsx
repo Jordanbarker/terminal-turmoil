@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useGameStore } from "../state/gameStore";
 import ChallengePanel from "./ChallengePanel";
+import Toast from "./Toast";
 
 // xterm needs `window`; load the terminal only on the client.
 const TabManager = dynamic(() => import("./TabManager"), { ssr: false });
@@ -20,6 +21,7 @@ export default function GameShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a0e14]">
       <div className="relative flex-1">
         <TabManager />
+        <Toast />
       </div>
       <ChallengePanel />
     </div>

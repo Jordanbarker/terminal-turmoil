@@ -790,4 +790,65 @@ describe("VimSession", () => {
       expect(writes(term)).toContain("~");
     });
   });
+
+  // A single trailing newline terminates the last line rather than starting a new
+  // one. Getting this wrong puts a phantom blank line at the bottom that G, p and
+  // dd then operate on, which silently breaks end-of-file editing.
+  describe("trailing newline", () => {
+    it("does not create a phantom last line", () => {
+      const { session } = createSession("a\nb\nc\n");
+      const st = getState(session);
+      expect(st.lines).toEqual(["a", "b", "c"]);
+      expect(st.message).toContain('"test.txt" 3L, 6B');
+    });
+
+    it("G lands on the last real line", () => {
+      const { session } = createSession("a\nb\nc\n");
+      session.handleInput("G");
+      expect(getState(session).cursor.row).toBe(2);
+    });
+
+    it("V d G p reorders to the end of the file", () => {
+      const { session } = createSession("three\none\ntwo\n");
+      session.handleInput("Vd");
+      session.handleInput("G");
+      session.handleInput("p");
+      const result = session.handleInput(":wq\r");
+      expect(result.newFs?.readFile("/home/user/test.txt").content).toBe("one\ntwo\nthree\n");
+    });
+
+    it("dd G p is equivalent", () => {
+      const { session } = createSession("three\none\ntwo\n");
+      session.handleInput("dd");
+      session.handleInput("G");
+      session.handleInput("p");
+      const result = session.handleInput(":wq\r");
+      expect(result.newFs?.readFile("/home/user/test.txt").content).toBe("one\ntwo\nthree\n");
+    });
+
+    it("round-trips an untouched file byte for byte", () => {
+      const { session } = createSession("a\nb\nc\n");
+      session.handleInput("x");
+      session.handleInput("u");
+      const result = session.handleInput(":wq\r");
+      expect(result.newFs?.readFile("/home/user/test.txt").content).toBe("a\nb\nc\n");
+    });
+
+    it("a file without a trailing newline never gains one", () => {
+      const { session } = createSession("a\nb");
+      expect(getState(session).lines).toEqual(["a", "b"]);
+      session.handleInput("x");
+      const result = session.handleInput(":wq\r");
+      expect(result.newFs?.readFile("/home/user/test.txt").content).toBe("\nb");
+    });
+
+    it("modified stays false until the buffer actually changes", () => {
+      const { session } = createSession("a\nb\nc\n");
+      session.handleInput("G");
+      expect(getState(session).modified).toBe(false);
+      session.handleInput("x");
+      session.handleInput("u");
+      expect(getState(session).modified).toBe(false);
+    });
+  });
 });

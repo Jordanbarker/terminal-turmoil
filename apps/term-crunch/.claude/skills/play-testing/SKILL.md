@@ -26,21 +26,32 @@ This complements `src/__tests__/challenges.test.ts`, which pokes predicates with
 
 The headless runner has no chord layer, no copy mode, no editor sessions and no React, so keybindings, the `ChallengePanel` readouts, cheat sheets and the Settings modal are browser-only. Playwright is a **root devDependency (1.61.0)** — use it from the repo root, no scratch install.
 
+**When headless passes and the browser fails, suspect the driver before the game.** Replaying the challenge's declared `SOLUTIONS` moves is the fastest discriminator: if that passes in the browser, your driver is what's broken. Most browser-only "bugs" are a chord sent to the wrong pane, a click that never landed, or `innerText` hiding whitespace (all covered below).
+
 ### Setup
 
 - **Dev server:** term-crunch is on **:3001** under the full `npm run dev` (termoil takes 3000, landing page 8080), or **:3000** via `npm run dev:crunch` alone. Check `curl -s localhost:3001` before starting another.
 - Fresh context = empty localStorage (key `term-crunch-progress`, holding only `bestTimes`/`reviewStats`/`activeCategory`/`zshrc`/`tmuxConf`) → boot lands directly in challenge 1. **No nano tutorial, no transitions, no `cheat`** (that's termoil). Navigate with the terminal meta commands `goto N` / `track <id>` / `next` / `prev` / `review`, or the panel dropdowns.
 - Player is `player@crunch`, home `/home/player`.
+- **Driving from an ad-hoc script** (rather than the workspace playtests): imports need **absolute** paths; `@tt/core` resolves only with `npx tsx --tsconfig apps/term-crunch/tsconfig.json`; `require`/`import` of `playwright` needs an absolute path into the repo's `node_modules`; and top-level `await` fails under the cjs transform, so wrap the body in an `async main()`. Write such scripts to the session scratchpad, not the repo.
 
 ### Game-side facts the driver must know
 
-- **The grade gate freezes terminal input.** On completion the pane stops accepting typed input until a grade key (`1`-`4`, Enter = Good) is pressed — a driver that keeps typing will hang. Watch for the gate, press a grade, then continue.
+- **The grade gate freezes terminal input.** On completion the pane stops accepting typed input until a grade key (`1`-`4`, Enter = Good) is pressed — a driver that keeps typing will hang. Watch for the gate, press a grade, then continue. Detection strings below.
 - Every challenge starts attached to tmux session `"0"`; while detached (`tmux detach` / `<prefix> d`) the status bar, dividers and chords are gone and `checkCompletion` is skipped except for `checkWhileDetached` challenges.
 - The per-challenge command allowlist is real: an out-of-allowlist command reports as unavailable, and `help` lists only the permitted set.
 
 ### Driving xterm.js
 
-Identical to termoil (that half of its skill ports verbatim): DOM renderer, so text reads from `.xterm-rows` innerText; **panes are absolutely-positioned children of the `.isolate` wrapper, non-active windows are `display:none`, the active pane has a non-`none` `style.outline`**; real-mouse-click the visible `.xterm-rows` before `keyboard.type`; React needs real Playwright clicks (not `dispatchEvent`); match output against the **tail**, not the whole scrollback; poll with generous timeouts rather than fixed sleeps.
+Identical to termoil (that half of its skill ports verbatim — the driver skeleton lives there). The traps, restated because each one has cost a real investigation:
+
+- **Read per-row `textContent` off `.xterm-rows`, never `innerText`.** `innerText` collapses blank rows, so a stray empty line disappears from your assertion *and* from `cat` output that looks correct. This hid a `vim-reorder` root cause through ~6 rounds. Corollary: `ls -l` byte counts are a cheap invisible-whitespace probe, but a 3-line and a 4-line file can share a byte count, so counts alone never prove content.
+- **Coordinate-click the `.xterm-screen` bounding-box centre to focus**, not a locator click on `.xterm-rows` — `.xterm-screen` intercepts pointer events, so the `.xterm-rows` click never lands and times out after 30s.
+- **Panes** are absolutely-positioned children of the `.isolate` wrapper; non-active windows are `display:none`. The active pane's `style.outline` (`1px solid #e6b450`) is **only set when 2+ panes are visible** — with a single pane every outline is `"none"`, so an empty outline doesn't mean your selector is wrong. `PaneDividers` gold seams (`bg-[#e6b450]` vs `bg-[#3d4751]`) are the independent second signal.
+- **Chords are pane-relative.** `nearestResizableSplit` resolves from the *focused* pane, so 25 resize chords sent while the wrong pane is focused change nothing — and that looks exactly like a broken predicate. Click the target pane first and confirm focus moved.
+- **Clipboard:** Playwright's synthetic `Control+V` does not paste in Chromium — dispatch a real `ClipboardEvent` on `.xterm-helper-textarea`. Grant `clipboard-read`/`clipboard-write` on the context and verify a yank by reading the clipboard back; duplicate scrollback lines make screen-based verification ambiguous.
+- **Copy mode has two coordinate systems.** `g` goes to the top of *scrollback*, so once the viewport scrolls a rendered row index is not the cursor's line offset. Don't conflate them.
+- React needs real Playwright clicks (not `dispatchEvent`); match output against the **tail**, not the whole scrollback; poll with generous timeouts rather than fixed sleeps.
 
 Prefix is **Ctrl+Space** by default (from `~/.tmux.conf`): `keyboard.down('Control'); press('Space'); up('Control')`, then the chord key (`|` `-` `o` `x` `c` `n` `p` `1-9` `r` `[` `d`, arrows/`hjkl` focus, `HJKL` resize).
 
@@ -48,6 +59,6 @@ Prefix is **Ctrl+Space** by default (from `~/.tmux.conf`): `keyboard.down('Contr
 
 - Layout is **terminal on the left, `ChallengePanel` `<aside>` on the right** (`w-[420px]`). The panel has **no data attributes — select by text**: the challenge title, `CURRENT`/`TARGET` schematic headings, the brief, the step instruction, the hint controls, `Restart`, `Settings`.
 - Window tab bar is the shared `TmuxStatusBar` (same labels as termoil: `1:crunch:~ *`, `(n)` pane count).
-- The completion gate and the end-of-track banner render in the panel/terminal as text — assert on the grade prompt text, not a selector.
+- **Gate detection: match on the full panel text, not its tail.** The mid-track gate and the end-of-track banner render differently and the banner sits *above* the cheat sheet, so tail-matching the panel misses it. Both live in `ChallengePanel.tsx`; the strings to match are `✓ <title> complete!` (mid-track gate header), `Enter = Good` (the `GradeBar`, rendered under both), and `🎉 All … challenges complete. Nicely done.` (end of track). Assert on text, not a selector — the panel has no data attributes.
 
 Screenshot after each step: the schematic readouts are the reviewer's evidence that a layout matched for the right reason.
