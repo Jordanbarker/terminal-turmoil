@@ -94,6 +94,8 @@ export type TmuxAction =
   | { type: "attach"; name: string }
   | { type: "detach" }
   | { type: "kill-session"; name: string }
+  /** `target` is the session to rename (already known to exist), `name` the new one. */
+  | { type: "rename-session"; target: string; name: string }
   | { type: "kill-server" };
 
 /** Read-only tmux server snapshot injected by the app for the `tmux` builtin. */

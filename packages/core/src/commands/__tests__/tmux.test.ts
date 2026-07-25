@@ -125,6 +125,46 @@ describe("tmux detach", () => {
   });
 });
 
+describe("tmux rename-session", () => {
+  it("renames the current session when -t is omitted", () => {
+    expect(run(["rename-session", "dev"], ATTACHED_0).tmuxAction).toEqual({
+      type: "rename-session",
+      target: "0",
+      name: "dev",
+    });
+    expect(run(["rename", "dev"], ATTACHED_0).tmuxAction).toEqual({
+      type: "rename-session",
+      target: "0",
+      name: "dev",
+    });
+  });
+
+  it("needs -t from the bare shell (no current client)", () => {
+    expect(run(["rename-session", "old"], BARE_WITH_DETACHED)).toMatchObject({
+      output: "no current client",
+      exitCode: 1,
+    });
+    expect(run(["rename-session", "-t", "0", "old"], BARE_WITH_DETACHED).tmuxAction).toEqual({
+      type: "rename-session",
+      target: "0",
+      name: "old",
+    });
+  });
+
+  it("validates target, new name, and the server", () => {
+    expect(run(["rename-session", "-t", "zz", "old"], ATTACHED_0).output).toBe("can't find session: zz");
+    expect(run(["rename-session"], ATTACHED_0)).toMatchObject({
+      output: "usage: rename-session [-t target-session] new-name",
+      exitCode: 1,
+    });
+    expect(run(["rename-session", "a:b"], ATTACHED_0).output).toBe("bad session name: a:b");
+    expect(run(["rename-session", "-t", "0", "work"], BARE_WITH_DETACHED).output).toBe(
+      "duplicate session: work",
+    );
+    expect(run(["rename-session", "old"], BARE_NO_SERVER).output).toMatch(/no server running/);
+  });
+});
+
 describe("tmux kill-session / kill-server", () => {
   it("bare kill-session targets the attached session, else the last detached", () => {
     expect(run(["kill-session"], ATTACHED_0).tmuxAction).toEqual({ type: "kill-session", name: "0" });

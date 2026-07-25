@@ -18,6 +18,19 @@ function optValue(tokens: string[], opt: string): string | null {
   return i >= 0 && i + 1 < tokens.length ? tokens[i + 1] : null;
 }
 
+/** Non-option arguments after the subcommand (option values like `-t x` dropped). */
+function positionals(tokens: string[], sub: string): string[] {
+  const out: string[] = [];
+  for (let i = tokens.indexOf(sub) + 1; i < tokens.length; i++) {
+    if (tokens[i].startsWith("-")) {
+      i++; // skip this option's value
+      continue;
+    }
+    out.push(tokens[i]);
+  }
+  return out;
+}
+
 function serverRunning(tmux: TmuxContext): boolean {
   return tmux.attachedSession !== null || tmux.sessions.length > 0;
 }
@@ -75,6 +88,21 @@ const tmux: CommandHandler = (args, _flags, ctx) => {
       if (!serverRunning(state)) return err(NO_SERVER);
       if (state.attachedSession === null) return err("no current client");
       return { output: "", tmuxAction: { type: "detach" } };
+    }
+
+    case "rename":
+    case "rename-session": {
+      if (!serverRunning(state)) return err(NO_SERVER);
+      // Real tmux resolves the target from the current client when -t is
+      // omitted, so a detached client MUST pass -t.
+      const target = optValue(tokens, "-t") ?? state.attachedSession;
+      if (target === null) return err("no current client");
+      if (!state.sessions.some((s) => s.name === target)) return err(`can't find session: ${target}`);
+      const name = positionals(tokens, sub)[0];
+      if (name === undefined) return err("usage: rename-session [-t target-session] new-name");
+      if (/[:.]/.test(name) || name === "") return err(`bad session name: ${name}`);
+      if (state.sessions.some((s) => s.name === name)) return err(`duplicate session: ${name}`);
+      return { output: "", tmuxAction: { type: "rename-session", target, name } };
     }
 
     case "kill-session": {

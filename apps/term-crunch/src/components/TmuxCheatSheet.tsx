@@ -64,6 +64,7 @@ export default function TmuxCheatSheet() {
           ["tmux new -s x", "new session named x"],
           ["tmux ls", "list sessions"],
           ["tmux attach -t x", "reattach to session x"],
+          ["tmux rename-session -t x y", "rename session x to y"],
           ["tmux kill-session", "destroy a session"],
         ],
       },

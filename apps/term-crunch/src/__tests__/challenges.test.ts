@@ -1385,6 +1385,26 @@ describe("tmux lifecycle win-detection (store)", () => {
     expect(state().awaitingContinue || state().completed).toBe(true);
   });
 
+  it("detach, rename, new completes sessions-rename", () => {
+    const state = useGameStore.getState;
+    select("sessions-rename");
+    state().applyTmuxAction({ type: "detach" });
+    expect(state().stepIndex).toBe(1);
+    state().applyTmuxAction({ type: "rename-session", target: "0", name: "old" });
+    expect(state().tmuxDetachedSessions.map((s) => s.name)).toEqual(["old"]);
+    expect(state().stepIndex).toBe(2);
+    state().applyTmuxAction({ type: "new-session", name: "new" });
+    expect(state().awaitingContinue || state().completed).toBe(true);
+  });
+
+  it("renaming the attached session updates tmuxAttachedSession", () => {
+    const state = useGameStore.getState;
+    select("sessions-rename");
+    state().applyTmuxAction({ type: "rename-session", target: "0", name: "old" });
+    expect(state().tmuxAttachedSession?.name).toBe("old");
+    expect(state().stepIndex).toBe(0); // step 0 still needs the detach
+  });
+
   it("kill-server soft-lock recovers via restartChallenge", () => {
     const state = useGameStore.getState;
     select("sessions-juggle");

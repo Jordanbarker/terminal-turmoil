@@ -525,6 +525,8 @@ export const HELP_TEXTS: Record<string, string> = {
     "  ls                      List sessions",
     "  attach [-t name]        Attach to a session (default: most recently detached)",
     "  detach                  Detach from the current session (also <prefix> d)",
+    "  rename-session [-t name] new-name",
+    "                          Rename a session (default target: the current one)",
     "  kill-session [-t name]  Destroy a session",
     "  kill-server             Destroy all sessions and stop the server",
     "",

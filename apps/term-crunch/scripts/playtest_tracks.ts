@@ -81,6 +81,8 @@ const SOLUTIONS: Record<string, Move[]> = {
     "tmux kill-session -t scratch",
   ],
 
+  "sessions-rename": ["tmux detach", "tmux rename-session -t 0 old", "tmux new -s new"],
+
   "git-first-commit": ["git add README.md", 'git commit -m "init"'],
   "git-unstage": ["git reset .env", 'git commit -m "update"'],
   "git-stash": ["git stash", "git checkout hotfix", "git checkout main", "git stash pop"],

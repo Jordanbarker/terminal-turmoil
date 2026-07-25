@@ -542,6 +542,20 @@ export const useGameStore = create<GameStore>()(
             });
             return true;
           }
+          case "rename-session": {
+            // Pure name swap — the client view is untouched, so this returns false.
+            const att = state.tmuxAttachedSession;
+            if (att?.name === action.target) {
+              set({ tmuxAttachedSession: { ...att, name: action.name } });
+            } else {
+              set({
+                tmuxDetachedSessions: state.tmuxDetachedSessions.map((s) =>
+                  s.name === action.target ? { ...s, name: action.name } : s,
+                ),
+              });
+            }
+            return false;
+          }
           case "kill-session": {
             if (state.tmuxAttachedSession?.name === action.name) {
               set(killToBareShell(state, "[exited]"));
