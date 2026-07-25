@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import "@tt/core/commands/builtins"; // register builtins so the registry is populated
 import { parseTmuxPrefix, parseTmuxBindings } from "@tt/core/terminal/tmuxConfig";
+import { resetStore } from "./helpers";
 import { useGameStore } from "../state/gameStore";
 import { HOME_DIR } from "../lib/machine";
 import { DEFAULT_ZSHRC, DEFAULT_TMUX_CONF } from "../lib/defaultConfigs";
@@ -10,7 +11,7 @@ const TMUX_PATH = `${HOME_DIR}/.tmux.conf`;
 
 describe("settings: dotfiles seeded into each challenge fs", () => {
   beforeEach(() => {
-    useGameStore.setState({ activeCategory: "all", zshrc: DEFAULT_ZSHRC, tmuxConf: DEFAULT_TMUX_CONF });
+    resetStore();
     useGameStore.getState().loadChallenge(0);
   });
 
@@ -35,7 +36,7 @@ describe("settings: dotfiles seeded into each challenge fs", () => {
 
 describe("settings: setConfigs applies live and persists across challenges", () => {
   beforeEach(() => {
-    useGameStore.setState({ activeCategory: "all", zshrc: DEFAULT_ZSHRC, tmuxConf: DEFAULT_TMUX_CONF });
+    resetStore();
     useGameStore.getState().loadChallenge(0);
   });
 

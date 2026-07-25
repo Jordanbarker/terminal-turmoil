@@ -29,7 +29,15 @@ import { buildBaseFs, applyConfigs } from "../lib/seed";
 import { DEFAULT_ZSHRC, DEFAULT_TMUX_CONF } from "../lib/defaultConfigs";
 import { getCategory, registryIndex, DEFAULT_CATEGORY } from "../challenges/categories";
 import type { ChallengeSnapshot } from "../challenges/types";
-import { applyGrade, type Grade, type ReviewStat } from "../challenges/scheduler";
+import { applyGrade, countDue, type Grade, type ReviewStat } from "../challenges/scheduler";
+import {
+  awardCompletion,
+  awardDeckCleared,
+  initialMastery,
+  type Award,
+  type MasteryState,
+} from "../challenges/mastery";
+import { CHALLENGES } from "../challenges/registry";
 
 /** Monotonic toast id source; toasts are transient so it never needs persisting. */
 let toastId = 0;
@@ -121,6 +129,20 @@ export interface GameState {
   reviewTotal: number; // queue length at session start (progress display)
   reviewReturn: { category: string; index: number } | null; // non-null == review mode; where to return
 
+  // experience (challenges/mastery.ts). Persisted. checkCompletion is the
+  // primary writer (first-clear/retention/weekly MP at the moment of
+  // completion); recordGrade only adds the deck-cleared bonus.
+  mastery: MasteryState;
+  // challengeId -> last MP-paying completion time; persisted. The retention
+  // anti-farm gate measures from this, NOT reviewStats.lastReviewedAt, which
+  // only moves at grade time (an abandoned gate would re-pay otherwise).
+  lastMpAt: Record<string, number>;
+  // Awards from the most recent MP write, for display only (the completion
+  // panel names them; the header block animates the total). Written in the SAME
+  // set() as `mastery` so a subscriber never sees one without the other.
+  // Transient — cleared by loadChallenge, never persisted.
+  lastAwards: Award[];
+
   // lifecycle
   selectCategory: (id: string) => void;
   loadChallenge: (index: number) => void;
@@ -196,6 +218,9 @@ export const useGameStore = create<GameState>()(
   reviewQueue: [],
   reviewTotal: 0,
   reviewReturn: null,
+  mastery: initialMastery(Date.now()),
+  lastMpAt: {},
+  lastAwards: [],
 
   selectCategory: (id) => {
     get().cancelReview(); // switching tracks abandons any in-flight review session
@@ -237,6 +262,8 @@ export const useGameStore = create<GameState>()(
       challengeStartTime: Date.now(),
       lastElapsedMs: null,
       lastWasBest: false,
+      // The previous challenge's awards must not ride into this sandbox.
+      lastAwards: [],
     });
   },
 
@@ -289,10 +316,31 @@ export const useGameStore = create<GameState>()(
     }
 
     // Last step of this challenge passed — record the run time and personal best.
-    const elapsed = Date.now() - state.challengeStartTime;
+    const now = Date.now();
+    const elapsed = now - state.challengeStartTime;
     const prevBest = state.bestTimes[challenge.id];
     const isBest = prevBest == null || elapsed < prevBest;
     const bestTimes = isBest ? { ...state.bestTimes, [challenge.id]: elapsed } : state.bestTimes;
+
+    // MP is awarded HERE, at the objective win, not at the grade gate — grades
+    // only feed the scheduler. First clear = never completed before (bestTimes
+    // is written right below, so prevBest is the completion-time signal);
+    // retention measures from lastMpAt (fallback to the pre-lastMpAt saves'
+    // grade timestamp). Double-award is impossible: the completed/awaiting
+    // early-return above rides the same atomic set that raises the gate.
+    const lastAt = state.lastMpAt[challenge.id] ?? state.reviewStats[challenge.id]?.lastReviewedAt;
+    const { state: nextMastery, awards } = awardCompletion(
+      state.mastery,
+      {
+        isFirstClear: prevBest == null,
+        elapsedMs: lastAt === undefined ? null : now - lastAt,
+        intervalMs: state.reviewStats[challenge.id]?.intervalMs ?? null,
+      },
+      now
+    );
+    // Stamped even when the sub-day gate paid nothing, so repeats keep
+    // measuring from the most recent completion.
+    const lastMpAt = { ...state.lastMpAt, [challenge.id]: now };
 
     const nextIndex = state.challengeIndex + 1;
     // In review mode the gate always rises (even on the last registry
@@ -308,6 +356,9 @@ export const useGameStore = create<GameState>()(
         lastElapsedMs: elapsed,
         lastWasBest: isBest,
         bestTimes,
+        mastery: nextMastery,
+        lastMpAt,
+        lastAwards: awards,
       });
     } else {
       set({
@@ -317,6 +368,9 @@ export const useGameStore = create<GameState>()(
         lastElapsedMs: elapsed,
         lastWasBest: isBest,
         bestTimes,
+        mastery: nextMastery,
+        lastMpAt,
+        lastAwards: awards,
       });
     }
   },
@@ -358,16 +412,38 @@ export const useGameStore = create<GameState>()(
   },
 
   // Feed the SM-2-lite scheduler. Every graded completion goes through here,
-  // sequential play and review mode alike.
+  // sequential play and review mode alike. Completion MP was already paid by
+  // checkCompletion; the only MP written here is the deck-cleared bonus, which
+  // depends on the post-grade due count.
   recordGrade: (grade) => {
-    const { pendingGradeId, reviewStats } = get();
+    const { pendingGradeId, reviewStats, mastery } = get();
     if (pendingGradeId === null) return;
+    const now = Date.now();
+    const nextStats = { ...reviewStats, [pendingGradeId]: applyGrade(reviewStats[pendingGradeId], grade, now) };
+
+    // Deck-cleared: nothing left due across the whole registry, matching what
+    // the `review` command counts. Skipped on "again": the 10m reset makes the
+    // failed card momentarily not-due, which must not count as clearing. Also
+    // requires every card to have been graded at least once — never-graded
+    // cards aren't "due" (isDue), so without this a single grade in ordinary
+    // sequential play would look like a cleared deck.
+    let nextMastery = mastery;
+    let awards: Award[] = [];
+    const ids = CHALLENGES.map((c) => c.id);
+    if (grade !== "again" && ids.every((id) => nextStats[id] != null) && countDue(nextStats, ids, now) === 0) {
+      const cleared = awardDeckCleared(nextMastery, now);
+      nextMastery = cleared.state;
+      awards = cleared.awards;
+    }
+
+    // lastAwards is only overwritten when this grade actually paid something, so
+    // the completion awards stay named in the end-of-track banner (which, unlike
+    // the mid-track gate, survives the grade).
     set({
-      reviewStats: {
-        ...reviewStats,
-        [pendingGradeId]: applyGrade(reviewStats[pendingGradeId], grade, Date.now()),
-      },
+      reviewStats: nextStats,
       pendingGradeId: null,
+      mastery: nextMastery,
+      ...(awards.length > 0 ? { lastAwards: awards } : {}),
     });
   },
 
@@ -662,6 +738,22 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: "term-crunch-progress",
+      version: 1,
+      // Passthrough so pre-versioning (v0) saves aren't discarded on the
+      // version bump; the merge below already defaults any missing fields.
+      migrate: (persisted) => persisted,
+      // Deep-merge mastery over its defaults so a save written before a new
+      // MasteryState field existed can never hydrate a partial object (the
+      // default merge is shallow: the persisted object would replace
+      // initialMastery wholesale and crash the award functions).
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<GameState>;
+        return {
+          ...current,
+          ...p,
+          mastery: { ...current.mastery, ...(p.mastery ?? {}) },
+        };
+      },
       // Personal bests + review scheduling survive a refresh; fs/windows/
       // challenge index reseed on mount (GameShell calls loadChallenge(0) when
       // windows.length === 0). Mid-review, activeCategory is temporarily "all",
@@ -670,6 +762,8 @@ export const useGameStore = create<GameState>()(
       partialize: (s) => ({
         bestTimes: s.bestTimes,
         reviewStats: s.reviewStats,
+        mastery: s.mastery,
+        lastMpAt: s.lastMpAt,
         activeCategory: s.reviewReturn?.category ?? s.activeCategory,
         zshrc: s.zshrc,
         tmuxConf: s.tmuxConf,

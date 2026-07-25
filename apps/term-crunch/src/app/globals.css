@@ -12,3 +12,182 @@ body {
   color: #b3b1ad;
   font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 }
+
+/* "+N MP" chip in MasteryBlock: pops in with an overshoot + gold glow while it
+   tallies the award (beat 1), then holds still while the total absorbs it
+   (beat 2 — only one number moves at a time); the component adds .mp-gain-out
+   when the transfer completes to drift it up and fade, and removes the node
+   after. Durations here are mirrored by timeouts in MasteryBlock — see the
+   CHIP_/TRANSFER_ constants there. */
+@keyframes mp-gain {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.6);
+    text-shadow: none;
+  }
+  48% {
+    opacity: 1;
+    transform: translateY(0) scale(1.25);
+    text-shadow: 0 0 8px rgba(230, 180, 80, 0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 3px rgba(230, 180, 80, 0.4);
+  }
+}
+.mp-gain {
+  animation: mp-gain 0.4s ease-out forwards;
+}
+@keyframes mp-gain-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+.mp-gain-out {
+  animation: mp-gain-out 0.3s ease-in 0.08s forwards;
+}
+
+/* MP total while the count-up runs: brighten and softly pulse. */
+@keyframes mp-counter-pulse {
+  from {
+    color: #ffd580;
+    text-shadow: 0 0 2px rgba(255, 213, 128, 0.3);
+  }
+  to {
+    color: #ffd580;
+    text-shadow: 0 0 8px rgba(255, 213, 128, 0.8);
+  }
+}
+.mp-counting {
+  animation: mp-counter-pulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Progress-bar arrival accents. Both are keyed overlays mounted when the
+   transfer LANDS, not when the award arrives — during the count-up the fill is
+   still resizing, so anything riding it reads as a pale leading edge instead of
+   motion. Both must also stay inside the bar's box: the track and the fill are
+   both overflow-hidden, so an outward box-shadow glow on a child is clipped to
+   nothing (that is what the old .mp-bar-flash glow did). Hence a solid overlay
+   fading out rather than a glow. */
+@keyframes mp-bar-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.mp-bar-flash {
+  background: #ffd580;
+  animation: mp-bar-flash 0.45s ease-out forwards;
+}
+
+/* The sweep spans the whole TRACK (sibling of the fill, not a child): a fill a
+   few percent wide gives a sweep nowhere to travel. */
+@keyframes mp-bar-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.mp-bar-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: mp-bar-sweep 0.55s ease-out forwards;
+}
+
+/* "▲ Level up" callout: pop in with a glow, hold, fade out. The component
+   removes the node on a matching timeout. */
+@keyframes level-up {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    box-shadow: 0 0 0 rgba(230, 180, 80, 0);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.06);
+    box-shadow: 0 0 12px rgba(230, 180, 80, 0.7);
+  }
+  22% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(230, 180, 80, 0.35);
+  }
+  75% {
+    opacity: 1;
+    box-shadow: 0 0 0 rgba(230, 180, 80, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.level-up {
+  animation: level-up 2.5s ease-out forwards;
+}
+
+/* Level title flash when a threshold is crossed. */
+@keyframes title-flash {
+  0%,
+  60% {
+    color: #ffd580;
+    text-shadow: 0 0 6px rgba(255, 213, 128, 0.7);
+  }
+  100% {
+    color: #6b7680;
+    text-shadow: none;
+  }
+}
+.title-flash {
+  animation: title-flash 2.5s ease-out forwards;
+}
+
+/* Entrance for the completion gate / end-of-track banner. The MP payoff happens
+   in the sidebar header, far from the green box the player is actually reading;
+   this ties the two together. Deliberately NOT used on the per-step "✓ Step
+   complete" flash, which fires often enough that animating it is noise. */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.panel-in {
+  animation: panel-in 0.18s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-gain,
+  .mp-gain-out,
+  .mp-counting,
+  .mp-bar-sweep::after,
+  .level-up,
+  .title-flash,
+  .panel-in {
+    animation: none;
+  }
+  .mp-bar-sweep::after {
+    content: none;
+  }
+  /* Not just animation:none — the flash overlay is a solid gold fill that the
+     fade-out is what removes, so it has to start invisible instead. */
+  .mp-bar-flash {
+    animation: none;
+    opacity: 0;
+  }
+}

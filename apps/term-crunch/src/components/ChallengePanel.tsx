@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { formatElapsed } from "@tt/core/lib/format";
 import { isGradeGateUp, useGameStore } from "../state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES } from "../challenges/categories";
@@ -13,6 +13,7 @@ import {
   nextIntervalMs,
   type ReviewStat,
 } from "../challenges/scheduler";
+import { UNLOCKS, levelFor, progressInLevel } from "../challenges/mastery";
 import type { Step } from "../challenges/types";
 import SchematicView from "./SchematicView";
 import WindowStripView from "./WindowStripView";
@@ -44,6 +45,8 @@ export default function ChallengePanel() {
   const reviewTotal = useGameStore((s) => s.reviewTotal);
   const reviewReturn = useGameStore((s) => s.reviewReturn);
   const pendingGradeId = useGameStore((s) => s.pendingGradeId);
+  const mastery = useGameStore((s) => s.mastery);
+  const lastAwards = useGameStore((s) => s.lastAwards);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -116,6 +119,8 @@ export default function ChallengePanel() {
             otherwise diverge between server HTML and a returning player's first
             client render. */}
         {challengeStartTime !== 0 && reviewReturn === null && <DueNotice reviewStats={reviewStats} />}
+        {/* Same post-mount gate: `mastery` is persisted too. */}
+        {challengeStartTime !== 0 && <MasteryBlock mp={mastery.mp} />}
       </div>
 
       <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto">
@@ -126,8 +131,16 @@ export default function ChallengePanel() {
       )}
 
       {awaitingContinue && challenge ? (
-        <div className="rounded border border-[#2e7d32] bg-[#11231a] p-4 text-[#7ee787]">
+        <div className="panel-in rounded border border-[#2e7d32] bg-[#11231a] p-4 text-[#7ee787]">
           <div className="text-base font-semibold">✓ {challenge.title} complete!</div>
+          {/* The MP payoff animates in the sidebar header, which is not where the
+              player is looking — name the award here too, at the box they are
+              actually reading. */}
+          {lastAwards.length > 0 && (
+            <div className="mt-1 text-sm font-semibold text-[#e6b450]">
+              {lastAwards.map((a) => `+${a.mp} MP · ${a.label}`).join("  ")}
+            </div>
+          )}
           {lastElapsedMs != null && (
             <div className="mt-2 text-sm text-[#b3b1ad]">
               Time: <span className="font-semibold text-[#e6b450]">{formatElapsed(lastElapsedMs)}</span>
@@ -142,8 +155,13 @@ export default function ChallengePanel() {
           <GradeBar stat={reviewStats[challenge.id]} />
         </div>
       ) : completed || !challenge ? (
-        <div className="rounded border border-[#2e7d32] bg-[#11231a] p-4 text-sm text-[#7ee787]">
+        <div className="panel-in rounded border border-[#2e7d32] bg-[#11231a] p-4 text-sm text-[#7ee787]">
           🎉 All {activeCategory === "all" ? "" : `${category.label} `}challenges complete. Nicely done.
+          {lastAwards.length > 0 && (
+            <div className="mt-1 font-semibold text-[#e6b450]">
+              {lastAwards.map((a) => `+${a.mp} MP · ${a.label}`).join("  ")}
+            </div>
+          )}
           {completed && pendingGradeId !== null && <GradeBar stat={reviewStats[pendingGradeId]} />}
         </div>
       ) : challengeStartTime === 0 ? (
@@ -254,6 +272,256 @@ function DueNotice({ reviewStats }: { reviewStats: Record<string, ReviewStat> })
   const dueCount = countDue(reviewStats, CHALLENGES.map((c) => c.id), now);
   if (dueCount === 0) return null;
   return <div className="text-xs text-[#e6b450]">{`${dueCount} due for review: type 'review'`}</div>;
+}
+
+/**
+ * Mastery readout: total MP, level title, progress through the current band,
+ * and the next named unlock. When `mp` rises (an award landed) the reward plays
+ * as two beats, so only one number is ever moving:
+ *
+ *   beat 1  the "+N MP" chip pops in and tallies the award (~0.3s), alone
+ *   beat 2  the chip holds while the total and the bar count up in lockstep
+ *           (0.4-0.9s, pulsing gold), landing together on a flash + sweep
+ *
+ * Multiple awards land in one store set, so the diff is naturally their sum.
+ * Crossing a level threshold pauses the transfer to fire a transient
+ * "▲ Level up" callout and flash the title; both derive here, never from the
+ * store. State initializes from the mounted `mp` (persisted), so hydration
+ * never animates from 0.
+ */
+const CHIP_TALLY_MS = 300;
+// A beat of stillness between the two, so the chip has visibly stopped before
+// the total starts.
+const BEAT_GAP_MS = 120;
+// The transfer is duration-clamped rather than rate-fixed: at a fixed rate a
+// stacked award (first clear + weekly + deck cleared = 125) would run ~3x as long
+// as a lone one. Clamping keeps every award on the same beat — a typical +50
+// lands ~1.05s after the win, the whole reward is over inside ~1.5s.
+const TRANSFER_MIN_MS = 350;
+const TRANSFER_MAX_MS = 800;
+const TRANSFER_MP_PER_SECOND = 80;
+const LEVEL_UP_PAUSE_MS = 600;
+// These two mirror CSS durations in globals.css and must move with them:
+// .mp-gain-out (0.3s + 0.08s delay) and .mp-bar-flash / .mp-bar-sweep.
+const CHIP_OUT_MS = 400;
+const BAR_ACCENT_MS = 600;
+
+type Gain = { key: number; done: boolean; total: number };
+
+function MasteryBlock({ mp }: { mp: number }) {
+  const [display, setDisplay] = useState(mp);
+  // Bar width (percent through the current band), kept separate from `display`
+  // because the text is rounded and the bar must not be: round(499.6) is 500,
+  // and progressInLevel(500) re-bases to 0% of the NEXT band a frame before the
+  // real value crosses, flashing the bar empty.
+  const [progress, setProgress] = useState(() => progressInLevel(mp) * 100);
+  const [chip, setChip] = useState(0);
+  const [gain, setGain] = useState<Gain | null>(null);
+  const [counting, setCounting] = useState(false);
+  const [levelUp, setLevelUp] = useState<{ title: string; key: number } | null>(null);
+  // While paused at a just-reached threshold the bar renders 100% of the old
+  // band instead of re-basing to 0% of the new one.
+  const [barHold, setBarHold] = useState(false);
+  // Keys the bar's arrival accents (flash + sweep); bumped when the transfer lands.
+  const [sweep, setSweep] = useState<number | null>(null);
+  const fromRef = useRef(mp);
+  // Live displayed value (fractional): a second award mid-count must animate
+  // from what's on screen, not from the previous target (which would snap the
+  // number up).
+  const displayRef = useRef(mp);
+  // Live chip value and the award it is tallying toward. The rAF loop needs both
+  // synchronously (state updates land too late), so the refs are the source of
+  // truth and the state is the render mirror.
+  const chipRef = useRef(0);
+  const gainRef = useRef<Gain | null>(null);
+  useEffect(() => {
+    const prev = fromRef.current;
+    fromRef.current = mp;
+    if (mp === prev) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animate = mp > prev && !reduced;
+    let target = 0;
+    if (mp > prev) {
+      // A changing key remounts the chip so its pop-in restarts when a second
+      // award (deck-cleared at grade time) lands mid-fade. An award landing
+      // while the chip is still live folds into its running total and keeps
+      // tallying from what's on screen; `done` starts the fade-out.
+      const live = gainRef.current;
+      target = (live && !live.done ? live.total : 0) + (mp - prev);
+      if (!live || live.done) chipRef.current = 0;
+      gainRef.current = { key: (live?.key ?? 0) + 1, done: !animate, total: target };
+      setGain(gainRef.current);
+      if (!animate) {
+        chipRef.current = target;
+        setChip(target);
+      }
+    }
+    // A decrease (reset/newgame) snaps in one frame with no celebration; under
+    // reduced motion the snap still gets the level-up callout (informational).
+    // Both directions go through rAF so the effect never sets state
+    // synchronously.
+    let raf = 0;
+    let last = 0;
+    let startedAt: number | null = null;
+    let pauseUntil = 0;
+    // Non-null once beat 2 has begun: MP per second for the transfer.
+    let rate: number | null = null;
+    const tallyFrom = chipRef.current;
+    const finish = () => {
+      displayRef.current = mp;
+      setDisplay(mp);
+      setProgress(progressInLevel(mp) * 100);
+      setBarHold(false);
+      setCounting(false);
+      if (gainRef.current) {
+        gainRef.current = { ...gainRef.current, done: true };
+        setGain(gainRef.current);
+      }
+      // The bar's accents fire on ARRIVAL, not on award: while the fill is still
+      // resizing, anything riding it reads as a pale leading edge, not motion.
+      if (animate) setSweep((s) => (s ?? 0) + 1);
+    };
+    const tick = (t: number) => {
+      if (startedAt === null) startedAt = t;
+      // Beat 1: the chip tallies alone — the total and the bar stay put.
+      if (t - startedAt < CHIP_TALLY_MS + BEAT_GAP_MS) {
+        const p = Math.min(1, (t - startedAt) / CHIP_TALLY_MS);
+        chipRef.current = tallyFrom + (target - tallyFrom) * p;
+        setChip(Math.round(chipRef.current));
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      if (rate === null) {
+        // Beat 2 opens: pin the chip to the exact award, then start the total.
+        chipRef.current = target;
+        setChip(target);
+        setCounting(true);
+        const remaining = mp - displayRef.current;
+        const ms = Math.min(
+          TRANSFER_MAX_MS,
+          Math.max(TRANSFER_MIN_MS, (remaining / TRANSFER_MP_PER_SECOND) * 1000)
+        );
+        rate = remaining / (ms / 1000);
+        last = t;
+      }
+      const dt = (t - last) / 1000;
+      last = t;
+      if (t < pauseUntil) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      setBarHold(false);
+      const from = displayRef.current;
+      let value = Math.min(mp, from + rate * dt);
+      // Transfer pauses at each level threshold: clamp the bar full, fire the
+      // level-up feedback, hold, then continue with the overflow.
+      const { next } = levelFor(from);
+      if (next !== null && from < next && value >= next) {
+        value = next;
+        pauseUntil = t + LEVEL_UP_PAUSE_MS;
+        setBarHold(true);
+        setLevelUp((l) => ({ title: levelFor(next).title, key: (l?.key ?? 0) + 1 }));
+      }
+      displayRef.current = value;
+      setDisplay(Math.round(value));
+      setProgress(progressInLevel(value) * 100);
+      if (value < mp || t < pauseUntil) raf = requestAnimationFrame(tick);
+      else finish();
+    };
+    if (!animate) {
+      if (mp > prev && levelFor(mp).title !== levelFor(prev).title) {
+        setLevelUp((l) => ({ title: levelFor(mp).title, key: (l?.key ?? 0) + 1 }));
+      }
+      raf = requestAnimationFrame(finish);
+      return () => cancelAnimationFrame(raf);
+    }
+    // An award landing mid-transfer restarts at beat 1, where the total is
+    // frozen — the pulse must not imply otherwise.
+    setCounting(false);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [mp]);
+
+  // Remove the +N MP chip after its fade-out ends (once the transfer is done):
+  // the node must not linger (it pollutes select-by-text panel reads, and
+  // under reduced motion there is no animation left to hide it).
+  useEffect(() => {
+    if (!gain?.done) return;
+    const id = setTimeout(() => {
+      gainRef.current = null;
+      chipRef.current = 0;
+      setGain(null);
+      setChip(0);
+    }, CHIP_OUT_MS);
+    return () => clearTimeout(id);
+  }, [gain]);
+
+  // Remove the level-up callout after its 2.5s CSS animation ends, rather than
+  // leaving an invisible node in the DOM.
+  useEffect(() => {
+    if (!levelUp) return;
+    const id = setTimeout(() => setLevelUp(null), 2500);
+    return () => clearTimeout(id);
+  }, [levelUp]);
+
+  // Same for the bar accents, whose overlays would otherwise sit on the fill.
+  useEffect(() => {
+    if (sweep === null) return;
+    const id = setTimeout(() => setSweep(null), BAR_ACCENT_MS);
+    return () => clearTimeout(id);
+  }, [sweep]);
+
+  const { title } = levelFor(display);
+  // The rAF loop drives the width directly — no CSS transition, which would
+  // leave the bar a transition behind the count-up.
+  const pct = barHold ? 100 : progress;
+  // The footer reads off the FINAL mp, not the animating display: the total, the
+  // chip and the bar are already moving, and a fourth number counting down at
+  // the same time is just noise. Unlocks are keyed by level threshold, so the
+  // next one is the next band's.
+  const { next } = levelFor(mp);
+  const unlock = next === null ? undefined : UNLOCKS[next];
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="relative text-xs text-[#b3b1ad]">
+        <span className={`font-semibold text-[#e6b450]${counting ? " mp-counting" : ""}`}>
+          {`${display.toLocaleString("en-US")} MP`}
+        </span>
+        <span key={levelUp ? `lvl-${levelUp.key}` : "title"} className={`text-[#6b7680]${levelUp ? " title-flash" : ""}`}>
+          {` · ${title}`}
+        </span>
+        {gain && (
+          <span
+            key={`gain-${gain.key}`}
+            className={`mp-gain absolute right-0 top-0 font-semibold text-[#e6b450]${gain.done ? " mp-gain-out" : ""}`}
+          >
+            {`+${chip.toLocaleString("en-US")} MP`}
+          </span>
+        )}
+      </div>
+      <div className="relative h-1.5 w-full overflow-hidden rounded bg-[#1c2430]">
+        <div className="relative h-full overflow-hidden bg-[#e6b450]" style={{ width: `${pct}%` }}>
+          {sweep !== null && <div key={`flash-${sweep}`} className="mp-bar-flash absolute inset-0" />}
+        </div>
+        {/* Sibling of the fill, not a child: the sweep needs the whole track to
+            travel across (see globals.css). */}
+        {sweep !== null && <div key={`sweep-${sweep}`} className="mp-bar-sweep absolute inset-0" />}
+      </div>
+      {levelUp && (
+        <div
+          key={levelUp.key}
+          className="level-up self-start rounded border border-[#e6b450] px-2 py-0.5 text-xs font-semibold text-[#e6b450]"
+        >
+          {`▲ Level up: ${levelUp.title}`}
+        </div>
+      )}
+      {next !== null && (
+        <div className="text-xs text-[#6b7680]">
+          {`${(next - mp).toLocaleString("en-US")} MP to ${levelFor(next).title}${unlock ? ` · unlocks ${unlock}` : ""}`}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**

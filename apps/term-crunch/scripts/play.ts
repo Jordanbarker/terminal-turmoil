@@ -43,6 +43,7 @@ import { runLine } from "../src/hooks/useTerminal";
 import { useGameStore, isGradeGateUp, type GameState } from "../src/state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES, registryIndex } from "../src/challenges/categories";
 import type { Grade } from "../src/challenges/scheduler";
+import { levelFor, progressInLevel } from "../src/challenges/mastery";
 import { HOME_DIR } from "../src/lib/machine";
 
 // ── Fake terminal ───────────────────────────────────────────────────
@@ -82,8 +83,31 @@ export const GRADE_BY_KEY: Record<string, Grade> = {
 
 // ── Runner ──────────────────────────────────────────────────────────
 
+// Mastery awards surface in the browser as the completion panel's gold line plus
+// the animated header block, neither of which exists here, so echo them —
+// headless playtesting is the only way to watch the MP economy. A store
+// subscription catches every writer (completion MP lands inside
+// checkCompletion, i.e. any command or pane action; deck-cleared lands in
+// recordGrade), so no per-call-site hooks are needed. Module-level guard:
+// the store is a singleton, so multiple runners must not double-echo.
+let awardEchoInstalled = false;
+function installAwardEcho(masteryLine: () => string): void {
+  if (awardEchoInstalled) return;
+  awardEchoInstalled = true;
+  // lastAwards is written in the SAME set() as mastery, so one transition
+  // carries both the labels and the post-award total. Identity comparison:
+  // every write is a fresh array (loadChallenge resets it to []).
+  useGameStore.subscribe((s, prev) => {
+    if (s.lastAwards !== prev.lastAwards && s.lastAwards.length > 0) {
+      const awarded = s.lastAwards.map((a) => `+${a.mp} MP · ${a.label}`);
+      console.log(`\x1b[35m${awarded.join("  ")}  →  ${masteryLine()}\x1b[0m`);
+    }
+  });
+}
+
 export class CrunchRunner {
   constructor(challengeIndex = 0) {
+    installAwardEcho(() => this.masteryLine());
     this.store.loadChallenge(challengeIndex);
   }
 
@@ -146,8 +170,18 @@ export class CrunchRunner {
   grade(grade: Grade | 1 | 2 | 3 | 4 = "good"): boolean {
     if (!isGradeGateUp(this.store)) return false;
     const g = typeof grade === "number" ? GRADE_BY_KEY[String(grade)] : grade;
+    // MP echoes come from the award-echo store subscription (completion MP
+    // lands before this in checkCompletion; grading only adds deck-cleared).
     this.store.continueToNext(g);
     return true;
+  }
+
+  /** `1,234 MP · Learner (34% to Scholar)` — the sidebar's MasteryBlock in one line. */
+  masteryLine(): string {
+    const { mp } = this.store.mastery;
+    const { title, next } = levelFor(mp);
+    const tail = next === null ? "" : ` (${Math.round(progressInLevel(mp) * 100)}% to ${levelFor(next).title})`;
+    return `${mp.toLocaleString("en-US")} MP · ${title}${tail}`;
   }
 
   // ── editor stand-in ───────────────────────────────────────────────
@@ -246,6 +280,7 @@ export class CrunchRunner {
       `windows:    ${s.windows
         .map((w) => `${windowLabel(w)}${w.id === s.activeWindowId ? "*" : ""}`)
         .join("  ")}`,
+      `mastery:    ${this.masteryLine()}`,
       `cwd:        ${this.cwd}`,
       `env:        ${JSON.stringify(s.envVars)}`,
       `aliases:    ${JSON.stringify(s.aliases)}`,

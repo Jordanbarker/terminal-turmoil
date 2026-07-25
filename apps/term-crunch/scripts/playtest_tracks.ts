@@ -23,7 +23,7 @@ import { CHALLENGES } from "../src/challenges/registry";
 import { isGradeGateUp } from "../src/state/gameStore";
 
 /** One solution move: a shell line, or a runner action (return value ignored). */
-type Move = string | ((r: CrunchRunner) => unknown);
+export type Move = string | ((r: CrunchRunner) => unknown);
 
 /** Challenges whose solution is keystrokes inside an editor session. */
 const SKIPPED: Record<string, string> = {
@@ -35,7 +35,7 @@ const SKIPPED: Record<string, string> = {
   "vim-reorder": "solution is vim keystrokes",
 };
 
-const SOLUTIONS: Record<string, Move[]> = {
+export const SOLUTIONS: Record<string, Move[]> = {
   // (h L (v L L)) — split side-by-side, then stack the new right pane.
   "panes-split": [(r) => r.split("h"), (r) => r.split("v")],
 
@@ -229,7 +229,10 @@ async function main() {
   process.exit(failCount === 0 ? 0 : 1);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Run only when invoked as a script, so importing SOLUTIONS doesn't start a playtest.
+if (process.argv[1]?.endsWith("playtest_tracks.ts")) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

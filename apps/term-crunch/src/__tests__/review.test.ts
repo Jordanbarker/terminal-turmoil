@@ -6,6 +6,7 @@ import { consumePendingNavigation } from "../engine/commands/navigation";
 import { getCategory, registryIndex as idx } from "../challenges/categories";
 import { CHALLENGES } from "../challenges/registry";
 import { INITIAL_EASE, type ReviewStat } from "../challenges/scheduler";
+import { resetStore } from "./helpers";
 import { useGameStore } from "../state/gameStore";
 import { buildBaseFs } from "../lib/seed";
 import { CRUNCH_MACHINE, HOME_DIR } from "../lib/machine";
@@ -43,19 +44,7 @@ const overdue = (overdueBy: number): ReviewStat => ({
 
 describe("review sessions", () => {
   beforeEach(() => {
-    useGameStore.setState({
-      activeCategory: "all",
-      challengeIndex: 0,
-      completed: false,
-      awaitingContinue: false,
-      flash: null,
-      bestTimes: {},
-      reviewStats: {},
-      pendingGradeId: null,
-      reviewQueue: [],
-      reviewTotal: 0,
-      reviewReturn: null,
-    });
+    resetStore();
     consumePendingNavigation(); // clear any leftover pending nav
   });
 
@@ -204,6 +193,46 @@ describe("review sessions", () => {
     expect(state().awaitingContinue).toBe(true);
     expect(state().completed).toBe(false);
     expect(state().pendingGradeId).toBe(last.id);
+  });
+
+  // Completes panes-split through the real splitPane -> checkCompletion path.
+  const completePanesSplit = () => {
+    const state = useGameStore.getState;
+    state().loadChallenge(idx("panes-split"));
+    const rootPaneId = state().windows[0].activePaneId;
+    const rightPaneId = state().splitPane(rootPaneId, "h")!;
+    state().splitPane(rightPaneId, "v"); // (h L (v L L)) = the target layout
+  };
+
+  it("completing awards mastery points at the gate, before any grade", () => {
+    const state = useGameStore.getState;
+    completePanesSplit();
+    expect(state().awaitingContinue).toBe(true);
+    expect(state().mastery.mp).toBe(50); // never cleared before => first clear
+    expect(state().lastAwards).toEqual([{ mp: 50, label: "First clear" }]);
+    expect(state().lastMpAt["panes-split"]).toBeDefined();
+  });
+
+  it("an Again grade adds no MP but still schedules the lapse", () => {
+    const state = useGameStore.getState;
+    completePanesSplit();
+    state().continueToNext("again");
+    expect(state().mastery.mp).toBe(50); // completion MP already paid; grade adds nothing
+    expect(state().reviewStats["panes-split"]).toMatchObject({ lapses: 1 });
+  });
+
+  it("abandoning a gate keeps the completion MP but never schedules — and a replay pays nothing", () => {
+    const state = useGameStore.getState;
+    completePanesSplit();
+    state().jumpToChallenge(idx("rm-bomb"));
+    expect(state().pendingGradeId).toBeNull();
+    expect(state().mastery.mp).toBe(50); // the objective completion happened
+    expect(state().reviewStats["panes-split"]).toBeUndefined();
+
+    // Replaying immediately: bestTimes blocks first-clear, the sub-day gate
+    // (measured from lastMpAt) blocks retention.
+    completePanesSplit();
+    expect(state().mastery.mp).toBe(50);
   });
 
   it("challenges shows due badges and the review summary", () => {

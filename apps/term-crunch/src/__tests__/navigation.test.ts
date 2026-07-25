@@ -5,6 +5,7 @@ import "@tt/core/commands/builtins"; // help (for the meta-command listing test)
 import "../engine/commands/navigation"; // register challenges/goto/next/prev/track
 import { consumePendingNavigation } from "../engine/commands/navigation";
 import { getCategory } from "../challenges/categories";
+import { resetStore } from "./helpers";
 import { useGameStore } from "../state/gameStore";
 import { buildBaseFs } from "../lib/seed";
 import { CRUNCH_MACHINE, HOME_DIR } from "../lib/machine";
@@ -29,7 +30,7 @@ function run(line: string) {
 
 describe("challenge navigation commands", () => {
   beforeEach(() => {
-    useGameStore.setState({ activeCategory: "all", challengeIndex: 0 });
+    resetStore();
     consumePendingNavigation(); // clear any leftover pending nav
   });
 

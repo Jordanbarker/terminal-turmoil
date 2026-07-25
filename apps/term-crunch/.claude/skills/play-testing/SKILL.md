@@ -9,7 +9,7 @@ description: "Headless runner for programmatically play-testing term-crunch chal
 
 - **No duplicated state** — read everything from `runner.store` (`useGameStore.getState()`): `stepIndex`, `challengeIndex`, `activeCategory`, `completed`/`awaitingContinue` (use `isGradeGateUp`), `bestTimes`, `reviewStats`, `windows`. `runner.challenge` resolves the current challenge through the active **category** (never `CHALLENGES[challengeIndex]` — see the `challenges` skill's index trap).
 - `run(line)` is async and returns `{ output, rawOutput, startSession }`. Navigation helpers (`goto`, `track`) go through `run`, so they exercise the real meta commands; `gotoId(id)` is the direct store jump for test setup.
-- `grade(1-4 | Grade)` answers the completion gate (`continueToNext`), returning false when no gate is up. Grading is what advances to the next challenge.
+- `grade(1-4 | Grade)` answers the completion gate (`continueToNext`), returning false when no gate is up. Grading is what advances to the next challenge. Mastery awards are echoed (with the running `masteryLine()`, also a `:status` row) by a store subscription installed in the runner that watches `lastAwards` (written in the same `set()` as `mastery`, so one transition carries labels + new total), since the award display is browser-only and MP lands at completion time (inside `checkCompletion`), not at the grade.
 - Scripts import `./localStorageStub` **before** the store so persist neither warns (`--localstorage-file`) nor writes a real file. Keep that import first if you add a script.
 
 **Two limitations to plan around:**
@@ -26,12 +26,14 @@ This complements `src/__tests__/challenges.test.ts`, which pokes predicates with
 
 The headless runner has no chord layer, no copy mode, no editor sessions and no React, so keybindings, the `ChallengePanel` readouts, cheat sheets and the Settings modal are browser-only. Playwright is a **root devDependency (1.61.0)** — use it from the repo root, no scratch install.
 
-**When headless passes and the browser fails, suspect the driver before the game.** Replaying the challenge's declared `SOLUTIONS` moves is the fastest discriminator: if that passes in the browser, your driver is what's broken. Most browser-only "bugs" are a chord sent to the wrong pane, a click that never landed, or `innerText` hiding whitespace (all covered below).
+**Two committed harnesses already drive the browser** — extend them instead of writing a throwaway: `npm run screenshot:panes` (`scripts/visual/pane-dividers.mjs`, the divider seams) and `npm run screenshot:mp-reward` (`scripts/visual/mp-reward.mjs`, the MP reward animation). The latter is the pattern to copy for anything *time-dependent*: it seeds a save via `addInitScript` + localStorage (`term-crunch-progress`; the store deep-merges `mastery`, so an mp-only save hydrates) to reach states that would take real play to reach, runs an in-page rAF recorder so single-frame glitches can't hide between screenshots, and re-runs the whole pass under `reducedMotion: "reduce"`.
+
+**When headless passes and the browser fails, suspect the driver before the game.** Replaying the challenge's declared `SOLUTIONS` moves is the fastest discriminator: if that passes in the browser, your driver is what's broken. `SOLUTIONS` (and its `Move` type) are exported from `playtest_tracks.ts` — importing them does not start the playtest — but only the string moves are browser-typeable; function moves drive `CrunchRunner` store actions and must be translated to chords. Most browser-only "bugs" are a chord sent to the wrong pane, a click that never landed, or `innerText` hiding whitespace (all covered below).
 
 ### Setup
 
 - **Dev server:** term-crunch is on **:3001** under the full `npm run dev` (termoil takes 3000, landing page 8080), or **:3000** via `npm run dev:crunch` alone. Check `curl -s localhost:3001` before starting another.
-- Fresh context = empty localStorage (key `term-crunch-progress`, holding only `bestTimes`/`reviewStats`/`activeCategory`/`zshrc`/`tmuxConf`) → boot lands directly in challenge 1. **No nano tutorial, no transitions, no `cheat`** (that's termoil). Navigate with the terminal meta commands `goto N` / `track <id>` / `next` / `prev` / `review`, or the panel dropdowns.
+- Fresh context = empty localStorage (key `term-crunch-progress`; the persisted-field list lives in the `challenges` skill — don't duplicate it here) → boot lands directly in challenge 1. **No nano tutorial, no transitions, no `cheat`** (that's termoil). Navigate with the terminal meta commands `goto N` / `track <id>` / `next` / `prev` / `review`, or the panel dropdowns.
 - Player is `player@crunch`, home `/home/player`.
 - **Driving from an ad-hoc script** (rather than the workspace playtests): imports need **absolute** paths; `@tt/core` resolves only with `npx tsx --tsconfig apps/term-crunch/tsconfig.json`; `require`/`import` of `playwright` needs an absolute path into the repo's `node_modules`; and top-level `await` fails under the cjs transform, so wrap the body in an `async main()`. Write such scripts to the session scratchpad, not the repo.
 
@@ -59,6 +61,6 @@ Prefix is **Ctrl+Space** by default (from `~/.tmux.conf`): `keyboard.down('Contr
 
 - Layout is **terminal on the left, `ChallengePanel` `<aside>` on the right** (`w-[420px]`). The panel has **no data attributes — select by text**: the challenge title, `CURRENT`/`TARGET` schematic headings, the brief, the step instruction, the hint controls, `Restart`, `Settings`.
 - Window tab bar is the shared `TmuxStatusBar` (same labels as termoil: `1:crunch:~ *`, `(n)` pane count).
-- **Gate detection: match on the full panel text, not its tail.** The mid-track gate and the end-of-track banner render differently and the banner sits *above* the cheat sheet, so tail-matching the panel misses it. Both live in `ChallengePanel.tsx`; the strings to match are `✓ <title> complete!` (mid-track gate header), `Enter = Good` (the `GradeBar`, rendered under both), and `🎉 All … challenges complete. Nicely done.` (end of track). Assert on text, not a selector — the panel has no data attributes.
+- **Gate detection: match on the full panel text, not its tail.** The mid-track gate and the end-of-track banner render differently and the banner sits *above* the cheat sheet, so tail-matching the panel misses it. Both live in `ChallengePanel.tsx`; the strings to match are `✓ <title> complete!` (mid-track gate header), `Enter = Good` (the `GradeBar`, rendered under both), and `🎉 All … challenges complete. Nicely done.` (end of track).
 
 Screenshot after each step: the schematic readouts are the reviewer's evidence that a layout matched for the right reason.
