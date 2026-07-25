@@ -33,6 +33,8 @@ export const chmodPerms: Challenge = {
   title: "Permissions",
   type: "fs",
   fsWatchPath: VAULT_DIR,
+  // Brief names secrets.env bare, so start the player in the vault.
+  startCwd: VAULT_DIR,
   commands: ["chmod", "cat", "ls", "cd", "pwd"],
   brief:
     'secrets.env is locked: `cat secrets.env` fails with "Permission denied". ' +

@@ -33,6 +33,8 @@ export const mvOrganize: Challenge = {
   title: "Sort the downloads",
   type: "fs",
   fsWatchPath: MESSY_DIR,
+  // Steps use bare filenames, so start the player in ~/downloads.
+  startCwd: MESSY_DIR,
   commands: ["mkdir", "mv", "ls", "tree", "cd", "pwd"],
   brief:
     "There's a stray log file loose in ~/downloads. Make a logs folder and tuck it away.",
@@ -41,7 +43,7 @@ export const mvOrganize: Challenge = {
     {
       instruction: "Create a logs subfolder in ~/downloads.",
       hint: "List the directory to see what's there, then create a directory named logs.",
-      command: "cd ~/downloads\nmkdir logs",
+      command: "mkdir logs",
       isComplete: (s) => {
         const node = s.fs.getNode(LOGS_DIR);
         return node !== null && isDirectory(node);

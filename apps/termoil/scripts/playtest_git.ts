@@ -134,8 +134,12 @@ async function main() {
   // ─────────────────────────────────────────────────────────────────────
   section("git commit");
   // ─────────────────────────────────────────────────────────────────────
+  // No -m at all: real git opens an editor, this engine has none.
   r = runner.run("git commit");
-  check("commit with no -m errors", /requires a value/.test(r.output));
+  check("commit with no message errors", /Please supply the message using either -m or -F/.test(r.output));
+
+  r = runner.run("git commit -m");
+  check("commit with valueless -m errors", /switch `m' requires a value/.test(r.output));
 
   r = runner.run("git commit -m \"initial commit\"");
   show("git commit -m 'initial commit'", r.output);

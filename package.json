@@ -15,12 +15,15 @@
     "typecheck": "npm --workspaces --if-present run typecheck",
     "test": "vitest run",
     "build:all": "npm run build && npm run build:crunch",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build:all",
+    "check": "npm run lint && npm run typecheck && npm test && npm run playtest && npm run build:all",
     "analyze": "npm -w @tt/termoil run analyze",
     "generate-data": "npm -w @tt/termoil run generate-data",
     "dev:crunch": "npm -w @tt/term-crunch run dev",
     "build:crunch": "npm -w @tt/term-crunch run build",
-    "screenshot:panes": "node scripts/visual/pane-dividers.mjs"
+    "screenshot:panes": "node scripts/visual/pane-dividers.mjs",
+    "playtest": "npm -w @tt/termoil run playtest && npm -w @tt/termoil run playtest:arcs && npm -w @tt/termoil run playtest:git && npm -w @tt/term-crunch run playtest",
+    "play": "npm -w @tt/termoil run play",
+    "play:crunch": "npm -w @tt/term-crunch run play"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

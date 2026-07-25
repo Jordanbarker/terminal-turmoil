@@ -34,7 +34,9 @@ npm run build:all    # both production builds
 npm run lint         # ESLint
 npm run typecheck    # TypeScript checking across all workspaces
 npm run test         # Vitest (or: npx vitest run)
-npm run check        # Combined lint + typecheck + test + build:all (also run in CI)
+npm run play         # termoil headless REPL (play:crunch for term-crunch)
+npm run playtest     # asserting playtests: termoil playtest/:arcs/:git + term-crunch tracks
+npm run check        # Combined lint + typecheck + test + playtest + build:all (also run in CI)
 ```
 
 ## Deploy

@@ -29,6 +29,12 @@ function ok(msg: string) { successes.push(msg); console.log(`  ✅ ${msg}`); }
 function section(msg: string) { console.log(`\n${"═".repeat(60)}\n  ${msg}\n${"═".repeat(60)}`); }
 function step(msg: string) { console.log(`\n  → ${msg}`); }
 
+/** Generic assertion for conditions the other expect* helpers don't cover. */
+function expect(condition: boolean, label: string) {
+  if (condition) ok(label);
+  else issue(label);
+}
+
 function expectFlag(runner: GameRunner, flag: string, label?: string) {
   if (runner.storyFlags[flag]) {
     ok(`Flag '${flag}' set${label ? ` (${label})` : ""}`);
@@ -514,11 +520,19 @@ async function playtest() {
   r = sshRunner.run(`ssh ${sshRunner.username}@nexacorp-ws01.nexacorp.internal`);
   expectOutput(r, "timed out", "SSH times out after return home (before shutdown)");
 
-  step("Testing shutdown blocks after day1_shutdown");
+  step("Testing shutdown after day1_shutdown is a cosmetic reboot");
   const shutdownRunner = new GameRunner("home");
   shutdownRunner.storyFlags = { ...shutdownRunner.storyFlags, returned_home_day1: true, day1_shutdown: true };
   r = shutdownRunner.run("shutdown");
-  expectOutput(r, "Not now", "shutdown declines after already used (story gate)");
+  // The questline shutdown already happened, so this falls through to the
+  // consequence-free reboot branch in builtins/shutdown.ts: no error, and no
+  // second day1_shutdown. (The reboot itself rides on incrementalLines +
+  // gameAction, neither of which CommandOutput exposes — that stays browser-only.)
+  expectExitCode(r, 0, "shutdown accepted after day1_shutdown");
+  expect(
+    !r.storyFlagUpdates.some((u) => u.flag === "day1_shutdown"),
+    "shutdown does not re-fire the Day 1 questline shutdown"
+  );
 
   // ────────────────────────────────────────────────────────────
   // Summary
@@ -544,6 +558,11 @@ async function playtest() {
   }
 
   console.log();
+  // Real exit codes so `npm run playtest` can gate CI. Warnings stay non-fatal.
+  process.exit(issues.length > 0 ? 1 : 0);
 }
 
-playtest().catch(console.error);
+playtest().catch((e) => {
+  console.error(e);
+  process.exit(2);
+});

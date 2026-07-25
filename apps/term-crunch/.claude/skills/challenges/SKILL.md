@@ -34,4 +34,4 @@ State: `activeCategory` + `challengeIndex` (category-relative) + `stepIndex` + `
 4. Put challenge-specific mechanics (seed quirks, predicate gotchas) in **comments in the challenge file**, not this skill — docs point, code explains.
 5. Set `commands` to the allowlist (primary names; the always-available set is implicit; `[]` for keyboard-only; omit only for genuine allow-all).
 6. Append to `CHALLENGES` in `registry.ts` (order = play order); its `type` decides its category automatically.
-7. Cover it in `src/__tests__/challenges.test.ts`, then `npm run typecheck` + `npx vitest run`.
+7. Cover it in `src/__tests__/challenges.test.ts` (predicate-level) **and** add a `SOLUTIONS` entry in `scripts/playtest_tracks.ts` (end-to-end through the real pipeline + store + grade gate; a challenge with neither a solution nor a declared `SKIPPED` reason fails the playtest) — see the `apps/term-crunch:play-testing` skill. Then `npm run typecheck`, `npx vitest run`, `npm -w @tt/term-crunch run playtest`.

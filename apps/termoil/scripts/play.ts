@@ -37,6 +37,10 @@ import { Mounts } from "@tt/core/filesystem/mounts";
 import { SnowflakeState } from "@tt/core/snowflake/state";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import "../src/story/git/remotes"; // side effect: registers this story's clonable git remotes into @tt/core
+// Side effect: registers termoil's command gates. Without it the engine's
+// allow-all default applies and the runner would run commands the player
+// hasn't unlocked yet (registry.execute consults the policy with ctx.storyFlags).
+import "../src/story/availabilityPolicy";
 import { createDefaultContext, SessionContext } from "@tt/core/snowflake/session/context";
 import { checkEmailDeliveries, GameEvent } from "../src/engine/mail/delivery";
 import { getSentDir } from "../src/engine/mail/mailUtils";
@@ -700,8 +704,7 @@ async function main() {
           "  :flags           — all story flags",
           "  :emails          — delivered email IDs",
           "  :objectives      — completed objectives",
-          "  :switch home     — switch to home computer",
-          "  :switch nexacorp — switch to NexaCorp workstation",
+          `  :switch ID       — switch computer (${Object.keys(COMPUTERS).join(", ")})`,
           "  :select N        — resolve pending prompt (choose option N)",
           "  :write PATH TEXT — write file directly (replaces nano)",
           "  :python CODE     — run Python code",
@@ -757,8 +760,9 @@ async function main() {
 
       if (trimmed.startsWith(":switch ")) {
         const target = trimmed.slice(8).trim() as ComputerId;
-        if (target !== "home" && target !== "nexacorp" && target !== "devcontainer") {
-          console.log("Usage: :switch home|nexacorp|devcontainer");
+        // Every computer switchComputer can rebuild an FS for.
+        if (!Object.hasOwn(COMPUTERS, target)) {
+          console.log(`Usage: :switch ${Object.keys(COMPUTERS).join("|")}`);
         } else {
           runner.switchComputer(target);
           console.log(`Switched to ${target} (${COMPUTERS[target].promptHostname})`);

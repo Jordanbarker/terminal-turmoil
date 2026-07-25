@@ -5,7 +5,9 @@ description: "Headless game runner for programmatic play-testing without a brows
 
 # Headless Game Runner
 
-`apps/termoil/scripts/play.ts` replicates the browser game loop from `useTerminal.ts` without xterm.js or React. It exports a **`GameRunner`** class (read its API + the `CommandOutput` return type in `play.ts` — not mirrored here) and an interactive REPL. The play scripts are a sibling of `src/` (so `../src/*` imports resolve); engine primitives come from `@tt/core`, story+state from `apps/termoil/src/`. Run via the workspace scripts (`npm -w @tt/termoil run play|playtest|playtest:arcs|...`) so `tsx` picks up the path aliases. The script mocks `globalThis.localStorage` before imports so Zustand's persist doesn't crash in Node.
+`apps/termoil/scripts/play.ts` replicates the browser game loop from `useTerminal.ts` without xterm.js or React. It exports a **`GameRunner`** class (read its API + the `CommandOutput` return type in `play.ts` — not mirrored here) and an interactive REPL. The play scripts are a sibling of `src/` (so `../src/*` imports resolve); engine primitives come from `@tt/core`, story+state from `apps/termoil/src/`. Run via the workspace scripts (`npm -w @tt/termoil run play|playtest|playtest:arcs|...`) so `tsx` picks up the path aliases. The script mocks `globalThis.localStorage` before imports so Zustand's persist doesn't crash in Node, and side-effect-imports `story/availabilityPolicy` so the runner honors the real command gates (without it the engine's allow-all default applies and gated commands would run unlocked).
+
+`playtest`, `playtest:arcs` and `playtest:git` **exit non-zero on failure and gate CI** via the root `npm run playtest` (folded into `npm run check`, which also runs term-crunch's playtest). `playtest:nexacorp` and `playtest:reference` stay print-for-review and are deliberately out of the gate. `playtest.ts` treats `warn()` as non-fatal and only `issue()` as a failure.
 
 ## GameRunner essentials
 
@@ -24,11 +26,7 @@ The headless runner has **no tab model and no transition animations** — tab su
 ### Setup
 
 - **Dev server:** a `next dev` is often already on :3000 (a second `npm run dev` fails on `.next/dev/lock` → :3001). Check `curl -s localhost:3000` first.
-- **Playwright:** not a repo dep — install in a scratch dir, never in the repo:
-  ```bash
-  cd $(mktemp -d) && npm init -y && npm i playwright@1.57   # match ~/Library/Caches/ms-playwright build
-  ```
-  Match the pinned version to the cached browser build (e.g. `chromium-1200` → playwright 1.57) or it demands a ~120MB download.
+- **Playwright:** a repo-root devDependency (pinned `1.61.0`) — drive it from the repo root, no scratch install. If it demands a browser download, the cached `~/Library/Caches/ms-playwright` build doesn't match the pin: `npx playwright install chromium`.
 
 ### Game-side facts the driver must know
 
