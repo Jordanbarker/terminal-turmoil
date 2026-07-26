@@ -1,5 +1,6 @@
 import { GameEvent } from "../mail/delivery";
 import { ComputerId } from "../../state/types";
+import type { StoryFlagName } from "../../story/storyFlags";
 
 export interface PiperMessage {
   id: string;
@@ -13,8 +14,8 @@ export interface PiperReplyOption {
   label: string;
   messageBody: string;
   triggerEvents?: GameEvent[];
-  visibleWhen?: { flag: string };
-  hiddenWhen?: { flag: string };
+  visibleWhen?: { flag: StoryFlagName };
+  hiddenWhen?: { flag: StoryFlagName };
 }
 
 export interface PiperDelivery {
@@ -28,12 +29,12 @@ export interface PiperDelivery {
 
 export type PiperTrigger =
   | { type: "immediate" }
-  | { type: "after_file_read"; filePath: string; requireDelivered?: string; excludedFlags?: string[] }
+  | { type: "after_file_read"; filePath: string; requireDelivered?: string; excludedFlags?: StoryFlagName[] }
   | { type: "after_email_read"; emailId: string }
   | { type: "after_piper_reply"; deliveryId: string }
   | { type: "after_command"; command: string }
   | { type: "after_objective"; objectiveId: string }
-  | { type: "after_story_flag"; flag: string; requireDelivered?: string; excludedFlags?: string[] };
+  | { type: "after_story_flag"; flag: StoryFlagName; requireDelivered?: string; excludedFlags?: StoryFlagName[] };
 
 export interface PiperChannel {
   id: string;

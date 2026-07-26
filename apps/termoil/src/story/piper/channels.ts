@@ -93,4 +93,3 @@ export const PIPER_CHANNELS: PiperChannel[] = [
   },
 ];
 
-export type PiperChannelId = (typeof PIPER_CHANNELS)[number]['id'];

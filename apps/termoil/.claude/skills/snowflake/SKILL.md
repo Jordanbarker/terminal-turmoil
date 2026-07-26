@@ -40,4 +40,4 @@ Schema-level model enforced across SELECT/DML/DDL. **Roles and their grants are 
 
 ## State persistence
 
-`SnowflakeState` lives in the Zustand store; `serialize()`/`deserialize()` round-trip via `serializedSnowflake` in `partialize`, restored in `onRehydrateStorage` (falls back to seed on failure). See the **save skill** for the manual-slot behavior (manual loads keep the live Snowflake state rather than restoring a snapshot).
+`SnowflakeState` lives in the Zustand store; `serialize()`/`deserialize()` round-trip via `serializedSnowflake` in `serializeGameState` (run inside the debounced storage adapter, not `partialize`), restored in persist's `merge` via `restoreGameState` (falls back to seed on failure). See the **save skill** for the manual-slot behavior (manual loads keep the live Snowflake state rather than restoring a snapshot).

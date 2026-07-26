@@ -4,9 +4,10 @@ import { createDebouncedStorage } from "./debouncedStorage";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { Mounts } from "@tt/core/filesystem/mounts";
 import "../story/git/remotes"; // side effect: registers this story's clonable git remotes into @tt/core
-import { buildFs, createSaveData, saveToSlot, loadFromSlot, serializeGameState, restoreGameState } from "./saveManager";
+import { buildFs, createSaveData, saveToSlot, loadFromSlot, pickSaveableState, serializeGameState, restoreGameState, SaveableState } from "./saveManager";
 import { SaveSlotId, SavePayload, SAVE_FORMAT_VERSION } from "./saveTypes";
 import { GamePhase, ComputerId, StoryFlags, PLAYER } from "./types";
+import type { StoryFlagName } from "../story/storyFlags";
 import { SnowflakeState } from "@tt/core/snowflake/state";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
@@ -124,14 +125,13 @@ interface GameStore {
   copyModeHelpHidden: boolean;
 
   // Actions
-  setUsername: (username: string) => void;
   completeObjective: (id: string) => void;
   setGamePhase: (phase: GamePhase) => void;
   addDeliveredEmails: (ids: string[]) => void;
   addDeliveredPiperMessages: (ids: string[]) => void;
   setSnowflakeState: (state: SnowflakeState) => void;
   setCurrentChapter: (chapter: string) => void;
-  setStoryFlag: (key: string, value: string | boolean) => void;
+  setStoryFlag: (key: StoryFlagName, value: string | boolean) => void;
   setHasSeenIntro: () => void;
   addToast: (message: string) => void;
   removeToast: (id: string) => void;
@@ -172,7 +172,6 @@ interface GameStore {
   setComputerAliases: (computer: ComputerId, aliases: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
   setPendingPiperNotification: (value: boolean) => void;
-  markChipTopicsNotified: (ids: string[]) => void;
   setCopyModeHelpHidden: (hidden: boolean) => void;
 }
 
@@ -217,23 +216,14 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       ...createInitialState(),
 
-      setUsername: (username) => {
-        const state = get();
-        const computerId = (getActiveLeaf(state)?.computerId ?? "home") as ComputerId;
-        const fs = buildFs(username, computerId, state.storyFlags, state.deliveredEmailIds);
-        let finalFs = fs;
-        if (computerId === "nexacorp") {
-          finalFs = syncToVirtualFS(state.snowflakeState, fs);
-        }
-        set({
-          username,
-          computerState: { ...state.computerState, [computerId]: { ...state.computerState[computerId], fs: finalFs, mounts: state.computerState[computerId]?.mounts ?? {} } },
-        });
+      completeObjective: (id) => {
+        // Set-like: an id appearing twice would re-fire anything gated on
+        // `completedObjective`. De-dupe here so no call site can get it wrong.
+        // Early-return (not `set({})`) so a duplicate is a true no-op: zustand
+        // notifies all listeners and re-arms the persist debounce on any set().
+        if (get().completedObjectives.includes(id)) return;
+        set((state) => ({ completedObjectives: [...state.completedObjectives, id] }));
       },
-      completeObjective: (id) =>
-        set((state) => ({
-          completedObjectives: [...state.completedObjectives, id],
-        })),
       setGamePhase: (phase) => set({ gamePhase: phase }),
       addDeliveredEmails: (ids) =>
         set((state) => {
@@ -617,13 +607,6 @@ export const useGameStore = create<GameStore>()(
           return { computerState: rest };
         }),
       setPendingPiperNotification: (value) => set({ pendingPiperNotification: value }),
-      markChipTopicsNotified: (ids) =>
-        set((state) => {
-          const seen = new Set(state.notifiedChipTopicIds);
-          const additions = ids.filter((id) => !seen.has(id));
-          if (additions.length === 0) return {};
-          return { notifiedChipTopicIds: [...state.notifiedChipTopicIds, ...additions] };
-        }),
       resetGame: () => {
         set(createInitialState());
       },
@@ -692,8 +675,11 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "termoil-save",
-      storage: createDebouncedStorage(1000),
-      partialize: (state) => serializeGameState(state),
+      // partialize runs on every set(), so it is only a field pick; the full
+      // multi-FS + Snowflake snapshot (serializeGameState) runs once per
+      // debounce window inside the storage adapter's flush.
+      storage: createDebouncedStorage<SaveableState, SavePayload>(1000, serializeGameState),
+      partialize: (state): SaveableState => pickSaveableState(state),
       merge: (persisted, currentState) => {
         const p = persisted as SavePayload | null;
         // Version mismatch (or pre-versioned blob) => discard and start fresh.

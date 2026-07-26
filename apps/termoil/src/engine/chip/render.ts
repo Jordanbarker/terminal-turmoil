@@ -57,10 +57,6 @@ export function renderUserMessage(text: string): string {
   return colorize(`> ${text}`, ansi.brightWhite + ansi.bold);
 }
 
-export function renderChipResponse(text: string, width: number): string {
-  return colorize(wordWrap(text, width), ansi.brightCyan);
-}
-
 export interface ChipResponseLine {
   line: string;
   isCommand: boolean;

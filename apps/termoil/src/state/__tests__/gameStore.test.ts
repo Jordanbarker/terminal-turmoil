@@ -3,6 +3,8 @@ import { useGameStore, getActiveLeaf, getActivePaneId, getActiveWindow } from ".
 import { allLeaves, findSplit, MAX_NUDGE_RATIO, PaneNode } from "@tt/core/terminal/paneTypes";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
+import { startObjectivePromotion } from "../objectivePromotion";
+import { CHAPTERS } from "../../engine/narrative/chapters";
 
 function createMinimalFS(username = "player"): VirtualFS {
   const root: DirectoryNode = {
@@ -436,5 +438,54 @@ describe("multi-pane integration", () => {
     expect(totalPanes).toBe(3);
     expect(state.computerState.home).toBeDefined();
     expect(state.computerState.nexacorp).toBeDefined();
+  });
+});
+
+describe("completeObjective", () => {
+  const store = () => useGameStore.getState();
+
+  it("records an objective once, even when called repeatedly", () => {
+    store().completeObjective("obj-a");
+    store().completeObjective("obj-a");
+    store().completeObjective("obj-b");
+    expect(store().completedObjectives).toEqual(["obj-a", "obj-b"]);
+  });
+
+  it("leaves state untouched when the objective is already complete", () => {
+    store().completeObjective("obj-a");
+    const before = store().completedObjectives;
+    store().completeObjective("obj-a");
+    expect(store().completedObjectives).toBe(before);
+  });
+});
+
+describe("objective promotion", () => {
+  const store = () => useGameStore.getState();
+
+  it("promotes flag-satisfied objectives without the HUD being mounted", () => {
+    const unsubscribe = startObjectivePromotion();
+    try {
+      // Chapter 1's "read_the_resume" objective checks the read_resume flag.
+      expect(store().completedObjectives).not.toContain("read_resume");
+      store().setStoryFlag("read_resume", true);
+
+      const chapter1 = CHAPTERS.find((c) => c.id === "chapter-1")!;
+      const flagged = chapter1.objectives.filter(
+        (o) => o.check.source === "storyFlag" && o.check.key === "read_resume"
+      );
+      expect(flagged.length).toBeGreaterThan(0);
+      for (const obj of flagged) {
+        expect(store().completedObjectives).toContain(obj.id);
+      }
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("stops promoting once unsubscribed", () => {
+    startObjectivePromotion()();
+    const before = store().completedObjectives.length;
+    store().setStoryFlag("read_resume", true);
+    expect(store().completedObjectives).toHaveLength(before);
   });
 });

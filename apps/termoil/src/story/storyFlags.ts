@@ -150,7 +150,6 @@ export const STORY_FLAG_NAMES = [
   "anon_tip_quest_started",
   "anon_tip_dm_resolved",
   "accepted_usb_drive",
-  "declined_usb_tip",
   "ran_lsblk_for_usb",
   "mounted_usb_drive",
   "read_usb_note",
@@ -189,6 +188,15 @@ export const STORY_FLAG_NAMES = [
 ] as const;
 
 export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
+
+/**
+ * Termoil's typed view of core's opaque `StoryFlags` bag: only registered flag
+ * names are allowed as keys. Use it on hand-authored flag data (checkpoints,
+ * trigger/condition definitions) so a typo is a type error rather than a flag
+ * that silently never fires. Runtime code that just reads the live bag keeps
+ * using `StoryFlags`.
+ */
+export type TermoilStoryFlags = Partial<Record<StoryFlagName, string | boolean>>;
 
 export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
@@ -264,7 +272,6 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     // accept branch sets accepted_usb_drive and reveals the device + scaffold.
     { event: "objective_completed", detail: "accepted_usb_drive", flag: "accepted_usb_drive", value: true, toast: "USB drive plugged in. lsblk and mount unlocked." },
     { event: "objective_completed", detail: "accepted_usb_drive", flag: "anon_tip_dm_resolved", value: true },
-    { event: "objective_completed", detail: "declined_usb_tip",   flag: "declined_usb_tip",   value: true },
     { event: "objective_completed", detail: "declined_usb_tip",   flag: "anon_tip_dm_resolved", value: true },
 
     // Scaffold step flags. ran_lsblk_for_usb only counts if the player has

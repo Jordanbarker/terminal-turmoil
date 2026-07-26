@@ -1,11 +1,13 @@
-import { ComputerId, StoryFlags } from "../state/types";
+import { ComputerId } from "../state/types";
+import type { TermoilStoryFlags } from "./storyFlags";
 
 export interface Checkpoint {
   id: string;
   description: string;
   chapter: string;
   activeComputer: ComputerId;
-  storyFlags: StoryFlags;
+  /** Typed so a mistyped flag name fails the build instead of silently never firing. */
+  storyFlags: TermoilStoryFlags;
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
   completedObjectives: string[];

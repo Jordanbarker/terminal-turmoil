@@ -6,6 +6,7 @@ import { ComputerId, StoryFlags } from "../../state/types";
 import { matchesCommonTrigger } from "../narrative/triggerMatcher";
 import { computeTimestamp, interpolateDeliveries } from "./timestamp";
 import { getTriggersForComputer, checkStoryFlagTriggers } from "../narrative/storyFlags";
+import type { StoryFlagName } from "../../story/storyFlags";
 
 /**
  * Check if any piper deliveries should fire for the given event.
@@ -62,7 +63,7 @@ function matchesTrigger(
 
 export interface PiperCascadeResult {
   newPiperIds: string[];
-  flagUpdates: { flag: string; value: string | boolean; toast?: string }[];
+  flagUpdates: { flag: StoryFlagName; value: string | boolean; toast?: string }[];
 }
 
 /**

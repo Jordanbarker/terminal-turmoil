@@ -69,6 +69,31 @@ describe("createDebouncedStorage", () => {
     expect(stored.state.count).toBe(2);
   });
 
+  it("runs the serialize transform once per flush, not once per setItem", () => {
+    // The whole point of the adapter: partialize stays cheap and the expensive
+    // snapshot happens at most once per debounce window.
+    const serialize = vi.fn((state: { count: number }) => ({ n: state.count }));
+    const s = createDebouncedStorage<{ count: number }, { n: number }>(500, serialize);
+    s.setItem("test", makeValue(1));
+    s.setItem("test", makeValue(2));
+    s.setItem("test", makeValue(3));
+    expect(serialize).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(500);
+    expect(serialize).toHaveBeenCalledTimes(1);
+    const stored = JSON.parse(localStorageMock.setItem.mock.calls[0][1]);
+    expect(stored).toEqual({ state: { n: 3 }, version: 0 });
+  });
+
+  it("survives a serialize/stringify failure without throwing", () => {
+    const s = createDebouncedStorage<{ count: number }, never>(500, () => {
+      throw new Error("boom");
+    });
+    s.setItem("test", makeValue(1));
+    expect(() => vi.advanceTimersByTime(500)).not.toThrow();
+    expect(localStorageMock.setItem).not.toHaveBeenCalled();
+  });
+
   it("passes through getItem reads", () => {
     storage.set("test", JSON.stringify({ state: { count: 5 }, version: 0 }));
     const s = createDebouncedStorage<{ count: number }>(500);

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createSaveData,
+  pickSaveableState,
   serializeGameState,
   restoreGameState,
   saveToSlot,
@@ -227,6 +228,16 @@ describe("serializeGameState / restoreGameState round-trip", () => {
     // Even a hand-forged blob claiming a transient phase must restore playable.
     const forged = { ...payload, gamePhase: "booting" } as typeof payload;
     expect(restoreGameState(forged).gamePhase).toBe("playing");
+  });
+
+  it("pickSaveableState feeds serializeGameState losslessly (auto-persist payload is unchanged)", () => {
+    // Auto-persist goes state -> partialize (pickSaveableState) -> debounced
+    // flush (serializeGameState). The payload must match serializing the store
+    // state directly, or the cheap partialize dropped a field.
+    const state = createState();
+    // Simulate the extra non-saveable store fields partialize has to strip.
+    const storeLike = { ...state, gamePhase: "playing", toasts: [{ id: "1", message: "hi" }] };
+    expect(serializeGameState(pickSaveableState(storeLike))).toEqual(serializeGameState(state));
   });
 
   it("does not reuse pane ids from before the load (mid-session load keeps ids fresh)", () => {

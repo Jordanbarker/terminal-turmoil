@@ -7,18 +7,20 @@ description: "How the save/load/newgame system works — localStorage slots, Sav
 
 Save/load/restart via terminal commands, using localStorage slots.
 
-Code map: `engine/filesystem/serialization.ts` (`serializeFS`/`deserializeFS`, pure), `state/saveTypes.ts` (`SavePayload`/`SaveData`/`SaveSlotMeta`/`SaveSlotId`, `SAVE_FORMAT_VERSION`), `state/saveManager.ts` (the single snapshot writer/reader `serializeGameState`/`restoreGameState`, plus `buildFs`, localStorage CRUD `createSaveData`/`saveToSlot`/`loadFromSlot`/`deleteSlot`/`listSaveSlots`; pure/no-React), `commands/builtins/{save,load,newgame}.ts`, `state/gameStore.ts` (`saveGame`/`loadGame` actions + persist `partialize`/`merge`, both thin wrappers over saveManager), `useTerminal.ts` (`gameAction` handler). `GameAction` union is in `commands/types.ts`. Read the type definitions there.
+Code map: `engine/filesystem/serialization.ts` (`serializeFS`/`deserializeFS`, pure), `state/saveTypes.ts` (`SavePayload`/`SaveData`/`SaveSlotMeta`/`SaveSlotId`, `SAVE_FORMAT_VERSION`), `state/saveManager.ts` (the single snapshot writer/reader `serializeGameState`/`restoreGameState`, plus the cheap `pickSaveableState`, `buildFs`, localStorage CRUD `createSaveData`/`saveToSlot`/`loadFromSlot`/`deleteSlot`/`listSaveSlots`; pure/no-React), `state/debouncedStorage.ts` (the persist storage adapter), `commands/builtins/{save,load,newgame}.ts`, `state/gameStore.ts` (`saveGame`/`loadGame` actions + persist `partialize`/`merge`, both thin wrappers over saveManager), `useTerminal.ts` (`gameAction` handler). `GameAction` union is in `commands/types.ts`. Read the type definitions there.
 
 ## Slots
 
-- **auto-persist** — Zustand auto-persist, rebuilt on every state change via `partialize`, written through `createDebouncedStorage(1000)` (≤ once/sec). Key `termoil-save`. Not a loadable slot — it rehydrates on page load via `merge`.
+- **auto-persist** — Zustand auto-persist through `createDebouncedStorage(1000)`. Key `termoil-save`. Not a loadable slot — it rehydrates on page load via `merge`.
+
+  **Contract: `partialize` must stay cheap.** zustand runs it on *every* `set()`, so it is only the field pick `pickSaveableState`. The expensive snapshot (`serializeGameState`: full multi-FS + Snowflake) is handed to the storage adapter as its `serialize` transform and runs once per debounce window, alongside `JSON.stringify` + the localStorage write. Adding work to `partialize` puts it on the hot path of every keystroke-driven store write. `pickSaveableState` must list every field `serializeGameState` reads (locked by a test in `saveManager.test.ts`).
 - **slot-1/2/3** — manual. Keys `termoil-slot-{slotId}`.
 
 Terminal commands: `save`/`load` list slots; `save 1|2|3` saves; `load 1|2|3` loads; `newgame` resets all state + reloads the page.
 
 ## What gets saved
 
-**Both paths share ONE snapshot shape and one writer/reader**: `SavePayload` (`saveTypes.ts`) produced by `serializeGameState()` and consumed by `restoreGameState()` (`saveManager.ts`). Auto-persist uses them via `partialize`/`merge`; manual slots via `createSaveData` (= payload + `timestamp`/`label` metadata) and `loadGame`. Both loaders discard any blob whose `version !== SAVE_FORMAT_VERSION` (no migrations, pre-release).
+**Both paths share ONE snapshot shape and one writer/reader**: `SavePayload` (`saveTypes.ts`) produced by `serializeGameState()` and consumed by `restoreGameState()` (`saveManager.ts`). Auto-persist uses them via the storage adapter's `serialize`/`merge`; manual slots via `createSaveData` (= payload + `timestamp`/`label` metadata) and `loadGame`. Both loaders discard any blob whose `version !== SAVE_FORMAT_VERSION` (no migrations, pre-release).
 
 **The canonical field list is `SavePayload` in `saveTypes.ts` — check it there, not a table.** Non-obvious fields:
 - `computerStates` — per-computer serialized FS (incl. the `.zsh_history` file), env vars, aliases, mounts.
@@ -34,6 +36,6 @@ Plus plain narrative/identity fields (`username`, `currentChapter`, `completedOb
 
 ## Updating for narrative progression
 
-Adding a new Zustand field: (1) add to `SavePayload` in `saveTypes.ts`, (2) add to `serializeGameState()` + `restoreGameState()` (and `SaveableState`/`RestoredGameState`) in `saveManager.ts`, (3) bump `SAVE_FORMAT_VERSION`. Nothing to touch in `gameStore.ts`.
+Adding a new Zustand field: (1) add to `SavePayload` in `saveTypes.ts`, (2) add to `serializeGameState()` + `restoreGameState()` + `pickSaveableState()` (and `SaveableState`/`RestoredGameState`) in `saveManager.ts`, (3) bump `SAVE_FORMAT_VERSION`. Nothing to touch in `gameStore.ts`.
 
 No save changes needed for: new chapters/objectives (`currentChapter`/`completedObjectives` already capture ID strings), new email triggers (`deliveredEmailIds` tracks ID strings), or new filesystem content (FS serialized in full — new files appear only in fresh games, not existing saves). This is a pre-release game — skip save-migration scaffolding when the `SaveData` shape changes; just bump the version.

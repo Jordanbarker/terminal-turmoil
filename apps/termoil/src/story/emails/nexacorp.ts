@@ -11,7 +11,6 @@ export const NEXACORP_EMAIL_IDS = [
   "jessica_welcome",
   "tom_welcome",
 ] as const;
-export type NexacorpEmailId = (typeof NEXACORP_EMAIL_IDS)[number];
 
 export function getNexacorpEmailDefinitions(username: string): EmailDelivery[] {
   return [

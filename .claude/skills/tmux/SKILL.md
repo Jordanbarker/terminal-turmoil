@@ -64,6 +64,6 @@ Parsed **live** from the home PC's `~/.tmux.conf` only (your local terminal conf
 - **Theme colors:** add to `ANSI_COLORS` (keeps xterm + status bar in sync); extend `parseTmuxTheme`/`TabBarTheme`.
 - **New status-bar element / modal:** edit the shared `TmuxStatusBar` so **both** apps inherit it (app-specific bits via props / the `trailing` slot / `modalText`).
 - **New copy-mode key:** add to the `CopyModeController` keydown handler.
-- **Tree changes:** keep `paneTypes` helpers pure, add cases to `paneTypes.test.ts`, wire edits through a `gameStore.ts` action (never mutate the tree in components).
+- **Tree changes:** keep `paneTypes` helpers pure, add cases to `packages/core/src/terminal/__tests__/paneTypes.test.ts` (one file, core-side, since the model is core's; it uses placeholder machine ids, not either game's), wire edits through a `gameStore.ts` action (never mutate the tree in components).
 
 Run `npm run typecheck` + `npx vitest run` after changes. Unit tests cover the pure tree but **not** rendering — for visual changes to dividers/splits/focus also run `npm run screenshot:panes` (needs a dev server; drives tmux chords, screenshots single→h-split→2×2, asserts the gold/grey seam coloring; point elsewhere with `TT_URL`).

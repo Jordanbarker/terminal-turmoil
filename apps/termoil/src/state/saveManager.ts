@@ -85,7 +85,34 @@ export interface SaveableState {
   copyModeHelpHidden: boolean;
 }
 
-/** Single snapshot writer — used by both persist's partialize and manual save slots. */
+/**
+ * Cheap field pick for persist's `partialize`, which zustand runs on EVERY
+ * store write. Reference-copies only: the expensive snapshot
+ * (`serializeGameState`) is deferred to the debounced storage adapter's flush.
+ * Must stay in sync with the fields `serializeGameState` reads.
+ */
+export function pickSaveableState(state: SaveableState): SaveableState {
+  return {
+    username: state.username,
+    currentChapter: state.currentChapter,
+    completedObjectives: state.completedObjectives,
+    deliveredEmailIds: state.deliveredEmailIds,
+    deliveredPiperIds: state.deliveredPiperIds,
+    storyFlags: state.storyFlags,
+    hasSeenIntro: state.hasSeenIntro,
+    computerState: state.computerState,
+    zshHistory: state.zshHistory,
+    windows: state.windows,
+    activeWindowId: state.activeWindowId,
+    tmuxAttachedSession: state.tmuxAttachedSession,
+    tmuxDetachedSessions: state.tmuxDetachedSessions,
+    notifiedChipTopicIds: state.notifiedChipTopicIds,
+    snowflakeState: state.snowflakeState,
+    copyModeHelpHidden: state.copyModeHelpHidden,
+  };
+}
+
+/** Single snapshot writer — used by both the persist storage adapter and manual save slots. */
 export function serializeGameState(state: SaveableState): SavePayload {
   const computerStates: Record<string, { fs: SerializedFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }> = {};
   for (const [id, cs] of Object.entries(state.computerState)) {

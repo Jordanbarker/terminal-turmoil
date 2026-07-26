@@ -4,7 +4,7 @@ import { useGameStore } from "../state/gameStore";
 import { getAvailableCommands } from "@tt/core/commands/registry";
 import { SuggestionContext } from "@tt/core/suggestions/suggest";
 import { parseZshHistory } from "@tt/core/terminal/zshHistory";
-import { LineEditor, LineEditorResult } from "@tt/core/terminal/lineEditor";
+import { LineEditor } from "@tt/core/terminal/lineEditor";
 import { ComputerId } from "../state/types";
 
 interface CommandLineDeps {
@@ -13,7 +13,6 @@ interface CommandLineDeps {
   getPrompt: () => string;
 }
 
-export type CommandLineResult = LineEditorResult;
 
 /**
  * Thin hook wrapping the shared `@tt/core` {@link LineEditor}. Builds the

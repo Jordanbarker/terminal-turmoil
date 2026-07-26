@@ -52,7 +52,7 @@ at home sets `apt_upgraded` (optional).
    ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
    │ Reply to anon_usb_tip Piper DM:                                                                                                   │
    │   • "Plug it in."      → accepted_usb_drive + anon_tip_dm_resolved   (continues to USB chain below)                               │
-   │   • "Not interested."  → declined_usb_tip   + anon_tip_dm_resolved   (side quest ends)                                            │
+   │   • "Not interested."  → anon_tip_dm_resolved                        (side quest ends)                                            │
    └─────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┘
                                                                      │
                                                                      ▼

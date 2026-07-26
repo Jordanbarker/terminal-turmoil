@@ -1,6 +1,6 @@
 import { GameEvent } from "../mail/delivery";
 import { StoryFlags } from "../../state/types";
-import type { StoryFlagTrigger } from "../../story/storyFlags";
+import type { StoryFlagName, StoryFlagTrigger } from "../../story/storyFlags";
 
 // Re-export story data for convenience
 export type { StoryFlagName, StoryFlagTrigger } from "../../story/storyFlags";
@@ -10,8 +10,8 @@ export function checkStoryFlagTriggers(
   event: GameEvent,
   triggers: StoryFlagTrigger[],
   currentFlags: StoryFlags
-): { flag: string; value: string | boolean; toast?: string }[] {
-  const results: { flag: string; value: string | boolean; toast?: string }[] = [];
+): { flag: StoryFlagName; value: string | boolean; toast?: string }[] {
+  const results: { flag: StoryFlagName; value: string | boolean; toast?: string }[] = [];
 
   for (const trigger of triggers) {
     if (trigger.event === event.type) {

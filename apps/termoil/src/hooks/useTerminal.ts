@@ -23,6 +23,7 @@ import { computeEffects, AppliedEffects } from "@tt/core/commands/applyResult";
 import { processDeliveries } from "../engine/commands/processDeliveries";
 import { renderSavesList, renderCheckpointsList } from "../story/listingOutput";
 import { CHECKPOINTS } from "../story/checkpoints";
+import type { StoryFlagName } from "../story/storyFlags";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 import { useComputerTransitions } from "./useComputerTransitions";
@@ -38,6 +39,23 @@ import { Mounts } from "@tt/core/filesystem/mounts";
 // Per-computer command queue: serializes FS mutations to prevent TOCTOU races
 // between tabs on the same computer.
 const computerQueues: Partial<Record<ComputerId, Promise<void>>> = {};
+
+/**
+ * Push core's flag updates (plus their toasts) into the store.
+ *
+ * Core types `StoryFlagUpdate.flag` as an opaque string because it knows
+ * nothing about this story's flags, but every update originates in this app's
+ * trigger tables (`checkStoryFlagTriggers`, which does return `StoryFlagName`).
+ * Narrowing happens here, at the one core→app seam, so the store action keeps
+ * its typed signature.
+ */
+function applyStoryFlagUpdates(updates: AppliedEffects["storyFlagUpdates"]) {
+  const store = useGameStore.getState();
+  for (const update of updates) {
+    store.setStoryFlag(update.flag as StoryFlagName, update.value);
+    if (update.toast) store.addToast(update.toast);
+  }
+}
 
 function enqueueCommand(computerId: ComputerId, fn: () => void | Promise<void>): Promise<void> {
   const prev = computerQueues[computerId] ?? Promise.resolve();
@@ -230,12 +248,7 @@ export function useTerminal() {
         store.setActivePaneCwd(effects.newCwd);
         cwdRef.current = effects.newCwd;
       }
-      for (const update of effects.storyFlagUpdates) {
-        useGameStore.getState().setStoryFlag(update.flag, update.value);
-        if (update.toast) {
-          useGameStore.getState().addToast(update.toast);
-        }
-      }
+      applyStoryFlagUpdates(effects.storyFlagUpdates);
       if (effects.newDeliveredEmailIds.length > 0) {
         useGameStore.getState().addDeliveredEmails(effects.newDeliveredEmailIds);
       }
@@ -527,12 +540,7 @@ export function useTerminal() {
           if (!isFinal) {
             // Per-segment: apply story flags, deliveries to store (needed for gating)
             // but do NOT write FS, notifications, or prompt
-            for (const update of effects.storyFlagUpdates) {
-              useGameStore.getState().setStoryFlag(update.flag, update.value);
-              if (update.toast) {
-                useGameStore.getState().addToast(update.toast);
-              }
-            }
+            applyStoryFlagUpdates(effects.storyFlagUpdates);
             if (effects.newDeliveredEmailIds.length > 0) {
               useGameStore.getState().addDeliveredEmails(effects.newDeliveredEmailIds);
             }
@@ -618,7 +626,6 @@ export function useTerminal() {
     getPrompt,
     startSession: sessionRouter.startSession,
     canCloseCurrentSession: sessionRouter.canCloseCurrentSession,
-    canClosePaneSession: sessionRouter.canClosePaneSession,
     getActiveSessionType: sessionRouter.getActiveSessionType,
     cleanupPane: sessionRouter.cleanupPane,
     resizeActiveSession: sessionRouter.resizeActiveSession,

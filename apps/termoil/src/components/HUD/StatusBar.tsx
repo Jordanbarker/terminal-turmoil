@@ -24,9 +24,7 @@ export default function StatusBar() {
   }
 
   let rightText: string;
-  if (gamePhase === "login") {
-    rightText = "Login Required";
-  } else if (gamePhase === "booting") {
+  if (gamePhase === "booting") {
     rightText = "Authenticating...";
   } else if (terminated) {
     rightText = "Terminated";

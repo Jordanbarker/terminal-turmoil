@@ -1,4 +1,4 @@
-export type GamePhase = "login" | "booting" | "playing" | "transitioning";
+export type GamePhase = "booting" | "playing" | "transitioning";
 
 export type ComputerId = "home" | "nexacorp" | "devcontainer" | "chipinfra" | "erik-pc";
 

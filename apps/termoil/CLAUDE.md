@@ -12,7 +12,7 @@ The full builtin roster + registration lives in `src/engine/commands/builtins/in
 
 ## Project Structure
 
-Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) is a sibling of `src/`. Under `src/`: `app/` (Next.js App Router, single page), `components/` (`Terminal/`, `Assistant/`, `HUD/`, `Game/`), `engine/` (game systems — most story-coupled; the generic engine now lives in `@tt/core`), `story/` (all content: emails, piper, filesystem builders, chapters, flags, chip menu, seed data), `state/` (Zustand store + save system), `hooks/`, `lib/`.
+Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) is a sibling of `src/`. Under `src/`: `app/` (Next.js App Router, single page), `components/` (`Terminal/`, `HUD/`, `Game/`), `engine/` (game systems — most story-coupled; the generic engine now lives in `@tt/core`), `story/` (all content: emails, piper, filesystem builders, chapters, flags, chip menu, seed data), `state/` (Zustand store + save system), `hooks/`, `lib/`.
 
 > **Path convention.** Skill docs may cite bare `src/...` paths. Resolve them as `apps/termoil/src/...` for app/story code, **except** the generic engine modules that moved to `@tt/core` — `commands`, `filesystem`, `git`, `dbt`, `snowflake`, `session`, `suggestions`, `terminal` (paneTypes/copyMode/tmuxConfig/ansiPalette/zshHistory), and `PaneDividers` — which live at `packages/core/src/...`. Story-coupled bits (`engine/mail`, `engine/piper`, `engine/prompt`, `engine/narrative`, `engine/chip`, story command builtins) stayed in the app. The per-directory detail is in the relevant skill; don't duplicate the tree here.
 
