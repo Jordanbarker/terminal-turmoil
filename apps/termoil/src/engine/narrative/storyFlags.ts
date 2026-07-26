@@ -28,7 +28,13 @@ export function checkStoryFlagTriggers(
       } else if (matchExact && detail === matchExact) {
         fired = true;
       }
-      if (fired && currentFlags[trigger.flag] === undefined) {
+      // Idempotency: only emit when the flag isn't already at the target value.
+      // This is what keeps read-pair cascades from double-counting (a second
+      // trigger for an already-true flag is a no-op) while still allowing state
+      // flags to toggle back — `coder start` resets coder_workspace_stopped to
+      // false, and a later `coder stop` can set it to true again. A plain
+      // `=== undefined` guard would let the flag latch on its first value.
+      if (fired && currentFlags[trigger.flag] !== trigger.value) {
         results.push({ flag: trigger.flag, value: trigger.value, toast: trigger.toast });
       }
     }

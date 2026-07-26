@@ -311,6 +311,46 @@ describe("pane actions", () => {
   });
 });
 
+describe("addDeliveredPiperMessages", () => {
+  const store = () => useGameStore.getState();
+
+  // Regression: the Day 2 nexacorp transition re-seeded the same immediate
+  // deliveries the home call site had already added (it lacked the manual
+  // deliveredPiperIds filter), delivering those messages twice. De-duping in
+  // the action means no call site can get it wrong.
+  it("delivers an id once even when called twice with the same ids", () => {
+    store().addDeliveredPiperMessages(["alex_intro", "olive_hello"]);
+    store().addDeliveredPiperMessages(["alex_intro", "olive_hello"]);
+    expect(store().deliveredPiperIds).toEqual(["alex_intro", "olive_hello"]);
+  });
+
+  it("de-dupes within a single batch and keeps genuinely new ids", () => {
+    store().addDeliveredPiperMessages(["a", "a", "b"]);
+    store().addDeliveredPiperMessages(["b", "c"]);
+    expect(store().deliveredPiperIds).toEqual(["a", "b", "c"]);
+  });
+
+  it("de-dupes reply ids too", () => {
+    store().addDeliveredPiperMessages(["auri_day2:0"]);
+    store().addDeliveredPiperMessages(["reply:auri_day2:0"]);
+    store().addDeliveredPiperMessages(["reply:auri_day2:0"]);
+    expect(store().deliveredPiperIds).toEqual(["auri_day2:0", "reply:auri_day2:0"]);
+  });
+
+  it("still replaces a stale seen: marker for the same channel", () => {
+    store().addDeliveredPiperMessages(["dm_auri", "seen:dm_auri:2"]);
+    store().addDeliveredPiperMessages(["seen:dm_auri:5"]);
+    expect(store().deliveredPiperIds).toEqual(["dm_auri", "seen:dm_auri:5"]);
+  });
+
+  it("leaves state untouched when every id is already delivered", () => {
+    store().addDeliveredPiperMessages(["a", "b"]);
+    const before = store().deliveredPiperIds;
+    store().addDeliveredPiperMessages(["a", "b"]);
+    expect(store().deliveredPiperIds).toBe(before);
+  });
+});
+
 describe("activeSnowSession", () => {
   it("defaults to null", () => {
     expect(useGameStore.getState().activeSnowSession).toBeNull();

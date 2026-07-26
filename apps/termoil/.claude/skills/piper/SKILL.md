@@ -13,6 +13,8 @@ Code map: `src/engine/piper/` (`types.ts` — all types, read them there; `deliv
 
 State-based, not FS-based. `deliveredPiperIds: string[]` (Zustand) tracks arrivals, chosen replies (`reply:{deliveryId}:{optionIndex}`), and unread markers (`seen:{channelId}:{count}`). Content is static in `story/piper/messages/`.
 
+It is **set-like**: a repeated id replays the message in the conversation, so `addDeliveredPiperMessages` de-dupes against current state. Call sites (transitions, `seedImmediatePiper`, session exit) may pass ids that were already delivered without filtering first. `seen:` markers are the exception: adding one drops any earlier marker for the same channel.
+
 ## Delivery flow
 
 Player action → `GameEvent` → `computeEffects()` calls `checkPiperDeliveries(event, deliveredIds, username)` → matches added to `newDeliveredPiperIds` → `useTerminal` syncs + toasts "You have new messages on Piper" → player runs `piper`.

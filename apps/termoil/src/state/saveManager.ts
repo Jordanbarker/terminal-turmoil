@@ -68,7 +68,6 @@ export function buildFs(
 
 export interface SaveableState {
   username: string;
-  gamePhase: GamePhase;
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
@@ -97,7 +96,6 @@ export function serializeGameState(state: SaveableState): SavePayload {
   return {
     version: SAVE_FORMAT_VERSION,
     username: state.username,
-    gamePhase: state.gamePhase,
     currentChapter: state.currentChapter,
     completedObjectives: [...state.completedObjectives],
     deliveredEmailIds: [...state.deliveredEmailIds],
@@ -202,7 +200,10 @@ export function restoreGameState(data: SavePayload): RestoredGameState {
 
   return {
     username: data.username,
-    gamePhase: data.gamePhase,
+    // Always land on "playing": the transient phases ("booting"/"transitioning")
+    // are driven by timers that don't survive a reload, so restoring one would
+    // leave the terminal input-disabled forever. See SavePayload's note.
+    gamePhase: "playing",
     currentChapter: data.currentChapter,
     completedObjectives: data.completedObjectives,
     deliveredEmailIds: data.deliveredEmailIds,

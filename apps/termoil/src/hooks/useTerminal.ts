@@ -8,6 +8,7 @@ import { colorize, ansi } from "@tt/core/lib/ansi";
 import { expandZshPrompt } from "@tt/core/lib/promptExpand";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { createDefaultContext } from "@tt/core/snowflake/session/context";
+import { createBusyGate } from "./busyGate";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS, ComputerId, getConnectionClosure } from "../state/types";
@@ -127,8 +128,8 @@ function buildCommandContext(
 import "../engine/commands/builtins";
 
 export function useTerminal() {
-  const busyRef = useRef(false);
-  const busyPaneIdRef = useRef<string | null>(null);
+  // Token-owned input gate — see busyGate.ts for why a bare boolean isn't enough.
+  const busyRef = useRef(createBusyGate());
   const confirmNewGameRef = useRef(false);
   const pendingNotificationsRef = useRef<{ email: number; piper: number } | null>(null);
 
@@ -303,8 +304,13 @@ export function useTerminal() {
       // Incremental line-by-line rendering (e.g. dbt output)
       if (effects.incrementalLines) {
         applyStateEffects(effects, computerId);
-        busyRef.current = true;
-        busyPaneIdRef.current = getActivePaneId(useGameStore.getState()) ?? null;
+        // Take ownership of the input gate for the whole stream. The enqueued
+        // command that started us resolves as soon as this returns, so its
+        // `finally` must not be the thing that unlocks input. Gate the pane
+        // that SUBMITTED the command (the one `term` belongs to), not the
+        // currently focused pane: focus may have moved while the command sat
+        // in the per-computer queue.
+        const streamToken = busyRef.current.acquire(tabId ?? getActivePaneId(useGameStore.getState()) ?? null);
         const lines = effects.incrementalLines;
         let i = 0;
         const writeNext = () => {
@@ -314,8 +320,7 @@ export function useTerminal() {
             i++;
             setTimeout(writeNext, i < lines.length ? lines[i].delayMs : 0);
           } else {
-            busyRef.current = false;
-            busyPaneIdRef.current = null;
+            busyRef.current.release(streamToken);
             // The box is down once the broadcast/countdown lines finish.
             closeTabsForDownedComputer();
             if (effects.gameAction?.type === "shutdown") {
@@ -441,9 +446,8 @@ export function useTerminal() {
       // Route input to active session if one exists
       if (sessionRouter.routeInput(term, data)) return;
 
-      // Ignore input while an async command is running in this tab
-      const activePaneId = getActivePaneId(useGameStore.getState());
-      if (busyRef.current && activePaneId === busyPaneIdRef.current) return;
+      // Ignore input while an async command or line animation owns this pane
+      if (busyRef.current.isBlocked(getActivePaneId(useGameStore.getState()))) return;
 
       // Cursor-aware line editing (arrows, Home/End, word-skip, Ctrl+A/E/U/K/L/W/D,
       // ghost/TAB completion) is owned by the shared @tt/core LineEditor.
@@ -484,8 +488,7 @@ export function useTerminal() {
       const submittingPaneId = getActivePaneId(useGameStore.getState());
 
       // Gate input while command is queued/executing
-      busyRef.current = true;
-      busyPaneIdRef.current = submittingPaneId ?? null;
+      const commandToken = busyRef.current.acquire(submittingPaneId ?? null);
 
       // Enqueue command execution to serialize FS mutations per computer
       enqueueCommand(computerId, async () => {
@@ -600,8 +603,9 @@ export function useTerminal() {
           writePrompt(term);
         }
         } finally {
-          busyRef.current = false;
-          busyPaneIdRef.current = null;
+          // No-op if an incrementalLines animation took ownership of the gate;
+          // that stream releases it when the last line lands.
+          busyRef.current.release(commandToken);
         }
       });
     },

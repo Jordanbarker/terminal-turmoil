@@ -1,11 +1,11 @@
 import { SerializedFS } from "@tt/core/filesystem/serialization";
 import { Mounts } from "@tt/core/filesystem/mounts";
-import { GamePhase, ComputerId, StoryFlags } from "./types";
+import { ComputerId, StoryFlags } from "./types";
 import { SavedWindowState } from "@tt/core/terminal/paneTypes";
 import { TmuxSessionSnapshot } from "@tt/core/terminal/tmuxSessions";
 import { SerializedSnowflake } from "@tt/core/snowflake/serialization";
 
-export const SAVE_FORMAT_VERSION = 19;
+export const SAVE_FORMAT_VERSION = 20;
 
 export type SaveSlotId = "slot-1" | "slot-2" | "slot-3";
 
@@ -16,7 +16,10 @@ export type SaveSlotId = "slot-1" | "slot-2" | "slot-3";
 export interface SavePayload {
   version: number;
   username: string;
-  gamePhase: GamePhase;
+  // NOTE: gamePhase is deliberately NOT persisted. "booting"/"transitioning"
+  // are transient animation phases owned by a running timer; a reload during
+  // one would restore a phase nothing will ever advance, leaving the terminal
+  // permanently input-disabled. restoreGameState always returns "playing".
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];

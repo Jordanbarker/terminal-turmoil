@@ -551,12 +551,14 @@ export function useComputerTransitions(deps: TransitionDeps) {
         } else {
           clearInterval(bootInterval);
           term.write("\x1b[?25h"); // restore cursor
+          // No writePrompt here: the booting -> playing effect in TabManager
+          // owns the prompt for every boot animation (same as the nexacorp and
+          // Day 2 boots below). Writing one here printed it twice.
           useGameStore.getState().setGamePhase("playing");
-          writePrompt(term);
         }
       }, BOOT_LINE_INTERVAL_MS);
     }, 2500);
-  }, [cwdRef, writePrompt]);
+  }, [cwdRef]);
 
   const runShutdownTransition = useCallback((term: Terminal) => {
     const store = useGameStore.getState();

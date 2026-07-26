@@ -92,7 +92,6 @@ function createState(): SaveableState {
   const windows = [win("nexacorp", "/home/player")];
   return {
     username: "player",
-    gamePhase: "playing",
     currentChapter: "chapter-1",
     completedObjectives: ["obj-1"],
     deliveredEmailIds: ["email-1"],
@@ -133,7 +132,6 @@ describe("createSaveData", () => {
     expect(data.version).toBe(SAVE_FORMAT_VERSION);
     expect(data.label).toBe("Test Save");
     expect(data.username).toBe("player");
-    expect(data.gamePhase).toBe("playing");
     expect(data.currentChapter).toBe("chapter-1");
     expect(data.completedObjectives).toEqual(["obj-1"]);
     expect(data.deliveredEmailIds).toEqual(["email-1"]);
@@ -221,6 +219,14 @@ describe("serializeGameState / restoreGameState round-trip", () => {
     expect(
       restored.computerState.nexacorp!.fs.readFile("/home/player/test.txt").content
     ).toBe("test content");
+  });
+
+  it("never persists gamePhase, so a reload mid-animation still restores as playing", () => {
+    const payload = serializeGameState(createState());
+    expect("gamePhase" in payload).toBe(false);
+    // Even a hand-forged blob claiming a transient phase must restore playable.
+    const forged = { ...payload, gamePhase: "booting" } as typeof payload;
+    expect(restoreGameState(forged).gamePhase).toBe("playing");
   });
 
   it("does not reuse pane ids from before the load (mid-session load keeps ids fresh)", () => {
@@ -312,7 +318,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-2",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -355,7 +360,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-2",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -394,7 +398,6 @@ describe("multi-tab round-trip", () => {
     const windows = [win("nexacorp", "/home/player")];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-1",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -431,7 +434,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-3",
       completedObjectives: [],
       deliveredEmailIds: [],

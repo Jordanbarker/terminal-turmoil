@@ -236,9 +236,19 @@ export const useGameStore = create<GameStore>()(
         })),
       setGamePhase: (phase) => set({ gamePhase: phase }),
       addDeliveredEmails: (ids) =>
-        set((state) => ({
-          deliveredEmailIds: [...state.deliveredEmailIds, ...ids],
-        })),
+        set((state) => {
+          // De-dupe here (like addDeliveredPiperMessages) so no call site can
+          // deliver an email twice, e.g. the non-final chain segment applying
+          // effects that executeEffects then re-applies.
+          const known = new Set(state.deliveredEmailIds);
+          const fresh = ids.filter((id) => {
+            if (known.has(id)) return false;
+            known.add(id);
+            return true;
+          });
+          if (fresh.length === 0) return {};
+          return { deliveredEmailIds: [...state.deliveredEmailIds, ...fresh] };
+        }),
       addDeliveredPiperMessages: (ids) =>
         set((state) => {
           const seenPrefixes = ids
@@ -250,7 +260,20 @@ export const useGameStore = create<GameStore>()(
                   (id) => !seenPrefixes.some((prefix) => id.startsWith(prefix))
                 )
               : state.deliveredPiperIds;
-          return { deliveredPiperIds: [...filtered, ...ids] };
+          // deliveredPiperIds is set-like: a delivery/reply id appearing twice
+          // replays the message in the conversation. De-dupe here rather than at
+          // each call site so no caller can get it wrong (the Day 2 nexacorp
+          // transition used to re-seed ids the home call site had already added).
+          const known = new Set(filtered);
+          const additions = ids.filter((id) => {
+            if (known.has(id)) return false;
+            known.add(id);
+            return true;
+          });
+          if (additions.length === 0 && filtered.length === state.deliveredPiperIds.length) {
+            return {};
+          }
+          return { deliveredPiperIds: [...filtered, ...additions] };
         }),
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),

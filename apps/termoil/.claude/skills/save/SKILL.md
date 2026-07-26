@@ -28,7 +28,9 @@ Terminal commands: `save`/`load` list slots; `save 1|2|3` saves; `load 1|2|3` lo
 - `tmuxAttachedSession`/`tmuxDetachedSessions` — tmux session lifecycle (attached `{name, createdAt}` or null when the save was made on the bare shell; detached sessions as `TmuxSessionSnapshot[]`, already serialization-shaped). `pendingMuxNotice` is transient (restored as null). See the tmux skill.
 - `notifiedChipTopicIds`, `copyModeHelpHidden` — dedup + UI preference.
 
-Plus plain narrative/identity fields (`username`, `gamePhase`, `currentChapter`, `completedObjectives`, `deliveredEmailIds`, `deliveredPiperIds`, `storyFlags`, `hasSeenIntro`).
+Plus plain narrative/identity fields (`username`, `currentChapter`, `completedObjectives`, `deliveredEmailIds`, `deliveredPiperIds`, `storyFlags`, `hasSeenIntro`).
+
+**`gamePhase` is deliberately not persisted.** `"booting"`/`"transitioning"` are transient phases owned by a running timer, so a reload mid-animation would restore a phase nothing ever advances and leave the terminal input-disabled. `restoreGameState()` always returns `"playing"`. Don't add it back to `SavePayload`.
 
 ## Updating for narrative progression
 
