@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { execute } from "@tt/core/commands/registry";
 import type { CommandContext } from "@tt/core/commands/types";
 import "../engine/commands/navigation"; // register challenges/review/goto/...
@@ -6,7 +6,7 @@ import { consumePendingNavigation } from "../engine/commands/navigation";
 import { getCategory, registryIndex as idx } from "../challenges/categories";
 import { CHALLENGES } from "../challenges/registry";
 import { INITIAL_EASE, type ReviewStat } from "../challenges/scheduler";
-import { resetStore } from "./helpers";
+import { MONDAY, resetStore } from "./helpers";
 import { useGameStore } from "../state/gameStore";
 import { buildBaseFs } from "../lib/seed";
 import { CRUNCH_MACHINE, HOME_DIR } from "../lib/machine";
@@ -233,6 +233,29 @@ describe("review sessions", () => {
     // (measured from lastMpAt) blocks retention.
     completePanesSplit();
     expect(state().mastery.mp).toBe(50);
+  });
+
+  it("a sub-day re-clear pays 0 MP and does not move lastMpAt", () => {
+    const state = useGameStore.getState;
+    completePanesSplit();
+    const firstAt = state().lastMpAt["panes-split"];
+    expect(firstAt).toBe(MONDAY);
+
+    // An hour later, well inside the one-day retention gate.
+    state().jumpToChallenge(idx("rm-bomb"));
+    vi.setSystemTime(MONDAY + HOUR);
+    completePanesSplit();
+    expect(state().lastAwards).toEqual([]);
+    expect(state().mastery.mp).toBe(50); // nothing paid
+    // The zero-pay clear must NOT push the clock forward: measuring from the
+    // original clear is what lets a genuine next-day repeat still earn.
+    expect(state().lastMpAt["panes-split"]).toBe(firstAt);
+
+    state().jumpToChallenge(idx("rm-bomb"));
+    vi.setSystemTime(MONDAY + DAY + HOUR);
+    completePanesSplit();
+    expect(state().lastAwards).toEqual([{ mp: 4, label: "Retention" }]);
+    expect(state().lastMpAt["panes-split"]).toBe(MONDAY + DAY + HOUR);
   });
 
   it("challenges shows due badges and the review summary", () => {
