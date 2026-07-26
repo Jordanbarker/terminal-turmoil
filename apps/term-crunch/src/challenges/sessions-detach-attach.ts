@@ -35,8 +35,11 @@ export const sessionsDetachAttach: Challenge = {
         "List sessions to confirm it survived, then reattach.",
       hint: "tmux ls shows every session; attach reconnects to the most recently detached one by default.",
       command: "tmux attach",
-      isComplete: (s) =>
-        s.tmux.attachedSession === "0" && s.tmux.detachedSessions.length === 0,
+      // Name-scoped, not a count: an explorer who spun up and detached some
+      // other session first would be stranded forever by
+      // `detachedSessions.length === 0`. Attaching to "0" is the checkpoint;
+      // whatever else lives on the server is irrelevant here.
+      isComplete: (s) => s.tmux.attachedSession === "0",
     },
   ],
 };

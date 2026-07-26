@@ -48,7 +48,8 @@ export function paneTreeMatches(a: PaneNode, b: PaneNode): boolean {
  * each challenge picks its own precision (e.g. ±0.05 for a "~70% wide" goal).
  */
 export function paneTreeMatchesWithRatio(a: PaneNode, b: PaneNode, tol: number): boolean {
-  if (a.kind !== b.kind) return false;
+  // Leaves have no ratio to compare: two of them always match, and a leaf paired
+  // with a split never does. Past this line both nodes are splits.
   if (a.kind === "leaf" || b.kind === "leaf") return a.kind === "leaf" && b.kind === "leaf";
   if (a.direction !== b.direction) return false;
   if (Math.abs(a.ratio - b.ratio) > tol) return false;

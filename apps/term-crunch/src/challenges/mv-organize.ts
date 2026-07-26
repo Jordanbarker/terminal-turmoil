@@ -1,5 +1,6 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory } from "@tt/core/filesystem/types";
+import { mkdirOrThrow, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const MESSY_DIR = "/home/player/downloads";
@@ -15,16 +16,10 @@ const LOGS_DIR = `${MESSY_DIR}/logs`;
  * deliberately NOT created — making it is step 1.
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(MESSY_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `mv-organize: mkdir ${MESSY_DIR} failed`);
-  let fs = mk.fs;
-
+  let fs = mkdirOrThrow(base, MESSY_DIR);
   for (const name of SEED_FILES) {
-    const wr = fs.writeFile(`${MESSY_DIR}/${name}`, `# ${name}\n`);
-    if (!wr.fs) throw new Error(wr.error ?? `mv-organize: write ${name} failed`);
-    fs = wr.fs;
+    fs = writeOrThrow(fs, `${MESSY_DIR}/${name}`, `# ${name}\n`);
   }
-
   return fs;
 }
 

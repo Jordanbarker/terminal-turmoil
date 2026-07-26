@@ -70,7 +70,7 @@ export const panesResizeCorner: Challenge = {
     {
       instruction: "Grow the bottom-left pane to about 70% of the left column.",
       hint:
-        "~/.tmux.conf binds resize keys H/J/K/L under your prefix (Ctrl+Space). " +
+        "~/.tmux.conf binds resize keys H/J/K/L under your prefix. " +
         "Resizing up pulls the divider toward the top, growing the bottom pane.",
       command: "prefix K (repeat to ~70%)",
       isComplete: (s) => {

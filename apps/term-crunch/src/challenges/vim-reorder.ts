@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readLines, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -12,15 +13,7 @@ const SEED = [STEP3, STEP1, STEP2].join("\n");
 const TARGET = [STEP1, STEP2, STEP3];
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-reorder: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, SEED + "\n");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-reorder: seed write failed");
-  return wr.fs;
-}
-
-function lines(fs: VirtualFS): string[] {
-  return (fs.readFile(FILE).content ?? "").replace(/\n+$/, "").split("\n");
+  return writeOrThrow(base, FILE, SEED + "\n");
 }
 
 export const vimReorder: Challenge = {
@@ -44,7 +37,7 @@ export const vimReorder: Challenge = {
       // Outcome-only: dd/p reaches the same result, so the predicate can't force
       // visual mode. The hint/command teach it; this just checks the final order.
       isComplete: (s) => {
-        const l = lines(s.fs);
+        const l = readLines(s.fs, FILE);
         return l.length === TARGET.length && l.every((line, i) => line === TARGET[i]);
       },
     },

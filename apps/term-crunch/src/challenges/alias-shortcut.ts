@@ -1,14 +1,13 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory } from "@tt/core/filesystem/types";
+import { mkdirOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const RELEASES_DIR = "/home/player/releases";
 const TARGET_DIR = `${RELEASES_DIR}/v2`;
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(RELEASES_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `alias-shortcut: mkdir ${RELEASES_DIR} failed`);
-  return mk.fs;
+  return mkdirOrThrow(base, RELEASES_DIR);
 }
 
 export const aliasShortcut: Challenge = {

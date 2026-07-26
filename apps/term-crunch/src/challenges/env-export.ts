@@ -1,19 +1,13 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { mkdirOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const PROJECT_DIR = "/home/player/projects/world-domination";
 
 function setup(base: VirtualFS): VirtualFS {
-  // VirtualFS.writeFile has no mkdir-p: create the nested dirs first. The dir
-  // is pure flavor (the prompt reads ~/projects/world-domination) — the whole
-  // challenge lives in the environment, so nothing is seeded inside it.
-  let fs = base;
-  for (const dir of ["/home/player/projects", PROJECT_DIR]) {
-    const mk = fs.makeDirectory(dir);
-    if (!mk.fs) throw new Error(mk.error ?? `env-export: mkdir ${dir} failed`);
-    fs = mk.fs;
-  }
-  return fs;
+  // The dir is pure flavor (the prompt reads ~/projects/world-domination). The
+  // whole challenge lives in the environment, so nothing is seeded inside it.
+  return mkdirOrThrow(base, PROJECT_DIR);
 }
 
 export const envExport: Challenge = {

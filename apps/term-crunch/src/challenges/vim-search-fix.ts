@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readTrimmed, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -11,15 +12,7 @@ const NEW = "newhost";
 const SEED = [`backend = ${OLD}`, `cache = ${OLD}`, `worker = ${OLD}`].join("\n");
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-search-fix: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, SEED + "\n");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-search-fix: seed write failed");
-  return wr.fs;
-}
-
-function content(fs: VirtualFS): string {
-  return fs.readFile(FILE).content ?? "";
+  return writeOrThrow(base, FILE, SEED + "\n");
 }
 
 export const vimSearchFix: Challenge = {
@@ -43,7 +36,7 @@ export const vimSearchFix: Challenge = {
       // Technique-agnostic: only the outcome is checked, so cw / r / retyping
       // all pass. >= 3 tolerates the file gaining an extra match by accident.
       isComplete: (s) => {
-        const c = content(s.fs);
+        const c = readTrimmed(s.fs, FILE);
         return !c.includes(OLD) && (c.match(new RegExp(NEW, "g")) ?? []).length >= 3;
       },
     },

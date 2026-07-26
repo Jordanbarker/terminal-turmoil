@@ -2,6 +2,7 @@ import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { gitInit, gitAdd, gitCommit } from "@tt/core/git/repo";
 import { GIT_AUTHOR } from "../lib/machine";
 import { readGitState } from "../lib/gitState";
+import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const PROJECT_DIR = "/home/player/project";
@@ -17,29 +18,19 @@ const ENV_CONTENT = "API_KEY=sk-live-4f2a9c81d7e3\nDB_PASSWORD=hunter2\n";
 // Fixed timestamp keeps the seeded commit hash deterministic.
 const TS = 1_700_000_000_000;
 
-/** Write a file, throwing on failure (setup must not silently produce a broken repo). */
-function write(fs: VirtualFS, path: string, content: string): VirtualFS {
-  const r = fs.writeFile(path, content);
-  if (!r.fs) throw new Error(r.error ?? `git-unstage: write ${path} failed`);
-  return r.fs;
-}
-
 /**
  * Seed ~/project with one commit (app.js), then replay the "accident": edit
  * app.js, drop a secrets .env next to it, and stage both with `git add .`.
  * Starting index: { app.js (edited), .env (staged-new) }.
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(PROJECT_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? "git-unstage: mkdir failed");
-
-  let fs = write(mk.fs, APP, BASE_APP);
+  let fs = writeOrThrow(base, APP, BASE_APP);
   fs = gitInit(fs, PROJECT_DIR, GIT_AUTHOR).fs;
   fs = gitAdd(fs, PROJECT_DIR, PROJECT_DIR, ["app.js"], false).fs;
   fs = gitCommit(fs, PROJECT_DIR, "Add app", GIT_AUTHOR, false, false, TS).fs;
 
-  fs = write(fs, APP, EDITED_APP);
-  fs = write(fs, ENV, ENV_CONTENT);
+  fs = writeOrThrow(fs, APP, EDITED_APP);
+  fs = writeOrThrow(fs, ENV, ENV_CONTENT);
   return gitAdd(fs, PROJECT_DIR, PROJECT_DIR, ["."], false).fs;
 }
 
@@ -81,7 +72,9 @@ export const gitUnstage: Challenge = {
       command: 'git commit -m "update"',
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
-        return g.commitCount === 2 && g.untracked.includes(".env") && envIntact(s.fs);
+        // >= 2: overshooting with extra commits still reaches the target state
+        // (secrets never committed), so it must not strand the player.
+        return g.commitCount >= 2 && g.untracked.includes(".env") && envIntact(s.fs);
       },
     },
   ],

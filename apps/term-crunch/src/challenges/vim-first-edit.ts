@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readTrimmed, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 // All vim challenges share one scratch dir so the player just runs `vim <file>`
@@ -9,21 +10,10 @@ const TARGET = "Hello, Vim!";
 
 /**
  * Seed an EMPTY notes.txt. The whole challenge is "type one line and save", so
- * there's nothing to seed but the file itself (an empty buffer opens fine in
- * vim). VirtualFS.writeFile has no mkdir-p, so WORK_DIR is created first.
+ * there's nothing to seed but the file itself (an empty buffer opens fine in vim).
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-first-edit: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, "");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-first-edit: seed write failed");
-  return wr.fs;
-}
-
-/** Saved buffer with any trailing newline stripped (vim adds one if you press
- * Enter after the text; the outcome is the same either way). */
-function read(fs: VirtualFS): string {
-  return (fs.readFile(FILE).content ?? "").replace(/\n+$/, "");
+  return writeOrThrow(base, FILE, "");
 }
 
 export const vimFirstEdit: Challenge = {
@@ -47,7 +37,7 @@ export const vimFirstEdit: Challenge = {
         "i enters insert mode; type the line, then Esc returns to normal mode. " +
         "A : command writes the file and quits.",
       command: "vim notes.txt\nthen: i  Hello, Vim!  <Esc>  :wq",
-      isComplete: (s) => read(s.fs) === TARGET,
+      isComplete: (s) => readTrimmed(s.fs, FILE) === TARGET,
     },
   ],
 };

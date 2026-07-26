@@ -287,7 +287,6 @@ export const useGameStore = create<GameState>()(
       activeWindow,
       windows: state.windows,
       fs: state.fs,
-      cwd: activeCwd(state.windows, state.activeWindowId),
       tmux: {
         attachedSession: state.tmuxAttachedSession?.name ?? null,
         detachedSessions: state.tmuxDetachedSessions.map((s) => ({

@@ -14,8 +14,8 @@ import { useGameStore } from "../state/gameStore";
  * to ALWAYS_AVAILABLE. That's deliberate: it's what the keyboard-only tmux
  * challenges rely on.
  *
- * `help`, `clear`, `man`, and `shortcuts` are always available so the player can orient,
- * reset, and read the manual, and the challenge-navigation builtins
+ * `help`, `clear`, `man`, `shortcuts`, and `tmux` are always available so the player can
+ * orient, reset, read the manual, and drive the session lifecycle, and the challenge-navigation builtins
  * (`challenges`/`goto`/`next`/`prev`/`track`/`review`, engine/commands/navigation.ts)
  * so the player can always move between challenges. `man` self-scopes:
  * `man <cmd>` only renders a page for commands the current challenge allows

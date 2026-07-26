@@ -1,4 +1,6 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { isDirectory } from "@tt/core/filesystem/types";
+import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const LOG_PATH = "/home/player/passphrase.log";
@@ -110,9 +112,7 @@ FREEZING
 `;
 
 function setup(base: VirtualFS): VirtualFS {
-  const wr = base.writeFile(LOG_PATH, LOG_BODY);
-  if (!wr.fs) throw new Error(wr.error ?? `copy-mode-yank: write ${LOG_PATH} failed`);
-  return wr.fs;
+  return writeOrThrow(base, LOG_PATH, LOG_BODY);
 }
 
 export const copyModeYank: Challenge = {
@@ -136,15 +136,18 @@ export const copyModeYank: Challenge = {
       // mode is guided entirely through the hint below.
       hint:
         "`cat passphrase.log` prints it; the passphrase scrolls off the top.\n" +
-        "Enter copy mode with your prefix (Ctrl+Space) then `[`.\n" +
+        "Enter copy mode with your prefix then `[`.\n" +
         "• Move: hjkl or arrows · g / G top / bottom · Ctrl+U / Ctrl+D half-page.\n" +
         "• Select: `v` starts a selection, `$` extends to end of line.\n" +
         "• Yank: `y` copies the selection to the system clipboard and exits copy mode.\n" +
         "Then type `mkdir ` and paste with Cmd+V (Ctrl+V elsewhere) — there is no tmux paste buffer.",
       command: `mkdir ${TOKEN}`,
-      // Passes exactly when a directory named after the token exists. VirtualFS
-      // directory nodes carry type: "directory".
-      isComplete: (s) => s.fs.getNode(TARGET_DIR)?.type === "directory",
+      // Passes exactly when a DIRECTORY named after the token exists (a file of
+      // that name is not the same move).
+      isComplete: (s) => {
+        const node = s.fs.getNode(TARGET_DIR);
+        return node !== null && isDirectory(node);
+      },
     },
   ],
 };

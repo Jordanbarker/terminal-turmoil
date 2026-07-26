@@ -258,6 +258,38 @@ describe("review sessions", () => {
     expect(state().lastMpAt["panes-split"]).toBe(MONDAY + DAY + HOUR);
   });
 
+  it("the end-of-track banner writes the completion MP too", () => {
+    // The `completed` branch of checkCompletion is a SEPARATE set() from the
+    // mid-track gate; if the mastery write is dropped from it, the last
+    // challenge of every track silently pays nothing.
+    const state = useGameStore.getState;
+    const all = getCategory("all").challenges;
+    const last = all[all.length - 1];
+    // The recipe.txt shortcut below is vim-reorder's solution; fail loudly if
+    // a new challenge is appended to the registry instead of mysteriously.
+    expect(last.id).toBe("vim-reorder");
+    state().loadChallenge(all.length - 1);
+    // Same recipe.txt shortcut as above: vim keystrokes can't be driven here.
+    const wr = state().fs.writeFile(
+      "/home/player/work/recipe.txt",
+      "Step 1: chop the vegetables\nStep 2: simmer for 20 minutes\nStep 3: serve\n",
+    );
+    if (!wr.fs) throw new Error(wr.error ?? "seed recipe.txt failed");
+    state().setFs(wr.fs);
+    useGameStore.setState({ stepIndex: last.steps.length - 1 });
+    state().checkCompletion();
+
+    expect(state().completed).toBe(true);
+    expect(state().mastery.mp).toBe(50);
+    expect(state().lastAwards).toEqual([{ mp: 50, label: "First clear" }]);
+    expect(state().lastMpAt[last.id]).toBe(MONDAY);
+    expect(state().bestTimes[last.id]).toBeDefined();
+
+    // Grading the banner only schedules; it must not pay a second time.
+    state().continueToNext("good");
+    expect(state().mastery.mp).toBe(50);
+  });
+
   it("challenges shows due badges and the review summary", () => {
     const first = CHALLENGES[0];
     useGameStore.setState({ reviewStats: { [first.id]: overdue(HOUR) } });

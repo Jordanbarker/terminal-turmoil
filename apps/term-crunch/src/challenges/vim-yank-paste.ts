@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readLines, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -9,15 +10,7 @@ const DUP_LINE = "allow 10.0.0.2";
 const KEEP_LINE = "allow 10.0.0.1";
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-yank-paste: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, SEED + "\n");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-yank-paste: seed write failed");
-  return wr.fs;
-}
-
-function lines(fs: VirtualFS): string[] {
-  return (fs.readFile(FILE).content ?? "").replace(/\n+$/, "").split("\n");
+  return writeOrThrow(base, FILE, SEED + "\n");
 }
 
 export const vimYankPaste: Challenge = {
@@ -41,7 +34,7 @@ export const vimYankPaste: Challenge = {
       // >= 2 tolerates an overshoot (pasting a third time still counts), per the
       // count convention; the 10.0.0.1 rule must survive.
       isComplete: (s) => {
-        const l = lines(s.fs);
+        const l = readLines(s.fs, FILE);
         return l.filter((line) => line === DUP_LINE).length >= 2 && l.includes(KEEP_LINE);
       },
     },
