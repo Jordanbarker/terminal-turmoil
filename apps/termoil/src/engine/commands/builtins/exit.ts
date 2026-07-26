@@ -1,13 +1,13 @@
 import { CommandHandler } from "@tt/core/commands/types";
-import { register } from "../registry";
+import { register } from "@tt/core/commands/registry";
 import { HELP_TEXTS } from "./helpTexts";
 
 const exit: CommandHandler = (_args, _flags, ctx) => {
   if (ctx.activeComputer === "erik-pc") {
-    return { output: "", transitionTo: "chipinfra" };
+    return { output: "", transitionTo: "chipinfra", sessionExit: true };
   }
   if (ctx.activeComputer === "devcontainer" || ctx.activeComputer === "chipinfra") {
-    return { output: "", transitionTo: "nexacorp" };
+    return { output: "", transitionTo: "nexacorp", sessionExit: true };
   }
   // Day 2 wrap, post-accusation: paced wind-down at the desk, then transition
   // home. The board-meeting debrief from Marcus arrives at home as a real email
@@ -23,6 +23,7 @@ const exit: CommandHandler = (_args, _flags, ctx) => {
         { text: "", delayMs: 700 },
       ],
       transitionTo: "home",
+      sessionExit: true,
       triggerEvents: [{ type: "command_executed", detail: "exit_day2_logoff" }],
     };
   }
@@ -34,7 +35,7 @@ const exit: CommandHandler = (_args, _flags, ctx) => {
   // progresses the story — see isEndOfDayExit/runExitToHome in
   // useComputerTransitions.ts.
   if (ctx.activeComputer === "nexacorp") {
-    return { output: "", transitionTo: "home" };
+    return { output: "", transitionTo: "home", sessionExit: true };
   }
   return { output: "" };
 };

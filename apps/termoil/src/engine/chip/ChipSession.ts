@@ -21,7 +21,7 @@ import {
   CHIP_CHAT_LINE_INTERVAL_MS,
   CHIP_COMMAND_LINE_INTERVAL_MS,
   CHIP_MENU_LINE_INTERVAL_MS,
-} from "@tt/core/lib/timing";
+} from "@/lib/timing";
 
 export class ChipSession implements ISession {
   private terminal: Terminal;

@@ -2,7 +2,7 @@ import { CommandHandler, IncrementalLine } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import type { ComputerId } from "../../../state/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 
 interface WorkspaceSpec {
   template: string;

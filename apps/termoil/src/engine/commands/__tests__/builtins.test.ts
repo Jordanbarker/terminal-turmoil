@@ -3,10 +3,11 @@ import { execute, executeAsync } from "@tt/core/commands/registry";
 import { CommandContext } from "@tt/core/commands/types";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "../builtins/helpTexts";
 import { stripAnsi } from "@tt/core/lib/ansi";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { createDefaultContext } from "@tt/core/snowflake/session/context";
+import { createDeviceProvider } from "../../../story/blockDevices";
 
 // Import builtins to trigger registration
 import "@tt/core/commands/builtins/ls";
@@ -846,18 +847,32 @@ describe("less", () => {
 });
 
 describe("df", () => {
+  const dfCtx = (computer: "nexacorp" | "chipinfra") => ({
+    ...ctx(),
+    activeComputer: computer,
+    devices: createDeviceProvider(computer),
+  });
+
   it("shows filesystem usage", () => {
-    const result = execute("df", [], {}, ctx());
+    const result = execute("df", [], {}, dfCtx("nexacorp"));
     expect(result.output).toContain("Filesystem");
     expect(result.output).toContain("/dev/sda1");
     expect(result.output).toContain("Mounted on");
   });
 
   it("shows human-readable sizes with -h", () => {
-    const result = execute("df", [], { h: true }, ctx());
-    // NexaCorp = 1T total → "1.0T" (coreutils keeps the .0 for single-digit values)
+    const result = execute("df", [], { h: true }, dfCtx("nexacorp"));
+    // NexaCorp root partition is 1T → "1.0T" (coreutils keeps the .0 for single-digit values)
     expect(result.output).toContain("1.0T");
     expect(result.output).toContain("/dev/sda1");
+  });
+
+  it("reports the machine's own root partition, matching lsblk", () => {
+    // chipinfra is a 200G vda1; before df read the device registry it fell
+    // through to a hardcoded 1T /dev/sda1 and disagreed with lsblk.
+    const result = execute("df", [], { h: true }, dfCtx("chipinfra"));
+    expect(result.output).toContain("/dev/vda1");
+    expect(result.output).toContain("200G");
   });
 });
 

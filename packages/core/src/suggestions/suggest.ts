@@ -25,16 +25,52 @@ export const PATH_COMMANDS = [
 /** Path commands that complete directories only (not files) */
 export const DIRECTORY_ONLY_COMMANDS = ["cd", "mkdir"];
 
-/** Subcommand lists keyed by parent command */
+/**
+ * Subcommand lists keyed by parent command, for core's own commands only.
+ * A game that registers its own builtins registers their subcommands through
+ * `addSubcommandCompletions` — otherwise TAB/ghost-text offers words that
+ * resolve to "command not found" in any app that lacks the command.
+ */
 export const SUBCOMMAND_MAP: Record<string, string[]> = {
   dbt: ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"],
   snow: ["sql"],
-  sudo: ["apt"],
-  apt: ["install"],
   bash: ["-c"],
   sh: ["-c"],
   git: ["init", "clone", "add", "rm", "commit", "status", "log", "branch", "checkout", "switch", "rebase", "reset", "diff", "stash", "push", "pull", "help"],
 };
+
+/** App-registered subcommand lists, merged on top of SUBCOMMAND_MAP. */
+let extraSubcommands: Record<string, string[]> = {};
+
+/**
+ * Register subcommand completions for app-owned commands (termoil does this
+ * from its builtins index for `apt`, and for the `apt` it adds under `sudo`).
+ * Additions merge with core's entries rather than replacing them, so an app can
+ * extend a core command's list; repeated values are ignored.
+ */
+export function addSubcommandCompletions(additions: Record<string, string[]>): void {
+  for (const [command, subs] of Object.entries(additions)) {
+    const existing = extraSubcommands[command] ?? [];
+    extraSubcommands = {
+      ...extraSubcommands,
+      [command]: [...existing, ...subs.filter((s) => !existing.includes(s))],
+    };
+  }
+}
+
+/** Drop all app-registered subcommands (used by tests for isolation). */
+export function resetSubcommandCompletions(): void {
+  extraSubcommands = {};
+}
+
+/** Every subcommand offered for `command`, core's plus the app's. Undefined = none. */
+export function getSubcommandCompletions(command: string): string[] | undefined {
+  const base = SUBCOMMAND_MAP[command];
+  const extra = extraSubcommands[command];
+  if (!base) return extra;
+  if (!extra) return base;
+  return [...base, ...extra.filter((s) => !base.includes(s))];
+}
 
 /**
  * List entries in a directory matching a prefix.
@@ -224,7 +260,7 @@ export function getSuggestion(
     }
 
     // Strategy 3b: Subcommand completion
-    const subs = SUBCOMMAND_MAP[resolvedCmd];
+    const subs = getSubcommandCompletions(resolvedCmd);
     if (subs) {
       const partial = input.slice(spaceIdx + 1);
       const match = subs.find((s) => s.toLowerCase().startsWith(partial.toLowerCase()) && s.length > partial.length);

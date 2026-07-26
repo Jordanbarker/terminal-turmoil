@@ -3,7 +3,7 @@ import { register } from "@tt/core/commands/registry";
 import { resolveSshTarget } from "@tt/core/ssh/sshConfig";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { ComputerId } from "../../../state/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 
 interface SshRoute {
   /** Resolved hostname after alias lookup. */

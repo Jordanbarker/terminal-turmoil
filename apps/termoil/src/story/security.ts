@@ -151,5 +151,7 @@ export const NEXACORP_SECURITY_POLICY: SecurityPolicy = {
   checkPathOp: (fs, rootPath, opKind, ctx) => opTouchesProtectedPath(fs, rootPath, opKind, ctx),
   classifyChmodTarget: (p) =>
     isLogTamperPath(p) ? "log_tampering" : isLeadershipPath(p) ? "leadership_destruction" : null,
-  isLogTamperPath,
+  // Scoped to NexaCorp: other machines may incidentally hold /var/log/*.log
+  // files that nobody is auditing.
+  isLogTamperPath: (p, machineId) => machineId === "nexacorp" && isLogTamperPath(p),
 };

@@ -173,7 +173,7 @@ export function applyRedirection(
 
     securityViolation =
       securityViolation ??
-      (computerId === "nexacorp" && security?.isLogTamperPath(absPath)
+      (security?.isLogTamperPath(absPath, computerId)
         ? {
             kind: "log_tampering" as const,
             path: absPath,

@@ -71,17 +71,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "  :w  :q  :wq  :q! Save, quit, save-and-quit, quit without saving",
   ].join("\n"),
 
-  mail: [
-    "Usage: mail [MESSAGE_NUMBER]",
-    "       mail -s SUBJECT RECIPIENT",
-    "",
-    "Read and send email.",
-    "",
-    "  mail              Show inbox listing",
-    "  mail N            Read message number N",
-    "  mail -s SUB TO    Send a message with subject SUB to recipient TO",
-  ].join("\n"),
-
   python: [
     "Usage: python [FILE] [-c CODE]",
     "",
@@ -281,14 +270,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "Print the current username.",
   ].join("\n"),
 
-  hostname: [
-    "Usage: hostname [-I]",
-    "",
-    "Print the system hostname.",
-    "",
-    "  -I   list all configured IP addresses",
-  ].join("\n"),
-
   file: [
     "Usage: file FILE...",
     "",
@@ -434,12 +415,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "  git stash list                  List stashes",
   ].join("\n"),
 
-  exit: [
-    "Usage: exit",
-    "",
-    "Exit the current remote session (e.g. after ssh), returning to the previous shell.",
-  ].join("\n"),
-
   true: [
     "Usage: true",
     "",
@@ -478,42 +453,11 @@ export const HELP_TEXTS: Record<string, string> = {
     "Use man <command> for detailed usage.",
   ].join("\n"),
 
-  save: [
-    "Usage: save [1|2|3]",
-    "",
-    "Save game state to a numbered slot.",
-    "If no slot is given, save to slot 1.",
-  ].join("\n"),
-
-  load: [
-    "Usage: load [1|2|3|auto]",
-    "",
-    "Restore game from a save slot.",
-    "Use 'auto' to load the most recent autosave.",
-  ].join("\n"),
-
-  newgame: [
-    "Usage: newgame",
-    "",
-    "Start a fresh game, erasing current progress.",
-  ].join("\n"),
-
   sudo: [
     "Usage: sudo COMMAND [ARG ...]",
     "",
     "Run a command with elevated privileges.",
     "Required for system operations like installing packages.",
-  ].join("\n"),
-
-  apt: [
-    "Usage: apt <command> [options]",
-    "",
-    "Commands:",
-    "  update     Update package lists from repositories",
-    "  upgrade    Upgrade all upgradable packages",
-    "  install    Install new packages",
-    "",
-    "Requires sudo.",
   ].join("\n"),
 
   tmux: [
@@ -532,61 +476,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "Detached sessions keep their windows and panes; reattaching restores the",
     "layout with fresh shells.",
-  ].join("\n"),
-
-  ssh: [
-    "Usage: ssh [user@]hostname",
-    "",
-    "Open a secure shell connection to a remote host.",
-    "Reads ~/.ssh/config for host aliases.",
-  ].join("\n"),
-
-  "ssh-add": [
-    "Usage: ssh-add [-lL]",
-    "",
-    "Adds private key identities to the OpenSSH authentication agent.",
-    "",
-    "  -l   List fingerprints of all identities currently represented by the agent.",
-    "  -L   List public-key parameters of all identities currently represented by the agent.",
-    "",
-    "Reads SSH_AUTH_SOCK to locate the agent. If unset, prints",
-    "\"Could not open a connection to your authentication agent.\" and exits 2.",
-  ].join("\n"),
-
-  coder: [
-    "Usage: coder <subcommand> [options]",
-    "",
-    "Manage Coder remote development workspaces.",
-    "",
-    "  coder list            List workspaces (alias: coder ls)",
-    "  coder start <name>    Start a workspace",
-    "  coder stop <name>     Stop a workspace",
-    "  coder ssh <name>      SSH into a workspace",
-    "  coder logs <name>     Show workspace build logs",
-    "  coder create          Create a new workspace (requires admin permissions)",
-    "  coder delete          Delete a workspace (requires admin permissions)",
-  ].join("\n"),
-
-  chip: [
-    "Usage: chip",
-    "",
-    "Start an interactive session with Chip, NexaCorp's AI assistant.",
-  ].join("\n"),
-
-  piper: [
-    "Usage: piper",
-    "",
-    "Open Piper, the team messaging client.",
-    "Read channel messages and reply to direct messages from colleagues.",
-  ].join("\n"),
-
-  shutdown: [
-    "Usage: shutdown [-h now]",
-    "",
-    "Power off the system.",
-    "",
-    "  shutdown          Begin shutdown (60-second delay)",
-    "  shutdown -h now   Halt and power off immediately",
   ].join("\n"),
 
   printenv: [

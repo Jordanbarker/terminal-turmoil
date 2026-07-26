@@ -518,6 +518,7 @@ export function useTerminal() {
             storyFlags: latestStore.storyFlags,
             fs: runningFs,
             targetComputerExists: targetComputer ? !!latestStore.computerState[targetComputer as ComputerId] : undefined,
+            securityHomeMachine: "home",
             processDeliveries,
             renderSavesList,
             renderCheckpointsList,

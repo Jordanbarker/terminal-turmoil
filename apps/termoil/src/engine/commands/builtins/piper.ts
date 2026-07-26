@@ -1,4 +1,5 @@
-import { register } from "../registry";
+import { register } from "@tt/core/commands/registry";
+import { HELP_TEXTS } from "./helpTexts";
 
 register(
   "piper",
@@ -21,5 +22,6 @@ register(
       },
     };
   },
-  "Open Piper team messaging"
+  "Open Piper team messaging",
+  HELP_TEXTS.piper
 );

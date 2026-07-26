@@ -87,6 +87,11 @@ export interface ApplyContext {
   fs: VirtualFS;
   /** Whether the target computer already exists in computerState (for subsequent transitions) */
   targetComputerExists?: boolean;
+  /**
+   * Machine a security tripwire routes the player back to (termoil: "home").
+   * Absent => a violation is recorded but forces no transition.
+   */
+  securityHomeMachine?: MachineId;
   /** App-injected delivery cascade. Absent => no deliveries are processed. */
   processDeliveries?: ProcessDeliveriesFn;
   /** App-injected renderer for the `listSaves` game action output. */
@@ -133,19 +138,19 @@ export function computeEffects(
     effects.newCwd = result.newCwd;
   }
 
-  // Security tripwire: override any other transition and force a termination route home.
+  // Security tripwire: override any other transition and force a termination
+  // route back to the app's designated home machine.
   if (result.securityViolation) {
-    effects.transitionTo = "home";
+    effects.transitionTo = applyCtx.securityHomeMachine;
     effects.terminationReason = result.securityViolation;
     effects.suppressPrompt = true;
     // Continue with event processing — termination handler owns the email/flag side effects.
   } else if (result.transitionTo) {
     effects.transitionTo = result.transitionTo;
     effects.suppressPrompt = true;
-    // Only early-return for first-time transitions (skip event processing)
-    // exit and subsequent coder visits still need to run event processing below
-    const isExit = applyCtx.parsedCommand === "exit";
-    if (!isExit && !applyCtx.targetComputerExists) {
+    // Only early-return for first-time transitions (skip event processing).
+    // A session exit and subsequent coder visits still need event processing below.
+    if (!result.sessionExit && !applyCtx.targetComputerExists) {
       return effects; // First-time transition — early return
     }
   }

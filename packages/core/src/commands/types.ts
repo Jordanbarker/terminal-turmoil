@@ -154,6 +154,12 @@ export interface CommandResult {
   closeTabsForComputer?: MachineId;
   newMounts?: Mounts;
   securityViolation?: SecurityViolation;
+  /**
+   * Set by a builtin that logs out of the current session (termoil's `exit`).
+   * A session exit still runs event processing on the way out, unlike a
+   * first-time transition, which short-circuits — see computeEffects.
+   */
+  sessionExit?: boolean;
   /** Resolved tmux lifecycle action from the `tmux` builtin (applied by the app store). */
   tmuxAction?: TmuxAction;
 }

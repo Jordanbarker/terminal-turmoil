@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
-import { register } from "../registry";
+import { register } from "@tt/core/commands/registry";
+import { addSubcommandCompletions } from "@tt/core/suggestions/suggest";
 import { HELP_TEXTS } from "./helpTexts";
 
 const INSTALLABLE_PACKAGES: Record<string, {
@@ -119,3 +120,6 @@ const apt: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("apt", apt, "Package manager", HELP_TEXTS.apt);
+// TAB/ghost-text: `apt` is this game's command, so its subcommands (and the
+// `apt` that follows `sudo`) are registered here rather than in core's table.
+addSubcommandCompletions({ sudo: ["apt"], apt: ["install"] });

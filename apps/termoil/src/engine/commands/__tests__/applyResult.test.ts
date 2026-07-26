@@ -49,6 +49,7 @@ function createApplyCtx(overrides?: Partial<ApplyContext>): ApplyContext {
     fs: createMinimalFS(),
     // Match the runtime wiring in useTerminal so delivery + listing behavior
     // is exercised; individual tests can override.
+    securityHomeMachine: "home",
     processDeliveries,
     renderSavesList,
     renderCheckpointsList,
@@ -353,6 +354,7 @@ describe("computeEffects", () => {
       const result: CommandResult = {
         output: "",
         transitionTo: "nexacorp",
+        sessionExit: true,
       };
       const effects = computeEffects(
         result,
@@ -363,6 +365,50 @@ describe("computeEffects", () => {
         })
       );
       expect(effects.transitionTo).toBe("nexacorp");
+    });
+
+    // `sessionExit` is what keeps a logoff from being treated as a first-time
+    // transition (which early-returns before event processing). The old code
+    // read the command NAME; these two cases pin the flag as the discriminator,
+    // and only the flag — targetComputerExists is falsy in both.
+    it("sessionExit keeps event processing on an unvisited target", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "home",
+        sessionExit: true,
+        triggerEvents: [{ type: "command_executed" as const, detail: "exit_day2_logoff" }],
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "exit",
+          activeComputer: "nexacorp",
+          targetComputerExists: false,
+        })
+      );
+      expect(effects.transitionTo).toBe("home");
+      expect(effects.events).toContainEqual({
+        type: "command_executed",
+        detail: "exit_day2_logoff",
+      });
+    });
+
+    it("without sessionExit an unvisited target early-returns before events", () => {
+      const result: CommandResult = {
+        output: "",
+        transitionTo: "home",
+        triggerEvents: [{ type: "command_executed" as const, detail: "exit_day2_logoff" }],
+      };
+      const effects = computeEffects(
+        result,
+        createApplyCtx({
+          parsedCommand: "exit",
+          activeComputer: "nexacorp",
+          targetComputerExists: false,
+        })
+      );
+      expect(effects.transitionTo).toBe("home");
+      expect(effects.events).toEqual([]);
     });
 
     it("subsequent visit processes events", () => {

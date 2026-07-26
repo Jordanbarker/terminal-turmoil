@@ -3,7 +3,7 @@ import { register } from "@tt/core/commands/registry";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { pad2 } from "@tt/core/lib/format";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 import {
   getMailDir,
   getSentDir,

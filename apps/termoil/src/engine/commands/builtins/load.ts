@@ -1,6 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 
 const VALID_SLOTS = ["1", "2", "3"];
 

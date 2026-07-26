@@ -562,6 +562,7 @@ export class GameRunner {
       deliveredPiperIds: this.deliveredPiperIds,
       storyFlags: this.storyFlags,
       fs: this.fs,
+      securityHomeMachine: "home",
       processDeliveries,
     });
 

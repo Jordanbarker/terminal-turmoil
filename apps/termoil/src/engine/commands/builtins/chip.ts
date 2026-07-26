@@ -1,4 +1,5 @@
-import { register } from "../registry";
+import { register } from "@tt/core/commands/registry";
+import { HELP_TEXTS } from "./helpTexts";
 
 register(
   "chip",
@@ -15,5 +16,6 @@ register(
       chipSession: { storyFlags: ctx.storyFlags ?? {}, currentComputer: ctx.activeComputer },
     };
   },
-  "Chat with NexaCorp's AI assistant"
+  "Chat with NexaCorp's AI assistant",
+  HELP_TEXTS.chip
 );

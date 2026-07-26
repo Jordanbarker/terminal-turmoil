@@ -34,7 +34,7 @@ const policy: SecurityPolicy = {
       ? { kind: "leadership_destruction", path: rootPath, command: opCtx.command, descendantCount: 1 }
       : null,
   classifyChmodTarget: (path) => (path.startsWith(PROTECTED) ? "leadership_destruction" : null),
-  isLogTamperPath: (path) => path.startsWith("/var/log/"),
+  isLogTamperPath: (path, machineId) => machineId === "nexacorp" && path.startsWith("/var/log/"),
 };
 
 function ctx(overrides?: Partial<CommandContext>): CommandContext {

@@ -3,7 +3,7 @@ import {
   SuggestionContext,
   PATH_COMMANDS,
   DIRECTORY_ONLY_COMMANDS,
-  SUBCOMMAND_MAP,
+  getSubcommandCompletions,
   listMatchingEntries,
   splitPartialPath,
   findLastUnquotedPipe,
@@ -79,7 +79,7 @@ export function getCompletions(
   const resolvedCmd = resolveAlias(cmd, ctx.aliases);
 
   // Subcommand completion
-  const subs = SUBCOMMAND_MAP[resolvedCmd];
+  const subs = getSubcommandCompletions(resolvedCmd);
   if (subs) {
     const rest = input.slice(spaceIdx + 1);
     // Only complete subcommand if no additional spaces (i.e., first arg position)

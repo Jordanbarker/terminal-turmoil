@@ -7,7 +7,7 @@ description: "How the Piper team messaging system works — channels, DMs, messa
 
 NexaCorp's Slack-style team chat — casual colleague conversations (quick asks, tool intros, help). Email handles formal/system comms.
 
-Code map: `src/engine/piper/` (`types.ts` — all types, read them there; `delivery.ts` = `checkPiperDeliveries`/`seedImmediatePiper`/`getConversationHistory`/`getPendingReply`/`getVisibleChannels`; `timestamp.ts`; `render.ts`; `PiperSession.ts`). Content in `src/story/piper/`: `channels.ts` (`PIPER_CHANNELS`), `messages.ts` (auto-includes all per-character files in `messages/` — one per character). Command registration `commands/builtins/piper.ts`.
+Code map: `src/engine/piper/` (`types.ts` — all types, read them there; `delivery.ts` = `checkPiperDeliveries`/`seedImmediatePiper`/`getConversationHistory`/`getPendingReply`/`getVisibleChannels`; `timestamp.ts`; `render.ts`; `PiperSession.ts`). Content in `src/story/piper/`: `channels.ts` (`PIPER_CHANNELS`), `messages.ts` (auto-includes all per-character files in `messages/` — one per character). Command registration `src/engine/commands/builtins/piper.ts` (app-side, like the rest of the story builtins).
 
 ## Storage
 

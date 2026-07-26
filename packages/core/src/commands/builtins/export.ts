@@ -1,10 +1,8 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
 import { GameEvent } from "@tt/core";
-import { resolvePath } from "@tt/core/lib/pathUtils";
+import { matchEnvExportTriggers } from "../envTriggers";
 import { HELP_TEXTS } from "./helpTexts";
-
-const ERIK_AGENT_SOCKET = "/tmp/ssh-mZ4xPq/agent.18472";
 
 const exportCmd: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
@@ -35,17 +33,8 @@ const exportCmd: CommandHandler = (args, _flags, ctx) => {
     if (ctx.envVars && ctx.setEnvVars) {
       ctx.setEnvVars({ ...ctx.envVars, [key]: value });
     }
-    if (key === "CHIP_API_KEY" && value === "nxa_live_7f3k9m2x") {
-      events.push({ type: "command_executed", detail: "exported_chip_api_key" });
-    }
-    if (key === "SSH_AUTH_SOCK") {
-      // Compare the path the kernel would actually connect to, so relative
-      // forms (`agent.18472` from `/tmp/ssh-mZ4xPq`) trigger the same flag.
-      const resolved = resolvePath(value, ctx.cwd, ctx.homeDir);
-      if (resolved === ERIK_AGENT_SOCKET) {
-        events.push({ type: "command_executed", detail: "exported_erik_ssh_auth_sock" });
-      }
-    }
+    // Story-significant assignments come from the app-injected trigger table.
+    events.push(...matchEnvExportTriggers(key, value, ctx.cwd, ctx.homeDir));
   }
 
   return { output: "", triggerEvents: events.length ? events : undefined };

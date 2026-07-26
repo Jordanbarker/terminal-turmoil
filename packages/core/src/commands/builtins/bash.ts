@@ -1,4 +1,5 @@
 import { registerAsync, registerAlias } from "../registry";
+import { interceptScript } from "../scriptInterceptors";
 import { setKnownFlags } from "../flagValidation";
 import { AsyncCommandHandler, CommandContext, CommandResult } from "@tt/core/commands/types";
 import { parsePipeline, parseInput, parseChainedPipeline } from "../parser";
@@ -902,11 +903,9 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
   // bash script.sh — read file and execute
   const filePath = resolvePath(args[0], ctx.cwd, ctx.homeDir);
 
-  // Intercept auto_apply.py on home PC
-  if (ctx.activeComputer === "home" && filePath.endsWith("/auto_apply.py")) {
-    const { simulateAutoApply } = await import("./python");
-    return simulateAutoApply(args.slice(1));
-  }
+  // The app may claim this script and return authored output (scriptInterceptors.ts).
+  const intercepted = interceptScript(filePath, args.slice(1), ctx);
+  if (intercepted) return intercepted;
 
   const fileResult = ctx.fs.readFile(filePath);
   if (fileResult.error) {

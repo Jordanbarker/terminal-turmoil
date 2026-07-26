@@ -34,7 +34,6 @@ import "./file";
 import "./pdftotext";
 import "./tree";
 import "./sudo";
-import "./apt";
 import "./sort";
 import "./uniq";
 import "./date";
@@ -48,14 +47,6 @@ import "./mount";
 import "./umount";
 // Terminal multiplexer
 import "./tmux";
-// Network
-import "./ssh-add";
-// Remote environments
-import "./exit";
-// AI assistant
-import "./chip";
-// Messaging
-import "./piper";
 // Version control
 import "./git";
 // System

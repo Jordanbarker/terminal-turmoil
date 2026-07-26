@@ -1,9 +1,9 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
-import { getShutdownIncrementalLines, getRemoteShutdownIncrementalLines } from "@tt/core/lib/ascii";
+import { getShutdownIncrementalLines, getRemoteShutdownIncrementalLines } from "@/lib/ascii";
 import { COMPUTERS, CONNECTION_PARENT, ComputerId } from "../../../state/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 
 const shutdown: CommandHandler = (args, flags, ctx) => {
   const immediate = Boolean(flags.h && args.includes("now"));

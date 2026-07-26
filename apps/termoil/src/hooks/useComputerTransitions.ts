@@ -13,7 +13,7 @@ import { gitClone } from "@tt/core/git/repo";
 import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { colorize, ansi } from "@tt/core/lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "@tt/core/lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "@/lib/ascii";
 import {
   BOOT_LINE_INTERVAL_MS,
   SECURITY_ALERT_LINE_INTERVAL_MS,

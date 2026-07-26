@@ -1,5 +1,8 @@
-import { ansi, colorize } from "./ansi";
-import { IncrementalLine } from "../incrementalLine";
+// Termoil's authored terminal art and boot/login copy: NexaCorp branding, the
+// player's home box (maniac-iv), Coder workspace banners, and the credits roll.
+// All of it is story content, so it lives in the app rather than @tt/core.
+import { ansi, colorize } from "@tt/core/lib/ansi";
+import { IncrementalLine } from "@tt/core";
 
 const HOME_LAST_LOGINS: Record<number, string> = {
   1: "Last login: Sun Feb 22 14:32:07 EST 2026 on tty1",

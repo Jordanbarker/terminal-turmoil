@@ -7,7 +7,9 @@ description: "Command parser, registry, pipeline execution, and how to add new c
 
 Parses terminal input, dispatches to registered handlers, chains pipelines, and computes side effects — all as pure functions. **Shared `@tt/core` engine** (`packages/core/src/commands`), consumed by both apps.
 
-Code map: `commands/{types,registry,parser,runPipeline,applyResult,flagValidation,redirection,helpTexts}.ts` + `builtins/` (one file per command; `git.ts`/`dbt.ts`/`snow.ts` are core builtins, `mail.ts` is app-only). Interactive modes: `session/types.ts` (`ISession`/`SessionResult`), `pager/` (less). Orchestration: the store-agnostic chain/pipe loop is core `runPipeline.ts`; the app hooks are thin wrappers around it — `useTerminal.ts` (context building/effects application), `useCommandLine.ts` (input buffer/history/suggestions), `useComputerTransitions.ts`. Read the type definitions in `commands/types.ts` and `applyResult.ts` directly — they are not mirrored here.
+Code map: `commands/{types,registry,parser,runPipeline,applyResult,flagValidation,redirection,security,devices,scriptInterceptors,envTriggers}.ts` + `builtins/` (one file per command, plus `helpTexts.ts`; `git.ts`/`dbt.ts`/`snow.ts` are core builtins).
+
+**Core registers only story-agnostic commands.** Termoil's own builtins live in `apps/termoil/src/engine/commands/builtins/` and self-register into the same registry from that dir's `index.ts` (which imports core's first): `mail`, `ssh`, `ssh-add`, `coder`, `exit`, `apt`, `chip`, `piper`, `shutdown`, `hostname`, `cheat`, `save`/`load`/`newgame`. Their help text is `apps/termoil/.../builtins/helpTexts.ts`, which re-exports core's map merged with termoil's own entries. `apps/term-crunch/src/__tests__/coreSurface.test.ts` fails if a story command reappears in core. Interactive modes: `session/types.ts` (`ISession`/`SessionResult`), `pager/` (less). Orchestration: the store-agnostic chain/pipe loop is core `runPipeline.ts`; the app hooks are thin wrappers around it — `useTerminal.ts` (context building/effects application), `useCommandLine.ts` (input buffer/history/suggestions), `useComputerTransitions.ts`. Read the type definitions in `commands/types.ts` and `applyResult.ts` directly — they are not mirrored here.
 
 ## Parser (`parser.ts`)
 
@@ -35,7 +37,7 @@ The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid
 **Redirection (`redirection.ts`)** — zsh-realistic stdout redirect, consumed by `runPipeline.ts`/`bash.ts`/`scripts/play.ts`:
 - `extractStdoutRedirect` collects **every** unquoted `>`/`>>` (zsh `multios` — all targets get output) and strips stderr redirects. A target-less `>` sets a `parseError` (exit 1, segment skipped).
 - `precheckRedirects` validates targets **before** the pipeline runs (zsh opens redirect files before exec): dir target → `zsh: is a directory:`, missing parent → `zsh: no such file or directory:`. On error nothing executes (no output, no events, no FS change).
-- `applyRedirection` writes to every target `stripAnsi`-cleaned (files hold plain text, same as the pipe path), emitting `file_created`/`file_modified` and running the `isLogTamperPath` tripwire per target; `>>` append is newline-aware. `VirtualFS.writeFile` refuses to overwrite a directory (so `echo x > some-dir` can't destroy a tree), refuses a file whose owner `w` bit is off, and preserves the existing node's mode/metadata on overwrite — pass its optional `template` node to give a NEWLY created file the source's mode/metadata (`cp`/`mv` do).
+- `applyRedirection` writes to every target `stripAnsi`-cleaned (files hold plain text, same as the pipe path), emitting `file_created`/`file_modified` and running the `security.isLogTamperPath(path, machineId)` tripwire per target — the **policy** decides which machine the rules apply to (termoil's `story/security.ts` scopes it to nexacorp); core never compares a machine id to a literal; `>>` append is newline-aware. `VirtualFS.writeFile` refuses to overwrite a directory (so `echo x > some-dir` can't destroy a tree), refuses a file whose owner `w` bit is off, and preserves the existing node's mode/metadata on overwrite — pass its optional `template` node to give a NEWLY created file the source's mode/metadata (`cp`/`mv` do).
 
 ## Line splitting (`src/lib/textUtils.ts`)
 
@@ -51,7 +53,7 @@ Exit-code convention across builtins: **1 = read/write failure** (missing file, 
 
 ## Effect computation (`applyResult.ts`)
 
-`computeEffects(result, applyCtx)` is a **pure function** (no terminal/state access) returning `AppliedEffects`. It: builds the event list (always `command_executed`; `readsFiles: true` commands auto-add a `file_read` per file arg — declared via the 5th `register()` param, `grep 'register(' | grep ', true)`); processes story-flag triggers for the active computer; checks email/piper deliveries per event; detects the `nexacorp_followup`-read transition; and the NexaCorp `diff`-on-`.bak` → `discovered_log_tampering` special case. `ApplyContext`/`AppliedEffects` shapes are in `applyResult.ts` — read them there.
+`computeEffects(result, applyCtx)` is a **pure function** (no terminal/state access) returning `AppliedEffects`. It: builds the event list (always `command_executed`; `readsFiles: true` commands auto-add a `file_read` per file arg — declared via the 5th `register()` param, `grep 'register(' | grep ', true)`); and runs the app-injected `processDeliveries` cascade (story flags, email/piper deliveries) over those events. It names no command and no machine: a security violation routes to `applyCtx.securityHomeMachine` (termoil passes `"home"`; absent => no forced transition), and the "keep processing events instead of early-returning on a transition" case is driven by `CommandResult.sessionExit`, which termoil's `exit` builtin sets — **never** by comparing `parsedCommand` to a name. `ApplyContext`/`AppliedEffects` shapes are in `applyResult.ts` — read them there.
 
 **`GameEvent` vocabulary** (union in `engine/mail/delivery.ts`) — emitters worth knowing: `directory_created` fires for `mkdir`/`cp -r`/`mv` (dest + every nested sub-dir); `directory_removed` for `mv`/`rm -r`; `file_created` vs `file_modified` is decided by `fs.getNode(path)` **before** the write; `file_removed` for `rm`/`mv` source-side (every file under an `rm -r` subtree). The matcher supports `path` (exact) for all events; `file_read`/`file_created`/`file_modified` also support `pathPrefix`.
 
@@ -63,15 +65,31 @@ Exit-code convention across builtins: **1 = read/write failure** (missing file, 
 
 `isCommandAvailable(name, computer, storyFlags)` gates access; gate data is in `story/commandGates.ts`. See the **narrative skill** for per-computer gating. Both `execute` and `executeAsync` enforce it (never only one), and `./script` path execution is gated on the **interpreter** that will run it (`python` for `.py`, else `bash`) since the path itself is never an allowlist entry. Anything resolving a command name for the player — `which`/`type`/`command -v`, all three via `resolveCommandPath` — must pass `ctx.storyFlags`, or a flag-gated but unlocked command reads as "not found".
 
+## App-injected seams (core asks, the app answers)
+
+Everything core needs to know about a *particular* game arrives through one of these; none of them may be satisfied by a literal inside `packages/core`. All default to "nothing happens", which is what makes a story-free game (term-crunch) work.
+
+- **`CommandContext.security`** (`security.ts`) — protected paths / tripwires, including the machine scoping (see redirection above).
+- **`CommandContext.devices`** (`devices.ts`) — the machine's block devices. `df` reads total size and the Filesystem column from `rootDevice()` (parsing its `size` via `lib/formatSize.parseSize`), so df and lsblk can't disagree.
+- **`scriptInterceptors.ts`** — `setScriptInterceptor(fn)`. Consulted by `python foo.py`, `bash foo.py`, and bare `./foo.py` (registry `executePathCommand`) before the file is read; returning a `CommandResult` replaces execution with authored output. Termoil registers `~/scripts/auto_apply.py` from `src/engine/commands/scriptInterceptor.ts`.
+- **`envTriggers.ts`** — `setEnvExportTriggers(table)`. `export VAR=value` emits a `command_executed` event when an entry matches by literal `value` or by resolved `path` (relative forms resolve against cwd, as connect(2) would). Termoil's table is `src/story/envTriggers.ts`.
+- **`availability.ts` `setAvailabilityPolicy`** and **`help.ts` `registerMetaCommands`** — gating and the cyan meta-command grouping.
+- **`suggestions/suggest.ts` `addSubcommandCompletions`** — TAB/ghost-text subcommand words. `SUBCOMMAND_MAP` names only core's commands; an app-owned command registers its own (termoil's `apt.ts` adds `apt: [...]` and the `apt` under `sudo`). The registry guard alone does not catch a leak here, so `coreSurface.test.ts` checks the completion tables too.
+- **`builtins/man.ts` `registerManSummaries`** — the terse man NAME line for app builtins (termoil registers `TERMOIL_MAN_SUMMARIES` from its builtins index). Unlisted commands render their bare name.
+
+All of these have a `reset*` counterpart (`resetAvailabilityPolicy`, `resetScriptInterceptor`, `resetEnvExportTriggers`, `resetSubcommandCompletions`) for test isolation.
+
+Both seams registered at module scope are pulled in by termoil's `builtins/index.ts`, so importing that one module gives tests and the app the complete command layer.
+
 ## Adding a new command
 
-1. Create `builtins/{name}.ts`: a `CommandHandler` `(args, flags, ctx) => CommandResult` using `ctx.fs/cwd/stdin/...`; `register("name", handler, "desc", HELP_TEXTS.name)` + `setKnownFlags("name", {...})` at the bottom.
-2. Add the help entry to `HELP_TEXTS` in `helpTexts.ts`.
-3. `import "./name";` in `builtins/index.ts`.
+1. Create `builtins/{name}.ts`: a `CommandHandler` `(args, flags, ctx) => CommandResult` using `ctx.fs/cwd/stdin/...`; `register("name", handler, "desc", HELP_TEXTS.name)` + `setKnownFlags("name", {...})` at the bottom. **Story-coupled command? Put it in the app's builtins dir, not core.**
+2. Add the help entry to `HELP_TEXTS` in the `helpTexts.ts` next to it (core's for a core command, `apps/termoil/.../builtins/helpTexts.ts` for a termoil one). `man` reads whatever help text `register()` was given, so an app command gets a man page for free; add a `MAN_SUMMARIES`/`TERMOIL_MAN_SUMMARIES` entry for its NAME line, and `addSubcommandCompletions` if it has subcommands.
+3. `import "./name";` in the matching `builtins/index.ts`.
 4. Add `__tests__/name.test.ts`.
 
 Look at a neighbouring builtin for the pattern that fits (read-only, FS mutation, piped-input, interactive-session, event-triggering). Design invariants: pure functions (no store access), immutable FS (mutations return `newFs`), engine imports types from `state/types.ts` but never Zustand, always `resolvePath(arg, ctx.cwd, ctx.homeDir)`, colors via `colorize()`/`ansi` from `src/lib/ansi.ts`.
 
 ## Block devices and mounts (`lsblk`, `mount`, `umount`)
 
-Tooling in `builtins/{lsblk,mount,umount}.ts`; story-side registry `src/story/blockDevices.ts` (`BLOCK_DEVICES`, each entry optionally `visibleFlag` + `getContents()`). Every computer has a baseline **system disk** via `systemDisk(...)` so `lsblk` always shows a real machine; a `mountpoint?` field marks a static baseline mount (`mount` refuses to re-mount it). `getRootDevice(computer)` is the single source for `df`'s Filesystem column. `mount` wraps children via `dir(basename(mountpath), ...)` so `node.name` matches, refuses non-empty targets, and emits `mounted_usb_drive` only for `/dev/sdb1` at `/mnt/usb`. The `Mounts` registry is per-computer, rides the same accumulator pattern as `fs` (read from `computerState[id].mounts` → `ctx.mounts` → `result.newMounts`, committed once by `useTerminal` via `setComputerMounts`); key via `normalizeMountKey(input, cwd, homeDir)`.
+Tooling in `builtins/{lsblk,mount,umount}.ts`; story-side registry `src/story/blockDevices.ts` (`BLOCK_DEVICES`, each entry optionally `visibleFlag` + `getContents()`). Every computer has a baseline **system disk** via `systemDisk(...)` so `lsblk` always shows a real machine; a `mountpoint?` field marks a static baseline mount (`mount` refuses to re-mount it). `getRootDevice(computer)` is the single source for **both** of `df`'s device and Size columns (`df` has no size table of its own), so a new machine only needs a `systemDisk(...)` entry to report correctly. `mount` wraps children via `dir(basename(mountpath), ...)` so `node.name` matches, refuses non-empty targets, and emits `mounted_usb_drive` only for `/dev/sdb1` at `/mnt/usb`. The `Mounts` registry is per-computer, rides the same accumulator pattern as `fs` (read from `computerState[id].mounts` → `ctx.mounts` → `result.newMounts`, committed once by `useTerminal` via `setComputerMounts`); key via `normalizeMountKey(input, cwd, homeDir)`.

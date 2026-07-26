@@ -5,6 +5,7 @@ import { MachineId } from "@tt/core/machine";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { getKnownFlags, shouldValidateFlags, rejectUnknownFlags } from "./flagValidation";
+import { interceptScript } from "./scriptInterceptors";
 
 /** Check if a command string looks like a path (starts with ./ or /). */
 function isPathCommand(name: string): boolean {
@@ -50,6 +51,20 @@ export function getAliasesFor(name: string): string[] {
     if (primary === name) result.push(alias);
   }
   return result;
+}
+
+/**
+ * The help text a command registered, whatever package registered it. `man`
+ * reads this rather than core's HELP_TEXTS map so app-registered builtins
+ * (termoil's story commands, term-crunch's navigation) get man pages too.
+ */
+export function getHelpText(name: string): string | undefined {
+  return commands.get(name)?.helpText ?? asyncCommands.get(name)?.helpText;
+}
+
+/** The one-line description a command registered (the `help` listing text). */
+export function getCommandDescription(name: string): string | undefined {
+  return commands.get(name)?.description ?? asyncCommands.get(name)?.description;
 }
 
 /** Returns true if the command reads files (triggers file_read events in applyResult). */
@@ -142,11 +157,10 @@ async function executePathCommand(pathStr: string, ctx: CommandContext): Promise
   if (perms[2] !== "x") {
     return { output: `zsh: permission denied: ${pathStr}`, exitCode: 126 };
   }
-  // Intercept auto_apply.py on home PC
-  if (ctx.activeComputer === "home" && absPath.endsWith("/auto_apply.py")) {
-    const { simulateAutoApply } = await import("./builtins/python");
-    return simulateAutoApply([]);
-  }
+  // The app may claim this script and return authored output (scriptInterceptors.ts).
+  // parseInput already stripped the command token, so rawArgs are the script's args.
+  const intercepted = interceptScript(absPath, ctx.rawArgs ?? [], ctx);
+  if (intercepted) return intercepted;
 
   const content = node.type === "file" ? node.content : "";
   // Lazy import to avoid circular dependency at module load time

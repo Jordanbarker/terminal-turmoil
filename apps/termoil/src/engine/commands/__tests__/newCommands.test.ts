@@ -7,7 +7,7 @@ import { DirectoryNode } from "@tt/core/filesystem/types";
 // produce the not-found / colleague-hint behavior these tests assert.
 import "../../../story/availabilityPolicy";
 import { createGameClock } from "../../../story/clock";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "../builtins/helpTexts";
 import { parsePipeline, parseChainedPipeline } from "@tt/core/commands/parser";
 
 /** Strip ANSI escape codes for easier assertion */

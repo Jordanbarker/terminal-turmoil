@@ -1,6 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
-import { register } from "../registry";
-import { setKnownFlags } from "../flagValidation";
+import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 
