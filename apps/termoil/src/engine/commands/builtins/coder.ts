@@ -1,5 +1,6 @@
 import { CommandHandler, IncrementalLine } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import type { ComputerId } from "../../../state/types";
 import { HELP_TEXTS } from "./helpTexts";
@@ -218,3 +219,4 @@ const coder: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("coder", coder, "Remote development environments on Coder", HELP_TEXTS.coder);
+setKnownFlags("coder", {});

@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 
 const history: CommandHandler = (_args, _flags, ctx) => {
@@ -16,3 +17,4 @@ const history: CommandHandler = (_args, _flags, ctx) => {
 };
 
 register("history", history, "Display command history", HELP_TEXTS.history);
+setKnownFlags("history", {});

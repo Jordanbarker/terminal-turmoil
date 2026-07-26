@@ -3,6 +3,7 @@ import { register } from "@tt/core/commands/registry";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { pad2 } from "@tt/core/lib/format";
+import { basename } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import {
   getMailDir,
@@ -123,7 +124,8 @@ function buildPromptSession(
 }
 
 const mail: CommandHandler = (args, flags, ctx) => {
-  const username = ctx.homeDir.split("/").pop() || PLAYER.username;
+  // homeDir is always /home/<user>; the fallback only covers a degenerate "/".
+  const username = basename(ctx.homeDir) || PLAYER.username;
   const computer = ctx.activeComputer as ComputerId;
   const fromDomain = computer === "home" ? "email.com" : "nexacorp.com";
 

@@ -1,4 +1,5 @@
 import { colorize, ansi } from "@tt/core/lib/ansi";
+import { wordWrap } from "@tt/core/lib/textUtils";
 import { PiperMessage, PiperReplyOption } from "./types";
 
 export function renderPiperHeader(title: string, width: number, description?: string): string {
@@ -91,7 +92,7 @@ export function renderConversation(messages: PiperMessage[], width: number, unre
     const msg = messages[i];
     if (msg.isPlayer) {
       // Player messages: right-aligned style
-      const wrapped = wordWrap(msg.body, width - 4);
+      const wrapped = wordWrap(msg.body, width - 4, "preserve");
       lines.push("");
       lines.push(colorize(`  ${wrapped.split("\r\n").join("\r\n  ")}`, ansi.brightWhite + ansi.bold));
     } else {
@@ -101,7 +102,7 @@ export function renderConversation(messages: PiperMessage[], width: number, unre
         : `  ${colorize(msg.from, ansi.bold)}`;
       lines.push("");
       lines.push(header);
-      const wrapped = wordWrap(msg.body, width - 4);
+      const wrapped = wordWrap(msg.body, width - 4, "preserve");
       for (const line of wrapped.split("\r\n")) {
         lines.push(`  ${line}`);
       }
@@ -161,27 +162,4 @@ export function renderScrollIndicator(width: number): string {
   const text = " ↑ more messages";
   const padding = Math.max(0, width - text.length);
   return colorize(text + " ".repeat(padding), ansi.dim);
-}
-
-function wordWrap(text: string, width: number): string {
-  if (width <= 0) return text;
-  const paragraphs = text.split("\n");
-  const wrapped = paragraphs.map((para) => {
-    // Don't wrap lines that start with spaces (pre-formatted)
-    if (para.startsWith("  ")) return para;
-    const words = para.split(" ");
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      if (current.length + word.length + 1 > width && current.length > 0) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = current ? `${current} ${word}` : word;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.join("\r\n");
-  });
-  return wrapped.join("\r\n");
 }

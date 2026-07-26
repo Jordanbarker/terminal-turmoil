@@ -1,4 +1,5 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { basename } from "@tt/core/lib/pathUtils";
 import { getEmailDefinitions } from "./emails";
 import { deliverEmail, deliverEmailAsRead, getMailEntries } from "./mailUtils";
 import { ComputerId, PLAYER, StoryFlags } from "../../state/types";
@@ -24,7 +25,8 @@ export function checkEmailDeliveries(
   const existing = getMailEntries(currentFs);
   let nextSeq = existing.length > 0 ? Math.max(...existing.map((e) => e.seq)) + 1 : 1;
 
-  const username = fs.homeDir.split("/").pop() || PLAYER.username;
+  // homeDir is always /home/<user>; the fallback only covers a degenerate "/".
+  const username = basename(fs.homeDir) || PLAYER.username;
   for (const def of getEmailDefinitions(username, computer, storyFlags)) {
     const triggers = Array.isArray(def.trigger) ? def.trigger : [def.trigger];
     if (triggers.every((t) => t.type === "immediate")) continue;

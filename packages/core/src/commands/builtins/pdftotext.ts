@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isFile } from "@tt/core/filesystem/types";
 import { HELP_TEXTS } from "./helpTexts";
@@ -34,3 +35,4 @@ const pdftotext: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("pdftotext", pdftotext, "Convert PDF to text", HELP_TEXTS.pdftotext, true);
+setKnownFlags("pdftotext", {});

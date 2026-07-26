@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 import { Mount, normalizeMountKey } from "@tt/core/filesystem/mounts";
 import { dir } from "@tt/core/filesystem/builders";
@@ -72,3 +73,4 @@ const mount: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("mount", mount, "Mount a filesystem", HELP_TEXTS.mount);
+setKnownFlags("mount", {});

@@ -15,7 +15,7 @@ Code map: `commands/{types,registry,parser,runPipeline,applyResult,flagValidatio
 
 `parseInput` (tokenize respecting quotes), `parsePipeline` (split on unquoted `|`), `parseChainedPipeline` (split on `&&`/`||`/`;` first, then each segment's pipeline), plus `splitOnPipe`/`splitOnChainOperators`. Flag parsing: `-x` → `{x:true}`, `-xyz` → three flags, `--flag` → `{flag:true}`. `splitOnPipe` keeps empty segments so `parsePipeline` can reject them as `` parse error near `|' `` (same treatment the chain operators get) rather than silently dropping a stage.
 
-All quote-aware scanning (tokenize, pipe/chain splitting, alias expansion, continuation detection) goes through the private `scanQuoted` visitor helper at the top of `parser.ts` — use it rather than hand-rolling another quote loop. Rules: `'`/`"` toggle unless the other is active, no backslash escaping.
+All quote-aware scanning in the engine goes through the exported `scanQuoted` visitor at the top of `parser.ts`: the tokenizer, pipe/chain splitting, alias expansion, continuation detection, `redirection.ts`'s `extractStdoutRedirect`, and `suggest.ts`'s `findLastUnquotedPipe`/`hasUnquotedRedirect`. Use it rather than hand-rolling another quote loop; `commands/__tests__/scanQuoted.test.ts` pins the ported callers against the loops they replaced. Rules: `'`/`"` toggle unless the other is active, no backslash escaping. A visitor returns a count of extra characters to consume (a `&&` lookahead, a whole redirect target); those are never visited, so they never toggle quote state. `bash.ts` still has its own loops, deliberately, for now.
 
 `analyzeIncompleteInput(input)` detects zsh secondary-prompt continuation (unterminated quote, trailing `\`/`|`/`&&`/`||`); `null` = submittable. It has no opinion on trailing `&`/`;` (not continuation in zsh). Consumed by `@tt/core/terminal/lineEditor`'s `LineEditor`, which accumulates physical lines into `pendingLines` and defers submission until the joined input parses clean.
 
@@ -25,10 +25,11 @@ Both the ghost-text suggester and TAB completion resolve filesystem candidates t
 
 ## Flag validation (`flagValidation.ts`)
 
-The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid option -- 'z'`, exit 2). Each command declares known flags via `setKnownFlags(name, {short, long})` after `register(...)` (`{}` for none). `--help` always short-circuits before validation. Three opt-out cases (call `skipFlagValidation(name)` and validate in-handler):
+The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid option -- 'z'`, exit 2). **Every** command declares known flags via `setKnownFlags(name, {short, long})` after `register(...)`: `{}` when it genuinely takes none, and a separate call per alias (the lookup is by the name the player typed, not the primary). An *undeclared* command silently rejects every flag, so the omission is a bug, not a default: `apps/termoil/.../__tests__/knownFlags.test.ts` walks the whole registry and fails on any name that neither declares nor opts out (term-crunch mirrors it in `__tests__/navigation.test.ts`, since its own builtins are not in termoil's bundle). `--help` always short-circuits before validation. Four opt-out cases (call `skipFlagValidation(name)` and validate in-handler):
 - **rawArgs-driven** (`find`, `head`, `tail`, `tree`, `tmux`) — the parser shatters `-name`/`-5`/`-L N`/`-s name`, so the handler re-parses `ctx.rawArgs`.
 - **Per-subcommand** (`git`) — each subcommand has its own set; validated with `rejectUnknownFlags(..., {style: "git"})` (exit 129).
 - **Custom prefix** (`snow`) — `rejectUnknownFlags("snow sql", ...)` so the error reads `snow sql:`.
+- **Flag pass-through** (`sudo`): the parser hoists *every* flag on the line to the top level, so `sudo apt install -y tree` arrives with `-y` looking like sudo's. `sudo` walks `ctx.rawArgs`, validates only the flags typed **before** the command name against its own set (`-i`/`-s`, both accepted and ignored: there is no root shell to open), then re-classifies the tail with `parser.splitArgsAndFlags` and re-dispatches it verbatim, `rawArgs` included, so the elevated command sees its own argv.
 
 ## Chaining, pipelines, redirection
 
@@ -39,9 +40,23 @@ The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid
 - `precheckRedirects` validates targets **before** the pipeline runs (zsh opens redirect files before exec): dir target → `zsh: is a directory:`, missing parent → `zsh: no such file or directory:`. On error nothing executes (no output, no events, no FS change).
 - `applyRedirection` writes to every target `stripAnsi`-cleaned (files hold plain text, same as the pipe path), emitting `file_created`/`file_modified` and running the `security.isLogTamperPath(path, machineId)` tripwire per target — the **policy** decides which machine the rules apply to (termoil's `story/security.ts` scopes it to nexacorp); core never compares a machine id to a literal; `>>` append is newline-aware. `VirtualFS.writeFile` refuses to overwrite a directory (so `echo x > some-dir` can't destroy a tree), refuses a file whose owner `w` bit is off, and preserves the existing node's mode/metadata on overwrite — pass its optional `template` node to give a NEWLY created file the source's mode/metadata (`cp`/`mv` do).
 
-## Line splitting (`src/lib/textUtils.ts`)
+## Text helpers (`src/lib/textUtils.ts`)
 
 `splitLines(content)` drops the single trailing empty element a final `\n` produces (`"" → []`). Use it in any line-oriented command (`sort`/`uniq`/`grep`/`head`/`tail` do) instead of bare `content.split("\n")`, which invents a phantom empty line for files ending in a newline.
+
+`wordWrap(text, width, preformatted)` is the one prose wrapper for fixed-width panes (chip and piper both render through it), joining with `\r\n` for xterm. Leading whitespace is always re-applied to each continuation line; `width <= 0` returns the text unchanged. The third argument is **required** because the two callers genuinely disagree about a paragraph indented two or more spaces (a command example, log excerpt, or aligned table), and picking wrong is invisible until a pane gets narrow:
+- `"preserve"` emits it untouched even when it overflows (piper: its bodies are full of pasted log lines that must not be re-flowed).
+- `"wrap-indented"` wraps it like any other paragraph (chip: `ChipSession.skipAnimation` repaints by counting the rows it emitted, so a line that soft-wraps costs more rows than it counted and leaves duplicated text behind).
+
+Both apps' render paths are pinned against the pre-shared copies in `engine/{chip,piper}/__tests__/renderParity.test.ts`, over the real authored content.
+
+## The `-` operand (`operands.ts`)
+
+`parseInput` routes a token to `flags` only when it starts with `-` **and** is longer than one character, so coreutils' bare `-` (read stdin) arrives as a positional arg that looks exactly like a filename. Any read-a-file-or-stdin builtin resolves operands through `fileOperands(args)` (`wc`, `sort`, `uniq`, `less` do) rather than reading `args` directly, or `cat f | wc -` reports `wc: /-: No such file or directory`.
+
+## Game clock (`clock.ts`)
+
+`ctx.clock` is the app's `GameClock` seam. When it is absent, callers use `(ctx.clock ?? realWallClock())`. `realWallClock()` is core's single wall-clock `GameClock` (local getters), so `date`, `git commit`, `dbt`, and `snow` can't drift into four different `new Date()` fallbacks.
 
 ## FS errors from a builtin (`fsErrors.ts`)
 

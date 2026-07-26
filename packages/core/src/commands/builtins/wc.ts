@@ -4,6 +4,7 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { formatSize } from "@tt/core/lib/formatSize";
 import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
 function countStats(content: string): { lines: number; words: number; chars: number } {
@@ -31,10 +32,9 @@ const wc: CommandHandler = (args, flags, ctx) => {
   const showAll = !showLines && !showWords && !showChars;
   const humanReadable = flags["h"] || flags["human-readable"];
 
-  const fileArgs = args.filter((a) => !a.startsWith("-"));
-
-  // Read from stdin if no file args
-  if (fileArgs.length === 0 && ctx.stdin !== undefined) {
+  // `wc` / `wc -`: read stdin.
+  const { files, readStdin } = fileOperands(args);
+  if (readStdin && ctx.stdin !== undefined) {
     const stats = countStats(ctx.stdin);
     const parts: string[] = [];
     if (showAll || showLines) parts.push(pad(stats.lines, 8));
@@ -43,7 +43,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     return { output: parts.join("") };
   }
 
-  if (fileArgs.length === 0) {
+  if (files.length === 0) {
     return { output: "wc: missing file operand", exitCode: 2 };
   }
 
@@ -51,7 +51,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
   let totalLines = 0, totalWords = 0, totalChars = 0;
   let hasError = false;
 
-  for (const fileArg of fileArgs) {
+  for (const fileArg of files) {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
     const result = readFileForCommand("wc", absPath, ctx);
 
@@ -74,7 +74,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     outputLines.push(parts.join(""));
   }
 
-  if (fileArgs.length > 1) {
+  if (files.length > 1) {
     const parts: string[] = [];
     if (showAll || showLines) parts.push(pad(totalLines, 8));
     if (showAll || showWords) parts.push(pad(totalWords, 8));

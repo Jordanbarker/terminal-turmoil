@@ -1,7 +1,7 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory } from "@tt/core/filesystem/types";
 import { resolvePath } from "@tt/core/lib/pathUtils";
-import { splitOnChainOperators } from "@tt/core/commands/parser";
+import { scanQuoted, splitOnChainOperators } from "@tt/core/commands/parser";
 
 const HISTORY_SCAN_DEPTH = 100;
 
@@ -73,7 +73,8 @@ export function getSubcommandCompletions(command: string): string[] | undefined 
 }
 
 /**
- * List entries in a directory matching a prefix.
+ * List entries in a directory matching a prefix (case-insensitively, as zsh's
+ * completion does by default).
  * Returns matching entries with their display names (name + "/" for dirs).
  */
 export function listMatchingEntries(
@@ -81,7 +82,6 @@ export function listMatchingEntries(
   prefix: string,
   ctx: SuggestionContext,
   directoriesOnly: boolean,
-  caseInsensitive: boolean,
 ): { name: string; displayName: string }[] {
   const { entries } = ctx.fs.listDirectory(parentDir);
   if (!entries.length) return [];
@@ -95,11 +95,7 @@ export function listMatchingEntries(
     // empty or plain prefix must not leak hidden entries into completion.
     if (entry.hidden && !prefix.startsWith(".")) continue;
 
-    const matches = caseInsensitive
-      ? entry.name.toLowerCase().startsWith(prefix.toLowerCase())
-      : entry.name.startsWith(prefix);
-
-    if (!matches) continue;
+    if (!entry.name.toLowerCase().startsWith(prefix.toLowerCase())) continue;
 
     const displayName = entry.name + (isDirectory(entry) ? "/" : "");
     results.push({ name: entry.name, displayName });
@@ -133,23 +129,15 @@ export function splitPartialPath(
  * Returns the index, or -1 if none found.
  */
 export function findLastUnquotedPipe(input: string): number {
-  let inSingle = false;
-  let inDouble = false;
   let lastPipe = -1;
 
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-    } else if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-    } else if (char === "|" && !inSingle && !inDouble) {
-      // Check it's not part of ||
-      if (input[i - 1] !== "|" && input[i + 1] !== "|") {
-        lastPipe = i;
-      }
+  scanQuoted(input, (char, i, state, isQuote) => {
+    if (isQuote || state.inSingle || state.inDouble) return;
+    // Check it's not part of ||
+    if (char === "|" && input[i - 1] !== "|" && input[i + 1] !== "|") {
+      lastPipe = i;
     }
-  }
+  });
 
   return lastPipe;
 }
@@ -158,21 +146,13 @@ export function findLastUnquotedPipe(input: string): number {
  * Check if input contains an unquoted redirect operator (> or >>).
  */
 export function hasUnquotedRedirect(input: string): boolean {
-  let inSingle = false;
-  let inDouble = false;
+  let found = false;
 
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-    } else if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-    } else if (char === ">" && !inSingle && !inDouble) {
-      return true;
-    }
-  }
+  scanQuoted(input, (char, _i, state, isQuote) => {
+    if (!isQuote && char === ">" && !state.inSingle && !state.inDouble) found = true;
+  });
 
-  return false;
+  return found;
 }
 
 /**
@@ -286,7 +266,7 @@ function completePath(
   const { parentDir, prefix, pathPrefix } = splitPartialPath(partial, ctx);
   if (!prefix) return null;
 
-  const matches = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly, true);
+  const matches = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly);
   if (matches.length === 0) return null;
 
   // Return first match (for ghost text, just show the top suggestion)

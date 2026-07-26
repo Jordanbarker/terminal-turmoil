@@ -1,4 +1,5 @@
 import { CommandContext, CommandResult, IncrementalLine } from "@tt/core/commands/types";
+import { realWallClock } from "@tt/core/commands/clock";
 import { DbtDebugInfo, DbtRunSummary, DbtTestResult, ModelRunResult } from "./types";
 import {
   findDbtProject,
@@ -27,15 +28,12 @@ import { SnowflakeState } from "@tt/core/snowflake/state";
 
 /** In-game "now" as a Date, falling back to the real clock when none is injected. */
 function clockNow(ctx: CommandContext): Date {
-  return ctx.clock?.now() ?? new Date();
+  return (ctx.clock ?? realWallClock()).now();
 }
 
 /** In-game "now" as "HH:MM:SS" for dbt log prefixes, with a real-clock fallback. */
 function clockTs(ctx: CommandContext): string {
-  if (ctx.clock) return ctx.clock.ts();
-  const d = new Date();
-  const p = (n: number) => n.toString().padStart(2, "0");
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  return (ctx.clock ?? realWallClock()).ts();
 }
 
 function loadProject(ctx: CommandContext): { projectRoot: string } | { error: string } {

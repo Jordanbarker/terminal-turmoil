@@ -1,6 +1,6 @@
 import { ParsedCommand, ChainOperator, ChainSegment } from "@tt/core/commands/types";
 
-interface QuoteState {
+export interface QuoteState {
   inSingle: boolean;
   inDouble: boolean;
 }
@@ -10,12 +10,14 @@ interface QuoteState {
  * is active; no backslash escaping). Calls `visit` for every character with the
  * state as of BEFORE the character; `isQuote` marks a toggling quote char.
  * `visit` may return a count of extra characters to consume (lookahead, e.g.
- * the second `&` of `&&`). Returns the final quote state.
+ * the second `&` of `&&`, or a whole redirect target). Skipped characters are
+ * NOT visited, so they never toggle quote state. Returns the final quote state.
  *
- * All quote-aware scanning in this module goes through here — don't hand-roll
- * another quote loop.
+ * All quote-aware scanning in the engine goes through here: the tokenizer,
+ * pipe/chain splitting, alias expansion, continuation detection, redirection
+ * extraction, and the suggestion scanners. Don't hand-roll another quote loop.
  */
-function scanQuoted(
+export function scanQuoted(
   input: string,
   visit?: (char: string, i: number, state: QuoteState, isQuote: boolean) => number | void
 ): QuoteState {
@@ -50,11 +52,24 @@ export function parseInput(raw: string): ParsedCommand {
   }
   const command = tokens[0] || "";
   const rawArgs = tokens.slice(1);
+
+  return { command, ...splitArgsAndFlags(rawArgs), raw: trimmed, rawArgs };
+}
+
+/**
+ * Classify an argv tail (everything after the command name) into positional
+ * args and flags: `--flag` → `{flag:true}`, `-xyz` → three short flags, and
+ * anything else (including a bare `-`, which is coreutils' stdin operand) is a
+ * positional.
+ *
+ * Exported because `sudo` re-dispatches a command line it did not parse and
+ * has to classify the tail exactly as the shell would.
+ */
+export function splitArgsAndFlags(tokens: string[]): { args: string[]; flags: Record<string, boolean> } {
   const args: string[] = [];
   const flags: Record<string, boolean> = {};
 
-  for (let i = 1; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (const token of tokens) {
     if (token.startsWith("--")) {
       flags[token.slice(2)] = true;
     } else if (token.startsWith("-") && token.length > 1) {
@@ -67,7 +82,7 @@ export function parseInput(raw: string): ParsedCommand {
     }
   }
 
-  return { command, args, flags, raw: trimmed, rawArgs };
+  return { args, flags };
 }
 
 /**

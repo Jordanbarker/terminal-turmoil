@@ -164,7 +164,7 @@ function completePaths(
 ): CompletionResult | null {
   const { parentDir, prefix, pathPrefix } = splitPartialPath(partial, ctx);
 
-  const entries = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly, true);
+  const entries = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly);
   if (entries.length === 0) return null;
 
   const matches = entries.map((e) => pathPrefix + e.displayName);

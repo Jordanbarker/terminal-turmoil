@@ -150,9 +150,11 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   less: [
-    "Usage: less [FILE]",
+    "Usage: less [-N] [FILE]",
     "",
     "View file contents with paging. With no FILE, read from standard input.",
+    "",
+    "  -N   number each line",
     "",
     "  q  Ctrl+C       Quit",
     "  j  Down  Enter  Forward one line",

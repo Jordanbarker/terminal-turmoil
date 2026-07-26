@@ -249,9 +249,7 @@ export class VirtualFS {
     delete newChildren[name];
 
     const newParent: DirectoryNode = { ...parentNode, children: newChildren };
-    const newRoot = parent === "/"
-      ? newParent as DirectoryNode
-      : this.setNodeAt(parent, newParent);
+    const newRoot = this.setNodeAt(parent, newParent);
 
     return { fs: new VirtualFS(newRoot, this.cwd, this.homeDir) };
   }

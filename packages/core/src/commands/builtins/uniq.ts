@@ -4,19 +4,22 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
 const uniq: CommandHandler = (args, flags, ctx) => {
   const showCount = flags["c"];
   const duplicatesOnly = flags["d"];
   const ignoreCase = flags["i"];
-  const fileArgs = args.filter((a) => !a.startsWith("-"));
+
+  // `uniq` / `uniq -`: read stdin.
+  const { files, readStdin } = fileOperands(args);
 
   let content: string;
-  if (fileArgs.length === 0 && ctx.stdin !== undefined) {
+  if (readStdin && ctx.stdin !== undefined) {
     content = ctx.stdin;
-  } else if (fileArgs.length > 0) {
-    const absPath = resolvePath(fileArgs[0], ctx.cwd, ctx.homeDir);
+  } else if (files.length > 0) {
+    const absPath = resolvePath(files[0], ctx.cwd, ctx.homeDir);
     const result = readFileForCommand("uniq", absPath, ctx);
     if (result.error) {
       return { output: result.error, exitCode: READ_FAILURE_EXIT };

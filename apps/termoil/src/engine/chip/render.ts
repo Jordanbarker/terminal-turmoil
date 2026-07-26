@@ -1,4 +1,5 @@
 import { colorize, ansi } from "@tt/core/lib/ansi";
+import { wordWrap } from "@tt/core/lib/textUtils";
 import { ChipMenuItem } from "./types";
 
 const VERSION = "v0.1.63";
@@ -66,7 +67,8 @@ export function renderChipResponseLines(
   text: string,
   width: number
 ): ChipResponseLine[] {
-  const wrapped = wordWrap(text, width);
+  // Chip lays out indented command listings that must stay inside the pane.
+  const wrapped = wordWrap(text, width, "wrap-indented");
   const rawLines = wrapped.split("\r\n");
   const result: ChipResponseLine[] = [];
   let inCommandBlock = false;
@@ -85,30 +87,4 @@ export function renderChipResponseLines(
   }
 
   return result;
-}
-
-function wordWrap(text: string, width: number): string {
-  if (width <= 0) return text;
-  const paragraphs = text.split("\n");
-  const wrapped = paragraphs.map((para) => {
-    const indentMatch = para.match(/^(\s*)/);
-    const indent = indentMatch ? indentMatch[1] : "";
-    const effectiveWidth = width - indent.length;
-    if (effectiveWidth <= 0) return para;
-    const trimmed = para.slice(indent.length);
-    const words = trimmed.split(" ");
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      if (current.length + word.length + 1 > effectiveWidth && current.length > 0) {
-        lines.push(indent + current);
-        current = word;
-      } else {
-        current = current ? `${current} ${word}` : word;
-      }
-    }
-    if (current) lines.push(indent + current);
-    return lines.join("\r\n");
-  });
-  return wrapped.join("\r\n");
 }

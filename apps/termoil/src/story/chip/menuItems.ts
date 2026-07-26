@@ -9,7 +9,9 @@ const BROKEN_CONVERSION_RATE_SQL =
 const FIXED_CONVERSION_RATE_SQL =
   "coalesce(round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2), 0) as conversion_rate";
 
-const ALL_ITEMS: ChipMenuItem[] = [
+/** Every menu item, before conditions filter it. Exported so render tests can
+ * exercise chip's real reply text rather than a hand-written sample. */
+export const ALL_ITEMS: ChipMenuItem[] = [
   {
     id: "git_help",
     label: "Teach me git concepts/commands",

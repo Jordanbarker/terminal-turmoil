@@ -4,23 +4,26 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
 const sort: CommandHandler = (args, flags, ctx) => {
   const reverse = flags["r"];
   const numeric = flags["n"];
   const unique = flags["u"];
-  const fileArgs = args.filter((a) => !a.startsWith("-"));
+
+  // `sort` / `sort -`: read stdin.
+  const { files, readStdin } = fileOperands(args);
 
   let lines: string[];
   // Collect-and-continue, like cat: an unreadable operand is reported but the
   // readable ones are still sorted.
   const errors: string[] = [];
-  if (fileArgs.length === 0 && ctx.stdin !== undefined) {
+  if (readStdin && ctx.stdin !== undefined) {
     lines = splitLines(ctx.stdin);
-  } else if (fileArgs.length > 0) {
+  } else if (files.length > 0) {
     lines = [];
-    for (const file of fileArgs) {
+    for (const file of files) {
       const absPath = resolvePath(file, ctx.cwd, ctx.homeDir);
       const result = readFileForCommand("sort", absPath, ctx);
       if (result.error) {

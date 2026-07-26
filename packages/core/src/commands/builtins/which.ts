@@ -1,5 +1,6 @@
 import { CommandHandler, CommandContext } from "@tt/core/commands/types";
 import { register, getAvailableCommands } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { isCommandAvailable } from "../availability";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -70,3 +71,4 @@ const which: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("which", which, "Show command path", HELP_TEXTS.which);
+setKnownFlags("which", {});

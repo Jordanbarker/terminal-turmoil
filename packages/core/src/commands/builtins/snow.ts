@@ -2,6 +2,7 @@ import { register } from "../registry";
 import { rejectUnknownFlags, skipFlagValidation } from "../flagValidation";
 import { CommandResult, CommandContext } from "@tt/core/commands/types";
 import { HELP_TEXTS } from "./helpTexts";
+import { realWallClock } from "@tt/core/commands/clock";
 import { execute } from "@tt/core/snowflake/executor/executor";
 import { formatResultSet, formatStatusMessage, formatError } from "@tt/core/snowflake/formatter/table_formatter";
 
@@ -43,7 +44,7 @@ register(
 
       const sessionCtx = {
         ...ctx.snowflakeContext,
-        gameNow: ctx.clock?.now() ?? new Date(),
+        gameNow: (ctx.clock ?? realWallClock()).now(),
       };
 
       const start = performance.now();

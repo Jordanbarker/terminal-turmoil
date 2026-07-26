@@ -1,5 +1,6 @@
 import type { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { registerMetaCommands } from "@tt/core/commands/builtins/help";
 import { formatElapsed } from "@tt/core/lib/format";
 import { getCategory, SELECTABLE_CATEGORIES } from "../../challenges/categories";
@@ -144,3 +145,7 @@ register("track", track, "List tracks or switch with 'track <id>'");
 register("review", review, "Replay challenges that are due for spaced-repetition review");
 // Game-control commands, not in-world shell tools: help lists them separately in cyan.
 registerMetaCommands("challenges", "goto", "next", "prev", "track", "review");
+// All take a bare operand at most; declaring {} keeps an undeclared command a signal.
+for (const name of ["challenges", "goto", "next", "prev", "track", "review"]) {
+  setKnownFlags(name, {});
+}

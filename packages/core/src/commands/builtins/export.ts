@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { GameEvent } from "@tt/core";
 import { matchEnvExportTriggers } from "../envTriggers";
 import { HELP_TEXTS } from "./helpTexts";
@@ -55,3 +56,5 @@ const unsetCmd: CommandHandler = (args, _flags, ctx) => {
 
 register("export", exportCmd, "Set environment variables", HELP_TEXTS.export);
 register("unset", unsetCmd, "Remove environment variables", HELP_TEXTS.unset);
+setKnownFlags("export", {});
+setKnownFlags("unset", {});

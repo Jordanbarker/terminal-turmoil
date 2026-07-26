@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 
 const exit: CommandHandler = (_args, _flags, ctx) => {
@@ -41,3 +42,4 @@ const exit: CommandHandler = (_args, _flags, ctx) => {
 };
 
 register("exit", exit, "Exit the current remote session", HELP_TEXTS.exit);
+setKnownFlags("exit", {});

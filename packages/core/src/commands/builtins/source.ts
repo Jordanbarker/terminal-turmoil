@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register, registerAlias } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { parseEnvAssignments, parseAliases } from "@tt/core/terminal/envParse";
 import { GameEvent } from "@tt/core";
@@ -44,3 +45,5 @@ const source: CommandHandler = (args, _flags, ctx) => {
 const description = "Execute commands from a file in the current shell";
 register("source", source, description, HELP_TEXTS.source, true);
 registerAlias(".", "source");
+setKnownFlags("source", {});
+setKnownFlags(".", {});

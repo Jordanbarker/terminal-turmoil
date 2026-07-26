@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
@@ -35,3 +36,4 @@ const touch: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("touch", touch, "Create empty files", HELP_TEXTS.touch);
+setKnownFlags("touch", {});

@@ -20,6 +20,7 @@ import {
   serializeWindow,
   setSplitRatio,
   splitNode,
+  windowOfPane,
   type PaneNode,
 } from "../paneTypes";
 
@@ -252,6 +253,22 @@ describe("findLeaf / findSplit", () => {
     expect(findLeaf(split.root, "nope")).toBeUndefined();
     const splitId = (split.root as Extract<PaneNode, { kind: "split" }>).id;
     expect(findSplit(split.root, splitId)?.id).toBe(splitId);
+  });
+});
+
+describe("windowOfPane", () => {
+  it("finds the window owning a pane, at any depth", () => {
+    const a = makeWindow("alpha", "/a");
+    const b = makeWindow("alpha", "/b");
+    const bFirst = firstLeaf(b.root).id;
+    const split = splitNode(b.root, bFirst, "h", () => makeLeaf("alpha", "/c"))!;
+    const bSplit = { ...b, root: split.root };
+    const windows = [a, bSplit];
+
+    expect(windowOfPane(windows, firstLeaf(a.root).id)?.id).toBe(a.id);
+    expect(windowOfPane(windows, split.newPaneId)?.id).toBe(b.id);
+    expect(windowOfPane(windows, "nope")).toBeUndefined();
+    expect(windowOfPane([], firstLeaf(a.root).id)).toBeUndefined();
   });
 });
 

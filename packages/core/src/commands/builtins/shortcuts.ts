@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -76,3 +77,4 @@ const shortcuts: CommandHandler = (_args, _flags, ctx) => {
 };
 
 register("shortcuts", shortcuts, "Show keyboard shortcuts", HELP_TEXTS.shortcuts);
+setKnownFlags("shortcuts", {});

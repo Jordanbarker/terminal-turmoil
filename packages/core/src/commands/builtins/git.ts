@@ -2,6 +2,7 @@ import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
 import { rejectUnknownFlags, skipFlagValidation, KnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
+import { realWallClock } from "@tt/core/commands/clock";
 import {
   findRepoRoot,
   gitInit, gitAdd, gitRm, gitCommit, gitStatus, getCommitLog,
@@ -169,7 +170,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
         return { output: "Aborting commit due to empty commit message.", exitCode: 1 };
       }
       const autoStage = !!flags["a"];
-      const timestamp = (ctx.clock?.now() ?? new Date()).getTime();
+      const timestamp = (ctx.clock ?? realWallClock()).now().getTime();
       const result = gitCommit(ctx.fs, root, message ?? "", author, amend, autoStage, timestamp);
       if (result.error) return { output: result.error, exitCode: 1 };
       return { output: result.output, newFs: result.fs };

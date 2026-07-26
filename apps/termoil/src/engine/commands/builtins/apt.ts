@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { addSubcommandCompletions } from "@tt/core/suggestions/suggest";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -120,6 +121,10 @@ const apt: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("apt", apt, "Package manager", HELP_TEXTS.apt);
+// -y is how everyone actually types an install; there is no prompt to skip, so
+// it is accepted and ignored. `--upgradable` is advertised by apt update's own
+// output, so it must not read as an invalid option either.
+setKnownFlags("apt", { short: ["y"], long: ["yes", "upgradable"] });
 // TAB/ghost-text: `apt` is this game's command, so its subcommands (and the
 // `apt` that follows `sudo`) are registered here rather than in core's table.
 addSubcommandCompletions({ sudo: ["apt"], apt: ["install"] });

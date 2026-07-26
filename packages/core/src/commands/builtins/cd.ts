@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -38,3 +39,4 @@ const cd: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("cd", cd, "Change the current directory", HELP_TEXTS.cd);
+setKnownFlags("cd", {});

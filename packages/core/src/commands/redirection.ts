@@ -4,6 +4,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { MachineId } from "@tt/core/machine";
 import { SecurityPolicy } from "@tt/core/commands/security";
 import { stripAnsi } from "@tt/core/lib/ansi";
+import { scanQuoted } from "@tt/core/commands/parser";
 
 export interface RedirectTarget {
   file: string;
@@ -29,58 +30,48 @@ export interface ExtractedRedirect {
  */
 export function extractStdoutRedirect(raw: string): ExtractedRedirect {
   let stripped = "";
-  let inSingle = false;
-  let inDouble = false;
   const redirects: RedirectTarget[] = [];
   let parseError: string | undefined;
-  let i = 0;
 
-  while (i < raw.length) {
-    const ch = raw[i];
+  /** Scan a redirect target starting at `from`: skip spaces, then take the token. */
+  const scanTarget = (from: number): { target: string; end: number } => {
+    let j = from;
+    while (j < raw.length && raw[j] === " ") j++;
+    let target = "";
+    while (j < raw.length && raw[j] !== " " && raw[j] !== "'" && raw[j] !== '"' &&
+           raw[j] !== "|" && raw[j] !== "&" && raw[j] !== ";") {
+      target += raw[j];
+      j++;
+    }
+    return { target, end: j };
+  };
 
-    if (ch === "'" && !inDouble) { inSingle = !inSingle; stripped += ch; i++; continue; }
-    if (ch === '"' && !inSingle) { inDouble = !inDouble; stripped += ch; i++; continue; }
+  scanQuoted(raw, (ch, i, state, isQuote) => {
+    if (isQuote) { stripped += ch; return; }
 
-    if (!inSingle && !inDouble) {
+    if (!state.inSingle && !state.inDouble) {
       // 2>&1
-      if (raw.slice(i, i + 4) === "2>&1") { i += 4; continue; }
+      if (raw.slice(i, i + 4) === "2>&1") return 3;
       // 2>> or 2>
-      if (raw[i] === "2" && raw[i + 1] === ">") {
-        let j = i + 2;
-        if (raw[j] === ">") j++;
-        // Consume optional whitespace then the target token (until whitespace or quote)
-        while (j < raw.length && raw[j] === " ") j++;
-        while (j < raw.length && raw[j] !== " " && raw[j] !== "'" && raw[j] !== '"' &&
-               raw[j] !== "|" && raw[j] !== "&" && raw[j] !== ";") {
-          j++;
-        }
-        i = j;
-        continue;
+      if (ch === "2" && raw[i + 1] === ">") {
+        const { end } = scanTarget(i + (raw[i + 2] === ">" ? 3 : 2));
+        return end - i - 1;
       }
       // Stdout redirect
-      if (raw[i] === ">") {
+      if (ch === ">") {
         const isAppend = raw[i + 1] === ">";
-        let j = i + (isAppend ? 2 : 1);
-        while (j < raw.length && raw[j] === " ") j++;
-        let target = "";
-        while (j < raw.length && raw[j] !== " " && raw[j] !== "'" && raw[j] !== '"' &&
-               raw[j] !== "|" && raw[j] !== "&" && raw[j] !== ";") {
-          target += raw[j];
-          j++;
-        }
+        const { target, end } = scanTarget(i + (isAppend ? 2 : 1));
         if (target === "") {
           parseError = "zsh: parse error near `\\n'";
         } else {
           redirects.push({ file: target, append: isAppend });
         }
-        i = j;
-        continue;
+        return end - i - 1;
       }
     }
 
     stripped += ch;
-    i++;
-  }
+  });
 
   return {
     command: stripped.trim(),

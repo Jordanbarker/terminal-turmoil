@@ -22,6 +22,7 @@ import {
   allLeaves,
   firstLeaf,
   findLeaf,
+  windowOfPane,
   mapLeaf,
   splitNode,
   collapsePane,
@@ -59,10 +60,6 @@ export function getActivePaneId(state: WindowSlice): string | undefined {
 export function getActiveLeaf(state: WindowSlice): PaneLeaf | undefined {
   const w = getActiveWindow(state);
   return w ? findLeaf(w.root, w.activePaneId) : undefined;
-}
-/** The window that contains a given pane id, or undefined. */
-function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
-  return windows.find((w) => findLeaf(w.root, paneId));
 }
 /** Ensure a window's activePaneId still points at a live leaf. */
 function normalizeFocus(w: WindowState): WindowState {

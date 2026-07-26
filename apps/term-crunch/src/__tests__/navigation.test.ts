@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { execute } from "@tt/core/commands/registry";
+import { execute, getAliasesFor, getCommandList } from "@tt/core/commands/registry";
+import { getKnownFlags, shouldValidateFlags } from "@tt/core/commands/flagValidation";
 import type { CommandContext } from "@tt/core/commands/types";
 import "@tt/core/commands/builtins"; // help (for the meta-command listing test)
 import "../engine/commands/navigation"; // register challenges/goto/next/prev/track
@@ -112,5 +113,27 @@ describe("challenge navigation commands", () => {
 
     expect(run("track git").exitCode).toBeUndefined();
     expect(consumePendingNavigation()).toEqual({ type: "category", id: "git" });
+  });
+});
+
+/**
+ * Mirrors termoil's registry-wide guard (see
+ * apps/termoil/src/engine/commands/__tests__/knownFlags.test.ts). An undeclared
+ * command silently rejects every flag the player types, so a term-crunch
+ * builtin that forgets `setKnownFlags` has to fail here rather than in play.
+ */
+describe("known-flag declarations", () => {
+  it("every command term-crunch loads declares its flags or opts out", () => {
+    const names = new Set<string>();
+    for (const { name } of getCommandList()) {
+      names.add(name);
+      for (const alias of getAliasesFor(name)) names.add(alias);
+    }
+
+    const undeclared = [...names]
+      .filter((name) => shouldValidateFlags(name) && getKnownFlags(name) === undefined)
+      .sort();
+
+    expect(undeclared).toEqual([]);
   });
 });

@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 import { Mount, normalizeMountKey } from "@tt/core/filesystem/mounts";
 import { dir } from "@tt/core/filesystem/builders";
@@ -45,3 +46,4 @@ const umount: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("umount", umount, "Unmount a filesystem", HELP_TEXTS.umount);
+setKnownFlags("umount", {});

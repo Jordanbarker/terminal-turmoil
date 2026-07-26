@@ -1,4 +1,5 @@
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 
 register(
@@ -19,3 +20,4 @@ register(
   "Chat with NexaCorp's AI assistant",
   HELP_TEXTS.chip
 );
+setKnownFlags("chip", {});

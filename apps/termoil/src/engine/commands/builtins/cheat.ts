@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { CHECKPOINTS } from "../../../story/checkpoints";
 
 const cheat: CommandHandler = (args) => {
@@ -16,3 +17,4 @@ const cheat: CommandHandler = (args) => {
 };
 
 register("cheat", cheat, "Load a checkpoint for play-testing");
+setKnownFlags("cheat", {});

@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register, getPrimaryName, getAliasesFor, getHelpText } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { isCommandAvailable } from "../availability";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
@@ -106,3 +107,4 @@ function getCommandDescription(cmd: string): string {
 }
 
 register("man", man, "Display a command's manual page: man <command>", HELP_TEXTS.man);
+setKnownFlags("man", {});

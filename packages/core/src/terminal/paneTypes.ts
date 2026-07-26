@@ -114,6 +114,11 @@ export function findLeaf(node: PaneNode, id: string): PaneLeaf | undefined {
   return allLeaves(node).find((l) => l.id === id);
 }
 
+/** The window whose pane tree contains `paneId`, or undefined. */
+export function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
+  return windows.find((w) => findLeaf(w.root, paneId));
+}
+
 /** Find a split by id, or undefined. */
 export function findSplit(node: PaneNode, id: string): PaneSplit | undefined {
   if (node.kind === "leaf") return undefined;

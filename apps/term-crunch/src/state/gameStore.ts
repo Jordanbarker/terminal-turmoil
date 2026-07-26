@@ -9,6 +9,7 @@ import {
   splitNode,
   collapsePane,
   findLeaf,
+  windowOfPane,
   firstLeaf,
   allLeaves,
   focusDirectionTarget,
@@ -47,10 +48,6 @@ function activeCwd(windows: WindowState[], activeWindowId: string): string {
   const win = windows.find((w) => w.id === activeWindowId) ?? windows[0];
   if (!win) return HOME_DIR;
   return findLeaf(win.root, win.activePaneId)?.cwd ?? HOME_DIR;
-}
-
-function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
-  return windows.find((w) => findLeaf(w.root, paneId));
 }
 
 /**
