@@ -4,6 +4,7 @@ import { skipFlagValidation } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { isBinaryFile } from "@tt/core/filesystem/VirtualFS";
+import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
 import { colorizeCsv } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -16,11 +17,11 @@ const head: CommandHandler = (args, _flags, ctx) => {
   for (let i = 0; i < effectiveArgs.length; i++) {
     if (effectiveArgs[i] === "-n") {
       if (i + 1 >= effectiveArgs.length) {
-        return { output: "head: option requires an argument -- 'n'", exitCode: 1 };
+        return { output: "head: option requires an argument -- 'n'", exitCode: 2 };
       }
       numLines = parseInt(effectiveArgs[i + 1], 10);
       if (isNaN(numLines) || numLines < 0) {
-        return { output: `head: invalid number of lines: '${effectiveArgs[i + 1]}'`, exitCode: 1 };
+        return { output: `head: invalid number of lines: '${effectiveArgs[i + 1]}'`, exitCode: 2 };
       }
       i++;
     } else if (/^-\d+$/.test(effectiveArgs[i])) {
@@ -43,6 +44,7 @@ const head: CommandHandler = (args, _flags, ctx) => {
 
   const outputs: string[] = [];
   const multiFile = fileArgs.length > 1;
+  let hasError = false;
 
   for (const fileArg of fileArgs) {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
@@ -54,10 +56,11 @@ const head: CommandHandler = (args, _flags, ctx) => {
       continue;
     }
 
-    const result = ctx.fs.readFile(absPath);
+    const result = readFileForCommand("head", absPath, ctx);
 
     if (result.error) {
-      outputs.push(result.error.replace("cat:", "head:"));
+      outputs.push(result.error);
+      hasError = true;
       continue;
     }
 
@@ -70,7 +73,7 @@ const head: CommandHandler = (args, _flags, ctx) => {
     outputs.push(fileArg.endsWith(".csv") ? colorizeCsv(sliced) : sliced);
   }
 
-  return { output: outputs.join("\n") };
+  return { output: outputs.join("\n"), exitCode: hasError ? READ_FAILURE_EXIT : 0 };
 };
 
 register("head", head, "Display first lines of a file", HELP_TEXTS.head, true);

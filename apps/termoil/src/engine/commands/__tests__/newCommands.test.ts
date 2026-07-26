@@ -980,7 +980,7 @@ describe("head (additional)", () => {
   it("errors on invalid -n value", () => {
     const result = execute("head", ["-n", "abc", "log.txt"], {}, ctx());
     expect(result.output).toBe("head: invalid number of lines: 'abc'");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it("returns error when no file and no stdin", () => {
@@ -1018,7 +1018,7 @@ describe("tail (additional)", () => {
   it("errors on invalid -n value", () => {
     const result = execute("tail", ["-n", "abc", "log.txt"], {}, ctx());
     expect(result.output).toBe("tail: invalid number of lines: 'abc'");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it("returns error when no file and no stdin", () => {
@@ -1952,14 +1952,24 @@ describe("result-oriented quest trigger events", () => {
     expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "text_filtered" });
   });
 
-  it("uniq emits data_deduped", () => {
-    const result = execute("uniq", ["notes.txt"], {}, ctx());
+  it("uniq emits data_deduped when duplicates actually collapse", () => {
+    const result = execute("uniq", [], {}, ctx(undefined, { stdin: "a\na\nb" }));
     expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "data_deduped" });
   });
 
+  it("uniq does NOT emit data_deduped when nothing collapses", () => {
+    const result = execute("uniq", ["notes.txt"], {}, ctx());
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
   it("sort -u emits data_deduped (alternate path)", () => {
-    const result = execute("sort", ["notes.txt"], { u: true }, ctx());
+    const result = execute("sort", [], { u: true }, ctx(undefined, { stdin: "b\na\nb" }));
     expect(result.triggerEvents).toContainEqual({ type: "command_executed", detail: "data_deduped" });
+  });
+
+  it("sort -u does NOT emit data_deduped on already-unique input", () => {
+    const result = execute("sort", ["notes.txt"], { u: true }, ctx());
+    expect(result.triggerEvents).toBeUndefined();
   });
 
   it("plain sort (no -u) does NOT emit data_deduped", () => {

@@ -7,10 +7,10 @@ import { applyRedirection, extractStdoutRedirect, precheckRedirects } from "../r
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { Mounts } from "@tt/core/filesystem/mounts";
+import { SecurityViolation } from "@tt/core/commands/security";
 import { GameEvent } from "@tt/core";
-import { isCommandAvailable } from "../availability";
-import { getAvailableCommands } from "../registry";
-import { COMMAND_PATHS } from "./which";
+import { resolveCommandPath } from "./which";
 import { stripAnsi } from "@tt/core/lib/ansi";
 
 const MAX_SUBSTITUTION_DEPTH = 5;
@@ -402,13 +402,36 @@ function findMatchingParen(text: string, start: number): number {
   return -1;
 }
 
+/**
+ * Mutable accumulators threaded through every nested execution path of a
+ * script (pipelines, `$(...)` substitutions, if-bodies, functions). Everything
+ * here has to survive back out to `executeScript`'s CommandResult, or the
+ * script becomes a blind spot: `triggerEvents` feed story flags,
+ * `securityViolation` is the termination tripwire, `mounts` is the per-computer
+ * mount registry that rides the same accumulator pattern as `fs`.
+ */
+interface ScriptState {
+  triggerEvents: GameEvent[];
+  securityViolation?: SecurityViolation;
+  mounts?: Mounts;
+}
+
+/** Record one command's result into the script-wide accumulators (first violation wins). */
+function accumulate(state: ScriptState, result: CommandResult): void {
+  if (result.triggerEvents) state.triggerEvents.push(...result.triggerEvents);
+  if (result.securityViolation && !state.securityViolation) {
+    state.securityViolation = result.securityViolation;
+  }
+  if (result.newMounts) state.mounts = result.newMounts;
+}
+
 /** Expand $(command) substitutions by executing inner commands. */
 async function expandSubstitutions(
   text: string,
   ctx: CommandContext,
   runningFs: VirtualFS,
   currentCwd: string,
-  allTriggerEvents: GameEvent[],
+  state: ScriptState,
   depth: number,
 ): Promise<{ text: string; fs: VirtualFS; cwd: string }> {
   if (depth > MAX_SUBSTITUTION_DEPTH) return { text, fs: runningFs, cwd: currentCwd };
@@ -434,7 +457,7 @@ async function expandSubstitutions(
       const innerCmd = text.slice(innerStart, closeIdx);
 
       // Recursively expand nested substitutions
-      const expanded = await expandSubstitutions(innerCmd, ctx, fs, cwd, allTriggerEvents, depth + 1);
+      const expanded = await expandSubstitutions(innerCmd, ctx, fs, cwd, state, depth + 1);
       fs = expanded.fs;
       cwd = expanded.cwd;
 
@@ -443,7 +466,7 @@ async function expandSubstitutions(
         ...ctx,
         fs,
         cwd,
-      }, fs, cwd, allTriggerEvents);
+      }, fs, cwd, state);
       fs = innerResult.fs;
       cwd = innerResult.cwd;
 
@@ -465,7 +488,7 @@ async function executePipeline(
   ctx: CommandContext,
   runningFs: VirtualFS,
   currentCwd: string,
-  allTriggerEvents: GameEvent[],
+  state: ScriptState,
   functions?: Map<string, ScriptNode[]>,
   redirects?: import("../redirection").RedirectTarget[],
 ): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean; exitCode: number }> {
@@ -478,18 +501,15 @@ async function executePipeline(
     const p = pipeline[pi];
     if (!p.command) continue;
 
-    // Handle `command -v NAME` builtin
+    // Handle `command -v NAME` builtin. Shell functions shadow real commands;
+    // everything else goes through the same resolver `which`/`type` use.
     if (p.command === "command" && p.flags.v && p.args.length > 0) {
       const target = p.args[0];
-      const registeredNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
-      const isRegistered = COMMAND_PATHS[target] || registeredNames.includes(target);
       if (functions?.has(target)) {
         lastResult = { output: target, exitCode: 0 };
-      } else if (isRegistered && isCommandAvailable(target, ctx.activeComputer, ctx.storyFlags)) {
-        const path = COMMAND_PATHS[target] ?? `/usr/bin/${target}`;
-        lastResult = { output: path, exitCode: 0 };
       } else {
-        lastResult = { output: "", exitCode: 1 };
+        const path = resolveCommandPath(target, { ...ctx, fs, cwd });
+        lastResult = path ? { output: path, exitCode: 0 } : { output: "", exitCode: 1 };
       }
       stdin = stripAnsi(lastResult.output);
       continue;
@@ -502,6 +522,7 @@ async function executePipeline(
       stdin,
       rawArgs: p.rawArgs,
       isPiped: pi < pipeline.length - 1 || (redirects?.length ?? 0) > 0,
+      mounts: state.mounts ?? ctx.mounts,
     };
 
     if (isAsyncCommand(p.command)) {
@@ -510,18 +531,22 @@ async function executePipeline(
       lastResult = execute(p.command, p.args, p.flags, subCtx);
     }
 
-    // Check for interactive session — skip with warning
+    // Check for interactive session — skip with warning. Only the session
+    // handle itself is dropped; every accumulator field survives.
     if (SESSION_FIELDS.some((f) => lastResult[f])) {
       const cleaned: CommandResult = { output: lastResult.output, exitCode: lastResult.exitCode };
       if (lastResult.triggerEvents) cleaned.triggerEvents = lastResult.triggerEvents;
       if (lastResult.newFs) cleaned.newFs = lastResult.newFs;
       if (lastResult.newCwd) cleaned.newCwd = lastResult.newCwd;
+      if (lastResult.newMounts) cleaned.newMounts = lastResult.newMounts;
+      if (lastResult.securityViolation) cleaned.securityViolation = lastResult.securityViolation;
       lastResult = cleaned;
     }
 
+    accumulate(state, lastResult);
+
     // Check for computer transition — stop script
     if (lastResult.transitionTo) {
-      if (lastResult.triggerEvents) allTriggerEvents.push(...lastResult.triggerEvents);
       return {
         output: `bash: cannot transition computers from within a script`,
         fs: lastResult.newFs ?? fs,
@@ -529,10 +554,6 @@ async function executePipeline(
         stopped: true,
         exitCode: 1,
       };
-    }
-
-    if (lastResult.triggerEvents) {
-      allTriggerEvents.push(...lastResult.triggerEvents);
     }
 
     if (lastResult.newFs) {
@@ -549,6 +570,14 @@ async function executePipeline(
   // Apply redirection
   if (redirects && redirects.length > 0 && lastResult) {
     const redir = applyRedirection(redirects, lastResult, cwd, ctx.homeDir, fs, ctx.activeComputer, ctx.security);
+    // applyRedirection re-emits the events it was handed plus its own; only the
+    // newly added file_created/file_modified + log-tamper violation are new.
+    if (redir.result.securityViolation && !state.securityViolation) {
+      state.securityViolation = redir.result.securityViolation;
+    }
+    const beforeCount = lastResult.triggerEvents?.length ?? 0;
+    const after = redir.result.triggerEvents ?? [];
+    if (after.length > beforeCount) state.triggerEvents.push(...after.slice(beforeCount));
     lastResult = redir.result;
     fs = redir.fs;
   }
@@ -562,7 +591,7 @@ async function executeSingleLine(
   ctx: CommandContext,
   runningFs: VirtualFS,
   currentCwd: string,
-  allTriggerEvents: GameEvent[],
+  state: ScriptState,
   functions?: Map<string, ScriptNode[]>,
 ): Promise<{ output: string; fs: VirtualFS; cwd: string; stopped: boolean; exitCode: number }> {
   // Strip stderr redirects before parsing
@@ -611,7 +640,7 @@ async function executeSingleLine(
     }
 
     const result = await executePipeline(
-      pipeline, { ...ctx, fs, cwd }, fs, cwd, allTriggerEvents, functions, redirects,
+      pipeline, { ...ctx, fs, cwd }, fs, cwd, state, functions, redirects,
     );
 
     if (result.output) outputs.push(result.output);
@@ -635,7 +664,7 @@ interface ExecContext {
   ctx: CommandContext;
   variables: Map<string, string>;
   functions: Map<string, ScriptNode[]>;
-  allTriggerEvents: GameEvent[];
+  state: ScriptState;
   positionalArgs?: string[];
 }
 
@@ -666,7 +695,7 @@ async function applyAssignment(
   rawValue: string,
   fs: VirtualFS,
   cwd: string,
-  allTriggerEvents: GameEvent[],
+  state: ScriptState,
 ): Promise<{ fs: VirtualFS; cwd: string }> {
   const isSingleQuoted = rawValue.startsWith("'") && rawValue.endsWith("'") && rawValue.length >= 2;
   const unquoted = stripOuterQuotes(rawValue);
@@ -678,7 +707,7 @@ async function applyAssignment(
 
   const varExpanded = expandVariables(unquoted, exec.variables, exec.positionalArgs);
   const subExpanded = await expandSubstitutions(
-    varExpanded, exec.ctx, fs, cwd, allTriggerEvents, 0,
+    varExpanded, exec.ctx, fs, cwd, state, 0,
   );
   exec.variables.set(name, subExpanded.text);
   return { fs: subExpanded.fs, cwd: subExpanded.cwd };
@@ -709,7 +738,7 @@ async function executeNodes(
   for (const node of nodes) {
     switch (node.type) {
       case "assignment": {
-        const next = await applyAssignment(exec, node.name, node.value, fs, cwd, exec.allTriggerEvents);
+        const next = await applyAssignment(exec, node.name, node.value, fs, cwd, exec.state);
         fs = next.fs;
         cwd = next.cwd;
         break;
@@ -724,7 +753,7 @@ async function executeNodes(
         // Execute condition
         const condExpanded = expandVariables(node.condition, exec.variables, exec.positionalArgs);
         const condSub = await expandSubstitutions(
-          condExpanded, exec.ctx, fs, cwd, exec.allTriggerEvents, 0,
+          condExpanded, exec.ctx, fs, cwd, exec.state, 0,
         );
         fs = condSub.fs;
         cwd = condSub.cwd;
@@ -732,7 +761,7 @@ async function executeNodes(
         const condResult = await executeSingleLine(
           condSub.text,
           { ...exec.ctx, fs, cwd },
-          fs, cwd, exec.allTriggerEvents, exec.functions,
+          fs, cwd, exec.state, exec.functions,
         );
         fs = condResult.fs;
         cwd = condResult.cwd;
@@ -756,7 +785,7 @@ async function executeNodes(
         // Expand variables, then command substitutions
         let expanded = expandVariables(node.text, exec.variables, exec.positionalArgs);
         const subExpanded = await expandSubstitutions(
-          expanded, exec.ctx, fs, cwd, exec.allTriggerEvents, 0,
+          expanded, exec.ctx, fs, cwd, exec.state, 0,
         );
         fs = subExpanded.fs;
         cwd = subExpanded.cwd;
@@ -787,7 +816,7 @@ async function executeNodes(
         const result = await executeSingleLine(
           expanded,
           { ...exec.ctx, fs, cwd },
-          fs, cwd, exec.allTriggerEvents, exec.functions,
+          fs, cwd, exec.state, exec.functions,
         );
 
         if (result.output) {
@@ -819,11 +848,12 @@ export async function executeScript(
   positionalArgs?: string[],
 ): Promise<CommandResult> {
   const nodes = parseScript(content);
+  const state: ScriptState = { triggerEvents: [], mounts: ctx.mounts };
   const exec: ExecContext = {
     ctx,
     variables: new Map(),
     functions: new Map(),
-    allTriggerEvents: [],
+    state,
     positionalArgs,
   };
 
@@ -832,11 +862,19 @@ export async function executeScript(
   const combinedResult: CommandResult = {
     output: result.outputs.join("\n"),
     exitCode: result.exitCode,
-    triggerEvents: exec.allTriggerEvents.length > 0 ? exec.allTriggerEvents : undefined,
+    triggerEvents: state.triggerEvents.length > 0 ? state.triggerEvents : undefined,
   };
 
   if (result.fs !== ctx.fs) {
     combinedResult.newFs = result.fs;
+  }
+  if (state.mounts && state.mounts !== ctx.mounts) {
+    combinedResult.newMounts = state.mounts;
+  }
+  // Tripwires must escape the subshell: a script that deletes a protected path
+  // or tampers with a log terminates the run exactly like an interactive command.
+  if (state.securityViolation) {
+    combinedResult.securityViolation = state.securityViolation;
   }
 
   // Do NOT propagate newCwd — script runs in a subshell

@@ -20,6 +20,16 @@ function checkPermission(permissions: string, op: PermissionOp): boolean {
 }
 
 /**
+ * Writes are gated on the OWNER write bit, not the "other" bit reads use: the
+ * player owns the files they edit, so `rw-r--r--` stays writable while
+ * `chmod 400` (`r--------`) does not. Same convention as the editors' readOnly
+ * check and the registry's `perms[2] !== "x"` exec check.
+ */
+function isWritable(permissions: string): boolean {
+  return permissions[1] === "w";
+}
+
+/**
  * Immutable virtual filesystem. Every mutation returns a new VirtualFS instance.
  */
 export class VirtualFS {
@@ -117,32 +127,68 @@ export class VirtualFS {
   }
 
   /**
-   * Return a new VirtualFS with the file written/updated at the given path.
+   * Would `writeFile` refuse this path? Returns the error it would produce, or
+   * null. Exists so redirection can reject a bad target BEFORE the command runs
+   * (zsh opens redirect files before exec) without the two checks drifting.
    */
-  writeFile(absolutePath: string, content: string): { fs?: VirtualFS; error?: string } {
+  canWriteFile(absolutePath: string): string | null {
     const normalized = normalizePath(absolutePath);
     const parent = parentPath(normalized);
-    const name = basename(normalized);
 
     const parentNode = this.getNode(parent);
     if (!parentNode || !isDirectory(parentNode)) {
-      return { error: `Cannot write to '${absolutePath}': parent directory does not exist` };
+      return `Cannot write to '${absolutePath}': parent directory does not exist`;
     }
 
     const existing = this.getNode(normalized);
     if (existing && isDirectory(existing)) {
-      return { error: `Cannot write to '${absolutePath}': Is a directory` };
+      return `Cannot write to '${absolutePath}': Is a directory`;
     }
 
     const traversalError = this.checkTraversal(absolutePath);
-    if (traversalError) return { error: traversalError };
+    if (traversalError) return traversalError;
+
+    if (existing && isFile(existing) && !isWritable(existing.permissions)) {
+      return `Permission denied: ${absolutePath}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Return a new VirtualFS with the file written/updated at the given path.
+   *
+   * Attribute rules, which differ on purpose:
+   * - **permissions** describe the FILE, so an overwrite keeps the existing
+   *   node's mode (a `chmod`ed file stays chmoded through a rewrite); a new
+   *   file takes `template`'s mode, else the 644 default.
+   * - **metadata** describes the CONTENT (`binary`, extracted `textContent`),
+   *   so replacing the content always replaces the metadata. It comes from
+   *   `template` (the node the new bytes came from) or is dropped — never
+   *   inherited from the bytes that were just overwritten, or `echo x > a.pdf`
+   *   would leave `cat`/`pdftotext` reporting the old document.
+   *
+   * `template` is how `cp`/`mv` carry a source file's mode and metadata onto a
+   * destination they are creating.
+   */
+  writeFile(absolutePath: string, content: string, template?: FileNode): { fs?: VirtualFS; error?: string } {
+    const normalized = normalizePath(absolutePath);
+    const name = basename(normalized);
+
+    const error = this.canWriteFile(absolutePath);
+    if (error) return { error };
+
+    const existing = this.getNode(normalized);
+    const overwriting = existing && isFile(existing) ? existing : undefined;
+    const metadata = template?.metadata;
 
     const newFile: FileNode = {
       type: "file",
       name,
       content,
-      permissions: "rw-r--r--",
+      permissions: overwriting?.permissions ?? template?.permissions ?? "rw-r--r--",
       hidden: name.startsWith("."),
+      ...(metadata !== undefined && { metadata }),
     };
 
     const newRoot = this.setNodeAt(normalized, newFile);
@@ -218,6 +264,9 @@ export class VirtualFS {
     const node = this.getNode(normalized);
     if (!node) return { error: `chmod: cannot access '${absolutePath}': No such file or directory` };
 
+    const traversalError = this.checkTraversal(absolutePath);
+    if (traversalError) return { error: traversalError };
+
     const updated = { ...node, permissions };
     const newRoot = this.setNodeAt(normalized, updated);
     return { fs: new VirtualFS(newRoot, this.cwd, this.homeDir) };
@@ -244,6 +293,11 @@ export class VirtualFS {
   /**
    * Insert an entire FSNode subtree at the given absolute path.
    * Parent directory must exist.
+   *
+   * Privileged/seed-time API: it deliberately skips the traversal and mode
+   * checks the user-facing mutators run. It DOES rename the inserted node to
+   * the path's basename so the `children[key] === node.name` invariant holds
+   * (callers never have to pre-rename for a move/rename).
    */
   insertNode(absolutePath: string, node: FSNode): { fs?: VirtualFS; error?: string } {
     const normalized = normalizePath(absolutePath);
@@ -254,7 +308,9 @@ export class VirtualFS {
       return { error: `Cannot insert at '${absolutePath}': parent directory does not exist` };
     }
 
-    const newRoot = this.setNodeAt(normalized, node);
+    const name = basename(normalized);
+    const named: FSNode = node.name === name ? node : { ...node, name };
+    const newRoot = this.setNodeAt(normalized, named);
     return { fs: new VirtualFS(newRoot, this.cwd, this.homeDir) };
   }
 

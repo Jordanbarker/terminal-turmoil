@@ -2,8 +2,9 @@ import { CommandHandler } from "@tt/core/commands/types";
 import { GameEvent } from "@tt/core";
 import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
-import { basename, resolvePath } from "@tt/core/lib/pathUtils";
-import { DirectoryNode, FSNode, isFile, isDirectory } from "@tt/core/filesystem/types";
+import { resolvePath } from "@tt/core/lib/pathUtils";
+import { FSNode, isFile, isDirectory } from "@tt/core/filesystem/types";
+import { labelFsError } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function buildMoveEvents(srcNode: FSNode, srcPath: string, destPath: string): GameEvent[] {
@@ -100,13 +101,15 @@ const mv: CommandHandler = (args, _flags, ctx) => {
   // --- File branch ---
   if (isFile(srcNode)) {
     const existedBefore = !!finalDestNode;
-    const writeResult = ctx.fs.writeFile(destPath, srcNode.content);
+    // Pass the source node as the template so a fresh destination inherits its
+    // mode (the x bit on scripts) and metadata instead of a default 644 file.
+    const writeResult = ctx.fs.writeFile(destPath, srcNode.content, srcNode);
     if (writeResult.error) {
-      return { output: writeResult.error, exitCode: 1 };
+      return { output: labelFsError("mv", writeResult.error), exitCode: 1 };
     }
     const removeResult = writeResult.fs!.removeNode(srcPath);
     if (removeResult.error) {
-      return { output: removeResult.error, exitCode: 1 };
+      return { output: labelFsError("mv", removeResult.error), exitCode: 1 };
     }
     return {
       output: "",
@@ -120,15 +123,14 @@ const mv: CommandHandler = (args, _flags, ctx) => {
   }
 
   // --- Directory branch ---
-  // Rewrite the top-level node's name so it matches its new basename (handles rename).
-  const renamed: DirectoryNode = { ...srcNode, name: basename(destPath) };
-  const insertResult = ctx.fs.insertNode(destPath, renamed);
+  // insertNode renames the subtree root to the destination basename itself.
+  const insertResult = ctx.fs.insertNode(destPath, srcNode);
   if (insertResult.error) {
-    return { output: `mv: ${insertResult.error}`, exitCode: 1 };
+    return { output: labelFsError("mv", insertResult.error), exitCode: 1 };
   }
   const removeResult = insertResult.fs!.removeNode(srcPath);
   if (removeResult.error) {
-    return { output: removeResult.error, exitCode: 1 };
+    return { output: labelFsError("mv", removeResult.error), exitCode: 1 };
   }
   return {
     output: "",

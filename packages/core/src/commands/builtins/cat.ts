@@ -6,6 +6,7 @@ import { colorizeCsv } from "@tt/core/lib/ansi";
 import { highlightSql } from "@tt/core/lib/sqlHighlight";
 import { highlightPython } from "@tt/core/lib/pythonHighlight";
 import { isBinaryFile } from "@tt/core/filesystem/VirtualFS";
+import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function numberLines(text: string, startCounter: { value: number }): string {
@@ -39,7 +40,7 @@ const cat: CommandHandler = (args, flags, ctx) => {
       continue;
     }
 
-    const result = ctx.fs.readFile(absolutePath);
+    const result = readFileForCommand("cat", absolutePath, ctx);
 
     if (result.error) {
       outputs.push(result.error);
@@ -57,7 +58,7 @@ const cat: CommandHandler = (args, flags, ctx) => {
     }
   }
 
-  return { output: outputs.join("\n"), exitCode: hasError ? 1 : 0 };
+  return { output: outputs.join("\n"), exitCode: hasError ? READ_FAILURE_EXIT : 0 };
 };
 
 register("cat", cat, "Display file contents", HELP_TEXTS.cat, true);

@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { formatSize } from "@tt/core/lib/formatSize";
+import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function countStats(content: string): { lines: number; words: number; chars: number } {
@@ -48,13 +49,15 @@ const wc: CommandHandler = (args, flags, ctx) => {
 
   const outputLines: string[] = [];
   let totalLines = 0, totalWords = 0, totalChars = 0;
+  let hasError = false;
 
   for (const fileArg of fileArgs) {
     const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
-    const result = ctx.fs.readFile(absPath);
+    const result = readFileForCommand("wc", absPath, ctx);
 
     if (result.error) {
-      outputLines.push(result.error.replace("cat:", "wc:"));
+      outputLines.push(result.error);
+      hasError = true;
       continue;
     }
 
@@ -80,7 +83,7 @@ const wc: CommandHandler = (args, flags, ctx) => {
     outputLines.push(parts.join(""));
   }
 
-  return { output: outputLines.join("\n") };
+  return { output: outputLines.join("\n"), exitCode: hasError ? READ_FAILURE_EXIT : 0 };
 };
 
 register("wc", wc, "Count lines, words, and characters", HELP_TEXTS.wc, true);

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { VirtualFS } from "../VirtualFS";
+import { binaryFile } from "../builders";
 import { DirectoryNode, isDirectory, isFile } from "../types";
 
 function createTestFS(): VirtualFS {
@@ -260,6 +261,59 @@ describe("VirtualFS", () => {
       const node = result.fs!.getNode("/home/player/.env");
       expect(node!.hidden).toBe(true);
     });
+
+    it("overwriting preserves the existing file's permissions", () => {
+      const fs = createTestFS();
+      const chmodded = fs.setPermissions("/home/player/notes.txt", "rwxr-xr-x").fs!;
+      const result = chmodded.writeFile("/home/player/notes.txt", "updated");
+      expect(result.fs!.getNode("/home/player/notes.txt")!.permissions).toBe("rwxr-xr-x");
+    });
+
+    it("overwriting DROPS metadata: it describes the content that was replaced", () => {
+      const fs = createTestFS();
+      const seeded = fs.insertNode(
+        "/home/player/report.pdf",
+        binaryFile("report.pdf", "%PDF-garbled", "extracted text"),
+      ).fs!;
+      const result = seeded.writeFile("/home/player/report.pdf", "plain new text");
+      const node = result.fs!.getNode("/home/player/report.pdf");
+      expect(node!.metadata).toBeUndefined();
+      // ...but the mode, which describes the FILE, survives.
+      expect(node!.permissions).toBe("rw-r--r--");
+    });
+
+    it("overwriting with a template takes the template's metadata", () => {
+      const fs = createTestFS();
+      const seeded = fs.insertNode(
+        "/home/player/report.pdf",
+        binaryFile("report.pdf", "%PDF-old", "old text"),
+      ).fs!;
+      const template = binaryFile("fresh.pdf", "%PDF-new", "new text");
+      const result = seeded.writeFile("/home/player/report.pdf", "%PDF-new", template);
+      expect(result.fs!.getNode("/home/player/report.pdf")!.metadata).toEqual({
+        binary: true,
+        textContent: "new text",
+      });
+    });
+
+    it("denies writing to a read-only (r--) file", () => {
+      const fs = createTestFS();
+      const locked = fs.setPermissions("/home/player/notes.txt", "r--r--r--").fs!;
+      const result = locked.writeFile("/home/player/notes.txt", "nope");
+      expect(result.fs).toBeUndefined();
+      expect(result.error).toContain("Permission denied");
+      expect(locked.readFile("/home/player/notes.txt").content).toBe("hello world");
+    });
+
+    it("a template seeds mode + metadata when the file is newly created", () => {
+      const fs = createTestFS();
+      const template = binaryFile("src.pdf", "%PDF", "words", "rwxr-xr-x");
+      const result = fs.writeFile("/home/player/copy.pdf", "%PDF", template);
+      const node = result.fs!.getNode("/home/player/copy.pdf")!;
+      expect(node.name).toBe("copy.pdf");
+      expect(node.permissions).toBe("rwxr-xr-x");
+      expect(node.type === "file" && node.metadata).toEqual({ binary: true, textContent: "words" });
+    });
   });
 
   describe("makeDirectory", () => {
@@ -366,6 +420,38 @@ describe("VirtualFS", () => {
       };
       fs.insertNode("/home/player/newdir", node);
       expect(fs.getNode("/home/player/newdir")).toBeNull();
+    });
+
+    it("renames the node to the destination basename (children key === node.name)", () => {
+      const fs = createTestFS();
+      const subtree: DirectoryNode = {
+        type: "directory",
+        name: "docs",
+        permissions: "rwxr-xr-x",
+        hidden: false,
+        children: {},
+      };
+      const result = fs.insertNode("/home/player/archive", subtree);
+      expect(result.fs!.getNode("/home/player/archive")!.name).toBe("archive");
+      const parent = result.fs!.getNode("/home/player") as DirectoryNode;
+      for (const [key, child] of Object.entries(parent.children)) {
+        expect(child.name).toBe(key);
+      }
+    });
+  });
+
+  describe("setPermissions", () => {
+    it("is denied inside a directory the player cannot traverse", () => {
+      const fs = createTestFS();
+      const result = fs.setPermissions("/srv/locked/nested/deep.txt", "rwxrwxrwx");
+      expect(result.fs).toBeUndefined();
+      expect(result.error).toContain("Permission denied");
+    });
+
+    it("still works on a reachable path", () => {
+      const fs = createTestFS();
+      const result = fs.setPermissions("/home/player/notes.txt", "rwx------");
+      expect(result.fs!.getNode("/home/player/notes.txt")!.permissions).toBe("rwx------");
     });
   });
 

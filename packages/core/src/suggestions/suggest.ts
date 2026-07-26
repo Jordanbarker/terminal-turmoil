@@ -55,6 +55,9 @@ export function listMatchingEntries(
 
   for (const entry of sorted) {
     if (directoriesOnly && !isDirectory(entry)) continue;
+    // zsh (and ls) only surface dotfiles once the prefix asks for them; an
+    // empty or plain prefix must not leak hidden entries into completion.
+    if (entry.hidden && !prefix.startsWith(".")) continue;
 
     const matches = caseInsensitive
       ? entry.name.toLowerCase().startsWith(prefix.toLowerCase())

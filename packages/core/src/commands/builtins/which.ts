@@ -44,7 +44,9 @@ export const COMMAND_PATHS: Record<string, string> = {
 export function resolveCommandPath(name: string, ctx: CommandContext): string | null {
   if (!isCommandAvailable(name, ctx.activeComputer, ctx.storyFlags)) return null;
   if (COMMAND_PATHS[name]) return COMMAND_PATHS[name];
-  const commandNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
+  // storyFlags matters: without it a flag-gated but already-unlocked command is
+  // filtered out of the list and `which` wrongly reports "not found".
+  const commandNames = getAvailableCommands(ctx.activeComputer, ctx.storyFlags).map((c) => c.name);
   if (commandNames.includes(name)) return `/usr/bin/${name}`;
   return null;
 }

@@ -58,6 +58,13 @@ function createTestFS(): VirtualFS {
                 permissions: "rw-r--r--",
                 hidden: false,
               },
+              ".zshrc": {
+                type: "file",
+                name: ".zshrc",
+                content: "export X=1",
+                permissions: "rw-r--r--",
+                hidden: true,
+              },
             },
           },
         },
@@ -177,6 +184,13 @@ describe("getCompletions", () => {
         "Documents/",
         "Downloads/",
       ]);
+    });
+
+    it("hides dotfiles unless the prefix starts with a dot", () => {
+      const bare = getCompletions("cat ", createCtx());
+      expect(bare?.displayNames ?? []).not.toContain(".zshrc");
+      const dotted = getCompletions("cat .", createCtx());
+      expect(dotted!.displayNames).toContain(".zshrc");
     });
 
     it("completes after flags", () => {

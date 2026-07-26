@@ -34,17 +34,18 @@ function run(name: string, rawArgs: string[]) {
   return execute(name, rawArgs, {}, { ...ctx, rawArgs });
 }
 
+// Usage errors (bad/missing -n value) are exit 2; read failures are exit 1.
 describe("head/tail -n value handling", () => {
   it("head -n with no value errors instead of treating -n as a file", () => {
     const result = run("head", ["-n"]);
     expect(result.output).toBe("head: option requires an argument -- 'n'");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it("head -n with a non-numeric value errors instead of defaulting to 10", () => {
     const result = run("head", ["-n", "abc", "notes.txt"]);
     expect(result.output).toBe("head: invalid number of lines: 'abc'");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it("head -n 2 still works", () => {
@@ -55,13 +56,13 @@ describe("head/tail -n value handling", () => {
   it("tail -n with no value errors", () => {
     const result = run("tail", ["-n"]);
     expect(result.output).toBe("tail: option requires an argument -- 'n'");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it("tail -n '' errors", () => {
     const result = run("tail", ["-n", "", "notes.txt"]);
     expect(result.output).toBe("tail: invalid number of lines: ''");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 });
 

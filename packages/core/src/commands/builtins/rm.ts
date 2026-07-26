@@ -4,6 +4,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { FSNode, isDirectory } from "@tt/core/filesystem/types";
+import { labelFsError } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { SecurityViolation } from "@tt/core/commands/security";
@@ -31,19 +32,24 @@ const rm: CommandHandler = (args, flags, ctx) => {
   const force = flags["f"];
   let currentFs: VirtualFS = ctx.fs;
   const triggerEvents: GameEvent[] = [];
+  const errors: string[] = [];
   let securityViolation: SecurityViolation | undefined;
 
+  // coreutils rm keeps going after a bad operand and reports at the end; the
+  // deletions that already succeeded must not be rolled back, so every exit
+  // path below returns the accumulated `newFs`.
   for (const arg of args) {
     const absPath = resolvePath(arg, ctx.cwd, ctx.homeDir);
     const node = currentFs.getNode(absPath);
 
     if (!node) {
-      if (force) continue;
-      return { output: `rm: cannot remove '${arg}': No such file or directory`, exitCode: 1 };
+      if (!force) errors.push(`rm: cannot remove '${arg}': No such file or directory`);
+      continue;
     }
 
     if (isDirectory(node) && !recursive) {
-      return { output: `rm: cannot remove '${arg}': Is a directory`, exitCode: 1 };
+      errors.push(`rm: cannot remove '${arg}': Is a directory`);
+      continue;
     }
 
     if (!securityViolation) {
@@ -59,13 +65,20 @@ const rm: CommandHandler = (args, flags, ctx) => {
     const events = collectRemoveEvents(node, absPath);
     const result = currentFs.removeNode(absPath);
     if (result.error) {
-      return { output: result.error, exitCode: 1 };
+      errors.push(labelFsError("rm", result.error));
+      continue;
     }
     currentFs = result.fs!;
     triggerEvents.push(...events);
   }
 
-  return { output: "", newFs: currentFs, triggerEvents, securityViolation };
+  return {
+    output: errors.join("\n"),
+    exitCode: errors.length > 0 ? 1 : 0,
+    newFs: currentFs,
+    triggerEvents,
+    securityViolation,
+  };
 };
 
 register("rm", rm, "Remove files or directories", HELP_TEXTS.rm);

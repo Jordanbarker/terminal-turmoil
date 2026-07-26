@@ -66,16 +66,21 @@ function commandNotFound(commandName: string): string {
   );
 }
 
+/** Availability gate shared by `execute` and `executeAsync`. Null when allowed. */
+function availabilityRejection(commandName: string, ctx: CommandContext): CommandResult | null {
+  if (isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) return null;
+  const msg = unavailableCommandMessage(commandName, ctx.activeComputer);
+  return { output: msg ?? commandNotFound(commandName), exitCode: 127 };
+}
+
 export function execute(
   commandName: string,
   args: string[],
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): CommandResult {
-  if (!isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) {
-    const msg = unavailableCommandMessage(commandName, ctx.activeComputer);
-    return { output: msg ?? commandNotFound(commandName), exitCode: 127 };
-  }
+  const rejected = availabilityRejection(commandName, ctx);
+  if (rejected) return rejected;
   const entry = commands.get(commandName);
   if (!entry) {
     return { output: commandNotFound(commandName), exitCode: 127 };
@@ -96,10 +101,17 @@ export async function executeAsync(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): Promise<CommandResult> {
-  // Path execution: ./script.sh or /path/to/script.sh
+  // Path execution: ./script.sh or /path/to/script.sh. The path itself is never
+  // an allowlist entry, so gate on the interpreter that will actually run it —
+  // otherwise `./script.sh` is a hole straight through the availability policy.
   if (isPathCommand(commandName)) {
+    const interpreter = commandName.endsWith(".py") ? "python" : "bash";
+    const rejectedPath = availabilityRejection(interpreter, ctx);
+    if (rejectedPath) return rejectedPath;
     return executePathCommand(commandName, ctx);
   }
+  const rejected = availabilityRejection(commandName, ctx);
+  if (rejected) return rejected;
   const asyncEntry = asyncCommands.get(commandName);
   if (asyncEntry) {
     if (flags["help"] && asyncEntry.helpText) {

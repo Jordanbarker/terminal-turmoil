@@ -73,27 +73,40 @@ export function parseInput(raw: string): ParsedCommand {
 /**
  * Split raw input on unquoted `|` characters and parse each segment.
  * Returns an array of ParsedCommands representing the pipeline.
+ *
+ * An empty segment (`| ls`, `ls || ` already consumed upstream, `a | | b`) is a
+ * syntax error, not a silently-dropped stage — same treatment the chain
+ * operators get in `parseChainedPipeline`.
  */
-export function parsePipeline(raw: string): ParsedCommand[] {
+export function parsePipeline(raw: string, shell: "zsh" | "bash" = "zsh"): ParsedCommand[] {
   const trimmed = raw.trim();
   if (!trimmed) {
     return [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [] }];
   }
 
   const segments = splitOnPipe(trimmed);
+  if (segments.some((seg) => seg === "")) {
+    const error = shell === "bash"
+      ? "bash: syntax error near unexpected token `|'"
+      : "zsh: parse error near `|'";
+    return [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error }];
+  }
   return segments.map((seg) => parseInput(seg));
 }
 
 /**
  * Split input on unquoted `|` characters, respecting single/double quotes.
- * Also handles `>` and `>>` redirection operators as separate segments.
+ * Empty segments are preserved (never silently dropped) so callers can reject
+ * `| ls` / `ls |` as syntax errors; the only empty result is empty input.
  */
 export function splitOnPipe(input: string): string[] {
   const segments: string[] = [];
   let current = "";
+  let sawPipe = false;
 
   scanQuoted(input, (char, _i, state, isQuote) => {
     if (!isQuote && char === "|" && !state.inSingle && !state.inDouble) {
+      sawPipe = true;
       segments.push(current.trim());
       current = "";
     } else {
@@ -101,8 +114,9 @@ export function splitOnPipe(input: string): string[] {
     }
   });
 
-  if (current.trim()) {
-    segments.push(current.trim());
+  const tail = current.trim();
+  if (tail || sawPipe) {
+    segments.push(tail);
   }
 
   return segments;
@@ -189,7 +203,7 @@ export function parseChainedPipeline(raw: string, shell: "zsh" | "bash" = "zsh")
   }
 
   return segments.map((seg) => ({
-    pipeline: parsePipeline(seg.text),
+    pipeline: parsePipeline(seg.text, shell),
     operator: seg.operator,
   }));
 }

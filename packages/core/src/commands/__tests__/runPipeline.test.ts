@@ -135,6 +135,34 @@ describe("runPipeline", () => {
       expect(applied[0].output).toBe("");
     });
 
+    it("writes plain text: `ls -l > f` lands ANSI-free, like the pipe path", async () => {
+      const result = await runPipeline(baseOpts("ls -l > listing.txt", {
+        redirection: { computerId: "home" },
+      }));
+      const content = result.fs.readFile(`${HOME}/listing.txt`).content!;
+      expect(content).toContain("notes.txt");
+      expect(content).not.toMatch(/\x1b\[/);
+      expect(content).toBe(stripAnsi(content));
+    });
+
+    it("a chmod-locked target is rejected as permission denied, before the command runs", async () => {
+      const fs = createTestFS();
+      const locked = fs.setPermissions(`${HOME}/notes.txt`, "r--r--r--").fs!;
+      const writes: string[] = [];
+      const applied: CommandResult[] = [];
+      const result = await runPipeline(baseOpts("echo hi > notes.txt", {
+        fs: locked,
+        redirection: { computerId: "home" },
+        write: (t) => writes.push(t),
+        applySegment: (r) => { applied.push(r); return {}; },
+      }));
+      expect(stripAnsi(writes.join(""))).toBe("zsh: permission denied: notes.txt");
+      // zsh opens redirect targets before exec, so nothing ran: no events, no write.
+      expect(applied).toHaveLength(0);
+      expect(result.fs.readFile(`${HOME}/notes.txt`).content).toBe("alpha\nbeta\ngamma\n");
+      expect(result.lastExitCode).toBe(1);
+    });
+
     it("precheck failure skips execution and continues the chain with exit 1", async () => {
       const writes: string[] = [];
       const outputs: string[] = [];

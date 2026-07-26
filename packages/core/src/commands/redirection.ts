@@ -1,9 +1,9 @@
 import { CommandResult } from "@tt/core/commands/types";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
-import { isDirectory } from "@tt/core/filesystem/types";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { MachineId } from "@tt/core/machine";
 import { SecurityPolicy } from "@tt/core/commands/security";
+import { stripAnsi } from "@tt/core/lib/ansi";
 
 export interface RedirectTarget {
   file: string;
@@ -89,9 +89,19 @@ export function extractStdoutRedirect(raw: string): ExtractedRedirect {
   };
 }
 
+/** Map a raw VirtualFS write error onto zsh's redirect wording. */
+function zshRedirectError(error: string, file: string): string {
+  if (error.includes("Is a directory")) return `zsh: is a directory: ${file}`;
+  if (error.includes("Permission denied")) return `zsh: permission denied: ${file}`;
+  return `zsh: no such file or directory: ${file}`;
+}
+
 /**
  * Validate redirect targets before the command runs (zsh opens redirect files
- * before exec, so a bad target means the command never executes).
+ * before exec, so a bad target means the command never executes — no output, no
+ * events, no FS change). Delegates to `VirtualFS.canWriteFile` so the precheck
+ * and the later write can never disagree: a `chmod 444` target is rejected here
+ * rather than after the command has already run and emitted its events.
  * Returns a zsh-style error message for the first failing target, or null.
  */
 export function precheckRedirects(
@@ -104,17 +114,8 @@ export function precheckRedirects(
     const absPath = resolvePath(redirect.file, currentCwd, homeDir);
     if (absPath === "/dev/null") continue;
 
-    const node = fs.getNode(absPath);
-    if (node && isDirectory(node)) {
-      return `zsh: is a directory: ${redirect.file}`;
-    }
-    if (!node) {
-      const parent = absPath.slice(0, absPath.lastIndexOf("/")) || "/";
-      const parentNode = fs.getNode(parent);
-      if (!parentNode || !isDirectory(parentNode)) {
-        return `zsh: no such file or directory: ${redirect.file}`;
-      }
-    }
+    const error = fs.canWriteFile(absPath);
+    if (error) return zshRedirectError(error, redirect.file);
   }
   return null;
 }
@@ -141,7 +142,9 @@ export function applyRedirection(
 
     const existedBefore = !!fs.getNode(absPath);
 
-    let content = lastResult.output;
+    // Files hold plain text: strip the SGR sequences colorized output carries,
+    // exactly as the pipe path does before handing stdout to the next command.
+    let content = stripAnsi(lastResult.output);
     if (redirect.append) {
       const existing = fs.readFile(absPath);
       if (existing.content !== undefined && existing.content !== "") {
@@ -154,9 +157,7 @@ export function applyRedirection(
     const writeResult = fs.writeFile(absPath, content);
     if (!writeResult.fs) {
       // Target became unwritable mid-pipeline (precheck normally catches this).
-      const message = writeResult.error?.includes("Is a directory")
-        ? `zsh: is a directory: ${redirect.file}`
-        : `zsh: no such file or directory: ${redirect.file}`;
+      const message = zshRedirectError(writeResult.error ?? "", redirect.file);
       return {
         result: { ...lastResult, output: message, exitCode: 1, triggerEvents: mergedEvents, securityViolation },
         fs,

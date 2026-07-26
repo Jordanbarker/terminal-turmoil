@@ -11,11 +11,15 @@ Code map: `commands/{types,registry,parser,runPipeline,applyResult,flagValidatio
 
 ## Parser (`parser.ts`)
 
-`parseInput` (tokenize respecting quotes), `parsePipeline` (split on unquoted `|`), `parseChainedPipeline` (split on `&&`/`||`/`;` first, then each segment's pipeline), plus `splitOnPipe`/`splitOnChainOperators`. Flag parsing: `-x` → `{x:true}`, `-xyz` → three flags, `--flag` → `{flag:true}`.
+`parseInput` (tokenize respecting quotes), `parsePipeline` (split on unquoted `|`), `parseChainedPipeline` (split on `&&`/`||`/`;` first, then each segment's pipeline), plus `splitOnPipe`/`splitOnChainOperators`. Flag parsing: `-x` → `{x:true}`, `-xyz` → three flags, `--flag` → `{flag:true}`. `splitOnPipe` keeps empty segments so `parsePipeline` can reject them as `` parse error near `|' `` (same treatment the chain operators get) rather than silently dropping a stage.
 
 All quote-aware scanning (tokenize, pipe/chain splitting, alias expansion, continuation detection) goes through the private `scanQuoted` visitor helper at the top of `parser.ts` — use it rather than hand-rolling another quote loop. Rules: `'`/`"` toggle unless the other is active, no backslash escaping.
 
 `analyzeIncompleteInput(input)` detects zsh secondary-prompt continuation (unterminated quote, trailing `\`/`|`/`&&`/`||`); `null` = submittable. It has no opinion on trailing `&`/`;` (not continuation in zsh). Consumed by `@tt/core/terminal/lineEditor`'s `LineEditor`, which accumulates physical lines into `pendingLines` and defers submission until the joined input parses clean.
+
+## Suggestions / TAB completion (`@tt/core/suggestions/{suggest,complete}`)
+
+Both the ghost-text suggester and TAB completion resolve filesystem candidates through the single `listMatchingEntries` helper in `suggest.ts`. It applies the visibility rule ls and real zsh use: **hidden entries are only offered when the typed prefix starts with `.`** — an empty or plain prefix must never enumerate dotfiles (they are where the story keeps its secrets). Anything new that lists FS entries for the player goes through that helper rather than `fs.listDirectory` directly.
 
 ## Flag validation (`flagValidation.ts`)
 
@@ -26,16 +30,24 @@ The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid
 
 ## Chaining, pipelines, redirection
 
-`&&`/`||`/`;` supported; pipes bind tighter (`cmd1 && cmd2 | cmd3` = `[cmd1] && [cmd2|cmd3]`). `parseChainedPipeline(raw, shell?)` splits chain operators first (consuming `||` before `splitOnPipe` misreads it). Syntax-error wording follows the `shell` param: interactive shell → zsh (`` zsh: parse error near `&&' ``, default); `bash.ts` passes `"bash"` for script lines (exit 2). Unknown commands → `zsh: command not found: <name>` (exit 127) + dimmed `Type 'help'` hint. Execution (`runPipeline.ts`, shared core): `runPipeline(opts)` runs the outer loop over `ChainSegment[]` and the inner per-pipe loop — chain-operator gating, stdin threading (`stripAnsi`-cleaned), trigger-event + security-violation accumulation, FS/mounts accumulation, optional redirection (`opts.redirection`, off in term-crunch) and intermediate `file_read` events (`opts.intermediateFileReadEvents`, termoil-only). App specifics are injected: `buildContext` builds each `CommandContext`, `applySegment` applies effects per segment (termoil: computeEffects + store/story-flag writes, term-crunch: minimal computeEffects) and returns `{newCwd, stopChain, earlyReturn}`; sessions/incremental/transitions (`isChainEarlyReturn`) stop the chain. History append is the shared `appendZshHistory` in `terminal/zshHistory.ts`. Bash scripts (`bash.ts`) still run their own loop over the same primitives.
+`&&`/`||`/`;` supported; pipes bind tighter (`cmd1 && cmd2 | cmd3` = `[cmd1] && [cmd2|cmd3]`). `parseChainedPipeline(raw, shell?)` splits chain operators first (consuming `||` before `splitOnPipe` misreads it). Syntax-error wording follows the `shell` param: interactive shell → zsh (`` zsh: parse error near `&&' ``, default); `bash.ts` passes `"bash"` for script lines (exit 2). Unknown commands → `zsh: command not found: <name>` (exit 127) + dimmed `Type 'help'` hint. Execution (`runPipeline.ts`, shared core): `runPipeline(opts)` runs the outer loop over `ChainSegment[]` and the inner per-pipe loop — chain-operator gating, stdin threading (`stripAnsi`-cleaned), trigger-event + security-violation accumulation, FS/mounts accumulation, optional redirection (`opts.redirection`, off in term-crunch) and intermediate `file_read` events (`opts.intermediateFileReadEvents`, termoil-only). App specifics are injected: `buildContext` builds each `CommandContext`, `applySegment` applies effects per segment (termoil: computeEffects + store/story-flag writes, term-crunch: minimal computeEffects) and returns `{newCwd, stopChain, earlyReturn}`; sessions/incremental/transitions (`isChainEarlyReturn`) stop the chain. History append is the shared `appendZshHistory` in `terminal/zshHistory.ts`. Bash scripts (`bash.ts`) still run their own loop over the same primitives, threading the same accumulators through every nesting level (pipelines, `$(...)`, if-bodies, functions) via its `ScriptState`: trigger events, the first `securityViolation`, and `mounts`. Anything a script can produce has to ride that struct out through `executeScript`, or the tripwire/effect is silently lost inside the subshell.
 
 **Redirection (`redirection.ts`)** — zsh-realistic stdout redirect, consumed by `runPipeline.ts`/`bash.ts`/`scripts/play.ts`:
 - `extractStdoutRedirect` collects **every** unquoted `>`/`>>` (zsh `multios` — all targets get output) and strips stderr redirects. A target-less `>` sets a `parseError` (exit 1, segment skipped).
 - `precheckRedirects` validates targets **before** the pipeline runs (zsh opens redirect files before exec): dir target → `zsh: is a directory:`, missing parent → `zsh: no such file or directory:`. On error nothing executes (no output, no events, no FS change).
-- `applyRedirection` writes to every target, emitting `file_created`/`file_modified` and running the `isLogTamperPath` tripwire per target; `>>` append is newline-aware. `VirtualFS.writeFile` refuses to overwrite a directory, so `echo x > some-dir` can't destroy a tree.
+- `applyRedirection` writes to every target `stripAnsi`-cleaned (files hold plain text, same as the pipe path), emitting `file_created`/`file_modified` and running the `isLogTamperPath` tripwire per target; `>>` append is newline-aware. `VirtualFS.writeFile` refuses to overwrite a directory (so `echo x > some-dir` can't destroy a tree), refuses a file whose owner `w` bit is off, and preserves the existing node's mode/metadata on overwrite — pass its optional `template` node to give a NEWLY created file the source's mode/metadata (`cp`/`mv` do).
 
 ## Line splitting (`src/lib/textUtils.ts`)
 
 `splitLines(content)` drops the single trailing empty element a final `\n` produces (`"" → []`). Use it in any line-oriented command (`sort`/`uniq`/`grep`/`head`/`tail` do) instead of bare `content.split("\n")`, which invents a phantom empty line for files ending in a newline.
+
+## FS errors from a builtin (`fsErrors.ts`)
+
+`VirtualFS` errors are worded for its first callers (`cat:`/`mkdir:`/`rm:` prefixes) or are bare (`Permission denied: <path>`), so **no builtin surfaces one verbatim**. Read side: `readFileForCommand(name, absPath, ctx)`. Write side (`writeFile`/`insertNode`/`removeNode`/`setPermissions` failures in `cp`/`mv`/`rm`/`chmod`): `labelFsError(name, error)`. Never hand-roll `.replace("cat:", "head:")`.
+
+Exit-code convention across builtins: **1 = read/write failure** (missing file, permission denied), **2 = usage error** (missing operand, bad flag or flag value, `grep dir` without `-r`). Multi-operand commands collect-and-continue like `cat`: report the bad operand, keep processing the rest, and (for mutating commands — `rm`, `cp -r`, `chmod`) still return the accumulated `newFs` rather than rolling the successful work back.
+
+`chmod -R` is the one walk that mutates the modes it is traversing, so it does its own gate instead of `setPermissions`' (which would re-judge ancestors mid-rewrite): the **named target** goes through `setPermissions`, descendants through the privileged `insertNode`, and a descendant directory is descended into only if the player could already traverse it **or** this same chmod opens it (so `chmod -R 777 /` gets in, `chmod -R 700 /` reports `cannot read directory` and skips).
 
 ## Effect computation (`applyResult.ts`)
 
@@ -49,7 +61,7 @@ The dispatcher rejects unknown flags by default (coreutils-style `<cmd>: invalid
 
 ## Command availability (`availability.ts`)
 
-`isCommandAvailable(name, computer, storyFlags)` gates access; gate data is in `story/commandGates.ts`. See the **narrative skill** for per-computer gating.
+`isCommandAvailable(name, computer, storyFlags)` gates access; gate data is in `story/commandGates.ts`. See the **narrative skill** for per-computer gating. Both `execute` and `executeAsync` enforce it (never only one), and `./script` path execution is gated on the **interpreter** that will run it (`python` for `.py`, else `bash`) since the path itself is never an allowlist entry. Anything resolving a command name for the player — `which`/`type`/`command -v`, all three via `resolveCommandPath` — must pass `ctx.storyFlags`, or a flag-gated but unlocked command reads as "not found".
 
 ## Adding a new command
 

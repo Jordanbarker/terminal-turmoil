@@ -5,6 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { isDirectory, isFile, FSNode } from "@tt/core/filesystem/types";
 import { colorize, ansi } from "@tt/core/lib/ansi";
+import { READ_FAILURE_EXIT } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function walkFiles(
@@ -54,6 +55,8 @@ const grep: CommandHandler = (args, flags, ctx) => {
 
   // Collect files to search
   const filesToSearch: { path: string; content: string }[] = [];
+  const readErrors: string[] = [];
+  let usageError = false;
 
   if (fileArgs.length === 0 && ctx.stdin !== undefined) {
     // Read from stdin
@@ -64,29 +67,41 @@ const grep: CommandHandler = (args, flags, ctx) => {
   } else if (fileArgs.length === 0) {
     return { output: "grep: no input files", exitCode: 2 };
   } else {
+    // Collect-and-continue, like cat: a bad operand is reported but the other
+    // files are still searched.
     for (const fileArg of fileArgs) {
       const absPath = resolvePath(fileArg, ctx.cwd, ctx.homeDir);
       const node = ctx.fs.getNode(absPath);
       if (!node) {
-        return { output: `grep: ${fileArg}: No such file or directory`, exitCode: 2 };
+        readErrors.push(`grep: ${fileArg}: No such file or directory`);
+        continue;
       }
       if (isDirectory(node)) {
         if (recursive) {
           filesToSearch.push(...walkFiles(ctx.fs, absPath));
         } else {
-          return { output: `grep: ${fileArg}: Is a directory`, exitCode: 2 };
+          // Usage error (the operand needed -r), not a read failure — exit 2.
+          readErrors.push(`grep: ${fileArg}: Is a directory`);
+          usageError = true;
         }
-      } else if (isFile(node)) {
+        continue;
+      }
+      if (isFile(node)) {
         const read = ctx.fs.readFile(absPath);
         if (read.error) {
-          return { output: `grep: ${fileArg}: Permission denied`, exitCode: 2 };
+          readErrors.push(`grep: ${fileArg}: Permission denied`);
+          continue;
         }
         filesToSearch.push({ path: absPath, content: read.content! });
       }
     }
   }
 
-  const multiFile = filesToSearch.length > 1;
+  // Prefix lines with the filename whenever the player asked for more than one
+  // input, even if some operands dropped out — a failed operand must not
+  // silently change the surviving output's shape. `-r` over one directory can
+  // also expand to many files.
+  const multiFile = filesToSearch.length > 1 || fileArgs.length > 1;
   const outputLines: string[] = [];
   let totalMatches = 0;
 
@@ -136,10 +151,17 @@ const grep: CommandHandler = (args, flags, ctx) => {
     }
   }
 
+  // Exit codes: 2 for a usage error, else a read failure outranks the
+  // match/no-match answer (both READ_FAILURE_EXIT and "no match" are 1).
+  const exitCode = usageError ? 2 : readErrors.length > 0 ? READ_FAILURE_EXIT : totalMatches > 0 ? 0 : 1;
+
   return {
-    output: outputLines.join("\n"),
-    exitCode: totalMatches > 0 ? 0 : 1,
-    triggerEvents: [{ type: "command_executed", detail: "text_filtered" }],
+    output: [...readErrors, ...outputLines].join("\n"),
+    exitCode,
+    // No matches means nothing was filtered — don't fire the story trigger.
+    ...(totalMatches > 0 && {
+      triggerEvents: [{ type: "command_executed" as const, detail: "text_filtered" }],
+    }),
   };
 };
 

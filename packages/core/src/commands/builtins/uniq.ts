@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
+import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 const uniq: CommandHandler = (args, flags, ctx) => {
@@ -16,9 +17,9 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     content = ctx.stdin;
   } else if (fileArgs.length > 0) {
     const absPath = resolvePath(fileArgs[0], ctx.cwd, ctx.homeDir);
-    const result = ctx.fs.readFile(absPath);
+    const result = readFileForCommand("uniq", absPath, ctx);
     if (result.error) {
-      return { output: result.error.replace("cat:", "uniq:"), exitCode: 2 };
+      return { output: result.error, exitCode: READ_FAILURE_EXIT };
     }
     content = result.content ?? "";
   } else {
@@ -52,9 +53,16 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     return g.line;
   });
 
+  // `groups.length < lines.length` means at least one run of adjacent
+  // duplicates actually collapsed; on all-unique input uniq is a no-op and
+  // must not fire the story trigger.
+  const collapsed = groups.length < lines.length;
+
   return {
     output: outputLines.join("\n"),
-    triggerEvents: [{ type: "command_executed", detail: "data_deduped" }],
+    ...(collapsed && {
+      triggerEvents: [{ type: "command_executed" as const, detail: "data_deduped" }],
+    }),
   };
 };
 
