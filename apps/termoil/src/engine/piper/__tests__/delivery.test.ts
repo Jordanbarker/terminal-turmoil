@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkPiperDeliveries, seedImmediatePiper, getConversationHistory, getDeliveryInfo, getPendingReply, getVisibleChannels } from "../delivery";
+import { checkPiperDeliveries, seedImmediatePiper, getConversationHistory, getDeliveryInfo, getPendingReplies, getVisibleChannels } from "../delivery";
 import { GameEvent } from "../../mail/delivery";
 
 const USERNAME = "testplayer";
@@ -208,34 +208,39 @@ describe("getConversationHistory", () => {
   });
 });
 
-describe("getPendingReply", () => {
+describe("getPendingReplies", () => {
+  /** What the session surfaces: the oldest unanswered prompt. */
+  const surfaced = (channelId: string, delivered: string[]) =>
+    getPendingReplies(channelId, delivered, USERNAME)[0] ?? null;
+
   it("returns reply options for unreplied delivery", () => {
-    const pending = getPendingReply("dm_oscar", ["oscar_log_check"], USERNAME);
+    const pending = surfaced("dm_oscar", ["oscar_log_check"]);
     expect(pending).not.toBeNull();
     expect(pending!.deliveryId).toBe("oscar_log_check");
-    expect(pending!.options!.length).toBeGreaterThan(0);
+    expect(pending!.options.length).toBeGreaterThan(0);
   });
 
   it("returns null when already replied", () => {
-    const pending = getPendingReply("dm_oscar", ["oscar_log_check", "reply:oscar_log_check:0"], USERNAME);
+    const pending = surfaced("dm_oscar", ["oscar_log_check", "reply:oscar_log_check:0"]);
     expect(pending).toBeNull();
   });
 
-  it("does not resurface older unreplied options after replying to a newer delivery", () => {
-    // maya_dm_handoff has reply options and maya_dm_checkin has reply options
-    // After replying to checkin (newer), handoff (older) should NOT resurface
+  it("keeps an older unanswered prompt reachable after a newer one is answered", () => {
+    // maya_dm_handoff and maya_dm_checkin both carry reply options. Answering
+    // the newer one must not strand the older: unanswered prompts are the only
+    // way to reach the objectives behind them (see pendingReplyOrdering.test.ts).
     const delivered = [
       "maya_dm_handoff",
       "maya_dm_checkin",
       "reply:maya_dm_checkin:0",
       "maya_dm_checkin_reply",
     ];
-    const pending = getPendingReply("dm_maya", delivered, USERNAME);
-    expect(pending).toBeNull();
+    const pending = surfaced("dm_maya", delivered);
+    expect(pending!.deliveryId).toBe("maya_dm_handoff");
   });
 
   it("returns null for channel with no reply options", () => {
-    const pending = getPendingReply("general", ["general_edward_welcome"], USERNAME);
+    const pending = surfaced("general", ["general_edward_welcome"]);
     // general_edward_welcome has reply options, so this should return them
     expect(pending).not.toBeNull();
   });

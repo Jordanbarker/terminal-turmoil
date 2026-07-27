@@ -31,7 +31,7 @@ function makeFs(): VirtualFS {
 describe("extractStdoutRedirect", () => {
   it("returns no redirect when none present", () => {
     const r = extractStdoutRedirect("echo hello");
-    expect(r).toEqual({ command: "echo hello", redirects: [] });
+    expect(r).toEqual({ command: "echo hello", redirects: [], stderrMode: "default" });
   });
 
   it("ignores > inside double quotes", () => {
@@ -200,7 +200,7 @@ describe("applyRedirection", () => {
       [{ file: "Documents", append: false }], base, "/home/ren", "/home/ren", fs, "home",
     );
     expect(result.exitCode).toBe(1);
-    expect(result.output).toBe("zsh: is a directory: Documents");
+    expect(result.stderr).toBe("zsh: is a directory: Documents");
     expect(result.triggerEvents).toEqual([]);
     expect(result.securityViolation).toBeUndefined();
     const node = newFs.getNode("/home/ren/Documents");
@@ -215,7 +215,7 @@ describe("applyRedirection", () => {
       [{ file: "/no/such/dir/f.txt", append: false }], base, "/home/ren", "/home/ren", fs, "home",
     );
     expect(result.exitCode).toBe(1);
-    expect(result.output).toBe("zsh: no such file or directory: /no/such/dir/f.txt");
+    expect(result.stderr).toBe("zsh: no such file or directory: /no/such/dir/f.txt");
     expect(result.triggerEvents).toEqual([]);
     expect(newFs.getNode("/no/such/dir/f.txt")).toBeNull();
   });

@@ -415,11 +415,20 @@ interface ScriptState {
   triggerEvents: GameEvent[];
   securityViolation?: SecurityViolation;
   mounts?: Mounts;
+  /**
+   * stderr from every command the script ran, at any nesting depth. It rides
+   * out through `executeScript`'s CommandResult instead of being folded into
+   * the script's stdout, so `bash job.sh > out.log` still shows the failures on
+   * the terminal and never writes them into out.log (and `$(...)` capture only
+   * ever sees stdout).
+   */
+  stderr: string[];
 }
 
 /** Record one command's result into the script-wide accumulators (first violation wins). */
 function accumulate(state: ScriptState, result: CommandResult): void {
   if (result.triggerEvents) state.triggerEvents.push(...result.triggerEvents);
+  if (result.stderr) state.stderr.push(result.stderr);
   if (result.securityViolation && !state.securityViolation) {
     state.securityViolation = result.securityViolation;
   }
@@ -536,6 +545,7 @@ async function executePipeline(
     // handle itself is dropped; every accumulator field survives.
     if (SESSION_FIELDS.some((f) => lastResult[f])) {
       const cleaned: CommandResult = { output: lastResult.output, exitCode: lastResult.exitCode };
+      if (lastResult.stderr) cleaned.stderr = lastResult.stderr;
       if (lastResult.triggerEvents) cleaned.triggerEvents = lastResult.triggerEvents;
       if (lastResult.newFs) cleaned.newFs = lastResult.newFs;
       if (lastResult.newCwd) cleaned.newCwd = lastResult.newCwd;
@@ -548,8 +558,9 @@ async function executePipeline(
 
     // Check for computer transition — stop script
     if (lastResult.transitionTo) {
+      state.stderr.push(`bash: cannot transition computers from within a script`);
       return {
-        output: `bash: cannot transition computers from within a script`,
+        output: "",
         fs: lastResult.newFs ?? fs,
         cwd,
         stopped: true,
@@ -579,6 +590,9 @@ async function executePipeline(
     const beforeCount = lastResult.triggerEvents?.length ?? 0;
     const after = redir.result.triggerEvents ?? [];
     if (after.length > beforeCount) state.triggerEvents.push(...after.slice(beforeCount));
+    // The command's own stderr was accumulated above; `writeError` is the only
+    // thing the redirect itself can add.
+    if (redir.writeError) state.stderr.push(redir.writeError);
     lastResult = redir.result;
     fs = redir.fs;
   }
@@ -603,7 +617,8 @@ async function executeSingleLine(
   for (const seg of chain) {
     const parseError = seg.pipeline.find((p) => p.error);
     if (parseError) {
-      return { output: parseError.error!, fs: runningFs, cwd: currentCwd, stopped: false, exitCode: 2 };
+      state.stderr.push(parseError.error!);
+      return { output: "", fs: runningFs, cwd: currentCwd, stopped: false, exitCode: 2 };
     }
   }
 
@@ -625,7 +640,7 @@ async function executeSingleLine(
     const { command: stripped, redirects, parseError } =
       extractStdoutRedirect(lastSegment.raw);
     if (parseError) {
-      outputs.push(parseError);
+      state.stderr.push(parseError);
       lastExitCode = 1;
       continue;
     }
@@ -633,7 +648,7 @@ async function executeSingleLine(
       // Redirect targets are opened before exec — a bad target means the command never runs
       const precheckError = precheckRedirects(redirects, cwd, ctx.homeDir, fs);
       if (precheckError) {
-        outputs.push(precheckError);
+        state.stderr.push(precheckError);
         lastExitCode = 1;
         continue;
       }
@@ -849,7 +864,7 @@ export async function executeScript(
   positionalArgs?: string[],
 ): Promise<CommandResult> {
   const nodes = parseScript(content);
-  const state: ScriptState = { triggerEvents: [], mounts: ctx.mounts };
+  const state: ScriptState = { triggerEvents: [], mounts: ctx.mounts, stderr: [] };
   const exec: ExecContext = {
     ctx,
     variables: new Map(),
@@ -862,6 +877,7 @@ export async function executeScript(
 
   const combinedResult: CommandResult = {
     output: result.outputs.join("\n"),
+    ...(state.stderr.length > 0 && { stderr: state.stderr.join("\n") }),
     exitCode: result.exitCode,
     triggerEvents: state.triggerEvents.length > 0 ? state.triggerEvents : undefined,
   };
@@ -888,7 +904,7 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
   if (flags.c) {
     const cmdString = args.join(" ");
     if (!cmdString) {
-      return { output: "bash: -c: option requires an argument" };
+      return { output: "", stderr: "bash: -c: option requires an argument" };
     }
     return executeScript(cmdString, ctx);
   }
@@ -896,7 +912,8 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
   // bash (no args) — not supported
   if (args.length === 0) {
     return {
-      output: "bash: interactive mode not supported. Usage: bash <script.sh> or bash -c \"command\"",
+      output: "",
+      stderr: "bash: interactive mode not supported. Usage: bash <script.sh> or bash -c \"command\"",
     };
   }
 
@@ -909,7 +926,7 @@ const bashHandler: AsyncCommandHandler = async (args, flags, ctx) => {
 
   const fileResult = ctx.fs.readFile(filePath);
   if (fileResult.error) {
-    return { output: `bash: ${args[0]}: No such file or directory`, exitCode: 1 };
+    return { output: "", stderr: `bash: ${args[0]}: No such file or directory`, exitCode: 1 };
   }
 
   const result = await executeScript(fileResult.content!, ctx, args.slice(1));

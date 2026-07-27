@@ -82,12 +82,17 @@ describe("processDeliveries", () => {
   });
 
   it("preserves FS reference when no deliveries match", () => {
+    // Mailbox-free FS on purpose: with a maildir present, checkEmailDeliveries
+    // would re-seed the immediate emails this fixture never had (see the
+    // immediate-email self-heal in engine/mail/delivery.ts) and legitimately
+    // hand back a new FS.
     const fs = createMinimalFS();
+    const mailless = fs.removeNode("/var/mail").fs!;
     const events: GameEvent[] = [
       { type: "command_executed", detail: "ls" },
     ];
-    const result = processDeliveries(events, fs, "home", [], [], "player", {});
-    expect(result.fs).toBe(fs);
+    const result = processDeliveries(events, mailless, "home", [], [], "player", {});
+    expect(result.fs).toBe(mailless);
   });
 
   it("processes story flag triggers from events", () => {

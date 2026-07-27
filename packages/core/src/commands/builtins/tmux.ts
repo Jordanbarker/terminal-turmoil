@@ -3,13 +3,14 @@ import { register } from "../registry";
 import { skipFlagValidation } from "../flagValidation";
 import { nextSessionName, formatTmuxLs } from "@tt/core/terminal/tmuxSessions";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 // Real tmux error strings (single client, default socket).
 const NESTED = "sessions should be nested with care, unset $TMUX to force";
 const NO_SERVER = "no server running on /tmp/tmux-1000/default";
 
-function err(output: string): CommandResult {
-  return { output, exitCode: 1 };
+function err(message: string): CommandResult {
+  return errorResult(message, 1);
 }
 
 /** Value of a `-s`/`-t` style option in the raw token list, or null. */

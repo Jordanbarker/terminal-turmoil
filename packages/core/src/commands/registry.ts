@@ -5,6 +5,7 @@ import { MachineId } from "@tt/core/machine";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { getKnownFlags, shouldValidateFlags, rejectUnknownFlags } from "./flagValidation";
+import { errorResult } from "./fsErrors";
 import { interceptScript } from "./scriptInterceptors";
 
 /** Check if a command string looks like a path (starts with ./ or /). */
@@ -85,7 +86,7 @@ function commandNotFound(commandName: string): string {
 function availabilityRejection(commandName: string, ctx: CommandContext): CommandResult | null {
   if (isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) return null;
   const msg = unavailableCommandMessage(commandName, ctx.activeComputer);
-  return { output: msg ?? commandNotFound(commandName), exitCode: 127 };
+  return errorResult(msg ?? commandNotFound(commandName), 127);
 }
 
 export function execute(
@@ -98,7 +99,7 @@ export function execute(
   if (rejected) return rejected;
   const entry = commands.get(commandName);
   if (!entry) {
-    return { output: commandNotFound(commandName), exitCode: 127 };
+    return errorResult(commandNotFound(commandName), 127);
   }
   if (flags["help"] && entry.helpText) {
     return { output: entry.helpText };
@@ -146,16 +147,16 @@ async function executePathCommand(pathStr: string, ctx: CommandContext): Promise
   const absPath = resolvePath(pathStr, ctx.cwd, ctx.homeDir);
   const node = ctx.fs.getNode(absPath);
   if (!node) {
-    return { output: `zsh: no such file or directory: ${pathStr}`, exitCode: 127 };
+    return errorResult(`zsh: no such file or directory: ${pathStr}`, 127);
   }
   // zsh reports directories as "permission denied" (it tries to exec them), not "Is a directory"
   if (node.type === "directory") {
-    return { output: `zsh: permission denied: ${pathStr}`, exitCode: 126 };
+    return errorResult(`zsh: permission denied: ${pathStr}`, 126);
   }
   // Check execute permission (owner execute = index 2 in "rwxr-xr-x")
   const perms = node.permissions ?? "rw-r--r--";
   if (perms[2] !== "x") {
-    return { output: `zsh: permission denied: ${pathStr}`, exitCode: 126 };
+    return errorResult(`zsh: permission denied: ${pathStr}`, 126);
   }
   // The app may claim this script and return authored output (scriptInterceptors.ts).
   // parseInput already stripped the command token, so rawArgs are the script's args.

@@ -180,7 +180,7 @@ describe("ls", () => {
 
   it("returns error for nonexistent path", () => {
     const result = execute("ls", ["/missing"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns empty output for empty directory", () => {
@@ -219,7 +219,7 @@ describe("ls", () => {
 
   it("shows error and still lists valid target", () => {
     const result = execute("ls", ["/nonexistent", "docs"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
     expect(result.output).toContain("readme.md");
   });
 
@@ -309,12 +309,12 @@ describe("cd", () => {
 
   it("returns error for nonexistent directory", () => {
     const result = execute("cd", ["/missing"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error when cd to a file", () => {
     const result = execute("cd", ["notes.txt"], {}, ctx());
-    expect(result.output).toContain("Not a directory");
+    expect(result.stderr).toContain("Not a directory");
   });
 
   it("updates OLDPWD on successful cd", () => {
@@ -339,7 +339,7 @@ describe("cd", () => {
     const c = { ...ctx(), envVars: {}, setEnvVars: () => {} };
     const result = execute("cd", ["-"], {}, c);
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("OLDPWD not set");
+    expect(result.stderr).toContain("OLDPWD not set");
   });
 });
 
@@ -357,17 +357,17 @@ describe("cat", () => {
 
   it("returns error for missing file operand", () => {
     const result = execute("cat", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("returns error for nonexistent file", () => {
     const result = execute("cat", ["missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error for directory", () => {
     const result = execute("cat", ["docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
   });
 });
 
@@ -470,17 +470,17 @@ describe("nano", () => {
 
   it("rejects directory as target", () => {
     const result = execute("nano", ["docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
   });
 
   it("rejects file in nonexistent directory", () => {
     const result = execute("nano", ["/missing/file.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("shows usage with no args", () => {
     const result = execute("nano", [], {}, ctx());
-    expect(result.output).toContain("Usage");
+    expect(result.stderr).toContain("Usage");
   });
 });
 
@@ -786,7 +786,7 @@ describe("mail", () => {
 describe("unknown command", () => {
   it("returns command not found", () => {
     const result = execute("foobar", [], {}, ctx());
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
   });
 });
 
@@ -826,21 +826,21 @@ describe("less", () => {
 
   it("errors when no file and no stdin", () => {
     const result = execute("less", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
 
   it("errors when the file does not exist", () => {
     const result = execute("less", ["missing.txt"], {}, ctx());
-    expect(result.output).toMatch(/less:/);
+    expect(result.stderr).toMatch(/less:/);
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
 
   it("errors when the target is a directory", () => {
     const result = execute("less", ["docs"], {}, ctx());
-    expect(stripAnsi(result.output)).toMatch(/Is a directory/);
+    expect(stripAnsi(result.stderr ?? "")).toMatch(/Is a directory/);
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
@@ -938,7 +938,7 @@ describe("--help", () => {
       fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["init"] }).newFs ?? fs;
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["add", "-all"] });
       expect(result.exitCode).toBe(129);
-      expect(stripAnsi(result.output)).toBe("error: unknown switch `a'");
+      expect(stripAnsi(result.stderr ?? "")).toBe("error: unknown switch `a'");
     });
   });
 
@@ -968,7 +968,7 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "main"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("already exists");
+      expect(stripAnsi(result.stderr ?? "")).toContain("already exists");
     });
 
     it("git switch <branch> switches to an existing branch", () => {
@@ -990,14 +990,14 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch", "nonexistent"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("fatal: invalid reference: nonexistent");
+      expect(stripAnsi(result.stderr ?? "")).toContain("fatal: invalid reference: nonexistent");
     });
 
     it("git switch with no arg errors", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("missing branch");
+      expect(stripAnsi(result.stderr ?? "")).toContain("missing branch");
     });
 
     it("git branch -a lists locals plus remotes/origin/<branch>", () => {
@@ -1027,7 +1027,7 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "-a", "newbranch"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("fatal: branch name required");
+      expect(stripAnsi(result.stderr ?? "")).toContain("fatal: branch name required");
     });
   });
 
@@ -1044,7 +1044,7 @@ describe("--help", () => {
 describe("invalid flag rejection", () => {
   it("ls -z returns coreutils-style error and exit code 2", () => {
     const result = execute("ls", [], { z: true }, ctx());
-    expect(result.output).toBe(
+    expect(result.stderr).toBe(
       "ls: invalid option -- 'z'\nTry 'ls --help' for more information.",
     );
     expect(result.exitCode).toBe(2);
@@ -1052,7 +1052,7 @@ describe("invalid flag rejection", () => {
 
   it("ls --foo returns 'unrecognized option' for long flags", () => {
     const result = execute("ls", [], { foo: true }, ctx());
-    expect(result.output).toContain("unrecognized option '--foo'");
+    expect(result.stderr).toContain("unrecognized option '--foo'");
     expect(result.exitCode).toBe(2);
   });
 
@@ -1063,13 +1063,13 @@ describe("invalid flag rejection", () => {
 
   it("cat -z errors (cat has no flags)", () => {
     const result = execute("cat", ["notes.txt"], { z: true }, ctx());
-    expect(result.output).toContain("invalid option -- 'z'");
+    expect(result.stderr).toContain("invalid option -- 'z'");
     expect(result.exitCode).toBe(2);
   });
 
   it("grep -X errors", () => {
     const result = execute("grep", ["foo", "notes.txt"], { X: true }, ctx());
-    expect(result.output).toContain("invalid option -- 'X'");
+    expect(result.stderr).toContain("invalid option -- 'X'");
     expect(result.exitCode).toBe(2);
   });
 
@@ -1127,7 +1127,7 @@ describe("git invalid flag rejection", () => {
       ...devCtx(),
       rawArgs: ["status", "-z"],
     });
-    expect(result.output).toBe("error: unknown switch `z'");
+    expect(result.stderr).toBe("error: unknown switch `z'");
     expect(result.exitCode).toBe(129);
   });
 
@@ -1136,7 +1136,7 @@ describe("git invalid flag rejection", () => {
       ...devCtx(),
       rawArgs: ["log", "--bogus"],
     });
-    expect(result.output).toBe("error: unknown option `bogus'");
+    expect(result.stderr).toBe("error: unknown option `bogus'");
     expect(result.exitCode).toBe(129);
   });
 
@@ -1159,7 +1159,7 @@ describe("git invalid flag rejection", () => {
 describe("snow invalid flag rejection", () => {
   it("snow sql -X uses 'snow sql:' prefix and exit 2", () => {
     const result = execute("snow", ["sql"], { X: true }, { ...ctx(), activeComputer: "devcontainer" });
-    expect(result.output).toContain("snow sql: invalid option -- 'X'");
+    expect(result.stderr).toContain("snow sql: invalid option -- 'X'");
     expect(result.exitCode).toBe(2);
   });
 });
@@ -1182,7 +1182,7 @@ describe("snow sql -q exit codes", () => {
   it("exits 1 on a SQL error", () => {
     const result = execute("snow", ["sql", "SELECT 1/0"], { q: true }, snowCtx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("Division by zero");
+    expect(result.stderr).toContain("Division by zero");
   });
 
   it("resolves a derived table end-to-end", () => {

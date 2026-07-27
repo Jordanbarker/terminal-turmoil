@@ -10,11 +10,11 @@ import {
   getSentDir,
   getMailEntries,
   markAsRead,
-  hasReplyInSent,
+  hasReplyToEmail,
   MailEntry,
 } from "../../mail/mailUtils";
 import { getEmailDefinitions } from "../../mail/emails";
-import { ReplyOption } from "../../mail/types";
+import { ReplyEmail, ReplyOption } from "../../mail/types";
 import { PromptOption, PromptSessionInfo } from "../../prompt/types";
 import { GameEvent } from "../../mail/delivery";
 import { PLAYER, ComputerId } from "../../../state/types";
@@ -100,22 +100,34 @@ function buildPromptSession(
   entry: MailEntry,
   username: string,
   computer: import("../../../state/types").ComputerId,
-  gameNowMs: number
+  gameNowMs: number,
+  inReplyTo: string
 ): PromptSessionInfo {
   const fromDomain = computer === "home" ? "email.com" : "nexacorp.com";
-  const promptOptions: PromptOption[] = options.map((opt, idx) => ({
-    label: opt.label,
-    replyEmail: {
-      id: `reply_${gameNowMs}_${idx}`,
+  const promptOptions: PromptOption[] = options.map((opt, idx) => {
+    // Keyed on the parent email id, never the clock: gameNowMs is the
+    // interpolated in-game time, which is constant across a whole day segment,
+    // so a timestamped filename let the next reply of the session overwrite the
+    // previous one and resurrect its prompt. (parent, option) is also exactly
+    // the dedup identity, so one reply per email is enforced by the filesystem.
+    const replyEmail: ReplyEmail = {
+      // Typed as ReplyEmail (not inlined) so `inReplyTo` survives assignment to
+      // PromptOption.replyEmail, whose declared type is core's plain Email.
+      id: `reply_${inReplyTo}_${idx}`,
       from: `${username}@${fromDomain}`,
       to: entry.parsed.from,
       date: formatRfc2822(new Date(gameNowMs)),
       subject: `Re: ${entry.parsed.subject}`,
       body: opt.replyBody,
-    },
-    replyFilename: `sent_${gameNowMs}_${idx}`,
-    triggerEvents: opt.triggerEvents,
-  }));
+      inReplyTo,
+    };
+    return {
+      label: opt.label,
+      replyEmail,
+      replyFilename: `sent_${inReplyTo}_${idx}`,
+      triggerEvents: opt.triggerEvents,
+    };
+  });
 
   return {
     promptText: `Select [1-${options.length}]: `,
@@ -180,14 +192,15 @@ const mail: CommandHandler = (args, flags, ctx) => {
     }
 
     // Check for reply options on this email (hide if already replied)
-    const replyOptions = emailDef?.replyOptions;
     let output = formatMessage(entry);
     let promptSession: PromptSessionInfo | undefined;
 
-    if (replyOptions && !hasReplyInSent(newFs, username, entry.parsed.subject)) {
-      output += formatReplyOptions(replyOptions);
+    if (emailDef?.replyOptions && !hasReplyToEmail(newFs, username, emailDef.email.id)) {
+      output += formatReplyOptions(emailDef.replyOptions);
       const gameNowMs = (ctx.clock?.now() ?? new Date()).getTime();
-      promptSession = buildPromptSession(replyOptions, entry, username, computer, gameNowMs);
+      promptSession = buildPromptSession(
+        emailDef.replyOptions, entry, username, computer, gameNowMs, emailDef.email.id
+      );
     }
 
     return {

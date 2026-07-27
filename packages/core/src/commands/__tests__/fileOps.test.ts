@@ -77,11 +77,11 @@ describe("cp/mv preserve file attributes", () => {
   it("write-side errors carry the calling command's prefix", () => {
     const locked = createTestFS().setPermissions(`${HOME}/keep.txt`, "r--r--r--").fs!;
     const cpResult = execute("cp", ["notes.txt", "keep.txt"], {}, ctx(locked));
-    expect(cpResult.output).toBe(`cp: ${HOME}/keep.txt: Permission denied`);
+    expect(cpResult.stderr).toBe(`cp: ${HOME}/keep.txt: Permission denied`);
     expect(cpResult.exitCode).toBe(1);
 
     const mvResult = execute("mv", ["notes.txt", "keep.txt"], {}, ctx(locked));
-    expect(mvResult.output).toBe(`mv: ${HOME}/keep.txt: Permission denied`);
+    expect(mvResult.stderr).toBe(`mv: ${HOME}/keep.txt: Permission denied`);
     expect(mvResult.exitCode).toBe(1);
   });
 });
@@ -99,7 +99,7 @@ describe("cp -r keeps the copies it already made", () => {
 
     const result = execute("cp", ["docs", "backup"], { r: true }, ctx(fs));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toBe(`cp: ${HOME}/backup/docs/readme.md: Permission denied`);
+    expect(result.stderr).toBe(`cp: ${HOME}/backup/docs/readme.md: Permission denied`);
     // The sibling that could be copied is still there, not rolled back.
     expect(result.newFs!.readFile(`${HOME}/backup/docs/extra.txt`).content).toBe("extra");
     expect(result.newFs!.readFile(`${HOME}/backup/docs/readme.md`).content).toBe("old");
@@ -118,7 +118,7 @@ describe("chmod -R traversal guarding", () => {
   it("skips a subtree the walk cannot descend into, and says so", () => {
     const result = execute("chmod", ["700", "."], { R: true }, ctx(lockedFS()));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain(`chmod: cannot read directory '${HOME}/vault': Permission denied`);
+    expect(result.stderr).toContain(`chmod: cannot read directory '${HOME}/vault': Permission denied`);
     // vault itself is reachable and re-moded; its contents are untouched.
     expect(result.newFs!.getNode(`${HOME}/vault`)!.permissions).toBe("rwx------");
     expect(result.newFs!.getNode(`${HOME}/vault/secret.txt`)!.permissions).toBe("rw-r--r--");
@@ -151,7 +151,7 @@ describe("chmod -R traversal guarding", () => {
 describe("grep filename prefixes survive a failed operand", () => {
   it("still prefixes matches when one of two operands is missing", () => {
     const result = execute("grep", ["alpha", "nope.txt", "notes.txt"], {}, ctx());
-    expect(result.output).toContain("nope.txt: No such file or directory");
+    expect(result.stderr).toContain("nope.txt: No such file or directory");
     expect(result.output.replace(/\x1b\[[0-9;]*m/g, "")).toContain(`${HOME}/notes.txt:alpha`);
   });
 
@@ -165,7 +165,7 @@ describe("rm keeps completed deletions when a later operand fails", () => {
   it("reports the bad operand but still removes the good one", () => {
     const result = execute("rm", ["notes.txt", "missing.txt"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("missing.txt");
+    expect(result.stderr).toContain("missing.txt");
     expect(result.newFs).toBeDefined();
     expect(result.newFs!.getNode(`${HOME}/notes.txt`)).toBeNull();
     expect(result.newFs!.getNode(`${HOME}/keep.txt`)).not.toBeNull();
@@ -174,7 +174,7 @@ describe("rm keeps completed deletions when a later operand fails", () => {
   it("a directory operand without -r does not abort the remaining operands", () => {
     const result = execute("rm", ["docs", "notes.txt"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
     expect(result.newFs!.getNode(`${HOME}/docs`)).not.toBeNull();
     expect(result.newFs!.getNode(`${HOME}/notes.txt`)).toBeNull();
   });
@@ -195,15 +195,15 @@ describe("missing-file exit codes and error prefixes", () => {
       const args = cmd === "grep" ? ["pattern", "nope.txt"] : ["nope.txt"];
       const result = run(cmd, args);
       expect(result.exitCode).toBe(1);
-      expect(result.output).toContain(`${cmd}:`);
-      expect(result.output).toContain("No such file or directory");
+      expect(result.stderr).toContain(`${cmd}:`);
+      expect(result.stderr).toContain("No such file or directory");
     },
   );
 
   it("permission errors carry the calling command's prefix", () => {
     const locked = createTestFS().setPermissions(`${HOME}/notes.txt`, "rw-------").fs!;
     const result = execute("head", ["notes.txt"], {}, ctx(locked, { rawArgs: ["notes.txt"] }));
-    expect(result.output).toBe(`head: ${HOME}/notes.txt: Permission denied`);
+    expect(result.stderr).toBe(`head: ${HOME}/notes.txt: Permission denied`);
     expect(result.exitCode).toBe(1);
   });
 
@@ -217,7 +217,7 @@ describe("missing-file exit codes and error prefixes", () => {
   it("sort reports the bad operand and still sorts the readable one", () => {
     const result = execute("sort", ["nope.txt", "notes.txt"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("sort: ");
+    expect(result.stderr).toContain("sort: ");
     expect(result.output).toContain("alpha");
   });
 });

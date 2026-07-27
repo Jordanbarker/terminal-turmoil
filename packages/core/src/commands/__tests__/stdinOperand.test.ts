@@ -89,8 +89,8 @@ describe("bare - operand reads stdin", () => {
   });
 
   it("still reports a missing operand when nothing is piped in", () => {
-    expect(run("wc -").output).toBe("wc: missing file operand");
-    expect(run("sort -").output).toBe("sort: missing file operand");
+    expect(run("wc -").stderr).toBe("wc: missing file operand");
+    expect(run("sort -").stderr).toBe("sort: missing file operand");
   });
 
   it("still reads a named file when one is given", () => {

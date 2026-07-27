@@ -106,6 +106,7 @@ function createState(): SaveableState {
     tmuxAttachedSession: { name: "0", createdAt: 0 },
     tmuxDetachedSessions: [],
     notifiedChipTopicIds: [],
+    pendingPiperNotification: false,
     snowflakeState: emptySnowflake(),
     copyModeHelpHidden: true,
   };
@@ -345,6 +346,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -387,6 +389,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -422,6 +425,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -462,6 +466,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };

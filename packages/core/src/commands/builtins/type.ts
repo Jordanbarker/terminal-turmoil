@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolveCommandPath } from "./which";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 const SHELL_BUILTINS = new Set([
   "cd", "pwd", "echo", "export", "alias", "unalias", "source", ".",
@@ -11,7 +12,7 @@ const SHELL_BUILTINS = new Set([
 
 const type: CommandHandler = (args, flags, ctx) => {
   if (args.length === 0) {
-    return { output: "type: missing command argument", exitCode: 2 };
+    return errorResult("type: missing command argument", 2);
   }
 
   const showAll = !!flags["a"];

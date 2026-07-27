@@ -1,5 +1,5 @@
-import { GameEvent } from "../mail/delivery";
-import { PiperDelivery, PiperMessage, PiperTrigger } from "./types";
+import type { GameEvent } from "@tt/core";
+import { PiperMessage, PiperReplyOption, PiperTrigger } from "./types";
 import { getPiperDeliveries } from "../../story/piper/messages";
 import { PIPER_CHANNELS } from "../../story/piper/channels";
 import { ComputerId, StoryFlags } from "../../state/types";
@@ -183,35 +183,43 @@ export function getConversationHistory(
   return messages;
 }
 
+export interface PendingReply {
+  deliveryId: string;
+  options: PiperReplyOption[];
+}
+
 /**
- * Get the pending reply options for a channel (if any).
- * Returns the delivery ID and options for the most recent unread delivery with reply options.
+ * Every unanswered reply prompt in a channel, **oldest first** (delivery order,
+ * i.e. the order the ids appear in `deliveredIds`).
+ *
+ * Two prompts can be outstanding at once: reading /var/log/system.log before
+ * answering Oscar's first DM delivers `oscar_access_review` on top of the still
+ * unanswered `oscar_log_check`. Surfacing only the newest one stranded the
+ * earlier prompt forever, taking its unlock (grep/find/diff/tmux) with it, so
+ * the session walks this list instead of looking at a single delivery.
  */
-export function getPendingReply(
+export function getPendingReplies(
   channelId: string,
   deliveredIds: string[],
   username: string
-): { deliveryId: string; options: PiperDelivery["replyOptions"] } | null {
-  const defs = getPiperDeliveries(username);
+): PendingReply[] {
+  const optionsById = new Map<string, PiperReplyOption[]>(
+    getPiperDeliveries(username)
+      .filter((d) => d.channelId === channelId && d.replyOptions)
+      .map((d) => [d.id, d.replyOptions!])
+  );
 
-  // Find the last delivered message in this channel that has reply options
-  // and hasn't been replied to yet
-  for (let i = defs.length - 1; i >= 0; i--) {
-    const def = defs[i];
-    if (def.channelId !== channelId) continue;
-    if (!deliveredIds.includes(def.id)) continue;
-    if (!def.replyOptions) continue;
-
-    // Check if already replied
-    const hasReply = def.replyOptions.some(
-      (_, idx) => deliveredIds.includes(`reply:${def.id}:${idx}`)
-    );
-    if (hasReply) return null;
-
-    return { deliveryId: def.id, options: def.replyOptions };
+  const pending: PendingReply[] = [];
+  const seen = new Set<string>();
+  for (const id of deliveredIds) {
+    const options = optionsById.get(id);
+    if (!options || seen.has(id)) continue;
+    seen.add(id);
+    const answered = options.some((_, idx) => deliveredIds.includes(`reply:${id}:${idx}`));
+    if (answered) continue;
+    pending.push({ deliveryId: id, options });
   }
-
-  return null;
+  return pending;
 }
 
 /**

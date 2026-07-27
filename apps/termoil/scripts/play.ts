@@ -36,13 +36,12 @@ import {
   formatSlotName, SaveableState, RestoredGameState,
 } from "../src/state/saveManager";
 import { SaveSlotId, SAVE_FORMAT_VERSION } from "../src/state/saveTypes";
-import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
+import { buildCheckpointState } from "../src/state/checkpointLoad";
 import { makeWindow, allLeaves } from "@tt/core/terminal/paneTypes";
 import { CommandResult, ChainSegment, ParsedCommand } from "@tt/core/commands/types";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { createHomeFilesystem } from "../src/story/filesystem/home";
 import { createNexacorpFilesystem } from "../src/story/filesystem/nexacorp";
-import { createDevcontainerFilesystem } from "../src/story/filesystem/devcontainer";
 import { createChipinfraFilesystem } from "../src/story/filesystem/chipinfra";
 import { createErikpcFilesystem } from "../src/story/filesystem/erikpc";
 import { getComputerUsername } from "../src/story/player";
@@ -58,9 +57,10 @@ import "../src/story/availabilityPolicy";
 import { createDefaultContext, SessionContext } from "@tt/core/snowflake/session/context";
 import { checkEmailDeliveries, GameEvent } from "../src/engine/mail/delivery";
 import { checkStoryFlagTriggers, getTriggersForComputer } from "../src/engine/narrative/storyFlags";
-import { getSentDir } from "../src/engine/mail/mailUtils";
+import { getSentDir, formatEmailContent } from "../src/engine/mail/mailUtils";
+import { ReplyEmail } from "../src/engine/mail/types";
 import { resolvePath } from "@tt/core/lib/pathUtils";
-import { extractStdoutRedirect, applyRedirection, precheckRedirects, RedirectTarget } from "@tt/core/commands/redirection";
+import { extractStdoutRedirect, extractStderrRedirect, applyRedirection, precheckRedirects, RedirectTarget, StderrMode } from "@tt/core/commands/redirection";
 import { PromptSessionInfo } from "../src/engine/prompt/types";
 import { ComputerId, StoryFlags, PLAYER, COMPUTERS } from "../src/state/types";
 import { colorize, ansi, stripAnsi } from "@tt/core/lib/ansi";
@@ -307,23 +307,43 @@ export class GameRunner {
     };
   }
 
-  /** Strip `>`/`>>` redirection from the last command of a segment's pipeline. */
+  /**
+   * Strip redirection from a segment's pipeline: `2>` tokens from every stage
+   * (mirrors runPipeline — leaving them in makes `2>/dev/null` a file operand),
+   * `>`/`>>` from the last one only.
+   */
   private prepareSegment(seg: ChainSegment) {
     const pipeline = [...seg.pipeline];
-    const lastSegment = pipeline[pipeline.length - 1];
-    const { command: stripped, redirects, parseError } =
-      extractStdoutRedirect(lastSegment.raw);
-    if (parseError) {
-      return { pipeline, redirects, parseError };
+    let stderrMode: StderrMode = "default";
+    let syntaxError: string | undefined;
+
+    for (let pi = 0; pi < pipeline.length - 1; pi++) {
+      const ext = extractStderrRedirect(pipeline[pi].raw);
+      syntaxError ??= ext.parseError;
+      if (ext.mode !== "default") {
+        stderrMode = ext.mode;
+        pipeline[pi] = parseInput(ext.command);
+      }
     }
+
+    const lastSegment = pipeline[pipeline.length - 1];
+    const extracted = extractStdoutRedirect(lastSegment.raw);
+    const { command: stripped, redirects } = extracted;
+    syntaxError ??= extracted.parseError;
+    if (syntaxError) {
+      return { pipeline, redirects, stderrMode, parseError: syntaxError };
+    }
+    if (extracted.stderrMode !== "default") stderrMode = extracted.stderrMode;
     if (redirects.length > 0) {
       const precheckError = precheckRedirects(redirects, this.cwd, this.fs.homeDir, this.fs);
       if (precheckError) {
-        return { pipeline, redirects, parseError: precheckError };
+        return { pipeline, redirects, stderrMode, parseError: precheckError };
       }
+    }
+    if (stripped !== lastSegment.raw.trim()) {
       pipeline[pipeline.length - 1] = parseInput(stripped);
     }
-    return { pipeline, redirects, parseError: undefined };
+    return { pipeline, redirects, stderrMode, parseError: undefined };
   }
 
   /**
@@ -345,11 +365,11 @@ export class GameRunner {
 
   /** Execute one chain segment's pipeline synchronously. */
   private runSegmentPipelineSync(seg: ChainSegment): { result: CommandResult; lastParsed: ParsedCommand } {
-    const { pipeline, redirects, parseError } = this.prepareSegment(seg);
+    const { pipeline, redirects, stderrMode, parseError } = this.prepareSegment(seg);
     if (parseError) {
       // The command never runs (zsh opens redirect targets before exec)
       return {
-        result: { output: parseError, exitCode: 1 },
+        result: { output: "", stderr: parseError, exitCode: 1 },
         lastParsed: { command: "", args: [], flags: {}, raw: "", rawArgs: [] },
       };
     }
@@ -358,6 +378,7 @@ export class GameRunner {
     let lastResult: CommandResult = { output: "" };
     const allTriggerEvents: NonNullable<CommandResult["triggerEvents"]> = [];
     let pipelineViolation: CommandResult["securityViolation"];
+    const pipelineStderr: string[] = [];
 
     for (let pi = 0; pi < pipeline.length; pi++) {
       const p = pipeline[pi];
@@ -376,6 +397,7 @@ export class GameRunner {
       if (lastResult.triggerEvents) {
         allTriggerEvents.push(...lastResult.triggerEvents);
       }
+      if (lastResult.stderr) pipelineStderr.push(lastResult.stderr);
       if (lastResult.securityViolation && !pipelineViolation) {
         pipelineViolation = lastResult.securityViolation;
       }
@@ -395,13 +417,13 @@ export class GameRunner {
       stdin = stripAnsi(lastResult.output);
     }
 
-    lastResult = this.finishSegment(lastResult, allTriggerEvents, pipelineViolation, redirects);
+    lastResult = this.finishSegment(lastResult, allTriggerEvents, pipelineViolation, pipelineStderr, stderrMode, redirects);
     return { result: lastResult, lastParsed: pipeline[pipeline.length - 1] };
   }
 
   /**
-   * Shared tail of both pipeline loops: fold accumulated events + the
-   * first pipeline security violation into the result, then apply stdout
+   * Shared tail of both pipeline loops: fold accumulated events, stderr, and
+   * the first pipeline security violation into the result, then apply stdout
    * redirection (with the machine's security policy, so `> /var/log/...`
    * trips the log-tampering wire exactly as it does in the browser).
    */
@@ -409,6 +431,8 @@ export class GameRunner {
     lastResult: CommandResult,
     allTriggerEvents: NonNullable<CommandResult["triggerEvents"]>,
     pipelineViolation: CommandResult["securityViolation"],
+    pipelineStderr: string[],
+    stderrMode: StderrMode,
     redirects: RedirectTarget[],
   ): CommandResult {
     let result = lastResult;
@@ -417,6 +441,20 @@ export class GameRunner {
     }
     if (pipelineViolation && !result.securityViolation) {
       result = { ...result, securityViolation: pipelineViolation };
+    }
+    // Every stage's stderr, not just the last one's: `cat nosuch | wc -l` must
+    // still report cat's failure. It deliberately survives applyRedirection
+    // below (`>` captures stdout only), unless `2>&1` folded it into stdout
+    // first or `2>/dev/null` dropped it.
+    // `result` is the last stage's own CommandResult, so it may already carry
+    // that stage's stderr: every branch below has to *set* the field, not just
+    // add to it, or `2>/dev/null` would silence the other stages and leave the
+    // last one's diagnostics on screen.
+    const segStderr = pipelineStderr.join("\n");
+    if (segStderr && stderrMode === "merge") {
+      result = { ...result, output: [segStderr, result.output].filter(Boolean).join("\n"), stderr: undefined };
+    } else {
+      result = { ...result, stderr: segStderr && stderrMode === "default" ? segStderr : undefined };
     }
     if (redirects.length > 0) {
       const r = applyRedirection(
@@ -432,11 +470,11 @@ export class GameRunner {
 
   /** Execute one chain segment's pipeline, awaiting async commands. */
   private async runSegmentPipelineAsync(seg: ChainSegment): Promise<{ result: CommandResult; lastParsed: ParsedCommand }> {
-    const { pipeline, redirects, parseError } = this.prepareSegment(seg);
+    const { pipeline, redirects, stderrMode, parseError } = this.prepareSegment(seg);
     if (parseError) {
       // The command never runs (zsh opens redirect targets before exec)
       return {
-        result: { output: parseError, exitCode: 1 },
+        result: { output: "", stderr: parseError, exitCode: 1 },
         lastParsed: { command: "", args: [], flags: {}, raw: "", rawArgs: [] },
       };
     }
@@ -445,6 +483,7 @@ export class GameRunner {
     let lastResult: CommandResult = { output: "" };
     const allTriggerEvents: NonNullable<CommandResult["triggerEvents"]> = [];
     let pipelineViolation: CommandResult["securityViolation"];
+    const pipelineStderr: string[] = [];
 
     for (let pi = 0; pi < pipeline.length; pi++) {
       const p = pipeline[pi];
@@ -461,6 +500,7 @@ export class GameRunner {
       if (lastResult.triggerEvents) {
         allTriggerEvents.push(...lastResult.triggerEvents);
       }
+      if (lastResult.stderr) pipelineStderr.push(lastResult.stderr);
       if (lastResult.securityViolation && !pipelineViolation) {
         pipelineViolation = lastResult.securityViolation;
       }
@@ -478,7 +518,7 @@ export class GameRunner {
       stdin = stripAnsi(lastResult.output);
     }
 
-    lastResult = this.finishSegment(lastResult, allTriggerEvents, pipelineViolation, redirects);
+    lastResult = this.finishSegment(lastResult, allTriggerEvents, pipelineViolation, pipelineStderr, stderrMode, redirects);
     return { result: lastResult, lastParsed: pipeline[pipeline.length - 1] };
   }
 
@@ -516,18 +556,12 @@ export class GameRunner {
     const option = info.options[choice - 1];
     this.pendingPrompt = null;
 
-    // Save reply email to sent/ if provided
+    // Save reply email to sent/ if provided (mirror PromptSession.resolveSelection:
+    // formatEmailContent stamps the X-In-Reply-To header that reply dedup matches on)
     if (option.replyEmail) {
-      const email = option.replyEmail;
-      const filename = `sent_${Date.now()}`;
-      const content = [
-        `From: ${email.from}`,
-        `To: ${email.to}`,
-        `Date: ${email.date}`,
-        `Subject: ${email.subject}`,
-        "",
-        email.body,
-      ].join("\n");
+      const email = option.replyEmail as ReplyEmail;
+      const filename = option.replyFilename ?? `sent_${email.id}`;
+      const content = formatEmailContent(email, false);
 
       const result = this.fs.writeFile(`${getSentDir(this.username)}/${filename}`, content);
       if (result.fs) {
@@ -609,27 +643,32 @@ export class GameRunner {
   /** Switch to a different computer (instant transition). */
   switchComputer(to: ComputerId): void {
     this.activeComputer = to;
-    let root;
-    switch (to) {
-      case "home":
-        root = createHomeFilesystem(this.username);
-        break;
-      case "devcontainer":
-        root = createDevcontainerFilesystem(this.username, this.storyFlags);
-        break;
-      case "chipinfra":
-        root = createChipinfraFilesystem(this.username, this.storyFlags);
-        break;
-      case "erik-pc":
-        root = createErikpcFilesystem(this.username);
-        break;
-      default:
-        root = createNexacorpFilesystem(this.username, this.storyFlags);
-        break;
-    }
     const shellUser = getComputerUsername(to, this.username);
     const homeDir = `/home/${shellUser}`;
-    this.fs = new VirtualFS(root, homeDir, homeDir);
+    if (to === "devcontainer") {
+      // Routed through buildFs, which owns the `dbt_project_cloned` → real
+      // `git clone` path: rebuilding the bare working tree here left the dbt
+      // project without a .git and every git command failed. The devcontainer
+      // has no email definitions, so buildFs is otherwise identical.
+      this.fs = buildFs(this.username, "devcontainer", { storyFlags: this.storyFlags });
+    } else {
+      let root;
+      switch (to) {
+        case "home":
+          root = createHomeFilesystem(this.username);
+          break;
+        case "chipinfra":
+          root = createChipinfraFilesystem(this.username, this.storyFlags);
+          break;
+        case "erik-pc":
+          root = createErikpcFilesystem(this.username);
+          break;
+        default:
+          root = createNexacorpFilesystem(this.username, this.storyFlags);
+          break;
+      }
+      this.fs = new VirtualFS(root, homeDir, homeDir);
+    }
     this.cwd = homeDir;
     this.snowflakeState = createInitialSnowflakeState({ includeDay2: !!this.storyFlags.day1_shutdown });
     this.snowflakeContext = createDefaultContext(this.username);
@@ -824,6 +863,8 @@ export class GameRunner {
       tmuxAttachedSession: null,
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      // Piper notices are a React-side terminal write with no headless analogue.
+      pendingPiperNotification: false,
       snowflakeState: this.snowflakeState,
       copyModeHelpHidden: false,
     };
@@ -872,31 +913,37 @@ export class GameRunner {
     this.commandHistory = { home: [], nexacorp: [], devcontainer: [], chipinfra: [], "erik-pc": [] };
   }
 
-  /** Mirror of gameStore.loadCheckpointData against the runner's own fields. */
+  /**
+   * Headless counterpart of gameStore.loadCheckpointData. Everything that can
+   * be shared is: `buildCheckpointState` produces the flag bag (baseline flags
+   * with the checkpoint's own merged over them), the Snowflake state and every
+   * computer's FS/env/aliases, so this only has to spread the result across the
+   * runner's flat fields instead of a Zustand `set()`.
+   */
   private loadCheckpoint(cp: Checkpoint): void {
-    const sfState = createInitialSnowflakeState({ includeDay2: !!cp.storyFlags.day1_shutdown });
     this.username = PLAYER.username;
-    this.storyFlags = { ...cp.storyFlags };
+    if (!cp.computers.includes(cp.activeComputer)) {
+      throw new Error(`Checkpoint "${cp.id}" activeComputer "${cp.activeComputer}" missing from its computers list`);
+    }
+    const { storyFlags, snowflakeState, computerState } = buildCheckpointState(this.username, cp);
+
+    this.storyFlags = storyFlags;
     this.deliveredEmailIds = [...cp.deliveredEmailIds];
     this.deliveredPiperIds = [...cp.deliveredPiperIds];
     this.completedObjectives = [...cp.completedObjectives];
     this.currentChapter = cp.chapter;
-    this.snowflakeState = sfState;
+    this.snowflakeState = snowflakeState;
     this.snowflakeContext = createDefaultContext(this.username);
     this.pendingPrompt = null;
     this.resetPerComputerState();
 
-    if (!cp.computers.includes(cp.activeComputer)) {
-      throw new Error(`Checkpoint "${cp.id}" activeComputer "${cp.activeComputer}" missing from its computers list`);
+    for (const [id, cs] of Object.entries(computerState)) {
+      if (!cs) continue;
+      this.envVars[id as ComputerId] = cs.envVars;
+      this.aliases[id as ComputerId] = cs.aliases;
     }
-    for (const computerId of cp.computers) {
-      const built = buildFs(this.username, computerId, cp.storyFlags, cp.deliveredEmailIds);
-      const fs = computerId === "nexacorp" ? syncToVirtualFS(sfState, built) : built;
-      this.envVars[computerId] = { ...initEnvForComputer(computerId, this.username, fs), ...(cp.envVars?.[computerId] ?? {}) };
-      this.aliases[computerId] = { ...initAliasesForComputer(computerId, this.username, fs), ...(cp.aliases?.[computerId] ?? {}) };
-      // The runner keeps one live FS; the others are rebuilt on :switch.
-      if (computerId === cp.activeComputer) this.fs = fs;
-    }
+    // The runner keeps one live FS; the others are rebuilt on :switch.
+    this.fs = computerState[cp.activeComputer]!.fs;
     // The store's window opens on `/home/<player>` regardless of the machine's
     // session user, so mirror that rather than the FS's own homeDir.
     this.cwd = `/home/${PLAYER.username}`;

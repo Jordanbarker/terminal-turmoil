@@ -4,7 +4,7 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isFile, isDirectory, DirectoryNode } from "@tt/core/filesystem/types";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
-import { labelFsError } from "../fsErrors";
+import { labelFsError, errorResult } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 /**
@@ -63,7 +63,7 @@ function copyDir(
 
 const cp: CommandHandler = (args, flags, ctx) => {
   if (args.length < 2) {
-    return { output: "cp: missing operand\nUsage: cp SOURCE DEST", exitCode: 1 };
+    return errorResult("cp: missing operand\nUsage: cp SOURCE DEST");
   }
 
   const srcPath = resolvePath(args[0], ctx.cwd, ctx.homeDir);
@@ -71,12 +71,12 @@ const cp: CommandHandler = (args, flags, ctx) => {
 
   const srcNode = ctx.fs.getNode(srcPath);
   if (!srcNode) {
-    return { output: `cp: cannot stat '${args[0]}': No such file or directory`, exitCode: 1 };
+    return errorResult(`cp: cannot stat '${args[0]}': No such file or directory`);
   }
 
   if (!isFile(srcNode)) {
     if (!flags["r"] && !flags["R"]) {
-      return { output: `cp: omitting directory '${args[0]}'`, exitCode: 1 };
+      return errorResult(`cp: omitting directory '${args[0]}'`);
     }
     // Recursive copy
     const destNode = ctx.fs.getNode(destPath);
@@ -95,7 +95,8 @@ const cp: CommandHandler = (args, flags, ctx) => {
     const errors: string[] = [];
     const newFs = copyDir(ctx.fs, srcPath, destPath, createdPaths, modifiedPaths, createdDirPaths, errors);
     return {
-      output: errors.join("\n"),
+      output: "",
+      ...(errors.length > 0 && { stderr: errors.join("\n") }),
       exitCode: errors.length > 0 ? 1 : 0,
       newFs,
       triggerEvents: [
@@ -125,7 +126,7 @@ const cp: CommandHandler = (args, flags, ctx) => {
   // (binary flag, extracted textContent), matching `cp -p`-ish expectations.
   const writeResult = ctx.fs.writeFile(destPath, srcNode.content, srcNode);
   if (writeResult.error) {
-    return { output: labelFsError("cp", writeResult.error), exitCode: 1 };
+    return errorResult(labelFsError("cp", writeResult.error));
   }
 
   return {

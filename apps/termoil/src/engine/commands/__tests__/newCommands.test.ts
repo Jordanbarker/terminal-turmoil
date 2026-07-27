@@ -245,12 +245,12 @@ describe("grep", () => {
 
   it("returns error for nonexistent file", () => {
     const result = execute("grep", ["test", "missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error for missing pattern", () => {
     const result = execute("grep", [], {}, ctx());
-    expect(result.output).toContain("missing pattern");
+    expect(result.stderr).toContain("missing pattern");
   });
 });
 
@@ -289,7 +289,7 @@ describe("find", () => {
 
   it("returns error for nonexistent path", () => {
     const result = execute("find", ["/missing"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 });
 
@@ -317,7 +317,7 @@ describe("head", () => {
 
   it("returns error for missing file", () => {
     const result = execute("head", ["missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("does not print a phantom empty line for a short file with a trailing newline", () => {
@@ -366,12 +366,12 @@ describe("diff", () => {
 
   it("returns error for missing file", () => {
     const result = execute("diff", ["notes.txt", "missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error with fewer than 2 args", () => {
     const result = execute("diff", ["notes.txt"], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 });
 
@@ -433,12 +433,12 @@ describe("chmod", () => {
 
   it("returns error for invalid mode", () => {
     const result = execute("chmod", ["999", "notes.txt"], {}, ctx());
-    expect(result.output).toContain("invalid mode");
+    expect(result.stderr).toContain("invalid mode");
   });
 
   it("returns error for nonexistent file", () => {
     const result = execute("chmod", ["644", "missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 });
 
@@ -461,7 +461,7 @@ describe("mkdir", () => {
 
   it("returns error for existing dir", () => {
     const result = execute("mkdir", ["docs"], {}, ctx());
-    expect(result.output).toContain("File exists");
+    expect(result.stderr).toContain("File exists");
   });
 });
 
@@ -475,7 +475,7 @@ describe("rm", () => {
 
   it("refuses to remove directory without -r", () => {
     const result = execute("rm", ["docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
   });
 
   it("removes directory with -r", () => {
@@ -525,7 +525,7 @@ describe("mv", () => {
 
   it("returns error for nonexistent source", () => {
     const result = execute("mv", ["missing.txt", "dest.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("fires file_created and file_removed when moving a file", () => {
@@ -571,14 +571,14 @@ describe("mv", () => {
   it("refuses to move a directory into itself", () => {
     const result = execute("mv", ["docs", "docs/inner"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("subdirectory of itself");
+    expect(result.stderr).toContain("subdirectory of itself");
     expect(result.newFs).toBeUndefined();
   });
 
   it("refuses to overwrite a file with a directory", () => {
     const result = execute("mv", ["docs", "notes.txt"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("cannot overwrite non-directory");
+    expect(result.stderr).toContain("cannot overwrite non-directory");
     expect(result.newFs).toBeUndefined();
   });
 
@@ -588,14 +588,14 @@ describe("mv", () => {
     fs = fs.makeDirectory("/home/player/archive/docs").fs!;
     const result = execute("mv", ["docs", "archive"], {}, ctx(fs));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("already exists");
+    expect(result.stderr).toContain("already exists");
     expect(result.newFs).toBeUndefined();
   });
 
   it("refuses a no-op self-move", () => {
     const result = execute("mv", ["notes.txt", "notes.txt"], {}, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("are the same file");
+    expect(result.stderr).toContain("are the same file");
   });
 });
 
@@ -666,7 +666,7 @@ describe("hostname", () => {
 
   it("is blocked on home computer", () => {
     const result = execute("hostname", [], {}, ctx(undefined, { activeComputer: "home" }));
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
   });
 });
 
@@ -738,7 +738,7 @@ describe("sort", () => {
 
   it("returns error when a file is missing in multi-file list", () => {
     const result = execute("sort", ["data.txt", "missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("does not invent an empty line for content with a trailing newline", () => {
@@ -820,7 +820,7 @@ describe("man", () => {
 
   it("returns error for unknown command", () => {
     const result = execute("man", ["foobar"], {}, ctx());
-    expect(result.output).toContain("No manual entry");
+    expect(result.stderr).toContain("No manual entry");
   });
 });
 
@@ -891,7 +891,7 @@ describe("grep (additional)", () => {
 
   it("returns 'Is a directory' error without -r on directory", () => {
     const result = execute("grep", ["hello", "docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
     expect(result.exitCode).toBe(2);
   });
 
@@ -936,7 +936,7 @@ describe("find (additional)", () => {
 
   it("shows usage when no arguments given", () => {
     const result = execute("find", [], {}, ctx());
-    expect(result.output).toContain("Usage: find");
+    expect(result.stderr).toContain("Usage: find");
     expect(result.exitCode).toBe(1);
   });
 
@@ -979,13 +979,13 @@ describe("head (additional)", () => {
 
   it("errors on invalid -n value", () => {
     const result = execute("head", ["-n", "abc", "log.txt"], {}, ctx());
-    expect(result.output).toBe("head: invalid number of lines: 'abc'");
+    expect(result.stderr).toBe("head: invalid number of lines: 'abc'");
     expect(result.exitCode).toBe(2);
   });
 
   it("returns error when no file and no stdin", () => {
     const result = execute("head", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("-n 0 returns empty output", () => {
@@ -1017,13 +1017,13 @@ describe("tail (additional)", () => {
 
   it("errors on invalid -n value", () => {
     const result = execute("tail", ["-n", "abc", "log.txt"], {}, ctx());
-    expect(result.output).toBe("tail: invalid number of lines: 'abc'");
+    expect(result.stderr).toBe("tail: invalid number of lines: 'abc'");
     expect(result.exitCode).toBe(2);
   });
 
   it("returns error when no file and no stdin", () => {
     const result = execute("tail", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("-n 0 returns empty output", () => {
@@ -1112,7 +1112,7 @@ describe("wc (additional)", () => {
 
   it("returns error for nonexistent file", () => {
     const result = execute("wc", ["missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("stdin with -w and -c shows word and char counts", () => {
@@ -1157,12 +1157,12 @@ describe("chmod (additional)", () => {
 
   it("returns error for missing operand (no args)", () => {
     const result = execute("chmod", [], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 
   it("returns error for 2-digit mode", () => {
     const result = execute("chmod", ["75", "notes.txt"], {}, ctx());
-    expect(result.output).toContain("invalid mode");
+    expect(result.stderr).toContain("invalid mode");
   });
 
   it("works on directories", () => {
@@ -1176,12 +1176,12 @@ describe("chmod (additional)", () => {
 describe("mkdir (additional)", () => {
   it("returns error for missing operand", () => {
     const result = execute("mkdir", [], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 
   it("returns error for nested path without -p", () => {
     const result = execute("mkdir", ["a/b/c"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("-p on existing path is no-op", () => {
@@ -1201,7 +1201,7 @@ describe("mkdir (additional)", () => {
 describe("rm (additional)", () => {
   it("returns error for missing operand", () => {
     const result = execute("rm", [], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 
   it("removes multiple files", () => {
@@ -1219,7 +1219,7 @@ describe("rm (additional)", () => {
 
   it("returns error for nonexistent file", () => {
     const result = execute("rm", ["nonexistent.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("-f suppresses error for nonexistent file", () => {
@@ -1240,7 +1240,7 @@ describe("rm (additional)", () => {
 describe("mv (additional)", () => {
   it("returns error for missing operand", () => {
     const result = execute("mv", [], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 
   it("renames file in same directory", () => {
@@ -1280,17 +1280,17 @@ describe("mv (additional)", () => {
 describe("cp (additional)", () => {
   it("returns error for missing operand", () => {
     const result = execute("cp", [], {}, ctx());
-    expect(result.output).toContain("missing operand");
+    expect(result.stderr).toContain("missing operand");
   });
 
   it("returns error for nonexistent source", () => {
     const result = execute("cp", ["missing.txt", "dest.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error when copying directory without -r", () => {
     const result = execute("cp", ["docs", "docs2"], {}, ctx());
-    expect(result.output).toContain("omitting directory");
+    expect(result.stderr).toContain("omitting directory");
   });
 
   it("preserves content in copied file", () => {
@@ -1303,7 +1303,8 @@ describe("cp (additional)", () => {
 
   it("returns error for nonexistent parent directory", () => {
     const result = execute("cp", ["notes.txt", "nonexistent/copy.txt"], {}, ctx());
-    expect(result.output).not.toBe("");
+    expect(result.stderr).toContain("cp:");
+    expect(result.exitCode).toBe(1);
   });
 
   it("copies a directory recursively to a new destination", () => {
@@ -1339,14 +1340,14 @@ describe("cp (additional)", () => {
   it("recursive copy fails when destination's grandparent does not exist", () => {
     const result = execute("cp", ["docs", "missing/dest"], { r: true }, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("cp:");
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("cp:");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("recursive copy fails when destination exists as a file", () => {
     const result = execute("cp", ["docs", "notes.txt"], { r: true }, ctx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("cannot overwrite non-directory");
+    expect(result.stderr).toContain("cannot overwrite non-directory");
   });
 });
 
@@ -1354,13 +1355,13 @@ describe("cp (additional)", () => {
 describe("touch (additional)", () => {
   it("uses coreutils wording when the parent directory is missing", () => {
     const result = execute("touch", ["/no/such/dir/x.txt"], {}, ctx());
-    expect(result.output).toBe("touch: cannot touch '/no/such/dir/x.txt': No such file or directory");
+    expect(result.stderr).toBe("touch: cannot touch '/no/such/dir/x.txt': No such file or directory");
     expect(result.exitCode).toBe(1);
   });
 
   it("returns error for missing operand", () => {
     const result = execute("touch", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("creates multiple files", () => {
@@ -1372,7 +1373,8 @@ describe("touch (additional)", () => {
 
   it("returns error for nonexistent parent directory", () => {
     const result = execute("touch", ["nonexistent/file.txt"], {}, ctx());
-    expect(result.output).not.toBe("");
+    expect(result.stderr).toContain("touch: cannot touch 'nonexistent/file.txt': No such file or directory");
+    expect(result.exitCode).toBe(1);
   });
 });
 
@@ -1405,7 +1407,7 @@ describe("whoami (additional)", () => {
 describe("file (additional)", () => {
   it("returns error for missing operand", () => {
     const result = execute("file", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("returns error for nonexistent file", () => {
@@ -1493,7 +1495,7 @@ describe("sort (additional)", () => {
 
   it("returns error for missing file operand", () => {
     const result = execute("sort", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("returns empty for empty file", () => {
@@ -1567,7 +1569,7 @@ describe("date (additional)", () => {
 describe("which (additional)", () => {
   it("returns error for missing argument", () => {
     const result = execute("which", [], {}, ctx());
-    expect(result.output).toContain("missing command argument");
+    expect(result.stderr).toContain("missing command argument");
   });
 
   it("shows path for multiple commands", () => {
@@ -1589,7 +1591,7 @@ describe("which (additional)", () => {
 describe("man (additional)", () => {
   it("returns usage message with no args", () => {
     const result = execute("man", [], {}, ctx());
-    expect(result.output).toContain("What manual page do you want?");
+    expect(result.stderr).toContain("What manual page do you want?");
   });
 
   it("only uses first argument", () => {
@@ -1874,7 +1876,7 @@ describe("coder", () => {
 
   it("rejects from non-nexacorp computer", () => {
     const result = execute("coder", ["ssh", "ai"], {}, ctx(undefined, { activeComputer: "home" }));
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
   });
 });
 
@@ -1908,7 +1910,7 @@ describe("exit", () => {
 
   it("shows error on home computer", () => {
     const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "home" }));
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
   });
 
   it("day 2 wrap: paced logoff + home transition + returned_home_day2 trigger", () => {
@@ -2053,7 +2055,7 @@ describe("alias", () => {
       aliases: {},
     }));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("not found");
+    expect(result.stderr).toContain("not found");
   });
 
   it("defines a new alias", () => {
@@ -2084,7 +2086,7 @@ describe("unalias", () => {
       aliases: {},
     }));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("no such hash table element");
+    expect(result.stderr).toContain("no such hash table element");
   });
 
   it("removes all aliases with -a", () => {
@@ -2200,7 +2202,7 @@ describe("cat -n", () => {
 describe("chmod symbolic and -R", () => {
   it("invalid mode now exits 1 instead of silently succeeding", () => {
     const result = execute("chmod", ["+z", "notes.txt"], {}, ctx());
-    expect(result.output).toContain("invalid mode");
+    expect(result.stderr).toContain("invalid mode");
     expect(result.exitCode).toBe(1);
   });
 
@@ -2309,13 +2311,13 @@ describe("diff -u and -r", () => {
 describe("tail -f", () => {
   it("rejects -f with a clear message and exit 2", () => {
     const result = execute("tail", ["-f", "log.txt"], {}, ctx(undefined, { rawArgs: ["-f", "log.txt"] }));
-    expect(result.output).toContain("follow not supported");
+    expect(result.stderr).toContain("follow not supported");
     expect(result.exitCode).toBe(2);
   });
 
   it("rejects --follow long form too", () => {
     const result = execute("tail", ["--follow", "log.txt"], {}, ctx(undefined, { rawArgs: ["--follow", "log.txt"] }));
-    expect(result.output).toContain("follow not supported");
+    expect(result.stderr).toContain("follow not supported");
     expect(result.exitCode).toBe(2);
   });
 });
@@ -2332,13 +2334,13 @@ describe("tree -L", () => {
 
   it("-L without value errors", () => {
     const result = execute("tree", [], {}, ctx(undefined, { rawArgs: ["-L"] }));
-    expect(result.output).toContain("requires an argument");
+    expect(result.stderr).toContain("requires an argument");
     expect(result.exitCode).toBe(1);
   });
 
   it("-L with non-numeric value errors", () => {
     const result = execute("tree", [], {}, ctx(undefined, { rawArgs: ["-L", "abc"] }));
-    expect(result.output).toContain("Invalid level");
+    expect(result.stderr).toContain("Invalid level");
     expect(result.exitCode).toBe(1);
   });
 

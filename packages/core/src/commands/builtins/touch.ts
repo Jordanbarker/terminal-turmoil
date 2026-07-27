@@ -4,10 +4,11 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { errorResult } from "../fsErrors";
 
 const touch: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "touch: missing file operand", exitCode: 1 };
+    return errorResult("touch: missing file operand", 1);
   }
 
   let currentFs: VirtualFS = ctx.fs;
@@ -20,7 +21,7 @@ const touch: CommandHandler = (args, _flags, ctx) => {
     if (!existing) {
       const result = currentFs.writeFile(absPath, "");
       if (result.error) {
-        return { output: `touch: cannot touch '${arg}': No such file or directory`, exitCode: 1 };
+        return errorResult(`touch: cannot touch '${arg}': No such file or directory`, 1);
       }
       currentFs = result.fs!;
       createdPaths.push(absPath);

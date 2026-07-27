@@ -29,6 +29,11 @@ Terminal commands: `save`/`load` list slots; `save 1|2|3` saves; `load 1|2|3` lo
 - `windows`/`activeWindowIndex` — window/pane tree + active window (panes rebuilt with fresh ids via `rebuildWindow`; see the tmux skill). `restoreGameState` also rebuilds an FS (via `buildFs`, which lives in saveManager and is re-exported from gameStore) for any pane whose computer entry failed to deserialize.
 - `tmuxAttachedSession`/`tmuxDetachedSessions` — tmux session lifecycle (attached `{name, createdAt}` or null when the save was made on the bare shell; detached sessions as `TmuxSessionSnapshot[]`, already serialization-shaped). `pendingMuxNotice` is transient (restored as null). See the tmux skill.
 - `notifiedChipTopicIds`, `copyModeHelpHidden` — dedup + UI preference.
+- `pendingPiperNotification` — deferred "new messages on Piper" notice for the next nexacorp arrival. Persisted (unlike `pendingMuxNotice`) **specifically so every load writes it**: leaving it out let the pre-load session's value survive `set(restoreGameState(...))` and fire a phantom notice. `loadCheckpointData` resets it to `false`.
+
+**`buildFs(username, computer, BuildFsOptions)` rebuilds a machine from seed and is the single place that replays history into it.** Two non-obvious jobs beyond the FS builders:
+- **`gitClone`**, not the builder's bare copy, produces the devcontainer's dbt project when `dbt_project_cloned` is set — otherwise the working tree exists with no `.git` and every git command soft-locks.
+- **`replayMailHistory` (`state/mailHistory.ts`)** makes the rebuilt maildir match the one it replaced: delivered non-immediate mail re-delivered, **immediate** mail (baked into `new/` by the builders, skipped by `seedDeliveredEmails`) filed into `cur/`, and the `sent/` entries of already-answered reply prompts restored so `hasReplyToEmail` still reports them consumed. Miss the last one and an accepted job offer comes back with a live decline option. `readEmailIds` defaults to "everything delivered was read" (a rebuild replays history, it does not deliver); `completedObjectives` is what identifies the reply branch the player took, so pass it wherever you have it.
 
 Plus plain narrative/identity fields (`username`, `currentChapter`, `completedObjectives`, `deliveredEmailIds`, `deliveredPiperIds`, `storyFlags`, `hasSeenIntro`).
 

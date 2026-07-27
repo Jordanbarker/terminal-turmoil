@@ -3,7 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
-import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { readFileForCommand, errorResult, READ_FAILURE_EXIT } from "../fsErrors";
 import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -22,11 +22,11 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     const absPath = resolvePath(files[0], ctx.cwd, ctx.homeDir);
     const result = readFileForCommand("uniq", absPath, ctx);
     if (result.error) {
-      return { output: result.error, exitCode: READ_FAILURE_EXIT };
+      return errorResult(result.error, READ_FAILURE_EXIT);
     }
     content = result.content ?? "";
   } else {
-    return { output: "uniq: missing file operand", exitCode: 2 };
+    return errorResult("uniq: missing file operand", 2);
   }
 
   const lines = splitLines(content);

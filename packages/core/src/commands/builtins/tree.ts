@@ -5,6 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isDirectory, FSNode } from "@tt/core/filesystem/types";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 function buildTree(
   fs: { listDirectory: (p: string) => { entries: FSNode[]; error?: string } },
@@ -60,18 +61,18 @@ const tree: CommandHandler = (args, flags, ctx) => {
     if (usingRawArgs && tok === "-L") {
       const next = effectiveArgs[i + 1];
       if (next === undefined) {
-        return { output: "tree: option requires an argument -- 'L'", exitCode: 1 };
+        return errorResult("tree: option requires an argument -- 'L'", 1);
       }
       const parsed = parseInt(next, 10);
       if (isNaN(parsed) || parsed < 0 || String(parsed) !== next) {
-        return { output: `tree: Invalid level, must be greater than 0.`, exitCode: 1 };
+        return errorResult(`tree: Invalid level, must be greater than 0.`, 1);
       }
       maxDepth = parsed;
       i++;
     } else if (usingRawArgs && /^-L\d+$/.test(tok)) {
       const parsed = parseInt(tok.slice(2), 10);
       if (isNaN(parsed) || parsed < 0) {
-        return { output: `tree: Invalid level, must be greater than 0.`, exitCode: 1 };
+        return errorResult(`tree: Invalid level, must be greater than 0.`, 1);
       }
       maxDepth = parsed;
     } else if (usingRawArgs && (tok === "-a" || tok === "--all")) {
@@ -79,16 +80,10 @@ const tree: CommandHandler = (args, flags, ctx) => {
     } else if (usingRawArgs && tok === "--help") {
       positional.push(tok);
     } else if (usingRawArgs && tok.startsWith("--")) {
-      return {
-        output: `tree: unrecognized option '${tok}'\nTry 'tree --help' for more information.`,
-        exitCode: 2,
-      };
+      return errorResult(`tree: unrecognized option '${tok}'\nTry 'tree --help' for more information.`, 2);
     } else if (usingRawArgs && tok.startsWith("-") && tok.length > 1) {
       const bad = tok[1];
-      return {
-        output: `tree: invalid option -- '${bad}'\nTry 'tree --help' for more information.`,
-        exitCode: 2,
-      };
+      return errorResult(`tree: invalid option -- '${bad}'\nTry 'tree --help' for more information.`, 2);
     } else {
       positional.push(tok);
     }

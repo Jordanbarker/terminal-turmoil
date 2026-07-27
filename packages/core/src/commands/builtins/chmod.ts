@@ -5,7 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isDirectory, FSNode } from "@tt/core/filesystem/types";
 import { collectDescendantPaths } from "@tt/core/filesystem/walk";
 import { HELP_TEXTS } from "./helpTexts";
-import { labelFsError } from "../fsErrors";
+import { labelFsError, errorResult } from "../fsErrors";
 import { chmodIsRestrictive, SecurityViolation } from "@tt/core/commands/security";
 
 const PERM_MAP: Record<string, string> = {
@@ -76,7 +76,7 @@ function defaultPermsForNode(node: FSNode): string {
 
 const chmod: CommandHandler = (args, flags, ctx) => {
   if (args.length < 2) {
-    return { output: "chmod: missing operand\nUsage: chmod [-R] MODE FILE...", exitCode: 1 };
+    return errorResult("chmod: missing operand\nUsage: chmod [-R] MODE FILE...");
   }
 
   const mode = args[0];
@@ -88,7 +88,7 @@ const chmod: CommandHandler = (args, flags, ctx) => {
   const symbolicClauses = octalPerms ? null : parseSymbolicMode(mode);
 
   if (!octalPerms && !symbolicClauses) {
-    return { output: `chmod: invalid mode: '${mode}'`, exitCode: 1 };
+    return errorResult(`chmod: invalid mode: '${mode}'`);
   }
 
   let currentFs = ctx.fs;
@@ -156,7 +156,7 @@ const chmod: CommandHandler = (args, flags, ctx) => {
   }
 
   if (errors.length > 0) {
-    return { output: errors.join("\n"), exitCode: 1, newFs: currentFs, securityViolation };
+    return { output: "", stderr: errors.join("\n"), exitCode: 1, newFs: currentFs, securityViolation };
   }
   return { output: "", newFs: currentFs, securityViolation };
 };

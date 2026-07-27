@@ -1,20 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { scanQuoted } from "../parser";
-import { extractStdoutRedirect } from "../redirection";
+import { extractStdoutRedirect, extractStderrRedirect, StderrMode } from "../redirection";
 import { findLastUnquotedPipe, hasUnquotedRedirect } from "@tt/core/suggestions/suggest";
 
 /**
  * `redirection.ts` and `suggestions/suggest.ts` used to carry their own copies
  * of the quote-scanning loop. They now go through `scanQuoted`; the reference
- * implementations below are those copies verbatim, so this file fails the day
+ * implementations below are hand-rolled equivalents, so this file fails the day
  * the shared visitor stops behaving like the code it replaced.
  */
 
-function refExtractStdoutRedirect(raw: string): { command: string; redirects: { file: string; append: boolean }[]; parseError?: string } {
+function refExtractStderrRedirect(raw: string): { command: string; mode: StderrMode; parseError?: string } {
   let stripped = "";
   let inSingle = false;
   let inDouble = false;
-  const redirects: { file: string; append: boolean }[] = [];
+  let mode: StderrMode = "default";
   let parseError: string | undefined;
   let i = 0;
 
@@ -24,19 +24,47 @@ function refExtractStdoutRedirect(raw: string): { command: string; redirects: { 
     if (ch === "'" && !inDouble) { inSingle = !inSingle; stripped += ch; i++; continue; }
     if (ch === '"' && !inSingle) { inDouble = !inDouble; stripped += ch; i++; continue; }
 
-    if (!inSingle && !inDouble) {
-      if (raw.slice(i, i + 4) === "2>&1") { i += 4; continue; }
-      if (raw[i] === "2" && raw[i + 1] === ">") {
-        let j = i + 2;
-        if (raw[j] === ">") j++;
-        while (j < raw.length && raw[j] === " ") j++;
-        while (j < raw.length && raw[j] !== " " && raw[j] !== "'" && raw[j] !== '"' &&
-               raw[j] !== "|" && raw[j] !== "&" && raw[j] !== ";") {
-          j++;
-        }
-        i = j;
-        continue;
+    if (!inSingle && !inDouble && ch === "2" && raw[i + 1] === ">") {
+      if (raw.slice(i, i + 4) === "2>&1") { mode = "merge"; i += 4; continue; }
+      const isAppend = raw[i + 2] === ">";
+      let j = i + (isAppend ? 3 : 2);
+      while (j < raw.length && raw[j] === " ") j++;
+      let target = "";
+      while (j < raw.length && raw[j] !== " " && raw[j] !== "'" && raw[j] !== '"' &&
+             raw[j] !== "|" && raw[j] !== "&" && raw[j] !== ";") {
+        target += raw[j];
+        j++;
       }
+      if (target === "/dev/null") mode = "discard";
+      else parseError = `zsh: ${target === "" ? "2>" : `2>${target}`}: only 2>/dev/null and 2>&1 are supported in this terminal`;
+      i = j;
+      continue;
+    }
+
+    stripped += ch;
+    i++;
+  }
+
+  return { command: stripped.trim(), mode, ...(parseError !== undefined && { parseError }) };
+}
+
+function refExtractStdoutRedirect(input: string): { command: string; redirects: { file: string; append: boolean }[]; stderrMode: StderrMode; parseError?: string } {
+  const stderrPass = refExtractStderrRedirect(input);
+  const raw = stderrPass.command;
+  let stripped = "";
+  let inSingle = false;
+  let inDouble = false;
+  const redirects: { file: string; append: boolean }[] = [];
+  let parseError: string | undefined = stderrPass.parseError;
+  let i = 0;
+
+  while (i < raw.length) {
+    const ch = raw[i];
+
+    if (ch === "'" && !inDouble) { inSingle = !inSingle; stripped += ch; i++; continue; }
+    if (ch === '"' && !inSingle) { inDouble = !inDouble; stripped += ch; i++; continue; }
+
+    if (!inSingle && !inDouble) {
       if (raw[i] === ">") {
         const isAppend = raw[i + 1] === ">";
         let j = i + (isAppend ? 2 : 1);
@@ -48,7 +76,7 @@ function refExtractStdoutRedirect(raw: string): { command: string; redirects: { 
           j++;
         }
         if (target === "") {
-          parseError = "zsh: parse error near `\\n'";
+          parseError ??= "zsh: parse error near `\\n'";
         } else {
           redirects.push({ file: target, append: isAppend });
         }
@@ -64,6 +92,7 @@ function refExtractStdoutRedirect(raw: string): { command: string; redirects: { 
   return {
     command: stripped.trim(),
     redirects,
+    stderrMode: stderrPass.mode,
     ...(parseError !== undefined && { parseError }),
   };
 }
@@ -153,6 +182,10 @@ const CORPUS = [
 describe("scanQuoted parity with the hand-rolled loops it replaced", () => {
   it.each(CORPUS)("extractStdoutRedirect(%j)", (input) => {
     expect(extractStdoutRedirect(input)).toEqual(refExtractStdoutRedirect(input));
+  });
+
+  it.each(CORPUS)("extractStderrRedirect(%j)", (input) => {
+    expect(extractStderrRedirect(input)).toEqual(refExtractStderrRedirect(input));
   });
 
   it.each(CORPUS)("findLastUnquotedPipe(%j)", (input) => {

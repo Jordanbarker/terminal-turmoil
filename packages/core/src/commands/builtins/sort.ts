@@ -3,7 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
-import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { readFileForCommand, errorResult, READ_FAILURE_EXIT } from "../fsErrors";
 import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -33,12 +33,11 @@ const sort: CommandHandler = (args, flags, ctx) => {
       lines.push(...splitLines(result.content ?? ""));
     }
   } else {
-    return { output: "sort: missing file operand", exitCode: 2 };
+    return errorResult("sort: missing file operand", 2);
   }
 
-  /** Errors first (they are stderr in a real shell), then the sorted body. */
-  const withErrors = (body: string) =>
-    errors.length === 0 ? body : [...errors, ...(body ? [body] : [])].join("\n");
+  /** Unreadable operands are stderr; only the sorted body is stdout. */
+  const stderrField = errors.length > 0 ? { stderr: errors.join("\n") } : {};
   const exitCode = errors.length > 0 ? READ_FAILURE_EXIT : 0;
 
   lines.sort((a, b) => {
@@ -66,7 +65,8 @@ const sort: CommandHandler = (args, flags, ctx) => {
       }
     }
     return {
-      output: withErrors(deduped.join("\n")),
+      output: deduped.join("\n"),
+      ...stderrField,
       exitCode,
       // Only a real collapse counts as deduping — `sort -u` over already-unique
       // input must not fire the story trigger.
@@ -76,7 +76,7 @@ const sort: CommandHandler = (args, flags, ctx) => {
     };
   }
 
-  return { output: withErrors(lines.join("\n")), exitCode };
+  return { output: lines.join("\n"), ...stderrField, exitCode };
 };
 
 register("sort", sort, "Sort lines of text", HELP_TEXTS.sort, true);

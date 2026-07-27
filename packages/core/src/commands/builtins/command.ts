@@ -3,10 +3,11 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolveCommandPath } from "./which";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 const command: CommandHandler = (args, flags, ctx) => {
   if (!flags["v"] || args.length === 0) {
-    return { output: HELP_TEXTS.command, exitCode: 2 };
+    return errorResult(HELP_TEXTS.command, 2);
   }
 
   const outputs: string[] = [];

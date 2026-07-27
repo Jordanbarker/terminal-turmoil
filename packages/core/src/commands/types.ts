@@ -134,7 +134,22 @@ export interface SshSessionInfo {
 }
 
 export interface CommandResult {
+  /**
+   * stdout. This is the ONLY channel a pipe hands to the next command and the
+   * only one a `>`/`>>` redirect writes to a file. A diagnostic must never be
+   * put here (see `stderr`), or `cmd nosuch > file` silently writes the error
+   * message into the file and shows the player nothing.
+   */
   output: string;
+  /**
+   * stderr: diagnostics (missing file, permission denied, bad flag, command
+   * not found). Never piped downstream, never redirected into a file; the
+   * pipeline runner surfaces it on the terminal instead (`runPipeline` folds
+   * every stage's stderr into the segment result, `computeEffects` renders it
+   * ahead of the segment's stdout). Exit codes are unaffected: a command that
+   * writes stderr still reports its own exit code for `&&`/`||`.
+   */
+  stderr?: string;
   exitCode?: number;
   newCwd?: string;
   newFs?: VirtualFS;

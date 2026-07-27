@@ -11,7 +11,7 @@ describe("rejectUnknownFlags", () => {
     it("rejects an unknown short flag", () => {
       const result = rejectUnknownFlags("ls", { z: true }, { short: ["a"] });
       expect(result).not.toBeNull();
-      expect(result!.output).toBe(
+      expect(result!.stderr).toBe(
         "ls: invalid option -- 'z'\nTry 'ls --help' for more information.",
       );
       expect(result!.exitCode).toBe(2);
@@ -20,7 +20,7 @@ describe("rejectUnknownFlags", () => {
     it("rejects an unknown long flag", () => {
       const result = rejectUnknownFlags("ls", { foo: true }, { short: ["a"] });
       expect(result).not.toBeNull();
-      expect(result!.output).toBe(
+      expect(result!.stderr).toBe(
         "ls: unrecognized option '--foo'\nTry 'ls --help' for more information.",
       );
       expect(result!.exitCode).toBe(2);
@@ -36,13 +36,13 @@ describe("rejectUnknownFlags", () => {
       const result = rejectUnknownFlags("ls", flags, { short: [] });
       expect(result).not.toBeNull();
       // First key encountered in iteration; jsobject preserves insertion order.
-      expect(result!.output).toContain("'x'");
+      expect(result!.stderr).toContain("'x'");
     });
 
     it("treats an empty whitelist as 'no flags allowed'", () => {
       const result = rejectUnknownFlags("cat", { z: true }, {});
       expect(result).not.toBeNull();
-      expect(result!.output).toContain("invalid option -- 'z'");
+      expect(result!.stderr).toContain("invalid option -- 'z'");
     });
 
     it("always passes --help through", () => {
@@ -60,7 +60,7 @@ describe("rejectUnknownFlags", () => {
         { style: "git" },
       );
       expect(result).not.toBeNull();
-      expect(result!.output).toBe("error: unknown switch `z'");
+      expect(result!.stderr).toBe("error: unknown switch `z'");
       expect(result!.exitCode).toBe(129);
     });
 
@@ -72,7 +72,7 @@ describe("rejectUnknownFlags", () => {
         { style: "git" },
       );
       expect(result).not.toBeNull();
-      expect(result!.output).toBe("error: unknown option `bogus'");
+      expect(result!.stderr).toBe("error: unknown option `bogus'");
       expect(result!.exitCode).toBe(129);
     });
   });

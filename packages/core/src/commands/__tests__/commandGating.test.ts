@@ -83,7 +83,7 @@ describe("executeAsync enforces the availability policy", () => {
       unavailableMessage: (name) => `${name}: not installed here.`,
     });
     const result = await executeAsync("python", [], {}, ctx());
-    expect(result.output).toBe("python: not installed here.");
+    expect(result.stderr).toBe("python: not installed here.");
     expect(result.exitCode).toBe(127);
   });
 
@@ -94,7 +94,7 @@ describe("executeAsync enforces the availability policy", () => {
     });
     const result = await executeAsync("./hello.sh", [], {}, ctx({ rawArgs: [] }));
     expect(result.exitCode).toBe(127);
-    expect(result.output).toContain("bash");
+    expect(result.stderr).toContain("bash");
   });
 
   it("still runs ./script.sh when bash is allowed", async () => {

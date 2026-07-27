@@ -3,6 +3,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 const cd: CommandHandler = (args, _flags, ctx) => {
   const target = args[0] || "~";
@@ -13,7 +14,7 @@ const cd: CommandHandler = (args, _flags, ctx) => {
   if (target === "-") {
     const oldpwd = ctx.envVars?.OLDPWD;
     if (!oldpwd) {
-      return { output: "cd: OLDPWD not set", exitCode: 1 };
+      return errorResult("cd: OLDPWD not set", 1);
     }
     absolutePath = oldpwd;
     printDestination = true;
@@ -23,7 +24,7 @@ const cd: CommandHandler = (args, _flags, ctx) => {
 
   const result = ctx.fs.changeCwd(absolutePath);
   if (result.error) {
-    return { output: result.error, exitCode: 1 };
+    return errorResult(result.error, 1);
   }
 
   // Track OLDPWD on every successful cd so subsequent `cd -` works.

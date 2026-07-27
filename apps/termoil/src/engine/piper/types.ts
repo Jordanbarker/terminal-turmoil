@@ -1,4 +1,7 @@
-import { GameEvent } from "../mail/delivery";
+// GameEvent straight from @tt/core, not via mail/delivery: story/piper/messages
+// imports this file and engine/mail/delivery scans those messages, so routing the
+// type through mail/delivery would close an import cycle.
+import type { GameEvent } from "@tt/core";
 import { ComputerId } from "../../state/types";
 import type { StoryFlagName } from "../../story/storyFlags";
 

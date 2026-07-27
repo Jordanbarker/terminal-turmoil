@@ -1,7 +1,8 @@
 import { Terminal } from "@xterm/xterm";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { PromptSessionInfo } from "./types";
-import { getSentDir } from "../mail/mailUtils";
+import { formatEmailContent, getSentDir } from "../mail/mailUtils";
+import type { ReplyEmail } from "../mail/types";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { isBackspace, CTRL_C } from "@tt/core/terminal/keyCodes";
 import { ISession, SessionResult } from "@tt/core/session/types";
@@ -86,16 +87,12 @@ export class PromptSession implements ISession {
 
     // Save reply email to sent/ if provided
     if (option.replyEmail) {
-      const email = option.replyEmail;
+      // Widened from core's Email: mail.ts stamps `inReplyTo`, and
+      // formatEmailContent turns it into the X-In-Reply-To header that reply
+      // dedup matches on.
+      const email = option.replyEmail as ReplyEmail;
       const filename = option.replyFilename ?? `sent_${email.id}`;
-      const content = [
-        `From: ${email.from}`,
-        `To: ${email.to}`,
-        `Date: ${email.date}`,
-        `Subject: ${email.subject}`,
-        "",
-        email.body,
-      ].join("\n");
+      const content = formatEmailContent(email, false);
 
       const result = currentFs.writeFile(
         `${getSentDir(this.username)}/${filename}`,

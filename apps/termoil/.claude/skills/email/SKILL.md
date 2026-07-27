@@ -18,11 +18,13 @@ Code map: `src/engine/mail/` (`types.ts` — all types, read them there; `emails
 
 ## Filesystem layout
 
-`/var/mail/{username}/{new,cur,sent}/` (new = unread, moved to cur/ on read). Filenames `{seq:03d}_{slugified_subject}`; files are RFC 2822-style (`From:`/`To:`/`Date:`/`Subject:`/`Status:` + blank line + body).
+`/var/mail/{username}/{new,cur,sent}/` (new = unread, moved to cur/ on read). Inbox filenames `{seq:03d}_{slugified_subject}`; `sent/` replies are `sent_{parent email id}_{option index}`, **never clock-stamped** (the in-game clock is constant across a day segment, so timestamped names let one reply overwrite another). Files are RFC 2822-style (`From:`/`To:`/`Date:`/`Subject:`/`X-In-Reply-To:`/`Status:` + blank line + body). `getMailEntries` only counts a file as a message if it has a `From:` or `Subject:` header, so a truncated or scratch file in the maildir is a stray file, not a blank inbox row.
 
 ## Delivery flow
 
 Player command → `useTerminal` calls `checkEmailDeliveries()` with a `GameEvent` → matching `EmailDelivery` defs written to `new/` → `deliveredEmailIds` (persisted Zustand) prevents dupes → "You have new mail" notification.
+
+**Immediate emails self-heal.** They are baked into the seed maildir and never re-delivered, so deleting one (`rm -r /var/mail/$USER/new`) used to erase a story beat for good. `checkEmailDeliveries` now restores a missing `new/` directory and re-delivers any immediate email that is gone from the maildir *and* has not yet served its purpose. `isImmediateEmailSpent` in `mail/delivery.ts` reads that purpose off the definitions (never a hardcoded id list) via `getEmailDependents`: a **consequential reply** (reply options carrying `triggerEvents`) is spent only once the reply is in `sent/`; otherwise **any** discharged dependent proves the email was opened, meaning a `file_read` story flag keyed on its id, or a follow-up delivered by `after_email_read` on it. An `after_email_read` **piper** dependent counts as a dependent but cannot discharge (`deliveredPiperIds` doesn't reach this layer), so such an email is restored whenever missing. An immediate email with **no** dependents at all is spent from the start and never comes back, so deleting pure flavor is permanent. Presence is keyed on the delivered filename slug first and the `Subject:` header second, so editing a subject or truncating a file cannot produce a duplicate delivery. Healed ids ride out in `newDeliveries` because callers only keep the returned FS when that array is non-empty.
 
 **Trap — pass `storyFlags` through on re-seed.** `checkEmailDeliveries(fs, event, deliveredIds, computer?, storyFlags?)` routes home-vs-nexacorp by `computer` (default `"nexacorp"`; `"devcontainer"` = no mail). The `storyFlags` arg feeds `after_story_flag` matching AND flag-branched bodies (e.g. `marcus_board_debrief` selects one of four via `getMarcusDebrief(storyFlags)`). Callers that re-seed delivered emails (`gameStore.buildFs`'s `seedDeliveredEmails`, `useComputerTransitions`) **must** pass `storyFlags` so re-seeded bodies stay stable across FS rebuilds and save/load.
 
@@ -35,6 +37,8 @@ Player command → `useTerminal` calls `checkEmailDeliveries()` with a `GameEven
 An `EmailDelivery` can define `replyOptions` (numbered choices shown on read), integrating with `src/engine/prompt/`. Flow: `mail <n>` → mail command finds matching `replyOptions` → appends numbered options + returns a `promptSession` → `useTerminal` routes input → player picks a number → session saves the reply to `sent/`, fires `triggerEvents`, returns to prompt (Ctrl+C cancels). The reply's `Date:` is stamped from the live game clock (`gameNowFor()`) at pick time, not the original email's date.
 
 When a prompt session exits with `triggerEvents`, `useSessionRouter.routeInput()` runs them through `checkEmailDeliveries()` (follow-up emails) and sets story flags — mirroring `computeEffects()` for events originating from prompts rather than commands.
+
+**Reply dedup is id-based, not subject-based.** `PromptSession` writes an `X-In-Reply-To: <parent email id>` header into the `sent/` file (`ReplyEmail.inReplyTo` → `formatEmailContent`), and `hasReplyToEmail()` matches on that header. A player-composed `mail -s "Re: <subject>"` carries no header, so it can no longer swallow a real reply prompt. Any other code that writes a reply to `sent/` must go through `formatEmailContent` and `PromptOption.replyFilename` (see `state/mailHistory.ts`) or the header is lost and the prompt reappears.
 
 ## Character voice
 

@@ -46,20 +46,21 @@ function setupRepoWithStagedFile(): CommandContext {
 describe("git commit message errors", () => {
   it("errors like real git when -m is given with no value", () => {
     const result = git(setupRepoWithStagedFile(), ["commit", "-m"]);
-    expect(result.output).toBe("error: switch `m' requires a value");
+    expect(result.stderr).toBe("error: switch `m' requires a value");
     expect(result.exitCode).toBe(129);
   });
 
   it("errors about the missing editor when -m is absent", () => {
     const result = git(setupRepoWithStagedFile(), ["commit"]);
-    expect(result.output).toContain("Terminal is dumb, but EDITOR unset");
-    expect(result.output).toContain("-m or -F");
+    expect(result.stderr).toContain("Terminal is dumb, but EDITOR unset");
+    expect(result.stderr).toContain("-m or -F");
+    expect(result.output).toBe("");
     expect(result.exitCode).toBe(1);
   });
 
   it("aborts on an empty commit message", () => {
     const result = git(setupRepoWithStagedFile(), ["commit", "-m", ""]);
-    expect(result.output).toBe("Aborting commit due to empty commit message.");
+    expect(result.stderr).toBe("Aborting commit due to empty commit message.");
     expect(result.exitCode).toBe(1);
   });
 
@@ -81,13 +82,13 @@ function setupCommittedRepo(): CommandContext {
 describe("git value-flag and exit-code fidelity", () => {
   it("checkout -b with no value errors instead of creating branch 'true'", () => {
     const result = git(setupCommittedRepo(), ["checkout", "-b"]);
-    expect(result.output).toBe("error: switch `b' requires a value");
+    expect(result.stderr).toBe("error: switch `b' requires a value");
     expect(result.exitCode).toBe(129);
   });
 
   it("checkout -b '' rejects the empty branch name", () => {
     const result = git(setupCommittedRepo(), ["checkout", "-b", ""]);
-    expect(result.output).toBe("fatal: '' is not a valid branch name");
+    expect(result.stderr).toBe("fatal: '' is not a valid branch name");
     expect(result.exitCode).toBe(128);
   });
 
@@ -99,7 +100,7 @@ describe("git value-flag and exit-code fidelity", () => {
 
   it("switch -c with no value errors", () => {
     const result = git(setupCommittedRepo(), ["switch", "-c"]);
-    expect(result.output).toBe("error: switch `c' requires a value");
+    expect(result.stderr).toBe("error: switch `c' requires a value");
     expect(result.exitCode).toBe(129);
   });
 
@@ -113,7 +114,7 @@ describe("git value-flag and exit-code fidelity", () => {
     expect(git(ctx, ["rm"]).exitCode).toBe(129);
     expect(git(ctx, ["add"]).exitCode).toBe(1);
     expect(git(ctx, ["branch", "-d"]).exitCode).toBe(128);
-    expect(git(ctx, ["branch", "-d"]).output).toBe("fatal: branch name required");
+    expect(git(ctx, ["branch", "-d"]).stderr).toBe("fatal: branch name required");
     expect(git(ctx, ["checkout"]).exitCode).toBe(1);
     expect(git(ctx, ["stash", "bogus"]).exitCode).toBe(129);
   });

@@ -1,13 +1,14 @@
 import { Terminal } from "@xterm/xterm";
 import { ISession, SessionResult } from "@tt/core/session/types";
 import { PiperSessionInfo, PiperReplyOption } from "./types";
-import type { ComputerId } from "../../state/types";
+import type { ComputerId, StoryFlags } from "../../state/types";
 import {
   checkPiperDeliveries,
   getConversationHistory,
   getDeliveryInfo,
   getVisibleChannels,
-  getPendingReply,
+  getPendingReplies,
+  type PendingReply,
 } from "./delivery";
 import {
   renderPiperHeader,
@@ -55,6 +56,36 @@ export function consumeDigit(
     return { buffer: "", commit: num };
   }
   return { buffer: candidate, commit: null };
+}
+
+/**
+ * Choose which of a channel's outstanding reply prompts to show: the oldest one
+ * that still has at least one option visible under the current story flags.
+ * A prompt whose options are all gated away is skipped rather than treated as a
+ * dead end, so it can never hide the prompts behind it.
+ *
+ * `mapping` maps menu position back to the option's index in the definition, so
+ * reply ids (`reply:{deliveryId}:{optionIndex}`) stay stable as gates change.
+ * Exported for unit testing, like `consumeDigit`.
+ */
+export function pickVisibleReply(
+  pending: PendingReply[],
+  storyFlags: StoryFlags
+): { deliveryId: string; options: PiperReplyOption[]; mapping: number[] } | null {
+  for (const entry of pending) {
+    const mapping: number[] = [];
+    const options: PiperReplyOption[] = [];
+    entry.options.forEach((opt, i) => {
+      if (opt.visibleWhen && !storyFlags[opt.visibleWhen.flag]) return;
+      if (opt.hiddenWhen && storyFlags[opt.hiddenWhen.flag]) return;
+      mapping.push(i);
+      options.push(opt);
+    });
+    if (options.length > 0) {
+      return { deliveryId: entry.deliveryId, options, mapping };
+    }
+  }
+  return null;
 }
 
 export class PiperSession implements ISession {
@@ -661,21 +692,17 @@ export class PiperSession implements ISession {
     this.redraw();
   }
 
+  /**
+   * Surface the oldest unanswered reply prompt for the open channel. Answering
+   * one re-runs this, so a channel holding several outstanding prompts works
+   * through them oldest-first instead of stranding all but the newest.
+   */
   private refreshReplyOptions(): void {
-    const pending = getPendingReply(this.activeChannelId, this.info.deliveredPiperIds, this.username);
-    this.replyOptionMapping = [];
-    this.replyOptions = [];
-    this.replyDeliveryId = "";
-    if (pending?.options) {
-      for (let i = 0; i < pending.options.length; i++) {
-        const opt = pending.options[i];
-        if (opt.visibleWhen && !this.info.storyFlags[opt.visibleWhen.flag]) continue;
-        if (opt.hiddenWhen && this.info.storyFlags[opt.hiddenWhen.flag]) continue;
-        this.replyOptionMapping.push(i);
-        this.replyOptions.push(opt);
-      }
-      this.replyDeliveryId = pending.deliveryId;
-    }
+    const pending = getPendingReplies(this.activeChannelId, this.info.deliveredPiperIds, this.username);
+    const picked = pickVisibleReply(pending, this.info.storyFlags);
+    this.replyOptionMapping = picked?.mapping ?? [];
+    this.replyOptions = picked?.options ?? [];
+    this.replyDeliveryId = picked?.deliveryId ?? "";
     this.selectedIndex = 0;
   }
 

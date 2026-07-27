@@ -9,7 +9,7 @@
 import { CommandContext, CommandResult, ChainSegment, ParsedCommand } from "./types";
 import { parseInput } from "./parser";
 import { execute, executeAsync, isAsyncCommand, commandReadsFiles } from "./registry";
-import { applyRedirection, extractStdoutRedirect, precheckRedirects } from "./redirection";
+import { applyRedirection, extractStdoutRedirect, extractStderrRedirect, precheckRedirects, StderrMode } from "./redirection";
 import { SecurityPolicy } from "./security";
 import { VirtualFS } from "../filesystem/VirtualFS";
 import { Mounts } from "../filesystem/mounts";
@@ -103,29 +103,48 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
 
     const pipeline = [...seg.pipeline];
 
-    // Extract redirection from the last pipeline command (per-segment)
+    // Extract redirection (per-segment). Stdout targets are read off the LAST
+    // pipeline command, as zsh's `a | b > f` does; `2>` tokens are stripped
+    // from every stage (otherwise `cat x 2>/dev/null | wc -l` hands cat a file
+    // called "2>/dev/null") and the resulting disposition applies segment-wide.
     let redirects: ReturnType<typeof extractStdoutRedirect>["redirects"] = [];
+    let stderrMode: StderrMode = "default";
     if (opts.redirection) {
-      const lastSegment = pipeline[pipeline.length - 1];
-      const extracted = extractStdoutRedirect(lastSegment.raw);
-      if (extracted.parseError) {
+      /** Write a zsh syntax error, fail the segment, and skip execution. */
+      const rejectSegment = (message: string) => {
         if (wroteOutput) opts.write("\r\n");
-        opts.write(colorize(extracted.parseError, ansi.red));
+        opts.write(colorize(message, ansi.red));
         wroteOutput = true;
         lastExitCode = 1;
+      };
+
+      let syntaxError: string | undefined;
+      for (let pi = 0; pi < pipeline.length - 1; pi++) {
+        const ext = extractStderrRedirect(pipeline[pi].raw);
+        syntaxError ??= ext.parseError;
+        if (ext.mode !== "default") {
+          stderrMode = ext.mode;
+          pipeline[pi] = parseInput(ext.command);
+        }
+      }
+
+      const extracted = extractStdoutRedirect(pipeline[pipeline.length - 1].raw);
+      syntaxError ??= extracted.parseError;
+      if (syntaxError) {
+        rejectSegment(syntaxError);
         continue;
       }
+      if (extracted.stderrMode !== "default") stderrMode = extracted.stderrMode;
       redirects = extracted.redirects;
       if (redirects.length > 0) {
         // zsh opens redirect targets before exec — a bad target means the command never runs
         const precheckError = precheckRedirects(redirects, runningCwd, homeDir, runningFs);
         if (precheckError) {
-          if (wroteOutput) opts.write("\r\n");
-          opts.write(colorize(precheckError, ansi.red));
-          wroteOutput = true;
-          lastExitCode = 1;
+          rejectSegment(precheckError);
           continue;
         }
+      }
+      if (extracted.command !== pipeline[pipeline.length - 1].raw.trim()) {
         pipeline[pipeline.length - 1] = parseInput(extracted.command);
       }
     }
@@ -140,6 +159,9 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
     let lastResult: CommandResult = { output: "" };
     const allTriggerEvents: NonNullable<CommandResult["triggerEvents"]> = [];
     let pipelineViolation: CommandResult["securityViolation"];
+    // stderr from EVERY stage, not just the last one: `cat nosuch | wc -l` has
+    // to show cat's error even though wc produced the segment's stdout.
+    const pipelineStderr: string[] = [];
 
     for (let pi = 0; pi < pipeline.length; pi++) {
       const p = pipeline[pi];
@@ -161,6 +183,8 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
       if (lastResult.triggerEvents) {
         allTriggerEvents.push(...lastResult.triggerEvents);
       }
+
+      if (lastResult.stderr) pipelineStderr.push(lastResult.stderr);
 
       if (lastResult.securityViolation && !pipelineViolation) {
         pipelineViolation = lastResult.securityViolation;
@@ -192,6 +216,21 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
       lastResult = { ...lastResult, securityViolation: pipelineViolation };
     }
 
+    // Every stage's stderr becomes the segment's stderr. It deliberately does
+    // NOT go through `applyRedirection` below (fd 2 is not what `>` captures),
+    // so the diagnostics reach the terminal even when stdout goes to a file.
+    // `2>/dev/null` drops it; `2>&1` folds it into stdout *before* the redirect
+    // so it lands in the file with the rest.
+    const segStderr = pipelineStderr.join("\n");
+    if (segStderr && stderrMode === "merge") {
+      lastResult = { ...lastResult, output: [segStderr, lastResult.output].filter(Boolean).join("\n"), stderr: undefined };
+    } else {
+      lastResult = {
+        ...lastResult,
+        stderr: segStderr && stderrMode === "default" ? segStderr : undefined,
+      };
+    }
+
     if (opts.redirection && redirects.length > 0) {
       const redir = applyRedirection(
         redirects, lastResult, runningCwd, homeDir, runningFs,
@@ -202,7 +241,7 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
     }
 
     lastExitCode = lastResult.exitCode ?? 0;
-    if (lastResult.output) wroteOutput = true;
+    if (lastResult.output || lastResult.stderr) wroteOutput = true;
 
     if (hasAsyncCmd) {
       opts.write("\r\x1b[K");

@@ -27,8 +27,14 @@ import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createChipinfraFilesystem } from "../story/filesystem/chipinfra";
 import { createErikpcFilesystem } from "../story/filesystem/erikpc";
 import { getComputerUsername } from "../story/player";
-import { seedDeliveredEmails } from "../engine/mail/delivery";
+import { replayMailHistory } from "./mailHistory";
+import { INITIAL_STORY_FLAGS } from "./initialFlags";
 import { initEnvForComputer, initAliasesForComputer } from "../story/env";
+import "../story/git/remotes"; // side effect: registers clonable remotes so buildFs can clone
+import { gitClone } from "@tt/core/git/repo";
+
+/** The clone URL the Day 1 quest uses; the only repo any FS rebuild has to recreate. */
+const ANALYTICS_REMOTE = "nexacorp/nexacorp-analytics";
 
 const SLOT_KEY_PREFIX = "termoil-slot-";
 
@@ -40,16 +46,47 @@ export const ALL_SLOTS: SaveSlotId[] = ["slot-1", "slot-2", "slot-3"];
 
 type ComputerStateMap = Partial<Record<ComputerId, { fs: VirtualFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>>;
 
+/** Everything a from-seed rebuild needs to reproduce the state it replaces. */
+export interface BuildFsOptions {
+  storyFlags?: StoryFlags;
+  deliveredEmailIds?: string[];
+  /**
+   * Which delivered emails the player had already opened. Defaults to **all**
+   * of them: a rebuild is a replay of history, never a fresh delivery, and
+   * seeding old mail as unread resurrects messages the player already read and
+   * re-fires the "You have new mail" notice. Callers holding the real read
+   * state (an FS they are about to discard) pass it explicitly.
+   */
+  readEmailIds?: Set<string>;
+  /**
+   * Completed objectives, used to rebuild the `sent/` replies that mark reply
+   * prompts as already answered. Omitting it leaves every prompt live again
+   * (see `replayMailHistory`).
+   */
+  completedObjectives?: string[];
+}
+
+/** Build a computer's filesystem from seed, replaying the mailbox history into it. */
 export function buildFs(
   username: string,
   computer: ComputerId,
-  storyFlags: StoryFlags = {},
-  deliveredEmailIds: string[] = []
+  options: BuildFsOptions = {}
 ) {
+  const {
+    storyFlags = {},
+    deliveredEmailIds = [],
+    readEmailIds = new Set(deliveredEmailIds),
+    completedObjectives = [],
+  } = options;
+  // The devcontainer's dbt project must be produced by the same `git clone`
+  // code path the player uses, otherwise the working tree exists with no .git
+  // and every git command soft-locks. Suppress the builder's bare copy and let
+  // gitClone lay down the tree + repo below.
+  const clonesAnalytics = computer === "devcontainer" && !!storyFlags.dbt_project_cloned;
   const root = computer === "home"
     ? createHomeFilesystem(username)
     : computer === "devcontainer"
-      ? createDevcontainerFilesystem(username, storyFlags)
+      ? createDevcontainerFilesystem(username, clonesAnalytics ? { ...storyFlags, dbt_project_cloned: false } : storyFlags)
       : computer === "chipinfra"
         ? createChipinfraFilesystem(username, storyFlags)
         : computer === "erik-pc"
@@ -59,11 +96,17 @@ export function buildFs(
   const homeDir = `/home/${sessionUser}`;
   let fs = new VirtualFS(root, homeDir, homeDir);
 
-  if (deliveredEmailIds.length > 0) {
-    fs = seedDeliveredEmails(fs, deliveredEmailIds, computer, username, new Set(), storyFlags);
+  if (clonesAnalytics) {
+    const cloned = gitClone(fs, homeDir, ANALYTICS_REMOTE, username);
+    if (!cloned.error) fs = cloned.fs;
   }
 
-  return fs;
+  return replayMailHistory(fs, computer, username, {
+    deliveredEmailIds,
+    readEmailIds,
+    completedObjectives,
+    storyFlags,
+  });
 }
 
 export interface SaveableState {
@@ -81,6 +124,7 @@ export interface SaveableState {
   tmuxAttachedSession: { name: string; createdAt: number } | null;
   tmuxDetachedSessions: TmuxSessionSnapshot[];
   notifiedChipTopicIds: string[];
+  pendingPiperNotification: boolean;
   snowflakeState: SnowflakeState;
   copyModeHelpHidden: boolean;
 }
@@ -107,6 +151,7 @@ export function pickSaveableState(state: SaveableState): SaveableState {
     tmuxAttachedSession: state.tmuxAttachedSession,
     tmuxDetachedSessions: state.tmuxDetachedSessions,
     notifiedChipTopicIds: state.notifiedChipTopicIds,
+    pendingPiperNotification: state.pendingPiperNotification,
     snowflakeState: state.snowflakeState,
     copyModeHelpHidden: state.copyModeHelpHidden,
   };
@@ -136,6 +181,7 @@ export function serializeGameState(state: SaveableState): SavePayload {
     tmuxAttachedSession: state.tmuxAttachedSession ? { ...state.tmuxAttachedSession } : null,
     tmuxDetachedSessions: state.tmuxDetachedSessions.map((s) => ({ ...s })),
     notifiedChipTopicIds: [...state.notifiedChipTopicIds],
+    pendingPiperNotification: state.pendingPiperNotification,
     serializedSnowflake: serializeSnowflake(state.snowflakeState),
     copyModeHelpHidden: state.copyModeHelpHidden,
   };
@@ -160,6 +206,7 @@ export interface RestoredGameState {
   tmuxDetachedSessions: TmuxSessionSnapshot[];
   pendingMuxNotice: null;
   notifiedChipTopicIds: string[];
+  pendingPiperNotification: boolean;
   copyModeHelpHidden: boolean;
   activeSnowSession: null;
 }
@@ -171,6 +218,11 @@ export interface RestoredGameState {
  * rebuilt one (with the .zsh_history mirror restored, matching initComputer).
  */
 export function restoreGameState(data: SavePayload): RestoredGameState {
+  // Merged over the baseline for the same reason createInitialState and
+  // buildCheckpointState do it: a snapshot taken before a baseline flag existed
+  // (or written by a save path that never set it) must not land the player in a
+  // game with the tmux layer switched off.
+  const storyFlags: StoryFlags = { ...INITIAL_STORY_FLAGS, ...data.storyFlags };
   let sfState: SnowflakeState;
   try {
     sfState = data.serializedSnowflake?.databases
@@ -209,7 +261,11 @@ export function restoreGameState(data: SavePayload): RestoredGameState {
   for (const w of windows) for (const l of allLeaves(w.root)) leafComputers.add(l.computerId as ComputerId);
   for (const computerId of leafComputers) {
     if (!computerState[computerId]) {
-      const fs = buildFs(data.username, computerId, data.storyFlags, data.deliveredEmailIds ?? []);
+      const fs = buildFs(data.username, computerId, {
+        storyFlags,
+        deliveredEmailIds: data.deliveredEmailIds ?? [],
+        completedObjectives: data.completedObjectives ?? [],
+      });
       let finalFs = computerId === "nexacorp" ? syncToVirtualFS(sfState, fs) : fs;
       const savedHistory = zshHistory[computerId];
       if (savedHistory != null) {
@@ -235,7 +291,7 @@ export function restoreGameState(data: SavePayload): RestoredGameState {
     completedObjectives: data.completedObjectives,
     deliveredEmailIds: data.deliveredEmailIds,
     deliveredPiperIds: data.deliveredPiperIds,
-    storyFlags: data.storyFlags,
+    storyFlags,
     hasSeenIntro: data.hasSeenIntro ?? false,
     snowflakeState: sfState,
     computerState,
@@ -246,6 +302,9 @@ export function restoreGameState(data: SavePayload): RestoredGameState {
     tmuxDetachedSessions: data.tmuxDetachedSessions ?? [],
     pendingMuxNotice: null,
     notifiedChipTopicIds: data.notifiedChipTopicIds ?? [],
+    // Always written (never left to the pre-load session's value): an absent
+    // field in a legacy blob resets the notice rather than inheriting it.
+    pendingPiperNotification: data.pendingPiperNotification ?? false,
     copyModeHelpHidden: data.copyModeHelpHidden ?? false,
     activeSnowSession: null,
   };

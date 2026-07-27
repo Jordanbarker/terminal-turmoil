@@ -4,10 +4,11 @@ import { setKnownFlags } from "../flagValidation";
 import { isCommandAvailable } from "../availability";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 const man: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "What manual page do you want?\nUsage: man COMMAND", exitCode: 2 };
+    return errorResult("What manual page do you want?\nUsage: man COMMAND", 2);
   }
 
   const cmd = args[0];
@@ -15,7 +16,7 @@ const man: CommandHandler = (args, _flags, ctx) => {
   const isAlias = cmd !== primaryName;
 
   if (!isCommandAvailable(cmd, ctx.activeComputer, ctx.storyFlags)) {
-    return { output: `No manual entry for ${cmd}`, exitCode: 2 };
+    return errorResult(`No manual entry for ${cmd}`, 2);
   }
 
   // Read from the registry, not core's HELP_TEXTS map: app-registered builtins
@@ -23,7 +24,7 @@ const man: CommandHandler = (args, _flags, ctx) => {
   const helpText = getHelpText(primaryName);
 
   if (!helpText) {
-    return { output: `No manual entry for ${cmd}`, exitCode: 2 };
+    return errorResult(`No manual entry for ${cmd}`, 2);
   }
 
   const cmdAliases = getAliasesFor(primaryName);

@@ -7,6 +7,7 @@ import { isDirectory } from "@tt/core/filesystem/types";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 /**
  * `-N`: prefix every line with its number, real less's 7-column right-aligned
@@ -40,7 +41,7 @@ const less: CommandHandler = (args, flags, ctx) => {
         lessSession: { filename: null, content: withNumbers(ctx.stdin) },
       };
     }
-    return { output: "less: missing file operand", exitCode: 1 };
+    return errorResult("less: missing file operand", 1);
   }
 
   const fileArg = files[0];
@@ -48,19 +49,19 @@ const less: CommandHandler = (args, flags, ctx) => {
   const node = ctx.fs.getNode(absolutePath);
 
   if (node && isDirectory(node)) {
-    return { output: `less: "${fileArg}": Is a directory`, exitCode: 1 };
+    return errorResult(`less: "${fileArg}": Is a directory`, 1);
   }
 
   if (isBinaryFile(node)) {
     const hint = fileArg.endsWith(".pdf")
       ? " — use 'pdftotext' for PDFs or 'file' to inspect"
       : " — use 'file' to inspect";
-    return { output: `less: ${fileArg}: binary file${hint}`, exitCode: 1 };
+    return errorResult(`less: ${fileArg}: binary file${hint}`, 1);
   }
 
   const result = ctx.fs.readFile(absolutePath);
   if (result.error) {
-    return { output: result.error.replace("cat:", "less:"), exitCode: 1 };
+    return errorResult(result.error.replace("cat:", "less:"), 1);
   }
 
   return {

@@ -102,7 +102,7 @@ describe("known-flag declarations", () => {
   it("sudo still rejects a flag of its own that it does not know", () => {
     const result = run("sudo -Z apt update");
     expect(result.exitCode).toBe(2);
-    expect(result.output).toContain("sudo: invalid option -- 'Z'");
+    expect(result.stderr).toContain("sudo: invalid option -- 'Z'");
   });
 
   // The route a player actually types: sudo must not claim `-y` as its own.
@@ -127,6 +127,6 @@ describe("known-flag declarations", () => {
   it("still rejects a flag no command declares", () => {
     const result = run("less -Z notes.txt");
     expect(result.exitCode).toBe(2);
-    expect(result.output).toContain("less: invalid option -- 'Z'");
+    expect(result.stderr).toContain("less: invalid option -- 'Z'");
   });
 });

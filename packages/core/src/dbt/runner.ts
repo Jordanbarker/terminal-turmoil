@@ -120,14 +120,14 @@ function resolveDependencies(
  */
 export function runModels(ctx: CommandContext, selectModel?: string): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
-  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  if (!configContent.content) return { output: "", stderr: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
   if (!ctx.snowflakeState) {
-    return { output: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
+    return { output: "", stderr: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
   }
 
   // Parse compilation context
@@ -148,7 +148,7 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
       const deps = resolveDependencies(ctx, project.projectRoot, config.modelPaths, selectModel, discoveredModels);
       modelsToExecute = [...deps, selectModel];
     } else {
-      return { output: `Selector error: model '${selectModel}' not found` };
+      return { output: "", stderr: `Selector error: model '${selectModel}' not found` };
     }
   } else {
     modelsToDisplay = [...discoveredModels];
@@ -276,14 +276,14 @@ export function runModels(ctx: CommandContext, selectModel?: string): CommandRes
  */
 export function runTests(ctx: CommandContext): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
-  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  if (!configContent.content) return { output: "", stderr: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
   if (!ctx.snowflakeState) {
-    return { output: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
+    return { output: "", stderr: "Error: Snowflake connection required. Run `snow sql` to verify connectivity." };
   }
 
   const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
@@ -453,7 +453,7 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
   };
 
   const runResult = runModels(wrappedCtx, selectedModel);
-  if (runResult.output.startsWith("Runtime Error") || runResult.output.startsWith("Error:")) return {
+  if (runResult.stderr) return {
     ...runResult,
     triggerEvents: [
       ...(runResult.triggerEvents || []),
@@ -466,6 +466,9 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
   const combinedLines = [...(runResult.incrementalLines || []), { text: "", delayMs: DBT_DEFAULT_LINE_DELAY_MS }, ...(testResult.incrementalLines || [])];
   return {
     output: runResult.output + "\n\n" + testResult.output,
+    // The run half already returned early on its own failure, so this can only
+    // be the test half's diagnostics; they stay off the build report's stdout.
+    ...(testResult.stderr && { stderr: testResult.stderr }),
     ...(!ctx.isPiped && { incrementalLines: combinedLines }),
     triggerEvents: [
       ...(runResult.triggerEvents || []),
@@ -480,10 +483,10 @@ export function runBuild(ctx: CommandContext, selectedModel?: string): CommandRe
  */
 export function listResources(ctx: CommandContext, resourceType?: string): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
-  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  if (!configContent.content) return { output: "", stderr: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
   let resources = discoverResources(ctx.fs, project.projectRoot, config);
@@ -509,7 +512,7 @@ export function listResources(ctx: CommandContext, resourceType?: string): Comma
  */
 export function debugProject(ctx: CommandContext): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   const info: DbtDebugInfo = {
     account: "nexacorp.us-east-1",
@@ -532,19 +535,19 @@ export function debugProject(ctx: CommandContext): CommandResult {
  */
 export function compileModel(ctx: CommandContext, modelName?: string): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   if (!modelName) {
-    return { output: "Usage: dbt compile --select MODEL_NAME" };
+    return { output: "", stderr: "Usage: dbt compile --select MODEL_NAME" };
   }
 
   const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
-  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  if (!configContent.content) return { output: "", stderr: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
   const rawSql = readModelSql(ctx, project.projectRoot, modelName, config.modelPaths);
   if (!rawSql) {
-    return { output: `Selector error: model '${modelName}' not found` };
+    return { output: "", stderr: `Selector error: model '${modelName}' not found` };
   }
 
   const sourceMap = parseSourceMap(ctx.fs, project.projectRoot);
@@ -576,24 +579,24 @@ export function compileModel(ctx: CommandContext, modelName?: string): CommandRe
  */
 export function showModel(ctx: CommandContext, modelName?: string): CommandResult {
   const project = loadProject(ctx);
-  if ("error" in project) return { output: project.error };
+  if ("error" in project) return { output: "", stderr: project.error };
 
   if (!modelName) {
-    return { output: "Usage: dbt show --select MODEL_NAME" };
+    return { output: "", stderr: "Usage: dbt show --select MODEL_NAME" };
   }
 
   if (!ctx.snowflakeState) {
-    return { output: `Selector error: model '${modelName}' not found` };
+    return { output: "", stderr: `Selector error: model '${modelName}' not found` };
   }
 
   const configContent = ctx.fs.readFile(project.projectRoot + "/dbt_project.yml");
-  if (!configContent.content) return { output: "Error reading dbt_project.yml" };
+  if (!configContent.content) return { output: "", stderr: "Error reading dbt_project.yml" };
   const config = parseProjectConfig(configContent.content);
 
   // Check model exists in VFS
   const rawSql = readModelSql(ctx, project.projectRoot, modelName, config.modelPaths);
   if (!rawSql) {
-    return { output: `Selector error: model '${modelName}' not found` };
+    return { output: "", stderr: `Selector error: model '${modelName}' not found` };
   }
 
   const sessionCtx = createDefaultContext(
@@ -617,7 +620,7 @@ export function showModel(ctx: CommandContext, modelName?: string): CommandResul
     const { results: adHocResults } = executeSql(compiled, ctx.snowflakeState, sessionCtx);
     const rs = adHocResults.find((r: { type: string }) => r.type === "resultset");
     if (!rs || rs.type !== "resultset") {
-      return { output: `Error: Could not preview model '${modelName}'. Run \`dbt run\` first.` };
+      return { output: "", stderr: `Error: Could not preview model '${modelName}'. Run \`dbt run\` first.` };
     }
 
     const adHocColumns = rs.data.columns.map((c: { name: string }) => c.name);

@@ -2,6 +2,7 @@ import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 const aliasCmd: CommandHandler = (_args, _flags, ctx) => {
   // Use rawArgs to preserve quoting (same pattern as export)
@@ -24,7 +25,7 @@ const aliasCmd: CommandHandler = (_args, _flags, ctx) => {
       if (arg in aliases) {
         return { output: `${arg}='${aliases[arg]}'` };
       }
-      return { output: `alias: ${arg}: not found`, exitCode: 1 };
+      return errorResult(`alias: ${arg}: not found`, 1);
     }
     const name = arg.slice(0, eqIdx);
     let value = arg.slice(eqIdx + 1);
@@ -51,13 +52,13 @@ const unaliasCmd: CommandHandler = (args, flags, ctx) => {
   }
 
   if (args.length === 0) {
-    return { output: "unalias: not enough arguments", exitCode: 1 };
+    return errorResult("unalias: not enough arguments", 1);
   }
 
   const aliases = { ...ctx.aliases };
   for (const name of args) {
     if (!(name in aliases)) {
-      return { output: `unalias: no such hash table element: ${name}`, exitCode: 1 };
+      return errorResult(`unalias: no such hash table element: ${name}`, 1);
     }
     delete aliases[name];
   }

@@ -1,4 +1,4 @@
-import { CommandContext } from "@tt/core/commands/types";
+import { CommandContext, CommandResult } from "@tt/core/commands/types";
 
 /**
  * Re-labelling of raw `VirtualFS` errors for the builtin that triggered them.
@@ -16,6 +16,18 @@ import { CommandContext } from "@tt/core/commands/types";
 export const READ_FAILURE_EXIT = 1;
 
 const PERMISSION_PREFIX = "Permission denied: ";
+
+/**
+ * A pure-diagnostic result: the message goes to `stderr`, stdout stays empty.
+ *
+ * Use this for every failure a builtin reports. Putting the text in `output`
+ * instead makes it stdout, which a pipe feeds to the next command and a `>`
+ * redirect writes into the target file (`cat nosuch > notes.txt` would replace
+ * the file with the error message and print nothing).
+ */
+export function errorResult(message: string, exitCode: number = READ_FAILURE_EXIT): CommandResult {
+  return { output: "", stderr: message, exitCode };
+}
 
 /** Rewrite a raw VirtualFS error so it names `command` instead of its origin. */
 export function labelFsError(command: string, error: string): string {

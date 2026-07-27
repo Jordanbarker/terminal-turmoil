@@ -4,10 +4,11 @@ import { setKnownFlags } from "../flagValidation";
 import { resolvePath, parentPath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { errorResult } from "../fsErrors";
 
 const mkdir: CommandHandler = (args, flags, ctx) => {
   if (args.length === 0) {
-    return { output: "mkdir: missing operand", exitCode: 1 };
+    return errorResult("mkdir: missing operand", 1);
   }
 
   const createParents = flags["p"];
@@ -26,7 +27,7 @@ const mkdir: CommandHandler = (args, flags, ctx) => {
         if (!currentFs.getNode(currentPath)) {
           const result = currentFs.makeDirectory(currentPath);
           if (result.error) {
-            return { output: result.error, exitCode: 1 };
+            return errorResult(result.error, 1);
           }
           currentFs = result.fs!;
           createdPaths.push(currentPath);
@@ -36,11 +37,11 @@ const mkdir: CommandHandler = (args, flags, ctx) => {
       // Check parent exists
       const parent = parentPath(absPath);
       if (!currentFs.getNode(parent)) {
-        return { output: `mkdir: cannot create directory '${arg}': No such file or directory`, exitCode: 1 };
+        return errorResult(`mkdir: cannot create directory '${arg}': No such file or directory`, 1);
       }
       const result = currentFs.makeDirectory(absPath);
       if (result.error) {
-        return { output: result.error, exitCode: 1 };
+        return errorResult(result.error, 1);
       }
       currentFs = result.fs!;
       createdPaths.push(absPath);

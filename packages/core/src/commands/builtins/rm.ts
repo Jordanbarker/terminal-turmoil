@@ -4,7 +4,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { FSNode, isDirectory } from "@tt/core/filesystem/types";
-import { labelFsError } from "../fsErrors";
+import { labelFsError, errorResult } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { SecurityViolation } from "@tt/core/commands/security";
@@ -25,7 +25,7 @@ function collectRemoveEvents(node: FSNode, path: string): GameEvent[] {
 
 const rm: CommandHandler = (args, flags, ctx) => {
   if (args.length === 0) {
-    return { output: "rm: missing operand", exitCode: 1 };
+    return errorResult("rm: missing operand");
   }
 
   const recursive = flags["r"] || flags["R"];
@@ -73,7 +73,8 @@ const rm: CommandHandler = (args, flags, ctx) => {
   }
 
   return {
-    output: errors.join("\n"),
+    output: "",
+    ...(errors.length > 0 && { stderr: errors.join("\n") }),
     exitCode: errors.length > 0 ? 1 : 0,
     newFs: currentFs,
     triggerEvents,

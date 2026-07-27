@@ -10,8 +10,9 @@ import { GamePhase, ComputerId, StoryFlags, PLAYER } from "./types";
 import type { StoryFlagName } from "../story/storyFlags";
 import { SnowflakeState } from "@tt/core/snowflake/state";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
-import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
 import { getDefaultEnv, initEnvForComputer, initAliasesForComputer } from "../story/env";
+import { INITIAL_STORY_FLAGS } from "./initialFlags";
+import { buildCheckpointState } from "./checkpointLoad";
 import { findNewlyAvailableChipTopics } from "../engine/chip/notifications";
 import {
   WindowState,
@@ -184,8 +185,7 @@ function createInitialState(username = PLAYER.username) {
     deliveredPiperIds: [] as string[],
     gamePhase: "playing" as GamePhase,
     snowflakeState: createInitialSnowflakeState(),
-    // Terminal tabs + copy mode are available from the start of a new game.
-    storyFlags: { tabs_unlocked: true } as StoryFlags,
+    storyFlags: { ...INITIAL_STORY_FLAGS },
     hasSeenIntro: false,
     toasts: [] as Toast[],
     computerState: { home: { fs, envVars: initEnvForComputer("home", username, fs), aliases: initAliasesForComputer("home", username, fs), mounts: {} } } as Partial<Record<ComputerId, { fs: VirtualFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>>,
@@ -623,23 +623,9 @@ export const useGameStore = create<GameStore>()(
       loadCheckpointData: (data) => {
         const username = PLAYER.username;
         const homeDir = `/home/${username}`;
-        const sfState = createInitialSnowflakeState({ includeDay2: !!data.storyFlags.day1_shutdown });
-
-        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>> = {};
-        for (const computerId of data.computers) {
-          let fs = buildFs(username, computerId, data.storyFlags, data.deliveredEmailIds);
-          if (computerId === "nexacorp") {
-            fs = syncToVirtualFS(sfState, fs);
-          }
-          const baseAliases = initAliasesForComputer(computerId, username, fs);
-          const checkpointAliases = data.aliases?.[computerId] ?? {};
-          loadedComputerState[computerId] = {
-            fs,
-            envVars: { ...initEnvForComputer(computerId, username, fs), ...(data.envVars?.[computerId] ?? {}) },
-            aliases: { ...baseAliases, ...checkpointAliases },
-            mounts: {},
-          };
-        }
+        // Flags (merged over the baseline), Snowflake and every computer's FS
+        // come from the shared builder the headless runner also uses.
+        const { storyFlags, snowflakeState, computerState } = buildCheckpointState(username, data);
 
         const win = makeWindow(data.activeComputer, homeDir);
 
@@ -650,9 +636,12 @@ export const useGameStore = create<GameStore>()(
           completedObjectives: [...data.completedObjectives],
           deliveredEmailIds: [...data.deliveredEmailIds],
           deliveredPiperIds: [...data.deliveredPiperIds],
-          storyFlags: { ...data.storyFlags },
-          snowflakeState: sfState,
-          computerState: loadedComputerState,
+          storyFlags,
+          // A cheat skips the opening cinematic, so the nano tutorial must not
+          // pop later as if the player had never seen it.
+          hasSeenIntro: true,
+          snowflakeState,
+          computerState,
           // Fresh cheat-load: clear the history mirror so each computer's seeded
           // .zsh_history file stands.
           zshHistory: {},
@@ -666,6 +655,8 @@ export const useGameStore = create<GameStore>()(
           pendingMuxNotice: null,
           activeSnowSession: null,
           notifiedChipTopicIds: [],
+          // Transient notice from the pre-cheat session — must not leak in.
+          pendingPiperNotification: false,
         });
         return true;
       },

@@ -42,7 +42,7 @@ const dbt: CommandHandler = (args, flags, ctx) => {
     case "build": {
       const maxArgs = hasSelect ? 2 : 1;
       const err = unexpectedArg(args, maxArgs);
-      if (err) return { output: err };
+      if (err) return { output: "", stderr: err };
       if (subcommand === "run") return runModels(ctx, selectedModel);
       if (subcommand === "compile") return compileModel(ctx, selectedModel);
       if (subcommand === "show") return showModel(ctx, selectedModel);
@@ -52,7 +52,7 @@ const dbt: CommandHandler = (args, flags, ctx) => {
     case "test":
     case "debug": {
       const err = unexpectedArg(args, 1);
-      if (err) return { output: err };
+      if (err) return { output: "", stderr: err };
       if (subcommand === "test") return runTests(ctx);
       return debugProject(ctx);
     }
@@ -61,7 +61,7 @@ const dbt: CommandHandler = (args, flags, ctx) => {
     case "list": {
       const maxArgs = flags["resource-type"] ? 2 : 1;
       const err = unexpectedArg(args, maxArgs);
-      if (err) return { output: err };
+      if (err) return { output: "", stderr: err };
       const resourceType = flags["resource-type"] ? args[1] : undefined;
       return listResources(ctx, resourceType);
     }
@@ -70,7 +70,7 @@ const dbt: CommandHandler = (args, flags, ctx) => {
       return { output: HELP_TEXTS.dbt };
 
     default:
-      return { output: `Unknown dbt command '${subcommand}'.\n\n${formatUsage()}` };
+      return { output: "", stderr: `Unknown dbt command '${subcommand}'.\n\n${formatUsage()}` };
   }
 };
 

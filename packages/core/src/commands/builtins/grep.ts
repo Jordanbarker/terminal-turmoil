@@ -5,7 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
 import { isDirectory, isFile, FSNode } from "@tt/core/filesystem/types";
 import { colorize, ansi } from "@tt/core/lib/ansi";
-import { READ_FAILURE_EXIT } from "../fsErrors";
+import { READ_FAILURE_EXIT, errorResult } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function walkFiles(
@@ -31,7 +31,7 @@ function walkFiles(
 
 const grep: CommandHandler = (args, flags, ctx) => {
   if (args.length === 0) {
-    return { output: "grep: missing pattern", exitCode: 2 };
+    return errorResult("grep: missing pattern", 2);
   }
 
   const pattern = args[0];
@@ -65,7 +65,7 @@ const grep: CommandHandler = (args, flags, ctx) => {
     // Recursive from cwd
     filesToSearch.push(...walkFiles(ctx.fs, ctx.cwd));
   } else if (fileArgs.length === 0) {
-    return { output: "grep: no input files", exitCode: 2 };
+    return errorResult("grep: no input files", 2);
   } else {
     // Collect-and-continue, like cat: a bad operand is reported but the other
     // files are still searched.
@@ -156,7 +156,8 @@ const grep: CommandHandler = (args, flags, ctx) => {
   const exitCode = usageError ? 2 : readErrors.length > 0 ? READ_FAILURE_EXIT : totalMatches > 0 ? 0 : 1;
 
   return {
-    output: [...readErrors, ...outputLines].join("\n"),
+    output: outputLines.join("\n"),
+    ...(readErrors.length > 0 && { stderr: readErrors.join("\n") }),
     exitCode,
     // No matches means nothing was filtered — don't fire the story trigger.
     ...(totalMatches > 0 && {

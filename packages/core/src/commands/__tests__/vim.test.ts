@@ -64,11 +64,11 @@ describe("vim builtin (shared editorOpen paths)", () => {
   });
 
   it("rejects directories", () => {
-    expect(run("vim", ["docs"]).output).toBe('vim: "docs": Is a directory');
+    expect(run("vim", ["docs"]).stderr).toBe('vim: "docs": Is a directory');
   });
 
   it("requires a filename", () => {
-    expect(run("vim", []).output).toBe("Usage: vim <filename>");
+    expect(run("vim", []).stderr).toBe("Usage: vim <filename>");
   });
 
   it("opens a new file when the parent directory exists", () => {
@@ -82,7 +82,7 @@ describe("vim builtin (shared editorOpen paths)", () => {
   });
 
   it("rejects a new file in a missing directory", () => {
-    expect(run("vim", ["nowhere/f.txt"]).output).toBe('vim: "nowhere/f.txt": No such file or directory');
+    expect(run("vim", ["nowhere/f.txt"]).stderr).toBe('vim: "nowhere/f.txt": No such file or directory');
   });
 
   it("constructs the backup.sh trigger on the home computer", () => {
@@ -107,8 +107,8 @@ describe("nano builtin (shares editorOpen with vim)", () => {
   });
 
   it("keeps nano-prefixed error messages", () => {
-    expect(run("nano", ["docs"]).output).toBe('nano: "docs": Is a directory');
-    expect(run("nano", []).output).toBe("Usage: nano <filename>");
+    expect(run("nano", ["docs"]).stderr).toBe('nano: "docs": Is a directory');
+    expect(run("nano", []).stderr).toBe("Usage: nano <filename>");
   });
 
   it("still constructs the backup.sh trigger", () => {

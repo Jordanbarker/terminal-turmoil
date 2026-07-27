@@ -28,7 +28,7 @@ const pythonHandler: AsyncCommandHandler = async (args, flags, ctx) => {
 
     const result = ctx.fs.readFile(filePath);
     if (result.error) {
-      return { output: `python: can't open file '${args[0]}': ${result.error}` };
+      return { output: "", stderr: `python: can't open file '${args[0]}': ${result.error}` };
     }
     return runCode(result.content!);
   }

@@ -54,7 +54,7 @@ export function resolveCommandPath(name: string, ctx: CommandContext): string | 
 
 const which: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "which: missing command argument" };
+    return { output: "", stderr: "which: missing command argument" };
   }
 
   const outputs: string[] = [];

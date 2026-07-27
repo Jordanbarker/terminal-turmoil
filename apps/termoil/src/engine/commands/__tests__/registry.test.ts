@@ -46,7 +46,7 @@ describe("registry", () => {
 
     it("returns 'command not found' for unknown commands", () => {
       const result = execute("nonexistent-xyz", [], {}, makeCtx());
-      expect(result.output).toContain("zsh: command not found: nonexistent-xyz");
+      expect(result.stderr).toContain("zsh: command not found: nonexistent-xyz");
       expect(result.exitCode).toBe(127);
     });
 
@@ -55,7 +55,7 @@ describe("registry", () => {
       // "colleagues will help you get set up" hint would be a false promise
       for (const cmd of ["snow", "dbt", "git"]) {
         const result = execute(cmd, [], {}, makeCtx());
-        expect(result.output).toContain("command not found");
+        expect(result.stderr).toContain("command not found");
         expect(result.output).not.toContain("not yet available");
         expect(result.exitCode).toBe(127);
       }
@@ -63,7 +63,7 @@ describe("registry", () => {
 
     it("gated-but-unlockable commands on nexacorp still get the colleague hint", () => {
       const result = execute("grep", ["x"], {}, makeCtx());
-      expect(result.output).toContain("not yet available");
+      expect(result.stderr).toContain("not yet available");
     });
 
     it("passes args, flags, and context to the handler", () => {
@@ -98,7 +98,7 @@ describe("registry", () => {
 
     it("returns 'command not found' when neither async nor sync match", async () => {
       const result = await executeAsync("totally-missing-cmd", [], {}, makeCtx());
-      expect(result.output).toContain("command not found");
+      expect(result.stderr).toContain("command not found");
     });
   });
 

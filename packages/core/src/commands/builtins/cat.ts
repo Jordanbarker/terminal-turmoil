@@ -6,7 +6,7 @@ import { colorizeCsv } from "@tt/core/lib/ansi";
 import { highlightSql } from "@tt/core/lib/sqlHighlight";
 import { highlightPython } from "@tt/core/lib/pythonHighlight";
 import { isBinaryFile } from "@tt/core/filesystem/VirtualFS";
-import { readFileForCommand, READ_FAILURE_EXIT } from "../fsErrors";
+import { readFileForCommand, errorResult, READ_FAILURE_EXIT } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function numberLines(text: string, startCounter: { value: number }): string {
@@ -24,10 +24,11 @@ const cat: CommandHandler = (args, flags, ctx) => {
     return { output: numbered ? numberLines(ctx.stdin, counter) : ctx.stdin };
   }
   if (args.length === 0) {
-    return { output: "cat: missing file operand", exitCode: 1 };
+    return errorResult("cat: missing file operand");
   }
 
   const outputs: string[] = [];
+  const errors: string[] = [];
   let hasError = false;
 
   for (const arg of args) {
@@ -36,14 +37,14 @@ const cat: CommandHandler = (args, flags, ctx) => {
 
     if (isBinaryFile(node)) {
       const hint = arg.endsWith(".pdf") ? " — use 'pdftotext' for PDFs or 'file' to inspect" : " — use 'file' to inspect";
-      outputs.push(`cat: ${arg}: binary file${hint}`);
+      errors.push(`cat: ${arg}: binary file${hint}`);
       continue;
     }
 
     const result = readFileForCommand("cat", absolutePath, ctx);
 
     if (result.error) {
-      outputs.push(result.error);
+      errors.push(result.error);
       hasError = true;
     } else if (result.content !== undefined) {
       const raw = result.content;
@@ -58,7 +59,11 @@ const cat: CommandHandler = (args, flags, ctx) => {
     }
   }
 
-  return { output: outputs.join("\n"), exitCode: hasError ? READ_FAILURE_EXIT : 0 };
+  return {
+    output: outputs.join("\n"),
+    ...(errors.length > 0 && { stderr: errors.join("\n") }),
+    exitCode: hasError ? READ_FAILURE_EXIT : 0,
+  };
 };
 
 register("cat", cat, "Display file contents", HELP_TEXTS.cat, true);

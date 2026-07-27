@@ -4,7 +4,7 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { FSNode, isFile, isDirectory } from "@tt/core/filesystem/types";
-import { labelFsError } from "../fsErrors";
+import { labelFsError, errorResult } from "../fsErrors";
 import { HELP_TEXTS } from "./helpTexts";
 
 function buildMoveEvents(srcNode: FSNode, srcPath: string, destPath: string): GameEvent[] {
@@ -27,7 +27,7 @@ function buildMoveEvents(srcNode: FSNode, srcPath: string, destPath: string): Ga
 
 const mv: CommandHandler = (args, _flags, ctx) => {
   if (args.length < 2) {
-    return { output: "mv: missing operand\nUsage: mv SOURCE DEST", exitCode: 1 };
+    return errorResult("mv: missing operand\nUsage: mv SOURCE DEST");
   }
 
   const srcPath = resolvePath(args[0], ctx.cwd, ctx.homeDir);
@@ -35,15 +35,12 @@ const mv: CommandHandler = (args, _flags, ctx) => {
 
   const srcNode = ctx.fs.getNode(srcPath);
   if (!srcNode) {
-    return { output: `mv: cannot stat '${args[0]}': No such file or directory`, exitCode: 1 };
+    return errorResult(`mv: cannot stat '${args[0]}': No such file or directory`);
   }
 
   // Reject same-path self-moves before any retargeting (e.g. `mv b b`).
   if (srcPath === destPath) {
-    return {
-      output: `mv: '${args[0]}' and '${args[1]}' are the same file`,
-      exitCode: 1,
-    };
+    return errorResult(`mv: '${args[0]}' and '${args[1]}' are the same file`);
   }
 
   // If dest exists and is a directory, move source inside it
@@ -53,41 +50,26 @@ const mv: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (srcPath === destPath) {
-    return {
-      output: `mv: '${args[0]}' and '${args[1]}' are the same file`,
-      exitCode: 1,
-    };
+    return errorResult(`mv: '${args[0]}' and '${args[1]}' are the same file`);
   }
 
   // Refuse to move a directory into itself or a descendant
   if (isDirectory(srcNode) && (destPath === srcPath || destPath.startsWith(srcPath + "/"))) {
-    return {
-      output: `mv: cannot move '${args[0]}' to a subdirectory of itself, '${args[1]}'`,
-      exitCode: 1,
-    };
+    return errorResult(`mv: cannot move '${args[0]}' to a subdirectory of itself, '${args[1]}'`);
   }
 
   // If dest already exists at the final retargeted path, decide if overwrite is legal
   const finalDestNode = ctx.fs.getNode(destPath);
   if (finalDestNode) {
     if (isDirectory(srcNode) && isFile(finalDestNode)) {
-      return {
-        output: `mv: cannot overwrite non-directory '${args[1]}' with directory '${args[0]}'`,
-        exitCode: 1,
-      };
+      return errorResult(`mv: cannot overwrite non-directory '${args[1]}' with directory '${args[0]}'`);
     }
     if (isDirectory(srcNode) && isDirectory(finalDestNode)) {
-      return {
-        output: `mv: cannot move '${args[0]}' to '${args[1]}': Directory not empty or already exists`,
-        exitCode: 1,
-      };
+      return errorResult(`mv: cannot move '${args[0]}' to '${args[1]}': Directory not empty or already exists`);
     }
     if (isFile(srcNode) && isDirectory(finalDestNode)) {
       // Shouldn't reach: if dest was a dir, we already retargeted into it.
-      return {
-        output: `mv: cannot overwrite directory '${args[1]}' with non-directory '${args[0]}'`,
-        exitCode: 1,
-      };
+      return errorResult(`mv: cannot overwrite directory '${args[1]}' with non-directory '${args[0]}'`);
     }
   }
 
@@ -105,11 +87,11 @@ const mv: CommandHandler = (args, _flags, ctx) => {
     // mode (the x bit on scripts) and metadata instead of a default 644 file.
     const writeResult = ctx.fs.writeFile(destPath, srcNode.content, srcNode);
     if (writeResult.error) {
-      return { output: labelFsError("mv", writeResult.error), exitCode: 1 };
+      return errorResult(labelFsError("mv", writeResult.error));
     }
     const removeResult = writeResult.fs!.removeNode(srcPath);
     if (removeResult.error) {
-      return { output: labelFsError("mv", removeResult.error), exitCode: 1 };
+      return errorResult(labelFsError("mv", removeResult.error));
     }
     return {
       output: "",
@@ -126,11 +108,11 @@ const mv: CommandHandler = (args, _flags, ctx) => {
   // insertNode renames the subtree root to the destination basename itself.
   const insertResult = ctx.fs.insertNode(destPath, srcNode);
   if (insertResult.error) {
-    return { output: labelFsError("mv", insertResult.error), exitCode: 1 };
+    return errorResult(labelFsError("mv", insertResult.error));
   }
   const removeResult = insertResult.fs!.removeNode(srcPath);
   if (removeResult.error) {
-    return { output: labelFsError("mv", removeResult.error), exitCode: 1 };
+    return errorResult(labelFsError("mv", removeResult.error));
   }
   return {
     output: "",

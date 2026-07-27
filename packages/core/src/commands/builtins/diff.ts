@@ -7,6 +7,7 @@ import { computeDiff, DiffEntry } from "@tt/core/lib/diff";
 import { isDirectory, FSNode } from "@tt/core/filesystem/types";
 import { GameEvent } from "@tt/core";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult, readFileForCommand } from "../fsErrors";
 
 interface Hunk {
   oldStart: number;
@@ -121,13 +122,13 @@ function diffPair(
   label2: string,
   unified: boolean,
 ): { output: string; exitCode: number; error?: boolean } {
-  const file1 = ctx.fs.readFile(path1);
+  const file1 = readFileForCommand("diff", path1, ctx);
   if (file1.error) {
-    return { output: file1.error.replace("cat:", "diff:"), exitCode: 2, error: true };
+    return { output: file1.error, exitCode: 2, error: true };
   }
-  const file2 = ctx.fs.readFile(path2);
+  const file2 = readFileForCommand("diff", path2, ctx);
   if (file2.error) {
-    return { output: file2.error.replace("cat:", "diff:"), exitCode: 2, error: true };
+    return { output: file2.error, exitCode: 2, error: true };
   }
 
   const content1 = file1.content ?? "";
@@ -162,8 +163,9 @@ function recursiveDiff(
   display1: string,
   display2: string,
   unified: boolean,
-): { output: string[]; exitCode: number } {
+): { output: string[]; stderr: string[]; exitCode: number } {
   const out: string[] = [];
+  const errs: string[] = [];
   let exitCode = 0;
   const left = listDirNames(ctx.fs, abs1);
   const right = listDirNames(ctx.fs, abs2);
@@ -184,7 +186,11 @@ function recursiveDiff(
       const childDisp1 = `${display1}/${name}`;
       const childDisp2 = `${display2}/${name}`;
       const r = diffPair(ctx, childAbs1, childAbs2, childDisp1, childDisp2, unified);
-      if (r.output) {
+      // An unreadable child is a diagnostic, not part of the report: it must
+      // not ride the pipe or land in a `diff -r a b > out.diff` target.
+      if (r.error) {
+        errs.push(r.output);
+      } else if (r.output) {
         out.push(`diff -r ${childDisp1} ${childDisp2}`);
         out.push(r.output);
       }
@@ -212,16 +218,17 @@ function recursiveDiff(
         unified,
       );
       out.push(...sub.output);
+      errs.push(...sub.stderr);
       exitCode = Math.max(exitCode, sub.exitCode);
     }
   }
 
-  return { output: out, exitCode };
+  return { output: out, stderr: errs, exitCode };
 }
 
 const diff: CommandHandler = (args, flags, ctx) => {
   if (args.length < 2) {
-    return { output: "diff: missing operand\nUsage: diff FILE1 FILE2", exitCode: 2 };
+    return errorResult("diff: missing operand\nUsage: diff FILE1 FILE2", 2);
   }
 
   const unified = !!flags["u"];
@@ -232,17 +239,25 @@ const diff: CommandHandler = (args, flags, ctx) => {
   if (recursive) {
     const node1 = ctx.fs.getNode(path1);
     const node2 = ctx.fs.getNode(path2);
-    if (!node1) return { output: `diff: ${args[0]}: No such file or directory`, exitCode: 2 };
-    if (!node2) return { output: `diff: ${args[1]}: No such file or directory`, exitCode: 2 };
+    if (!node1) return errorResult(`diff: ${args[0]}: No such file or directory`, 2);
+    if (!node2) return errorResult(`diff: ${args[1]}: No such file or directory`, 2);
     if (isDirectory(node1) && isDirectory(node2)) {
       const r = recursiveDiff(ctx, path1, path2, args[0], args[1], unified);
-      return { output: r.output.join("\n"), exitCode: r.exitCode };
+      return {
+        output: r.output.join("\n"),
+        ...(r.stderr.length > 0 && { stderr: r.stderr.join("\n") }),
+        exitCode: r.exitCode,
+      };
     }
     // Fall through to single-file diff if neither is a directory
   }
 
   const r = diffPair(ctx, path1, path2, args[0], args[1], unified);
-  const result: CommandResult = { output: r.output, exitCode: r.exitCode };
+  // `r.error` marks an unreadable operand (stderr). A plain exit-1 diff is a
+  // real report on stdout, so it must keep piping and redirecting.
+  const result: CommandResult = r.error
+    ? errorResult(r.output, r.exitCode)
+    : { output: r.output, exitCode: r.exitCode };
 
   // Story trigger: discovered_log_tampering when comparing .bak and current log
   const hasBak = args.some((a) => a.includes(".bak"));

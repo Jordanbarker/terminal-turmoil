@@ -2,6 +2,7 @@ import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
 import { rejectUnknownFlags, skipFlagValidation, KnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 import { realWallClock } from "@tt/core/commands/clock";
 import {
   findRepoRoot,
@@ -119,36 +120,36 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
 
   if (subcommand === "clone") {
     const url = subArgs[0];
-    if (!url) return { output: "usage: git clone <repository> [<directory>]", exitCode: 129 };
+    if (!url) return errorResult("usage: git clone <repository> [<directory>]", 129);
     if (flags["b"] === true) {
-      return { output: "error: switch `b' requires a value", exitCode: 129 };
+      return errorResult("error: switch `b' requires a value", 129);
     }
     const branch = typeof flags["b"] === "string" ? flags["b"] : undefined;
     const depth = typeof flags["depth"] === "string" ? parseInt(flags["depth"]) : undefined;
     const result = gitClone(ctx.fs, ctx.cwd, url, author, branch, depth);
-    if (result.error) return { output: result.error, exitCode: 128 };
+    if (result.error) return errorResult(result.error, 128);
     return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
   }
 
   // All other commands require a repo
   const root = findRepoRoot(ctx.fs, ctx.cwd);
-  if (!root) return { output: NOT_A_REPO, exitCode: 128 };
+  if (!root) return errorResult(NOT_A_REPO, 128);
 
   switch (subcommand) {
     case "add": {
       const allFlag = !!flags["A"] || !!flags["all"];
       const paths = subArgs.length > 0 ? subArgs : (allFlag ? ["."] : []);
-      if (paths.length === 0) return { output: "Nothing specified, nothing added.\nhint: Maybe you wanted to say 'git add .'?", exitCode: 1 };
+      if (paths.length === 0) return errorResult("Nothing specified, nothing added.\nhint: Maybe you wanted to say 'git add .'?", 1);
       const result = gitAdd(ctx.fs, root, ctx.cwd, paths, allFlag);
-      if (result.error) return { output: result.error, exitCode: 128 };
+      if (result.error) return errorResult(result.error, 128);
       return { output: result.output, newFs: result.fs };
     }
 
     case "rm": {
-      if (subArgs.length === 0) return { output: "usage: git rm [<options>] [--] <file>...", exitCode: 129 };
+      if (subArgs.length === 0) return errorResult("usage: git rm [<options>] [--] <file>...", 129);
       const recursive = !!flags["r"];
       const result = gitRm(ctx.fs, root, subArgs, recursive);
-      if (result.error) return { output: result.error, exitCode: 128 };
+      if (result.error) return errorResult(result.error, 128);
       return { output: result.output, newFs: result.fs };
     }
 
@@ -158,21 +159,18 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       if (message === null && !amend) {
         if (flags["m"] === true) {
           // -m given with no value
-          return { output: "error: switch `m' requires a value", exitCode: 129 };
+          return errorResult("error: switch `m' requires a value", 129);
         }
         // No -m at all: real git would open an editor; we have none.
-        return {
-          output: "error: Terminal is dumb, but EDITOR unset\nPlease supply the message using either -m or -F option.",
-          exitCode: 1,
-        };
+        return errorResult("error: Terminal is dumb, but EDITOR unset\nPlease supply the message using either -m or -F option.", 1);
       }
       if (message === "" && !amend) {
-        return { output: "Aborting commit due to empty commit message.", exitCode: 1 };
+        return errorResult("Aborting commit due to empty commit message.", 1);
       }
       const autoStage = !!flags["a"];
       const timestamp = (ctx.clock ?? realWallClock()).now().getTime();
       const result = gitCommit(ctx.fs, root, message ?? "", author, amend, autoStage, timestamp);
-      if (result.error) return { output: result.error, exitCode: 1 };
+      if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs };
     }
 
@@ -192,17 +190,17 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "branch": {
       if (flags["d"] || flags["D"]) {
         const name = subArgs[0];
-        if (!name) return { output: "fatal: branch name required", exitCode: 128 };
+        if (!name) return errorResult("fatal: branch name required", 128);
         const result = deleteBranch(ctx.fs, root, name, !!flags["D"]);
-        if (result.error) return { output: result.error, exitCode: 1 };
+        if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }
       if (subArgs[0]) {
         if (flags["a"] || flags["r"]) {
-          return { output: "fatal: branch name required", exitCode: 128 };
+          return errorResult("fatal: branch name required", 128);
         }
         const result = createBranch(ctx.fs, root, subArgs[0]);
-        if (result.error) return { output: result.error, exitCode: 128 };
+        if (result.error) return errorResult(result.error, 128);
         return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
       }
       const mode: BranchListMode = flags["a"] ? "all" : flags["r"] ? "remotes" : "local";
@@ -213,36 +211,36 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "checkout": {
       const create = !!flags["b"];
       if (flags["b"] === true) {
-        return { output: "error: switch `b' requires a value", exitCode: 129 };
+        return errorResult("error: switch `b' requires a value", 129);
       }
       if (flags["b"] === "") {
-        return { output: "fatal: '' is not a valid branch name", exitCode: 128 };
+        return errorResult("fatal: '' is not a valid branch name", 128);
       }
       // With -b the new branch name is the flag's value; any positional is a
       // start-point, which the sim doesn't model.
       const target = create ? (flags["b"] as string) : subArgs[0];
-      if (!target) return { output: "error: you must specify a branch to checkout", exitCode: 1 };
+      if (!target) return errorResult("error: you must specify a branch to checkout", 1);
       const result = gitCheckout(ctx.fs, root, target, create);
-      if (result.error) return { output: result.error, exitCode: 1 };
+      if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 
     case "switch": {
       const create = !!flags["c"];
       if (flags["c"] === true) {
-        return { output: "error: switch `c' requires a value", exitCode: 129 };
+        return errorResult("error: switch `c' requires a value", 129);
       }
       if (flags["c"] === "") {
-        return { output: "fatal: '' is not a valid branch name", exitCode: 128 };
+        return errorResult("fatal: '' is not a valid branch name", 128);
       }
       const target = create ? (flags["c"] as string) : subArgs[0];
-      if (!target) return { output: "fatal: missing branch or commit argument", exitCode: 128 };
+      if (!target) return errorResult("fatal: missing branch or commit argument", 128);
       const result = gitCheckout(ctx.fs, root, target, create);
       if (result.error) {
         const msg = result.error.startsWith("error: pathspec")
           ? `fatal: invalid reference: ${target}`
           : result.error;
-        return { output: msg, exitCode: 128 };
+        return errorResult(msg, 128);
       }
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
@@ -250,27 +248,27 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "rebase": {
       if (flags["abort"]) {
         const result = gitRebaseAbort(ctx.fs, root);
-        if (result.error) return { output: result.error, exitCode: 128 };
+        if (result.error) return errorResult(result.error, 128);
         return { output: result.output, newFs: result.fs };
       }
       if (flags["continue"]) {
         const result = gitRebaseContinue(ctx.fs, root);
-        if (result.error) return { output: result.error, exitCode: 1 };
+        if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }
       const result = gitRebase(ctx.fs, root, subArgs[0]);
-      if (result.error) return { output: result.error, exitCode: result.error.startsWith("fatal:") ? 128 : 1 };
+      if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
       return { output: result.output, newFs: result.fs };
     }
 
     case "reset": {
       const modes = (["soft", "mixed", "hard"] as const).filter((m) => flags[m]);
       if (modes.length > 1) {
-        return { output: `fatal: options '--${modes[0]}' and '--${modes[1]}' cannot be used together`, exitCode: 128 };
+        return errorResult(`fatal: options '--${modes[0]}' and '--${modes[1]}' cannot be used together`, 128);
       }
       const mode: GitResetMode | null = modes[0] ?? null;
       const result = gitReset(ctx.fs, root, ctx.cwd, subArgs, mode);
-      if (result.error) return { output: result.error, exitCode: 128 };
+      if (result.error) return errorResult(result.error, 128);
       return { output: result.output, newFs: result.fs };
     }
 
@@ -285,18 +283,18 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       if (!stashSub || stashSub === "push") {
         const includeUntracked = !!flags["u"] || !!flags["include-untracked"];
         const result = gitStashSave(ctx.fs, root, includeUntracked);
-        if (result.error) return { output: result.error, exitCode: 1 };
+        if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }
       if (stashSub === "pop") {
         const result = gitStashPop(ctx.fs, root);
-        if (result.error) return { output: result.error, exitCode: 1 };
+        if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }
       if (stashSub === "list") {
         return { output: gitStashList(ctx.fs, root) };
       }
-      return { output: `error: unknown subcommand: ${stashSub}`, exitCode: 129 };
+      return errorResult(`error: unknown subcommand: ${stashSub}`, 129);
     }
 
     case "push": {
@@ -305,7 +303,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       const setUpstream = !!flags["u"];
       const force = !!flags["f"];
       const result = gitPush(ctx.fs, root, remote, branch, setUpstream, force);
-      if (result.error) return { output: result.error, exitCode: 1 };
+      if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 
@@ -313,7 +311,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       const remote = subArgs[0];
       const branch = subArgs[1];
       const result = gitPull(ctx.fs, root, remote, branch, ctx.storyFlags ?? {}, !!flags["ff-only"]);
-      if (result.error) return { output: result.error, exitCode: 1 };
+      if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 
@@ -321,7 +319,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       return { output: HELP_TEXTS.git };
 
     default:
-      return { output: `git: '${subcommand}' is not a git command. See 'git help'.`, exitCode: 1 };
+      return errorResult(`git: '${subcommand}' is not a git command. See 'git help'.`, 1);
   }
 };
 

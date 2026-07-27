@@ -53,6 +53,13 @@ export interface StoryFlagUpdate {
 
 export interface AppliedEffects {
   clearScreen: boolean;
+  /**
+   * Everything the terminal should print: the command's stderr (diagnostics)
+   * followed by its stdout. The two are merged here — a real terminal shows
+   * both on the same screen — so every write path (both apps' xterm hooks and
+   * the headless runner) gets stderr for free. Only `CommandResult.output` is
+   * ever piped or redirected; see `CommandResult.stderr`.
+   */
   output: string;
   newFs?: VirtualFS;
   newCwd?: string;
@@ -110,7 +117,7 @@ export function computeEffects(
 ): AppliedEffects {
   const effects: AppliedEffects = {
     clearScreen: !!result.clearScreen,
-    output: result.output || "",
+    output: [result.stderr, result.output].filter(Boolean).join("\n"),
     events: [],
     storyFlagUpdates: [],
     newDeliveredEmailIds: [],

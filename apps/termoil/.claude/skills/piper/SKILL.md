@@ -29,6 +29,8 @@ Player action → `GameEvent` → `computeEffects()` calls `checkPiperDeliveries
 
 Two views (channel list ↔ conversation); arrows/number keys, Enter select, `q` back/exit. On exit, collected trigger events + updated `deliveredPiperIds` (replies + seen markers) sync back via `useSessionRouter`. Selecting a reply adds the reply ID to `deliveredPiperIds`, collects its trigger events, and re-renders with the player's message inline.
 
+**A channel can hold several unanswered reply prompts at once**, and every one of them stays answerable. `getPendingReplies` lists them oldest-first (delivery order, not definition order); `pickVisibleReply` in `PiperSession.ts` takes the oldest whose options aren't all gated away, and answering it surfaces the next. Never assume a delivery supersedes an earlier prompt in the same channel: reply-gated unlocks (Oscar's `search_tools_accepted`, Auri's `inspection_tools_accepted`) are only reachable through their own prompt, so a "newest wins" rule silently deletes them from the game.
+
 **Multi-digit menu selection** (`consumeDigit()` in `PiperSession.ts`) — the menu can exceed 9 items. A digit `d` commits when `(buffer+d)*10 > menuLength` (no longer selection reachable); otherwise it's buffered until Enter or another digit. Any non-digit/non-Enter clears the buffer. Footer shows the in-progress buffer as `[NN_]`. Same rule for the reply menu.
 
 ## Dynamic timestamps — segment interpolation
