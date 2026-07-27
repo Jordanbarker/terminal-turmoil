@@ -5,7 +5,7 @@ import { runPipeline } from "@tt/core/commands/runPipeline";
 import { computeEffects, type ApplyContext, type SessionToStart } from "@tt/core/commands/applyResult";
 import type { TmuxAction } from "@tt/core/commands/types";
 import { parseZshHistory, appendZshHistory } from "@tt/core/terminal/zshHistory";
-import { findLeaf } from "@tt/core/terminal/paneTypes";
+import { allLeaves, findLeaf } from "@tt/core/terminal/paneTypes";
 import type { SuggestionContext } from "@tt/core/suggestions/suggest";
 // Side-effect import: registers every builtin (ls/cd/cat/git/echo/...) into the registry.
 import "@tt/core/commands/builtins";
@@ -19,6 +19,23 @@ import { useGameStore } from "../state/gameStore";
 import { CRUNCH_MACHINE, HOME_DIR, USERNAME, GIT_AUTHOR } from "../lib/machine";
 
 const HIST_PATH = `${HOME_DIR}/.zsh_history`;
+
+/**
+ * `$?` per pane. Shell state, not game state: each pane is its own shell, so a
+ * new pane starts at 0. It lives here rather than in the store because it must
+ * not be persisted — reloading starts a new shell, where `$?` is 0.
+ *
+ * Entries are pruned against the live pane set on each line rather than hooked
+ * into `closePane`: `loadChallenge` reseeds the whole window tree, so pane
+ * teardown is not the only way a pane id stops existing.
+ */
+const lastExitCode = new Map<string, number>();
+
+function pruneShellState(livePaneIds: Set<string>): void {
+  for (const id of lastExitCode.keys()) {
+    if (!livePaneIds.has(id)) lastExitCode.delete(id);
+  }
+}
 
 /** Convert engine `\n` line breaks to terminal `\r\n`. */
 function writeOut(term: Terminal, text: string): void {
@@ -78,6 +95,7 @@ export async function runLine(
   const store = useGameStore.getState();
   const win = store.windows.find((w) => findLeaf(w.root, paneId));
   const startCwd = win ? findLeaf(win.root, paneId)?.cwd ?? HOME_DIR : HOME_DIR;
+  pruneShellState(new Set(store.windows.flatMap((w) => allLeaves(w.root)).map((l) => l.id)));
 
   const expanded = expandAliases(input, store.aliases);
   const chain = parseChainedPipeline(expanded);
@@ -97,11 +115,16 @@ export async function runLine(
   let tmuxAction: TmuxAction | undefined;
 
   if (!empty) {
+    // Last line of defence: an engine throw must not reject out of runLine and
+    // leave the pane with no prompt and no way back. Report it and carry on to
+    // the shell-state commit below.
+    try {
     const run = await runPipeline({
       chain,
       fs: store.fs,
       cwd: startCwd,
       homeDir: HOME_DIR,
+      initialExitCode: lastExitCode.get(paneId),
       buildContext: ({ fs, cwd, stdin, rawArgs, isPiped }) => ({
         fs,
         cwd,
@@ -178,6 +201,11 @@ export async function runLine(
     // fall back to the loop's accumulated FS when no segment produced one.
     if (runningFs === store.fs) runningFs = run.fs;
     runningCwd = run.cwd;
+    lastExitCode.set(paneId, run.lastExitCode); // `$?` for the next line in this pane
+    } catch (err) {
+      console.error("[runLine]", err);
+      writeOut(term, "\x1b[31mzsh: internal error \u2014 the command was aborted\x1b[0m\n");
+    }
   }
 
   // Append to history, then commit shell state to the store.

@@ -5,6 +5,7 @@ import { AsyncCommandHandler, CommandContext, CommandResult } from "@tt/core/com
 import { parsePipeline, parseInput, parseChainedPipeline } from "../parser";
 import { execute, executeAsync, isAsyncCommand } from "../registry";
 import { applyRedirection, extractStdoutRedirect, precheckRedirects } from "../redirection";
+import { expandVariablesQuoteAware, makeShellLookup, VariableLookup } from "../expansion";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { HELP_TEXTS } from "./helpTexts";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
@@ -262,94 +263,36 @@ function parseScript(content: string): ScriptNode[] {
 // Variable expansion
 // ---------------------------------------------------------------------------
 
-/** Expand shell variables in text, respecting quote boundaries. Does NOT touch $(...). */
-function expandVariables(
-  text: string,
-  variables: Map<string, string>,
-  positionalArgs?: string[],
-): string {
-  let result = "";
-  let inSingle = false;
-  let i = 0;
+/**
+ * Script-local variables layered over the machine's environment, as the one
+ * `VariableLookup` the shared expander needs. A `NAME=value` line in the script
+ * shadows an exported var of the same name for the rest of the run; anything
+ * the script never sets falls through to `ctx.envVars` (plus the shell-managed
+ * `HOME`/`USER`/`PWD`), so `$HOME` in a script means the same thing it means at
+ * the prompt.
+ *
+ * `$?` is deliberately absent: the script runner tracks its exit codes per
+ * nesting level and has never offered `$?`, so the shared expander leaves it as
+ * literal text here (it only substitutes when the lookup answers).
+ */
+function scriptLookup(exec: ExecContext): VariableLookup {
+  const envLookup = makeShellLookup({
+    envVars: exec.ctx.envVars,
+    homeDir: exec.ctx.homeDir,
+    username: exec.ctx.username,
+    cwd: exec.ctx.cwd,
+  });
+  return (name) => (exec.variables.has(name) ? exec.variables.get(name) : envLookup(name));
+}
 
-  while (i < text.length) {
-    const ch = text[i];
-
-    // Track single quotes (no expansion inside)
-    if (ch === "'" && !inSingle) {
-      inSingle = true;
-      result += ch;
-      i++;
-      continue;
-    }
-    if (ch === "'" && inSingle) {
-      inSingle = false;
-      result += ch;
-      i++;
-      continue;
-    }
-    if (inSingle) {
-      result += ch;
-      i++;
-      continue;
-    }
-
-    // Skip $(...) — command substitution handled separately
-    if (ch === "$" && i + 1 < text.length && text[i + 1] === "(") {
-      // Copy through the entire $(...) block
-      const closeIdx = findMatchingParen(text, i + 2);
-      if (closeIdx === -1) {
-        result += text.slice(i);
-        break;
-      }
-      result += text.slice(i, closeIdx + 1);
-      i = closeIdx + 1;
-      continue;
-    }
-
-    // ${VAR:-default} or ${VAR}
-    if (ch === "$" && i + 1 < text.length && text[i + 1] === "{") {
-      const closeIdx = text.indexOf("}", i + 2);
-      if (closeIdx === -1) {
-        result += ch;
-        i++;
-        continue;
-      }
-      const inner = text.slice(i + 2, closeIdx);
-      const defaultMatch = inner.match(/^(\w+):-(.*)$/);
-      if (defaultMatch) {
-        const val = variables.get(defaultMatch[1]);
-        result += val !== undefined ? val : defaultMatch[2];
-      } else {
-        result += variables.get(inner) ?? "";
-      }
-      i = closeIdx + 1;
-      continue;
-    }
-
-    // $N positional args
-    if (ch === "$" && positionalArgs && i + 1 < text.length && /[1-9]/.test(text[i + 1])) {
-      const idx = parseInt(text[i + 1]) - 1;
-      result += positionalArgs[idx] ?? "";
-      i += 2;
-      continue;
-    }
-
-    // $VAR
-    if (ch === "$" && i + 1 < text.length && /[A-Za-z_]/.test(text[i + 1])) {
-      const varMatch = text.slice(i + 1).match(/^[A-Za-z_]\w*/);
-      if (varMatch) {
-        result += variables.get(varMatch[0]) ?? "";
-        i += 1 + varMatch[0].length;
-        continue;
-      }
-    }
-
-    result += ch;
-    i++;
-  }
-
-  return result;
+/**
+ * Expand shell variables in a script line. Globbing is NOT applied: the
+ * interactive shell globs in `runPipeline`, which scripts do not go through,
+ * and the authored `.sh` files in the games rely on their patterns staying
+ * literal.
+ */
+function expandVariables(exec: ExecContext, text: string): string {
+  return expandVariablesQuoteAware(text, scriptLookup(exec), exec.positionalArgs);
 }
 
 // ---------------------------------------------------------------------------
@@ -721,7 +664,7 @@ async function applyAssignment(
     return { fs, cwd };
   }
 
-  const varExpanded = expandVariables(unquoted, exec.variables, exec.positionalArgs);
+  const varExpanded = expandVariables(exec, unquoted);
   const subExpanded = await expandSubstitutions(
     varExpanded, exec.ctx, fs, cwd, state, 0,
   );
@@ -767,7 +710,7 @@ async function executeNodes(
 
       case "if": {
         // Execute condition
-        const condExpanded = expandVariables(node.condition, exec.variables, exec.positionalArgs);
+        const condExpanded = expandVariables(exec, node.condition);
         const condSub = await expandSubstitutions(
           condExpanded, exec.ctx, fs, cwd, exec.state, 0,
         );
@@ -799,7 +742,7 @@ async function executeNodes(
 
       case "command": {
         // Expand variables, then command substitutions
-        let expanded = expandVariables(node.text, exec.variables, exec.positionalArgs);
+        let expanded = expandVariables(exec, node.text);
         const subExpanded = await expandSubstitutions(
           expanded, exec.ctx, fs, cwd, exec.state, 0,
         );

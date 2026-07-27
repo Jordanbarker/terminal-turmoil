@@ -156,6 +156,12 @@ export function useTerminal() {
   const initLeaf = getActiveLeaf(initState);
   const cwdRef = useRef(initLeaf?.cwd ?? `/home/${initState.username}`);
   const activeComputerRef = useRef<ComputerId>((initLeaf?.computerId ?? "home") as ComputerId);
+  /**
+   * `$?` per pane. It is shell state, not game state: each pane is its own
+   * shell, so it is keyed by pane and dropped with the pane, and it is
+   * deliberately NOT persisted — a reload starts a new shell, where `$?` is 0.
+   */
+  const lastExitCodeRef = useRef(new Map<string, number>());
 
   // Sync refs whenever the active pane changes (split, focus move, window switch, …)
   useEffect(() => {
@@ -574,6 +580,7 @@ export function useTerminal() {
           cwd: cwdRef.current,
           homeDir,
           mounts: initialMounts,
+          initialExitCode: submittingPaneId ? lastExitCodeRef.current.get(submittingPaneId) : undefined,
           buildContext: ({ fs, cwd, stdin, rawArgs, isPiped, mounts }) =>
             buildCommandContext(fs, cwd, computerId, homeDir, stdin, rawArgs, isPiped, useGameStore.getState(), mounts),
           write: (t) => term.write(t),
@@ -586,6 +593,9 @@ export function useTerminal() {
             applyCommandResult(cmdResult, parsedCmd, state.fs, isFinal),
         });
         let runningFs = run.fs;
+
+        // `$?` for the next line typed in THIS pane (see lastExitCodeRef).
+        if (submittingPaneId) lastExitCodeRef.current.set(submittingPaneId, run.lastExitCode);
 
         // Append command to .zsh_history in the virtual filesystem (HIST_IGNORE_DUPS)
         if (!result.skipHistory) {
@@ -611,6 +621,14 @@ export function useTerminal() {
         if (!run.earlyReturn) {
           writePrompt(term);
         }
+        } catch (err) {
+          // Last line of defence. An engine throw used to reach
+          // enqueueCommand's `.catch`, which logs and moves on — leaving the
+          // player at a dead terminal with no prompt and the input gate about
+          // to release into nothing. Surface it and hand the shell back.
+          console.error("[useTerminal]", err);
+          term.write("\r\n" + colorize("zsh: internal error — the command was aborted", ansi.red));
+          writePrompt(term);
         } finally {
           // No-op if an incrementalLines animation took ownership of the gate;
           // that stream releases it when the last line lands.
@@ -627,7 +645,10 @@ export function useTerminal() {
     startSession: sessionRouter.startSession,
     canCloseCurrentSession: sessionRouter.canCloseCurrentSession,
     getActiveSessionType: sessionRouter.getActiveSessionType,
-    cleanupPane: sessionRouter.cleanupPane,
+    cleanupPane: (paneId: string) => {
+      lastExitCodeRef.current.delete(paneId); // the pane's shell is gone; so is its `$?`
+      sessionRouter.cleanupPane(paneId);
+    },
     resizeActiveSession: sessionRouter.resizeActiveSession,
     resizePaneSession: sessionRouter.resizePaneSession,
   };

@@ -18,7 +18,8 @@ globalThis.localStorage = {
 } as Storage;
 
 // Engine imports (no React/Zustand dependency)
-import { parseChainedPipeline, parseInput, expandAliases } from "@tt/core/commands/parser";
+import { parseChainedPipeline, parseInput, parsedFromTokens, expandAliases } from "@tt/core/commands/parser";
+import { expandWords, makeShellLookup } from "@tt/core/commands/expansion";
 import { execute, executeAsync, isAsyncCommand, commandReadsFiles } from "@tt/core/commands/registry";
 import { isChainEarlyReturn } from "@tt/core/commands/runPipeline";
 import "../src/engine/commands/builtins"; // side-effect: registers all commands
@@ -116,6 +117,12 @@ export class GameRunner {
   pendingPrompt: PromptSessionInfo | null;
   /** Set by a load/cheat/newgame gameAction; consumed by appendZshHistory. */
   private stateReloaded: boolean;
+  /**
+   * `$?` for the NEXT line — the browser's per-pane `lastExitCodeRef`. The
+   * runner is one shell, so it is one field, reset wherever the browser would
+   * be handing the player a new shell (machine switch, checkpoint/save load).
+   */
+  private lastExitCode: number;
   envVars: Partial<Record<ComputerId, Record<string, string>>>;
   aliases: Partial<Record<ComputerId, Record<string, string>>>;
   mounts: Record<ComputerId, Mounts>;
@@ -133,6 +140,7 @@ export class GameRunner {
     this.currentChapter = "chapter-1";
     this.pendingPrompt = null;
     this.stateReloaded = false;
+    this.lastExitCode = 0;
     this.envVars = {};
     this.aliases = {};
     this.mounts = { home: {}, nexacorp: {}, devcontainer: {}, chipinfra: {}, "erik-pc": {} };
@@ -190,7 +198,12 @@ export class GameRunner {
    * which useTerminal.ts uses. Keep the two in sync by hand — the copied bits
    * are `intermediateFileReads` + `finishSegment` below, plus the `&&`/`||`/`;`
    * operator gating, `prepareSegment`'s redirect-extract -> precheck ->
-   * parseInput(stripped) ordering, the
+   * parseInput(stripped) -> word-expansion ordering (runPipeline's
+   * `expandSegmentWords`, including its `/[$*?[]/` fast path and the set of
+   * `makeShellLookup` sources), the `rejected` path that keeps a nomatch out of
+   * computeEffects (runPipeline's `rejectSegment` never calls `applySegment`),
+   * the cross-line `$?` seeding (`RunPipelineOptions.initialExitCode`, here the
+   * `lastExitCode` field), the
    * `isPiped = pi < len-1 || redirects.length > 0` expression, and the
    * `stdin = stripAnsi(lastResult.output)` threading:
    *   1. `runPipeline` is `async`. `run()` cannot be, because the play scripts
@@ -208,7 +221,7 @@ export class GameRunner {
     if (parseError) return this.parseErrorOutput(parseError);
     if (empty) return this.emptyOutput();
 
-    let lastExitCode = 0;
+    let lastExitCode = this.lastExitCode;
     let merged: CommandOutput | null = null;
 
     for (const seg of chain) {
@@ -216,9 +229,9 @@ export class GameRunner {
       if (seg.operator === "||" && lastExitCode === 0) continue;
       // ';' and null (first): always execute
 
-      const { result, lastParsed } = this.runSegmentPipelineSync(seg);
+      const { result, lastParsed, rejected } = this.runSegmentPipelineSync(seg, lastExitCode);
       lastExitCode = result.exitCode ?? 0;
-      const segOut = this.applyEffects(result, lastParsed);
+      const segOut = rejected ? this.rejectedOutput(result.stderr!) : this.applyEffects(result, lastParsed);
       merged = merged ? this.mergeOutputs(merged, segOut) : segOut;
       if (isChainEarlyReturn(result)) break;
     }
@@ -226,6 +239,7 @@ export class GameRunner {
     this.appendZshHistory(input);
     const out = merged ?? this.emptyOutput();
     out.exitCode = lastExitCode;
+    this.lastExitCode = lastExitCode;
     return out;
   }
 
@@ -236,16 +250,16 @@ export class GameRunner {
     if (parseError) return this.parseErrorOutput(parseError);
     if (empty) return this.emptyOutput();
 
-    let lastExitCode = 0;
+    let lastExitCode = this.lastExitCode;
     let merged: CommandOutput | null = null;
 
     for (const seg of chain) {
       if (seg.operator === "&&" && lastExitCode !== 0) continue;
       if (seg.operator === "||" && lastExitCode === 0) continue;
 
-      const { result, lastParsed } = await this.runSegmentPipelineAsync(seg);
+      const { result, lastParsed, rejected } = await this.runSegmentPipelineAsync(seg, lastExitCode);
       lastExitCode = result.exitCode ?? 0;
-      const segOut = this.applyEffects(result, lastParsed);
+      const segOut = rejected ? this.rejectedOutput(result.stderr!) : this.applyEffects(result, lastParsed);
       merged = merged ? this.mergeOutputs(merged, segOut) : segOut;
       if (isChainEarlyReturn(result)) break;
     }
@@ -253,6 +267,7 @@ export class GameRunner {
     this.appendZshHistory(input);
     const out = merged ?? this.emptyOutput();
     out.exitCode = lastExitCode;
+    this.lastExitCode = lastExitCode;
     return out;
   }
 
@@ -310,9 +325,12 @@ export class GameRunner {
   /**
    * Strip redirection from a segment's pipeline: `2>` tokens from every stage
    * (mirrors runPipeline — leaving them in makes `2>/dev/null` a file operand),
-   * `>`/`>>` from the last one only.
+   * `>`/`>>` from the last one only. Then run the word expansions (`$VAR`, then
+   * globs) over every stage's argv, which is runPipeline's `expandSegmentWords`
+   * — it has to come *after* the redirect split (targets are never expanded)
+   * and inside the chain loop, so `$?` and a just-`export`ed var are current.
    */
-  private prepareSegment(seg: ChainSegment) {
+  private prepareSegment(seg: ChainSegment, lastExitCode: number) {
     const pipeline = [...seg.pipeline];
     let stderrMode: StderrMode = "default";
     let syntaxError: string | undefined;
@@ -331,19 +349,41 @@ export class GameRunner {
     const { command: stripped, redirects } = extracted;
     syntaxError ??= extracted.parseError;
     if (syntaxError) {
-      return { pipeline, redirects, stderrMode, parseError: syntaxError };
+      return { pipeline, redirects, stderrMode, parseError: syntaxError, expansionError: undefined };
     }
     if (extracted.stderrMode !== "default") stderrMode = extracted.stderrMode;
     if (redirects.length > 0) {
       const precheckError = precheckRedirects(redirects, this.cwd, this.fs.homeDir, this.fs);
       if (precheckError) {
-        return { pipeline, redirects, stderrMode, parseError: precheckError };
+        return { pipeline, redirects, stderrMode, parseError: precheckError, expansionError: undefined };
       }
     }
     if (stripped !== lastSegment.raw.trim()) {
       pipeline[pipeline.length - 1] = parseInput(stripped);
     }
-    return { pipeline, redirects, stderrMode, parseError: undefined };
+
+    const lookup = makeShellLookup({
+      envVars: this.envVars[this.activeComputer],
+      homeDir: this.fs.homeDir,
+      username: this.username,
+      cwd: this.cwd,
+      lastExitCode,
+    });
+    for (let pi = 0; pi < pipeline.length; pi++) {
+      const raw = pipeline[pi].raw;
+      if (!pipeline[pi].command || !/[$*?[]/.test(raw)) continue;
+      const { tokens, error } = expandWords(raw, {
+        fs: this.fs, cwd: this.cwd, homeDir: this.fs.homeDir, lookup,
+      });
+      // nomatch is NOT a redirect parse error: runPipeline rejects the segment
+      // without ever calling applySegment, so the mirror must skip
+      // computeEffects too or every failed glob emits a phantom
+      // `command_executed` event with an empty detail.
+      if (error) return { pipeline, redirects, stderrMode, parseError: undefined, expansionError: error };
+      pipeline[pi] = parsedFromTokens(tokens, raw);
+    }
+
+    return { pipeline, redirects, stderrMode, parseError: undefined, expansionError: undefined };
   }
 
   /**
@@ -364,13 +404,15 @@ export class GameRunner {
   }
 
   /** Execute one chain segment's pipeline synchronously. */
-  private runSegmentPipelineSync(seg: ChainSegment): { result: CommandResult; lastParsed: ParsedCommand } {
-    const { pipeline, redirects, stderrMode, parseError } = this.prepareSegment(seg);
-    if (parseError) {
-      // The command never runs (zsh opens redirect targets before exec)
+  private runSegmentPipelineSync(seg: ChainSegment, lastExitCode: number): { result: CommandResult; lastParsed: ParsedCommand; rejected?: boolean } {
+    const { pipeline, redirects, stderrMode, parseError, expansionError } = this.prepareSegment(seg, lastExitCode);
+    if (parseError || expansionError) {
+      // The command never runs (zsh opens redirect targets, and resolves globs,
+      // before exec). `rejected` keeps the nomatch case out of computeEffects.
       return {
-        result: { output: "", stderr: parseError, exitCode: 1 },
+        result: { output: "", stderr: (parseError ?? expansionError)!, exitCode: 1 },
         lastParsed: { command: "", args: [], flags: {}, raw: "", rawArgs: [] },
+        rejected: !!expansionError,
       };
     }
 
@@ -469,13 +511,15 @@ export class GameRunner {
   }
 
   /** Execute one chain segment's pipeline, awaiting async commands. */
-  private async runSegmentPipelineAsync(seg: ChainSegment): Promise<{ result: CommandResult; lastParsed: ParsedCommand }> {
-    const { pipeline, redirects, stderrMode, parseError } = this.prepareSegment(seg);
-    if (parseError) {
-      // The command never runs (zsh opens redirect targets before exec)
+  private async runSegmentPipelineAsync(seg: ChainSegment, lastExitCode: number): Promise<{ result: CommandResult; lastParsed: ParsedCommand; rejected?: boolean }> {
+    const { pipeline, redirects, stderrMode, parseError, expansionError } = this.prepareSegment(seg, lastExitCode);
+    if (parseError || expansionError) {
+      // The command never runs (zsh opens redirect targets, and resolves globs,
+      // before exec). `rejected` keeps the nomatch case out of computeEffects.
       return {
-        result: { output: "", stderr: parseError, exitCode: 1 },
+        result: { output: "", stderr: (parseError ?? expansionError)!, exitCode: 1 },
         lastParsed: { command: "", args: [], flags: {}, raw: "", rawArgs: [] },
+        rejected: !!expansionError,
       };
     }
 
@@ -643,6 +687,7 @@ export class GameRunner {
   /** Switch to a different computer (instant transition). */
   switchComputer(to: ComputerId): void {
     this.activeComputer = to;
+    this.lastExitCode = 0; // new machine, new shell
     const shellUser = getComputerUsername(to, this.username);
     const homeDir = `/home/${shellUser}`;
     if (to === "devcontainer") {
@@ -696,6 +741,17 @@ export class GameRunner {
   }
 
   // ── Private ─────────────────────────────────────────────────────────
+
+  /**
+   * A segment the shell refused to run (nomatch). Mirrors runPipeline's
+   * `rejectSegment`: the message goes straight to the terminal in red, with no
+   * computeEffects pass, so no `command_executed` event is emitted for a line
+   * that never executed.
+   */
+  private rejectedOutput(message: string): CommandOutput {
+    const raw = colorize(message, ansi.red);
+    return { ...this.emptyOutput(), output: stripAnsi(raw), rawOutput: raw, exitCode: 1 };
+  }
 
   private emptyOutput(): CommandOutput {
     return {
@@ -905,6 +961,7 @@ export class GameRunner {
 
   /** Drop every per-computer session map, as a whole-store `set()` would. */
   private resetPerComputerState(): void {
+    this.lastExitCode = 0; // a reload hands the player a fresh shell
     this.envVars = {};
     this.aliases = {};
     this.mounts = { home: {}, nexacorp: {}, devcontainer: {}, chipinfra: {}, "erik-pc": {} };

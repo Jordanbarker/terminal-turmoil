@@ -321,28 +321,84 @@ export function analyzeIncompleteInput(input: string): { kind: ContinuationKind;
   return null;
 }
 
+/** How a run of characters inside a word was quoted. */
+export type QuoteKind = "none" | "single" | "double";
+
+/** A contiguous run of a word's characters that share one quoting mode. */
+export interface WordSegment {
+  text: string;
+  quote: QuoteKind;
+}
+
+/**
+ * One shell word, split into runs by quoting mode. `abc"d e"'$f'` is a single
+ * word with three segments.
+ *
+ * This is how "which characters were quoted" survives tokenization: `tokenize`
+ * (and therefore `ParsedCommand.args`) throws the information away, but `$VAR`
+ * and glob expansion both need it — `'*.log'` and `"$HOME"` must behave
+ * differently from their bare forms. `commands/expansion.ts` is the only
+ * consumer; everything else keeps using the flat token strings.
+ */
+export type QuotedWord = WordSegment[];
+
+/**
+ * Tokenize into quoting-aware words (see `QuotedWord`). Quote characters are
+ * dropped, exactly as `tokenize` drops them. Returns `null` for an unterminated
+ * quote, and never emits an empty word (`echo ""` yields one word, `echo`),
+ * which is what keeps `tokenize` below behaviourally identical to its
+ * hand-rolled predecessor.
+ */
+export function tokenizeWords(input: string): QuotedWord[] | null {
+  const words: QuotedWord[] = [];
+  let current: QuotedWord = [];
+
+  const { inSingle, inDouble } = scanQuoted(input, (char, _i, state, isQuote) => {
+    if (isQuote) return;
+    const quote: QuoteKind = state.inSingle ? "single" : state.inDouble ? "double" : "none";
+    if (char === " " && quote === "none") {
+      if (current.length > 0) {
+        words.push(current);
+        current = [];
+      }
+      return;
+    }
+    const last = current[current.length - 1];
+    if (last && last.quote === quote) last.text += char;
+    else current.push({ text: char, quote });
+  });
+
+  if (inSingle || inDouble) return null;
+
+  if (current.length > 0) words.push(current);
+  return words;
+}
+
+/** Flatten a `QuotedWord` back to the plain token string the tokenizer used to produce. */
+export function wordText(word: QuotedWord): string {
+  return word.map((seg) => seg.text).join("");
+}
+
+/**
+ * Build a `ParsedCommand` from an already-tokenized argv. Used by the expansion
+ * pass in `runPipeline`, which cannot go back through `parseInput`: a globbed
+ * filename may contain a space, and re-joining the tokens into a string would
+ * split it again.
+ *
+ * `raw` stays the pre-expansion text on purpose — it is the *typed* line, which
+ * is what redirection extraction and the alias/history machinery reason about.
+ */
+export function parsedFromTokens(tokens: string[], raw: string): ParsedCommand {
+  const command = tokens[0] || "";
+  const rawArgs = tokens.slice(1);
+  return { command, ...splitArgsAndFlags(rawArgs), raw, rawArgs };
+}
+
 /**
  * Split input into tokens, respecting single and double quotes.
  * Quote chars themselves are dropped from the tokens.
  */
 function tokenize(input: string): string[] | null {
-  const tokens: string[] = [];
-  let current = "";
-
-  const { inSingle, inDouble } = scanQuoted(input, (char, _i, state, isQuote) => {
-    if (isQuote) return;
-    if (char === " " && !state.inSingle && !state.inDouble) {
-      if (current) {
-        tokens.push(current);
-        current = "";
-      }
-    } else {
-      current += char;
-    }
-  });
-
-  if (inSingle || inDouble) return null;
-
-  if (current) tokens.push(current);
-  return tokens;
+  const words = tokenizeWords(input);
+  return words === null ? null : words.map(wordText);
 }
