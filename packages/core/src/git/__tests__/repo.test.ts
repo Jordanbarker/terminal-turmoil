@@ -875,6 +875,41 @@ describe("git push", () => {
     expect(result.triggerEvents).toBeDefined();
   });
 
+  it("pushes the named branch, not whatever HEAD points at", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    // Commit on `feature`, then go back to main and commit again there.
+    fs = gitCheckout(fs, "/home/player", "feature", true).fs;
+    fs = fs.writeFile("/home/player/b.txt", "feature work").fs!;
+    fs = addAndCommit(fs, "/home/player", "feature commit");
+    const featureTip = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+    fs = fs.writeFile("/home/player/c.txt", "main work").fs!;
+    fs = addAndCommit(fs, "/home/player", "main commit");
+    const mainTip = resolveHead(fs, "/home/player")!;
+    expect(featureTip).not.toBe(mainTip);
+
+    const result = gitPush(fs, "/home/player", "origin", "feature", false, false);
+    expect(result.error).toBeUndefined();
+    const pushed = result.fs.readFile("/home/player/.git/refs/remotes/origin/feature").content!.trim();
+    expect(pushed).toBe(featureTip);
+    expect(pushed).not.toBe(mainTip);
+    expect(result.output).toContain(featureTip.slice(0, 7));
+  });
+
+  it("rejects a branch that does not exist locally", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    const result = gitPush(fs, "/home/player", "origin", "nosuch", false, false);
+    expect(result.error).toContain("error: src refspec nosuch does not match any");
+    expect(result.triggerEvents).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/nosuch")).toBeNull();
+  });
+
   it("sets upstream with -u flag", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;

@@ -1077,9 +1077,17 @@ export function gitPush(
     return { fs, output: "", error: "fatal: No configured push destination" };
   }
 
-  const headHash = resolveHead(fs, root);
-  if (!headHash) {
-    return { fs, output: "", error: "error: src refspec does not match any" };
+  // Push the *named* ref, not HEAD. `git push origin other` from main used to
+  // send main's tip under the name `other`, silently publishing the wrong
+  // commits; a branch that doesn't exist locally is a refspec error, not a
+  // no-op push of whatever happens to be checked out.
+  const localHash = fs.readFile(`${root}/.git/refs/heads/${targetBranch}`).content?.trim();
+  if (!localHash) {
+    return {
+      fs,
+      output: "",
+      error: `error: src refspec ${targetBranch} does not match any\nerror: failed to push some refs to '${remoteUrl ?? targetRemote}'`,
+    };
   }
 
   // Check if remote ref is ahead (non-force)
@@ -1087,14 +1095,14 @@ export function gitPush(
   const remoteHash = remoteRefFile.content?.trim();
 
   // Already up to date
-  if (remoteHash === headHash) {
+  if (remoteHash === localHash) {
     return { fs, output: "Everything up-to-date" };
   }
 
-  if (remoteHash && remoteHash !== headHash && !force) {
+  if (remoteHash && remoteHash !== localHash && !force) {
     // Simple check: if the remote hash isn't an ancestor of local, reject
     let isAncestor = false;
-    let current: string | null = headHash;
+    let current: string | null = localHash;
     while (current) {
       if (current === remoteHash) { isAncestor = true; break; }
       const commit = readCommit(fs, root, current);
@@ -1108,7 +1116,7 @@ export function gitPush(
   // Update remote ref (writeRefOrFail mkdir-p's the parent chain, including
   // the remote dir itself and any nested branch path like feature/x).
   const oldHash = remoteHash ?? "0000000";
-  fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, headHash);
+  fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, localHash);
 
   // Set upstream if requested — write a per-branch section so each branch
   // tracks its own upstream independently (real git layout).
@@ -1134,7 +1142,7 @@ export function gitPush(
   const forceStr = force ? "+ " : "";
   const output = [
     `To ${remoteUrl ?? targetRemote}`,
-    `   ${forceStr}${oldHash.slice(0, 7)}..${headHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`,
+    `   ${forceStr}${oldHash.slice(0, 7)}..${localHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`,
     ...(setUpstream ? [`branch '${targetBranch}' set up to track '${targetRemote}/${targetBranch}'.`] : []),
   ].join("\n");
 

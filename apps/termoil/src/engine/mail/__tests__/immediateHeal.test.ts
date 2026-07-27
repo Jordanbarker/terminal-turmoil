@@ -119,11 +119,15 @@ describe("seeded immediate emails self-heal", () => {
   });
 
   it("does not deliver a duplicate when a mail file is truncated or overwritten", () => {
-    // `echo scratch > /var/mail/<user>/new/001_welcome_aboard` leaves a file
+    // `echo scratch > /var/mail/<user>/new/001_welcome_edward` leaves a file
     // that is no longer a message. It must not list as a blank inbox row, and
     // the restored copy must not sit alongside a second live "Welcome aboard!".
+    // The name is the seeded one (`NNN_<email id>`) — overwriting some other
+    // path would add a third file and pass for the wrong reason.
     let fs = nexacorpFS();
-    fs = fs.writeFile(`${getNewDir(USERNAME)}/001_welcome_aboard`, "scratch\n").fs!;
+    const seeded = `${getNewDir(USERNAME)}/001_welcome_edward`;
+    expect(fs.getNode(seeded)).not.toBeNull();
+    fs = fs.writeFile(seeded, "scratch\n").fs!;
     expect(subjects(fs)).not.toContain("");
 
     const result = checkEmailDeliveries(fs, TICK, [], "nexacorp", {});

@@ -1,11 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execute, getPrimaryName } from "../registry";
 import { CommandContext } from "../types";
 import { VirtualFS } from "../../filesystem/VirtualFS";
 import { file, dir } from "../../filesystem/builders";
+import { setEditorOpenTriggers, resetEditorOpenTriggers } from "../editorTriggers";
 import "../builtins";
 
 const HOME = "/home/player";
+
+// Core ships no editor triggers of its own; the app registers them. Stand in
+// for that here so the seam is exercised without core learning a story.
+beforeEach(() => {
+  setEditorOpenTriggers([
+    {
+      computer: "home",
+      pathSuffix: "/scripts/backup.sh",
+      contentPredicate: (content) => !content.includes("TYPO"),
+      events: [{ type: "file_read", detail: "script_fixed" }],
+    },
+  ]);
+});
+afterEach(() => resetEditorOpenTriggers());
 
 function createContext(overrides: Partial<CommandContext> = {}): CommandContext {
   const root = dir("/", {
@@ -85,13 +100,27 @@ describe("vim builtin (shared editorOpen paths)", () => {
     expect(run("vim", ["nowhere/f.txt"]).stderr).toBe('vim: "nowhere/f.txt": No such file or directory');
   });
 
-  it("constructs the backup.sh trigger on the home computer", () => {
+  it("carries the app-registered editor trigger for a matching file", () => {
     const result = run("vim", ["scripts/backup.sh"]);
     expect(result.editorSession).toMatchObject({
       triggerRow: 0,
       requireSave: true,
-      triggerEvents: [{ type: "file_read", detail: "fixed_backup_script" }],
+      triggerEvents: [{ type: "file_read", detail: "script_fixed" }],
     });
+    // A content predicate implies requireSave and rides along to the session.
+    expect(result.editorSession?.contentPredicate?.("ok")).toBe(true);
+    expect(result.editorSession?.contentPredicate?.("TYPO")).toBe(false);
+  });
+
+  it("carries no trigger for a file the table does not name", () => {
+    const result = run("vim", ["notes.txt"]);
+    expect(result.editorSession?.triggerEvents).toBeUndefined();
+    expect(result.editorSession?.requireSave).toBeUndefined();
+  });
+
+  it("carries no trigger on a different machine", () => {
+    const result = run("vim", ["scripts/backup.sh"], { activeComputer: "elsewhere" });
+    expect(result.editorSession?.triggerEvents).toBeUndefined();
   });
 });
 
@@ -111,7 +140,7 @@ describe("nano builtin (shares editorOpen with vim)", () => {
     expect(run("nano", []).stderr).toBe("Usage: nano <filename>");
   });
 
-  it("still constructs the backup.sh trigger", () => {
+  it("still carries the registered editor trigger", () => {
     const result = run("nano", ["scripts/backup.sh"]);
     expect(result.editorSession).toMatchObject({ triggerRow: 0, requireSave: true });
   });

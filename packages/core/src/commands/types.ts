@@ -83,6 +83,12 @@ export interface EditorSessionInfo {
   triggerRow?: number;
   triggerEvents?: GameEvent[];
   requireSave?: boolean;
+  /**
+   * Saved buffer must satisfy this before `triggerEvents` fire. Supplied by the
+   * app's editor-trigger table (see commands/editorTriggers) so "the file is
+   * actually fixed" can gate a story event without core knowing the file.
+   */
+  contentPredicate?: (content: string) => boolean;
 }
 
 /**

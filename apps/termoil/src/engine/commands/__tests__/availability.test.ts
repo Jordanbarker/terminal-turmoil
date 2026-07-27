@@ -149,6 +149,18 @@ describe("isCommandAvailable", () => {
       expect(isCommandAvailable("chmod", "nexacorp", { chmod_unlocked: true })).toBe(true);
     });
 
+    it("gates all three block-device tools on accepted_usb_drive, like home", () => {
+      // lsblk used to be missing from NEXACORP_GATED, so it ran ungated on the
+      // workstation from day 1 while mount/umount were gated.
+      const blockTools = ["lsblk", "mount", "umount"];
+      for (const cmd of blockTools) {
+        expect(isCommandAvailable(cmd, "nexacorp")).toBe(false);
+        expect(isCommandAvailable(cmd, "nexacorp", {})).toBe(false);
+        expect(isCommandAvailable(cmd, "nexacorp", { accepted_usb_drive: true })).toBe(true);
+        expect(isCommandAvailable(cmd, "home", { accepted_usb_drive: true })).toBe(true);
+      }
+    });
+
     it("unlocks search tools with search_tools_unlocked flag", () => {
       const flags = { search_tools_unlocked: true };
       expect(isCommandAvailable("grep", "nexacorp", flags)).toBe(true);

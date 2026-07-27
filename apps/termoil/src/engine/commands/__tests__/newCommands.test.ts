@@ -1908,9 +1908,13 @@ describe("exit", () => {
     expect(result.output).toBe("");
   });
 
-  it("shows error on home computer", () => {
+  it("is a silent no-op on the home computer", () => {
+    // Home is the outermost shell: there is no session to leave, but the
+    // command exists (HOME_COMMANDS), so it must not be "command not found".
     const result = execute("exit", [], {}, ctx(undefined, { activeComputer: "home" }));
-    expect(result.stderr).toContain("command not found");
+    expect(result.output).toBe("");
+    expect(result.stderr).toBeUndefined();
+    expect(result.transitionTo).toBeUndefined();
   });
 
   it("day 2 wrap: paced logoff + home transition + returned_home_day2 trigger", () => {

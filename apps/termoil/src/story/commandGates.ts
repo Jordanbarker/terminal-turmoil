@@ -44,6 +44,10 @@ export const HOME_COMMANDS: ReadonlySet<string> = new Set([
   // Shell builtins for conditionals
   "true",
   "false",
+  // Present on every real shell. There is no session to leave at home, so
+  // builtins/exit.ts makes it a silent no-op here rather than a transition,
+  // but "command not found" for `exit` reads as a broken terminal.
+  "exit",
   // Always available: a non-questline shutdown is consequence-free (cosmetic
   // reboot at home, SSH disconnect on remote boxes) — see builtins/shutdown.ts.
   "shutdown",
@@ -70,6 +74,10 @@ export const NEXACORP_GATED: Record<string, StoryFlagName> = {
   chmod: "chmod_unlocked",
   sudo: "apt_unlocked",
   apt: "apt_unlocked",
+  // Block-device tooling unlocks as a set with the anonymous USB tip, same as
+  // HOME_GATED. lsblk was missing here, so it ran ungated on the workstation
+  // from day 1 while its two companions were gated.
+  lsblk: "accepted_usb_drive",
   mount: "accepted_usb_drive",
   umount: "accepted_usb_drive",
   tmux: "tabs_unlocked",

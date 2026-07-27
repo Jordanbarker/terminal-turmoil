@@ -145,6 +145,9 @@ echo "Done."
 `),
       }),
       Documents: dir("Documents", {
+        // Departments and titles are the RAW_NEXACORP.EMPLOYEES / EMPLOYEE_DIRECTORY
+        // rows for status='active', so `snow sql` can never contradict this file.
+        // Cassie is Engineering (Product Designer is her title, not her department).
         "nexacorp_org_chart.txt": file("nexacorp_org_chart.txt", `=== NexaCorp Inc. Organization Chart ===
 Updated: February 2026
 
@@ -160,19 +163,21 @@ ENGINEERING (reports to Edward Torres)
   Oscar Diaz             Infrastructure Engineer
   Auri Park              Data Engineer
   Soham Parekh           Full-Stack Engineer
-  ${PLAYER.displayName}              AI Engineer (new)
-
-PRODUCT
   Cassie Moreau          Product Designer
+  ${PLAYER.displayName.padEnd(23)}AI Engineer (new)
 
-MARKETING
-  Jordan Kessler         Marketing Lead
+MARKETING (reports to Tom Chen)
+  Jordan Kessler         Growth Marketing Lead
 
-OPERATIONS
-  Dana Okafor            Operations Lead
+SALES (reports to Tom Chen)
+  James Wilson           Account Manager
 
-PEOPLE & CULTURE
+PEOPLE & CULTURE (reports to Tom Chen)
   Maya Johnson           People & Culture Lead
+
+OPERATIONS (reports to Marcus Reyes)
+  Dana Okafor            Head of Operations
+  Leah Matsuda           Content & Brand Manager
 `),
         "employee_handbook_2026.md": file("employee_handbook_2026.md",
           `# NexaCorp Employee Handbook 2026

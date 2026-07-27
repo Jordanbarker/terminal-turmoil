@@ -8,6 +8,7 @@ import { isBackspace, isPrintable, CTRL_A, CTRL_C, CTRL_D, CTRL_E, CTRL_K, CTRL_
 import { findPrevWordBoundary, findNextWordBoundary } from "@tt/core/terminal/wordBoundary";
 import { ISession, SessionResult } from "@tt/core/session/types";
 import { GameEvent } from "@tt/core";
+import { matchSqlQueryTriggers } from "../queryTriggers";
 
 /**
  * Interactive Snowflake CLI SQL REPL session.
@@ -28,7 +29,8 @@ export class SnowSqlSession implements ISession {
   private onReleaseLock?: () => void;
   private getGameNow?: () => Date;
   private pendingEvents: GameEvent[] = [];
-  private queriedCampaign = false;
+  /** Query-trigger details already emitted this session; each fires at most once. */
+  private emittedQueryDetails = new Set<string>();
 
   constructor(
     terminal: Terminal,
@@ -382,9 +384,16 @@ export class SnowSqlSession implements ISession {
     this.context = context;
     this.onStateChange(state);
 
-    if (!this.queriedCampaign && /campaign_metrics/i.test(sql)) {
-      this.queriedCampaign = true;
-      this.pendingEvents.push({ type: "command_executed", detail: "queried_campaign_metrics" });
+    // Story detection runs after the error check, mirroring the `snow sql -q`
+    // builtin: a statement that errored showed the player no data, so it
+    // credits no investigation. Which queries matter is the app's table
+    // (snowflake/queryTriggers), never a literal here.
+    const errored = results.some((r) => r.type === "error");
+    if (!errored) {
+      for (const event of matchSqlQueryTriggers(sql, this.emittedQueryDetails)) {
+        this.emittedQueryDetails.add(event.detail);
+        this.pendingEvents.push(event);
+      }
     }
 
     for (const result of results) {

@@ -91,7 +91,12 @@ export interface MailEntry {
   filename: string;
   dir: "new" | "cur";
   seq: number;
-  /** Filename with the `NNN_` sequence prefix stripped: `slugify(subject)` at delivery time. */
+  /**
+   * Filename with the `NNN_` sequence prefix stripped: the email's `id` at
+   * delivery time, which is what makes the file self-identifying. It used to be
+   * `slugify(subject)`, and subjects are not unique (the three termination
+   * variants share one), so identity had to be guessed from the headers.
+   */
   slug: string;
   parsed: ParsedEmail;
 }
@@ -183,9 +188,14 @@ export function hasReplyToEmail(fs: VirtualFS, username: string, emailId: string
   return false;
 }
 
+/** Maildir filename for an email: `NNN_<id>`. See `MailEntry.slug`. */
+export function mailFilename(email: { id: string }, seq: number): string {
+  return `${String(seq).padStart(3, "0")}_${email.id}`;
+}
+
 export function deliverEmail(fs: VirtualFS, email: Email, seq: number): { fs: VirtualFS } {
   const user = usernameFromHomeDir(fs.homeDir);
-  const filename = `${String(seq).padStart(3, "0")}_${slugify(email.subject)}`;
+  const filename = mailFilename(email, seq);
   const content = formatEmailContent(email, false);
   const result = fs.writeFile(`${getNewDir(user)}/${filename}`, content);
   return { fs: result.fs ?? fs };
@@ -193,22 +203,8 @@ export function deliverEmail(fs: VirtualFS, email: Email, seq: number): { fs: Vi
 
 export function deliverEmailAsRead(fs: VirtualFS, email: Email, seq: number): { fs: VirtualFS } {
   const user = usernameFromHomeDir(fs.homeDir);
-  const filename = `${String(seq).padStart(3, "0")}_${slugify(email.subject)}`;
+  const filename = mailFilename(email, seq);
   const content = formatEmailContent(email, true);
   const result = fs.writeFile(`${getCurDir(user)}/${filename}`, content);
   return { fs: result.fs ?? fs };
-}
-
-export function getReadEmailIds(fs: VirtualFS, emails: { id: string; subject: string }[]): Set<string> {
-  const readIds = new Set<string>();
-  const entries = getMailEntries(fs);
-  const readSubjects = new Set(
-    entries.filter((e) => e.dir === "cur").map((e) => e.parsed.subject)
-  );
-  for (const email of emails) {
-    if (readSubjects.has(email.subject)) {
-      readIds.add(email.id);
-    }
-  }
-  return readIds;
 }

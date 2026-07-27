@@ -4,7 +4,7 @@
 
 Commands unlock through colleague emails and Piper conversations:
 
-**Always available** (34): `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `mail`, `nano`, `save`, `load`, `newgame`, `history`, `python`, `whoami`, `hostname`, `date`, `which`, `man`, `file`, `tree`, `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `ssh`, `ssh-add`, `exit`, `shutdown`, `source`, `export`, `alias`, `unalias`
+**Always available** (45): `alias`, `bash`, `cat`, `cd`, `cheat`, `clear`, `command`, `cp`, `date`, `df`, `echo`, `exit`, `export`, `false`, `file`, `help`, `history`, `hostname`, `load`, `ls`, `mail`, `man`, `mkdir`, `mv`, `nano`, `newgame`, `pwd`, `python`, `rm`, `save`, `shortcuts`, `shutdown`, `source`, `ssh`, `ssh-add`, `tmux`, `touch`, `tree`, `true`, `type`, `unalias`, `unset`, `vim`, `which`, `whoami`
 
 **After `piper_unlocked`** (read Edward's welcome email): `piper`
 **After `chip_unlocked`** (Edward's `edward_chip_intro` Piper DM): `chip`
@@ -14,14 +14,18 @@ Commands unlock through colleague emails and Piper conversations:
 **After `processing_tools_unlocked`** (accept Oscar's access.log task on Piper): `sort`, `uniq`
 **After `coder_unlocked`** (read Oscar's coder setup email): `coder`
 **After `chmod_unlocked`** (accept Dana's ops task on Piper): `chmod`
+**After `apt_unlocked`** (Olive's `olive_tree_tip` Piper DM, earned in chapter 1): `sudo`, `apt`
+**After `accepted_usb_drive`** (Sabu's anonymous-tip DM, not reachable until chapter 3): `lsblk`, `mount`, `umount`
 
 **Dev container only** (inside `coder ssh ai` / `coder ssh chip`, not gated): `dbt`, `snow`, `git`
 
-**Multi-terminal tabs** unlock alongside search tools (`tabs_unlocked` set by `search_tools_accepted`). Oscar's `oscar_tab_tip` DM introduces them: prefix defaults to **Ctrl+Space** (then C/X/N/P/1-5), rebindable via `~/.tmux.conf` on the home PC.
+**Multi-terminal windows and panes** are not a chapter-2 unlock: `tabs_unlocked` is `true` in `INITIAL_STORY_FLAGS`, so the tmux model and the `tmux` command are live from game start and there is no DM that introduces them. Prefix defaults to **Ctrl+Space**; the chord table, `~/.tmux.conf` parsing (prefix/theme/pane binds), and copy mode are documented in the **tmux** skill, not here.
 
 ### Home PC Commands (after returning home)
 
-**After `returned_home_day1`**: `grep`, `find`, `wc`, `sort`, `uniq`, `head`, `tail`, `diff`, `less`, `shutdown`
+**After `returned_home_day1`** (exactly these 9): `grep`, `find`, `wc`, `sort`, `uniq`, `head`, `tail`, `diff`, `less`
+
+`shutdown` is **not** in that set: it is in `HOME_COMMANDS` and runnable from game start (an early shutdown is a cosmetic reboot). See the "Leaving early" note below.
 
 ## Full Narrative Flowchart
 
@@ -238,7 +242,7 @@ Commands unlock through colleague emails and Piper conversations:
                        │  [reply to Auri's inspect ask]      │
                        │  → inspection_tools_accepted        │
                        │  → inspection_tools_unlocked        │
-                       │    (head/tail/wc) + tabs_unlocked   │
+                       │    (head, tail, wc, less)           │
                        └──────────────────┬──────────────────┘
                                           │
                        ┌──────────────────┴──────────────────┐
@@ -353,10 +357,13 @@ Commands unlock through colleague emails and Piper conversations:
 > session, return to the local prompt). The player can `ssh` back in to finish.
 > The day-advance is what stays protected: `runExitToHome` only sets
 > `returned_home_day1` (and completes `head_home` + runs the evening deliveries)
-> when `read_end_of_day` is already set. Since `shutdown` is gated behind
-> `returned_home_day1` (`commandGates.ts`), a mid-shift logoff leaves `shutdown`
-> unavailable, so Day 1 cannot be skipped. This mirrors Day 2, where `exit`
-> before the accusation likewise just returns home with no day-advance.
+> when `read_end_of_day` is already set. `shutdown` itself is **not** gated: it
+> is in `HOME_COMMANDS` and runs from game start. What protects Day 1 is the
+> flag trigger, not availability — `day1_shutdown` fires on the `shutdown`
+> command only with `requiredFlags: ["returned_home_day1"]` (`storyFlags.ts`),
+> so a shutdown taken after a mid-shift logoff is just a cosmetic reboot and
+> the day does not advance. This mirrors Day 2, where `exit` before the
+> accusation likewise just returns home with no day-advance.
 
 ## Investigation Paths (Optional)
 
@@ -445,12 +452,14 @@ read welcome_edward ──→ piper
 edward_chip_intro DM ─→ chip
 edward_chip_fix DM ───→ printenv, env
 read oscar_coder_setup → coder
-reply to Oscar (logs) → grep, find, diff + multi-tabs
+reply to Oscar (logs) → grep, find, diff
 reply to Auri (CSV) ──→ head, tail, wc, less
 reply to Oscar (access) → sort, uniq
 reply to Dana (ops) ──→ chmod
 coder ssh ai/chip ────→ dbt, snow, git (dev container only — not on NexaCorp)
-exit to home ─────────→ grep, find, wc, sort, uniq, head, tail, diff, less, shutdown (at home)
+olive_tree_tip (ch1) ─→ sudo, apt (also on NexaCorp)
+Sabu's USB tip (ch3) ─→ lsblk, mount, umount (also on NexaCorp)
+exit to home ─────────→ grep, find, wc, sort, uniq, head, tail, diff, less (at home)
 ```
 
 ### Email Delivery Chain

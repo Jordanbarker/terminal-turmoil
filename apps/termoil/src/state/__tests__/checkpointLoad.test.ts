@@ -120,11 +120,8 @@ describe("checkpoint mailbox agrees with checkpoint flags", () => {
   const offerDef = () =>
     getEmailDefinitions(PLAYER.username, "home").find((d) => d.email.id === "nexacorp_offer")!;
 
-  /** The mail entry for an email id, by subject (maildir filenames are NNN_<slug>). */
-  const entryFor = (fs: VirtualFS, id: string) => {
-    const def = getEmailDefinitions(PLAYER.username, "home").find((d) => d.email.id === id)!;
-    return getMailEntries(fs).find((e) => e.parsed.subject === def.email.subject);
-  };
+  /** The mail entry for an email id — maildir filenames are `NNN_<email id>`, so `slug` is the id. */
+  const entryFor = (fs: VirtualFS, id: string) => getMailEntries(fs).find((e) => e.slug === id);
 
   for (const cp of CHECKPOINTS) {
     if (!cp.deliveredEmailIds.includes("nexacorp_offer")) continue;

@@ -4,9 +4,13 @@
 
 Commands unlock progressively through Piper conversations and exploration:
 
-**Always available** (15): `ls`, `cd`, `cat`, `pwd`, `clear`, `help`, `mail`, `nano`, `piper`, `save`, `load`, `newgame`, `history`, `python`, `man` (the manual is the discovery command; it self-limits to currently-available commands, so `man mkdir` still says "No manual entry" until `basic_tools_unlocked`)
+**Always available** (31): `alias`, `bash`, `cat`, `cd`, `cheat`, `clear`, `command`, `exit`, `export`, `false`, `help`, `history`, `load`, `ls`, `mail`, `man`, `nano`, `newgame`, `piper`, `printenv`, `pwd`, `python`, `save`, `shortcuts`, `shutdown`, `source`, `tmux`, `true`, `type`, `unalias`, `vim`
 
-**After `basic_tools_unlocked`** (reply to Olive's linux basics on Piper): `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `whoami`, `hostname`, `date`, `which`, `file`
+- `man` is the discovery command; it self-limits to currently-available commands, so `man mkdir` still says "No manual entry" until `basic_tools_unlocked`.
+- `tmux` is nominally gated on `tabs_unlocked`, which is `true` in `INITIAL_STORY_FLAGS`, so it is available from game start.
+- `exit` is a silent no-op at home (there is no session to leave); it only transitions on the remote machines.
+
+**After `basic_tools_unlocked`** (reply to Olive's linux basics on Piper), 11 commands: `mkdir`, `rm`, `mv`, `cp`, `touch`, `echo`, `whoami`, `hostname`, `date`, `which`, `file`
 
 **After `apt_unlocked`** (Olive's tree tip delivered on Piper): `sudo`, `apt`
 
@@ -49,7 +53,7 @@ Commands unlock progressively through Piper conversations and exploration:
                   │            │                                        │
                   │            ▼                                        ▼
                   │   basic_tools_unlocked                       read_resume?
-                  │   (12 commands)                              pdftotext_unlocked?
+                  │   (11 commands)                              pdftotext_unlocked?
                   │            │
                   │            ▼
                   │   olive_tree_tip auto-delivered
@@ -89,7 +93,7 @@ Commands unlock progressively through Piper conversations and exploration:
      │  1. file                   │  │                            │
      │  2. mkdir                  │  │  1. mkdir ~/backups        │
      │  3. rm -r                  │  │  2. cp scripts             │
-     │  4. mv                     │  │  3. read log               │
+     │  4. mv                     │  │  3. log the run            │
      │  5. echo/pipe              │  │  4. verify backup          │
      │  6. man                    │  │                            │
      └────────────────────────────┘  └────────────────────────────┘
@@ -219,5 +223,5 @@ Commands unlock progressively through Piper conversations and exploration:
 | Olive's Terminal Challenges | `olive_challenge_file` Piper delivered | file → mkdir → rm -r → mv → echo → man |
 | Fix & Extend Backup | `olive_backup_advice` Piper delivered | mkdir → cp → log → verify |
 
-[^1]: `ssh_unlocked` fires on **reading the email body** (`file_read` trigger on the `chip_ssh_setup` email id, see `src/story/storyFlags.ts:176`) — not on email delivery.
+[^1]: `ssh_unlocked` fires on **reading the email body** (`file_read` trigger on the `chip_ssh_setup` email id in `getStoryFlagTriggers`, `src/story/storyFlags.ts`), not on email delivery.
 [^2]: The `first_ssh_connect` flag is set in `src/hooks/useSessionRouter.ts` from the `ssh_connect` objective event emitted by `SshSession` on successful connection — distinct from `ssh_unlocked`, which only signals that the player has read the setup instructions.

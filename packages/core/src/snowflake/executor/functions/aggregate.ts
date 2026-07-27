@@ -1,6 +1,6 @@
 import { Value, Row } from "../../types";
 import { Expression } from "../../parser/ast";
-import { evaluate, EvalContext } from "../evaluator";
+import { compareValues, evaluate, EvalContext } from "../evaluator";
 
 export type AggregateAccumulator = {
   name: string;
@@ -66,22 +66,17 @@ export function finalizeAccumulator(acc: AggregateAccumulator): Value {
       return total / values.length;
     }
 
+    // compareValues is the engine's one ordering (same as ORDER BY and BETWEEN).
+    // Stringifying instead would sort Dates by weekday name, so MAX(hire_date)
+    // used to return an arbitrary row that moved with the viewer's timezone.
     case "MIN": {
       if (values.length === 0) return null;
-      return values.reduce((min: Value, v) => {
-        if (min === null) return v;
-        if (typeof v === "number" && typeof min === "number") return v < min ? v : min;
-        return String(v) < String(min) ? v : min;
-      }, null as Value);
+      return values.reduce((min: Value, v) => (compareValues(v, min) < 0 ? v : min));
     }
 
     case "MAX": {
       if (values.length === 0) return null;
-      return values.reduce((max: Value, v) => {
-        if (max === null) return v;
-        if (typeof v === "number" && typeof max === "number") return v > max ? v : max;
-        return String(v) > String(max) ? v : max;
-      }, null as Value);
+      return values.reduce((max: Value, v) => (compareValues(v, max) > 0 ? v : max));
     }
 
     case "LISTAGG": {

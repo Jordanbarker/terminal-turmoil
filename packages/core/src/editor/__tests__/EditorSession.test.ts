@@ -1030,3 +1030,102 @@ describe("EditorSession", () => {
     });
   });
 });
+
+/**
+ * The nano half of the editor trigger contract. `requireSave` alone makes any
+ * save complete a fix-this-file objective, including a save that changed
+ * nothing; `contentPredicate` is what makes the objective mean what it says.
+ */
+describe("EditorSession content predicate", () => {
+  function sessionWithPredicate(content: string) {
+    const fs = makeFS({ "test.txt": content });
+    const term = mockTerminal();
+    const session = new EditorSession(
+      term, fs, "/home/user/test.txt", content, false, vi.fn(),
+      {
+        triggerRow: 0,
+        triggerEvents: [{ type: "file_read", detail: "fixed" }],
+        contentPredicate: (saved) => !saved.includes("TYPO"),
+      }
+    );
+    session.enter();
+    return session;
+  }
+
+  it("withholds the event when the saved buffer still fails the predicate", () => {
+    const session = sessionWithPredicate("keeps the TYPO");
+    session.handleInput("!");          // modify so the save is real
+    session.handleInput("\x18");       // Ctrl+X -> "Save modified buffer?"
+    const result = session.handleInput("y");
+    expect(result.triggerEvents).not.toContainEqual({ type: "file_read", detail: "fixed" });
+  });
+
+  it("fires the event once the saved buffer satisfies the predicate", () => {
+    const session = sessionWithPredicate("TYPO");
+    session.handleInput("\x0b");       // Ctrl+K cut the offending line
+    session.handleInput("\x18");
+    const result = session.handleInput("y");
+    expect(result.triggerEvents).toContainEqual({ type: "file_read", detail: "fixed" });
+  });
+
+  it("withholds the event when nothing was saved at all", () => {
+    const session = sessionWithPredicate("TYPO");
+    const result = session.handleInput("\x18");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+});
+
+/**
+ * Ctrl+O is the save key nano's own footer advertises, so it has to satisfy the
+ * trigger contract exactly like Ctrl+X/y does. It used to write the file and
+ * leave `hasSaved` false, which made any predicate-gated objective
+ * uncompletable for a player who saves the way the UI tells them to.
+ */
+describe("EditorSession write-out (Ctrl+O) and the trigger contract", () => {
+  function sessionWithPredicate(content: string, files: Record<string, string> = {}) {
+    const fs = makeFS({ "test.txt": content, ...files });
+    const session = new EditorSession(
+      mockTerminal(), fs, "/home/user/test.txt", content, false, vi.fn(),
+      {
+        triggerRow: 0,
+        triggerEvents: [{ type: "file_read", detail: "fixed" }],
+        contentPredicate: (saved) => !saved.includes("TYPO"),
+      }
+    );
+    session.enter();
+    return session;
+  }
+
+  it("Ctrl+O then Enter then Ctrl+X fires the event when the buffer is fixed", () => {
+    const session = sessionWithPredicate("TYPO");
+    session.handleInput("\x0b");        // Ctrl+K cut the offending line
+    session.handleInput("\x0f");        // Ctrl+O — prompt prefilled with filePath
+    session.handleInput("\r");          // accept the name
+    const result = session.handleInput("\x18"); // Ctrl+X (buffer no longer modified)
+    expect(result.type).toBe("exit");
+    expect(result.triggerEvents).toContainEqual({ type: "file_read", detail: "fixed" });
+  });
+
+  it("Ctrl+O still withholds the event when the buffer is not fixed", () => {
+    const session = sessionWithPredicate("keeps the TYPO");
+    session.handleInput("!");
+    session.handleInput("\x0f");
+    session.handleInput("\r");
+    const result = session.handleInput("\x18");
+    expect(result.triggerEvents).not.toContainEqual({ type: "file_read", detail: "fixed" });
+  });
+
+  it("write-out to a different path does not count as saving the tracked file", () => {
+    const session = sessionWithPredicate("TYPO", { "copy.txt": "" });
+    session.handleInput("\x0b");        // fix the buffer
+    session.handleInput("\x0f");
+    // Replace the prefilled name with another path.
+    for (let i = 0; i < "/home/user/test.txt".length; i++) session.handleInput("\x7f");
+    session.handleInput("/home/user/copy.txt");
+    session.handleInput("\r");
+    const result = session.handleInput("\x18");
+    // Proof the write really landed elsewhere rather than the prompt no-oping.
+    expect(result.triggerEvents).toContainEqual({ type: "file_modified", detail: "/home/user/copy.txt" });
+    expect(result.triggerEvents).not.toContainEqual({ type: "file_read", detail: "fixed" });
+  });
+});

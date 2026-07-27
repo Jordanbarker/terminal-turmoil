@@ -363,9 +363,10 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       if (session.type === "editor") {
         const store = useGameStore.getState();
         const currentFs = store.computerState[computerId]!.fs;
-        const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave } = session.info;
+        const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave, contentPredicate } =
+          session.info;
         const trigger = triggerEvents
-          ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave }
+          ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave, contentPredicate }
           : undefined;
         const EditorClass = editorSessionClass(session.info.editor);
         const editorSession = new EditorClass(

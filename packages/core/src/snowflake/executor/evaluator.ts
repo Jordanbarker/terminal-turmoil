@@ -1,5 +1,5 @@
 import * as AST from "../parser/ast";
-import { Value, Row } from "../types";
+import { Value, Row, DataType } from "../types";
 import { callFunction } from "./functions/registry";
 import type { SessionContext } from "../session/context";
 
@@ -9,10 +9,21 @@ export interface EvalContext {
   currentUser: string;
   currentRole: string;
   currentWarehouse: string;
-  /** Optional callback to execute a sub-select and return result rows */
-  executeSubquery?: (query: AST.SelectStatement, outerRow: Row) => Row[];
+  /**
+   * Execute a sub-select and return its **projected** rows (one Value[] per
+   * row, in select-list order), never the raw source rows, so `IN (SELECT b
+   * FROM t)` compares against B and not T's first column.
+   */
+  executeSubquery?: (query: AST.SelectStatement, outerRow: Row) => Value[][];
   /** Tracks view expansion depth to prevent infinite recursion */
   viewDepth?: number;
+  /**
+   * Declared types of the columns flowing through the current SELECT, keyed
+   * `COL` and `ALIAS.COL` (uppercase). Filled in by scans/derived tables as
+   * the plan executes and read back by projection to type the output columns.
+   * Scoped to one `executeSelect`; nested selects get their own map.
+   */
+  columnTypes?: Map<string, DataType>;
   /** In-game "now" — when omitted, date functions fall back to real wall-clock time. */
   gameNow?: Date;
 }
@@ -143,10 +154,10 @@ export function evaluate(expr: AST.Expression, row: Row, ctx: EvalContext): Valu
       if (ctx.executeSubquery) {
         const subRows = ctx.executeSubquery(expr.query, row);
         if (subRows.length === 0) return null;
-        // Scalar subquery: return first column of first row
-        const firstRow = subRows[0];
-        const keys = Object.keys(firstRow);
-        return keys.length > 0 ? firstRow[keys[0]] : null;
+        // Scalar subquery: first projected column of the only row (Snowflake
+        // rejects a multi-row scalar subquery rather than picking one).
+        if (subRows.length > 1) throw new Error("Single-row subquery returns more than one row.");
+        return subRows[0][0] ?? null;
       }
       return row["__subquery__"] ?? null;
     }
@@ -329,13 +340,10 @@ function evaluateIn(expr: AST.InExpr, row: Row, ctx: EvalContext): Value {
     const found = values.some((v) => v !== null && compareValues(val, v) === 0);
     return expr.negated ? !found : found;
   }
-  // Subquery IN
+  // Subquery IN: compare against the subquery's first projected column
   if (expr.subquery && ctx.executeSubquery) {
     const subRows = ctx.executeSubquery(expr.subquery, row);
-    const subValues: Value[] = subRows.map((r) => {
-      const keys = Object.keys(r);
-      return keys.length > 0 ? r[keys[0]] : null;
-    });
+    const subValues: Value[] = subRows.map((r) => r[0] ?? null);
     const found = subValues.some((v) => v !== null && compareValues(val, v) === 0);
     return expr.negated ? !found : found;
   }

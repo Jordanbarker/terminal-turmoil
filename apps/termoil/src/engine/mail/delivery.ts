@@ -9,7 +9,6 @@ import {
   getMailEntries,
   getNewDir,
   hasReplyToEmail,
-  slugify,
 } from "./mailUtils";
 import { EmailDelivery } from "./types";
 import { getPiperDeliveries } from "../../story/piper/messages";
@@ -136,9 +135,10 @@ function healSeededImmediateEmails(
     currentFs = currentFs.makeDirectory(newDir).fs ?? currentFs;
   }
 
-  // Presence is keyed on the delivered filename slug first (the file's real
-  // identity) and the Subject header second, so neither editing a subject line
-  // nor renaming a file can trick the heal into delivering a duplicate.
+  // Presence is keyed on the delivered filename slug first (the email id, the
+  // file's real identity) and the Subject header second, so neither editing a
+  // subject line nor renaming a file can trick the heal into delivering a
+  // duplicate.
   const entries = getMailEntries(currentFs);
   const present = new Set([
     ...entries.map((e) => e.slug),
@@ -148,7 +148,7 @@ function healSeededImmediateEmails(
 
   const healed: string[] = [];
   for (const def of immediates) {
-    if (present.has(slugify(def.email.subject)) || present.has(def.email.subject)) continue;
+    if (present.has(def.email.id) || present.has(def.email.subject)) continue;
     const deps = getEmailDependents(def, allEmails, username, computer);
     if (isImmediateEmailSpent(def, deps, currentFs, username, storyFlags, deliveredIds)) continue;
     currentFs = deliverEmail(currentFs, def.email, nextSeq).fs;

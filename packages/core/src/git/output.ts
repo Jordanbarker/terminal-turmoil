@@ -48,7 +48,10 @@ export function formatStatus(status: StatusResult, short: boolean, plain: boolea
   if (status.staged.length > 0) {
     lines.push("");
     lines.push("Changes to be committed:");
-    lines.push('  (use "git restore --staged <file>..." to unstage)');
+    // Older-git wording on purpose: this engine implements `git reset <file>`
+    // and has no `restore` subcommand, so advertising the modern hint sent the
+    // player to a command that errors out.
+    lines.push('  (use "git reset HEAD <file>..." to unstage)');
     for (const s of status.staged) {
       const label = `\t${s.status}:   ${s.path}`;
       lines.push(plain ? label : colorize(label, ansi.green));

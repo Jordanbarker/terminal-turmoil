@@ -7,7 +7,6 @@ import {
   markAsRead,
   deliverEmail,
   deliverEmailAsRead,
-  getReadEmailIds,
   getMailDir,
   getNewDir,
   getCurDir,
@@ -288,7 +287,7 @@ describe("deliverEmail", () => {
     };
 
     const result = deliverEmail(fs, email, 3);
-    const file = result.fs.readFile("/var/mail/player/new/003_system_update");
+    const file = result.fs.readFile("/var/mail/player/new/003_test-delivery");
     expect(file.content).toContain("From: chip@nexacorp.com");
     expect(file.content).toContain("Subject: System Update");
     expect(file.content).toContain("Updates applied.");
@@ -306,7 +305,7 @@ describe("deliverEmail", () => {
     };
 
     const result = deliverEmail(fs, email, 5);
-    expect(result.fs.getNode("/var/mail/player/new/005_hi")).not.toBeNull();
+    expect(result.fs.getNode("/var/mail/player/new/005_t")).not.toBeNull();
   });
 });
 
@@ -323,33 +322,10 @@ describe("deliverEmailAsRead", () => {
     };
 
     const result = deliverEmailAsRead(fs, email, 3);
-    const file = result.fs.readFile("/var/mail/player/cur/003_old_news");
+    const file = result.fs.readFile("/var/mail/player/cur/003_test-read");
     expect(file.content).toContain("Status: R");
     expect(file.content).toContain("Subject: Old News");
-    expect(result.fs.getNode("/var/mail/player/new/003_old_news")).toBeNull();
+    expect(result.fs.getNode("/var/mail/player/new/003_test-read")).toBeNull();
   });
 });
 
-describe("getReadEmailIds", () => {
-  it("returns IDs of emails whose subjects match cur/ entries", () => {
-    const fs = createMailFS();
-    const emails = [
-      { id: "welcome-1", subject: "Welcome aboard!" },
-      { id: "meeting-1", subject: "Team meeting" },
-      { id: "other", subject: "Not delivered" },
-    ];
-
-    const readIds = getReadEmailIds(fs, emails);
-    // "Team meeting" is in cur/, "Welcome aboard!" is in new/
-    expect(readIds.has("meeting-1")).toBe(true);
-    expect(readIds.has("welcome-1")).toBe(false);
-    expect(readIds.has("other")).toBe(false);
-  });
-
-  it("returns empty set when no emails are read", () => {
-    const fs = createMailFS();
-    const emails = [{ id: "welcome-1", subject: "Welcome aboard!" }];
-    const readIds = getReadEmailIds(fs, emails);
-    expect(readIds.size).toBe(0);
-  });
-});

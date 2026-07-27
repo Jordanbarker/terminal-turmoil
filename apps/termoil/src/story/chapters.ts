@@ -169,7 +169,7 @@ export const CHAPTERS: ChapterDefinition[] = [
       },
       {
         id: "backup_verify",
-        description: "Verify the backup with file",
+        description: "Verify the backed-up script (cat or file it)",
         check: { source: "storyFlag", key: "verified_backup" },
         hidden: true,
         optional: true,

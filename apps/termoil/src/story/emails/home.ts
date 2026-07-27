@@ -63,7 +63,7 @@ function buildTerminationEmail(username: string, v: TerminationVariant): EmailDe
   return {
     email: {
       id: v.id,
-      from: "NexaCorp HR <hr@nexacorp.io>",
+      from: "NexaCorp HR <hr@nexacorp.com>",
       to: `${username}@email.com`,
       date: "Tue, 24 Feb 2026 14:32:00",
       subject: "Termination of Employment — Effective Immediately",
@@ -218,7 +218,7 @@ Time:   Sat 2026-02-21 02:00:14 PST
 
 -- journalctl --user -u backup.service --
 Feb 21 02:00:12 maniac-iv backup.sh[4821]: [Sat Feb 21 02:00:12 PST 2026] Starting backup...
-Feb 21 02:00:14 maniac-iv backup.sh[4821]: /home/${username}/scripts/backup.sh: line 19: BAKCUP_DIR: unbound variable
+Feb 21 02:00:14 maniac-iv backup.sh[4821]: /home/${username}/scripts/backup.sh: line 21: BAKCUP_DIR: unbound variable
 Feb 21 02:00:14 maniac-iv systemd[1842]: backup.service: Main process exited, code=exited, status=1/FAILURE
 Feb 21 02:00:14 maniac-iv systemd[1842]: backup.service: Failed with result 'exit-code'.
 `,
@@ -409,7 +409,7 @@ anything.
     {
       email: {
         id: "marcus_board_debrief",
-        from: "Marcus Reyes <marcus.reyes@nexacorp.io>",
+        from: "Marcus Reyes <marcus@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Tue, 24 Feb 2026 21:14:00",
         subject: "tonight's meeting",
@@ -430,7 +430,7 @@ anything.
     {
       email: {
         id: "hr_security_freeze",
-        from: "NexaCorp IT Security <security@nexacorp.io>",
+        from: "NexaCorp IT Security <security@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Tue, 24 Feb 2026 21:18:00",
         subject: "Unusual activity on your workstation: access frozen",

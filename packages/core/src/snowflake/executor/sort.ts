@@ -1,12 +1,25 @@
-import { Row } from "../types";
+import { Row, Value } from "../types";
 import { OrderByItem } from "../parser/ast";
 import { evaluate, compareValues, EvalContext } from "./evaluator";
 
+/**
+ * Sort keys are evaluated once per row up front (a Schwartzian transform)
+ * rather than inside the comparator, which would re-evaluate them ~2n·log n
+ * times. ORDER BY terms can be whole expressions, and since alias resolution
+ * they can be aggregate or subquery expressions too, so that is not just a
+ * constant factor.
+ */
 export function sortRows(rows: Row[], orderBy: OrderByItem[], ctx: EvalContext): Row[] {
-  return [...rows].sort((a, b) => {
-    for (const item of orderBy) {
-      const va = evaluate(item.expr, a, ctx);
-      const vb = evaluate(item.expr, b, ctx);
+  const keyed = rows.map((row) => ({
+    row,
+    keys: orderBy.map((item) => evaluate(item.expr, row, ctx)),
+  }));
+
+  keyed.sort((a, b) => {
+    for (let i = 0; i < orderBy.length; i++) {
+      const item = orderBy[i];
+      const va: Value = a.keys[i];
+      const vb: Value = b.keys[i];
 
       // Handle NULLS FIRST/LAST
       if (va === null && vb === null) continue;
@@ -26,4 +39,6 @@ export function sortRows(rows: Row[], orderBy: OrderByItem[], ctx: EvalContext):
     }
     return 0;
   });
+
+  return keyed.map((k) => k.row);
 }

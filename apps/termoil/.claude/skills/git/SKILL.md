@@ -39,10 +39,14 @@ These `command_executed` details are emitted from `repo.ts` and consumed by `get
 | `git_clone_<repoName>` | `gitClone` | `dbt_project_cloned` (when `nexacorp-analytics`) |
 | `git_pull_origin_<branch>` | `gitPull` | `pulled_day2_updates` (gated on `ssh_day2`) |
 | `git_checkout_b` | `checkout -b` / `switch -c` / `branch <name>` | `created_fix_branch` (gated on `dbt_test_failed_day2`) |
-| `git_push_origin_<branch>` | `gitPush` | (unused; available for branch-specific hooks) |
-| `git_push` | `gitPush` | `pushed_fix_branch` (gated on `fixed_campaign_model`) |
+| `git_push_origin_<branch>` | `gitPush` | `pushed_fix_branch` (`detailPrefix`, `detailNot: git_push_origin_main`, gated on `fixed_campaign_model`) |
+| `git_push` | `gitPush` | (unused; the branch-less detail can't tell a fix-branch push from a main push) |
 
-Prefer firing on a generic detail (`git_push`) + `requiredFlags` gating over per-branch details. See the `created_fix_branch` cascade in the narrative skill for why a trigger accepts three ways of making a branch.
+Prefer a generic detail + `requiredFlags` gating over per-branch details **unless which ref was acted on is the objective** — "push the fix branch" is exactly that case, so it matches the per-branch detail by prefix and excludes main (the branch name itself is the player's).
+
+**Status hints must name subcommands this engine has.** `output.ts` prints the older-git `(use "git reset HEAD <file>..." to unstage)`; there is no `restore` subcommand, so the modern hint sent players to an error.
+
+**`gitPush` pushes the named ref, not HEAD.** `git push origin <branch>` resolves `refs/heads/<branch>`; a branch with no local ref is `error: src refspec <branch> does not match any` on stderr with exit 1, and no remote ref is written. Reading HEAD instead silently published the checked-out branch's commits under someone else's name.
 
 ## Adding
 

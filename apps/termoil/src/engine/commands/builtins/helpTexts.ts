@@ -35,14 +35,14 @@ export const TERMOIL_HELP_TEXTS: Record<string, string> = {
     "Usage: save [1|2|3]",
     "",
     "Save game state to a numbered slot.",
-    "If no slot is given, save to slot 1.",
+    "With no slot, list the three slots and what each one holds.",
   ].join("\n"),
 
   load: [
-    "Usage: load [1|2|3|auto]",
+    "Usage: load [1|2|3]",
     "",
-    "Restore game from a save slot.",
-    "Use 'auto' to load the most recent autosave.",
+    "Restore game from a numbered save slot.",
+    "With no slot, list the three slots and what each one holds.",
   ].join("\n"),
 
   newgame: [

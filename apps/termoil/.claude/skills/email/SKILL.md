@@ -18,7 +18,7 @@ Code map: `src/engine/mail/` (`types.ts` — all types, read them there; `emails
 
 ## Filesystem layout
 
-`/var/mail/{username}/{new,cur,sent}/` (new = unread, moved to cur/ on read). Inbox filenames `{seq:03d}_{slugified_subject}`; `sent/` replies are `sent_{parent email id}_{option index}`, **never clock-stamped** (the in-game clock is constant across a day segment, so timestamped names let one reply overwrite another). Files are RFC 2822-style (`From:`/`To:`/`Date:`/`Subject:`/`X-In-Reply-To:`/`Status:` + blank line + body). `getMailEntries` only counts a file as a message if it has a `From:` or `Subject:` header, so a truncated or scratch file in the maildir is a stray file, not a blank inbox row.
+`/var/mail/{username}/{new,cur,sent}/` (new = unread, moved to cur/ on read). Inbox filenames `{seq:03d}_{email id}` (built by `mailFilename`); the id, not the subject, because subjects are not unique — the three termination variants share one, and header matching used to resolve all three to the first definition. `MailEntry.slug` is that id, and `mail <n>` derives the `file_read` event from it (falling back to subject+from only for a hand-written or renamed file); `sent/` replies are `sent_{parent email id}_{option index}`, **never clock-stamped** (the in-game clock is constant across a day segment, so timestamped names let one reply overwrite another). Files are RFC 2822-style (`From:`/`To:`/`Date:`/`Subject:`/`X-In-Reply-To:`/`Status:` + blank line + body). `getMailEntries` only counts a file as a message if it has a `From:` or `Subject:` header, so a truncated or scratch file in the maildir is a stray file, not a blank inbox row.
 
 ## Delivery flow
 

@@ -23,7 +23,7 @@ export function getJordanDeliveries(_username: string): PiperDelivery[] {
           id: "jordan_data_3",
           from: "Jordan Kessler",
           timestamp: "",
-          body: "Auri mentioned the campaign data lives in a Snowflake table called CAMPAIGN_METRICS. Could you pull it up in snow sql and check if the numbers look right? I'm especially curious about the chip_launch campaign. Is the total really 735K impressions, or is something off in the raw data?",
+          body: "Auri mentioned the campaign data lives in a Snowflake table called RAW_NEXACORP.CAMPAIGN_METRICS. She was specific about the RAW_NEXACORP part, apparently you get nothing if you leave it off. Could you pull it up in snow sql and check if the numbers look right? I'm especially curious about the chip_launch campaign. Is the total really 735K impressions, or is something off in the raw data?",
         },
         {
           id: "jordan_data_4",

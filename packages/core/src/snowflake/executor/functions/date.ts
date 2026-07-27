@@ -1,6 +1,11 @@
 import { Value } from "../../types";
 import { ScalarFn } from "./registry";
 
+/** True for the UTC-midnight anchoring the engine uses to represent a DATE. */
+function isUtcMidnight(d: Date): boolean {
+  return d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+}
+
 function toDate(v: Value): Date | null {
   if (v === null) return null;
   if (v instanceof Date) return v;
@@ -76,18 +81,25 @@ export const dateFunctions: Record<string, ScalarFn> = {
     const date = toDate(dt);
     if (!date) return null;
     const p = String(part).toLowerCase().replace(/s$/, "");
+    // A DATE is anchored to UTC midnight (that is how an ISO day string
+    // parses), so reading its calendar fields locally would truncate to the
+    // previous day west of UTC and print a different day than the column it
+    // came from. Values with a real time-of-day are genuine timestamps and
+    // keep the local calendar.
+    const utc = isUtcMidnight(date);
+    const Y = utc ? date.getUTCFullYear() : date.getFullYear();
+    const M = utc ? date.getUTCMonth() : date.getMonth();
+    const D = utc ? date.getUTCDate() : date.getDate();
+    const at = (y: number, m: number, d: number) => (utc ? new Date(Date.UTC(y, m, d)) : new Date(y, m, d));
     switch (p) {
-      case "year": case "yy": case "yyyy": return new Date(date.getFullYear(), 0, 1);
+      case "year": case "yy": case "yyyy": return at(Y, 0, 1);
       case "quarter": case "qq": case "q":
-        return new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1);
-      case "month": case "mm": case "m": return new Date(date.getFullYear(), date.getMonth(), 1);
-      case "week": case "wk": case "ww": {
-        const d = new Date(date);
-        d.setDate(d.getDate() - d.getDay());
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      }
+        return at(Y, Math.floor(M / 3) * 3, 1);
+      case "month": case "mm": case "m": return at(Y, M, 1);
+      case "week": case "wk": case "ww":
+        return at(Y, M, D - (utc ? date.getUTCDay() : date.getDay()));
       case "day": case "dd": case "d":
-        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        return at(Y, M, D);
       case "hour": case "hh":
         return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours());
       case "minute": case "mi": case "n":

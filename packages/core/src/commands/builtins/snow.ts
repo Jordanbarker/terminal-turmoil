@@ -6,6 +6,7 @@ import { errorResult } from "../fsErrors";
 import { realWallClock } from "@tt/core/commands/clock";
 import { execute } from "@tt/core/snowflake/executor/executor";
 import { formatResultSet, formatStatusMessage, formatError } from "@tt/core/snowflake/formatter/table_formatter";
+import { matchSqlQueryTriggers } from "@tt/core/snowflake/queryTriggers";
 
 register(
   "snow",
@@ -73,11 +74,11 @@ register(
         }
       }
 
-      // Detect campaign_metrics query for story progression (mirrors SnowSqlSession)
-      const triggerEvents: import("@tt/core").GameEvent[] = [];
-      if (/campaign_metrics/i.test(sql)) {
-        triggerEvents.push({ type: "command_executed", detail: "queried_campaign_metrics" });
-      }
+      // Story detection via the app's query-trigger table (mirrors
+      // SnowSqlSession). Only a query that actually ran counts: a syntax error
+      // or a missing table shows the player nothing, so it must not credit an
+      // investigation.
+      const triggerEvents = errorLines.length === 0 ? matchSqlQueryTriggers(sql) : [];
 
       return {
         output: outputLines.join("\n"),

@@ -310,11 +310,45 @@ function arc5_edwardOnboarding() {
   step("[sim] Edward's chip_fix DM sets printenv_unlocked");
   simulatePiperUnlocks(r, "printenv_unlocked");
 
-  step("source ~/.zshrc to set CHIP_API_KEY");
+  step("source an unedited ~/.zshrc → must NOT tick the objective");
   out = r.run("source ~/.zshrc");
   if (out.exitCode === 0) pass("source ~/.zshrc ok");
   else fail(`source failed: ${out.output.slice(0, 100)}`);
+  if (r.storyFlags.sourced_nexacorp_zshrc) {
+    fail("sourced_nexacorp_zshrc set by a .zshrc that never exports CHIP_API_KEY");
+  } else {
+    pass("unedited .zshrc leaves the CHIP_API_KEY objective open");
+  }
+
+  step("Mistype the key in ~/.zshrc → env is set, objective stays open");
+  const zshrcPath = `${r.fs.homeDir}/.zshrc`;
+  const baseZshrc = r.fs.readFile(zshrcPath).content ?? "";
+  r.writeFile(zshrcPath, `${baseZshrc}\nexport CHIP_API_KEY=nxa_live_7f3k9m2\n`);
+  out = r.run("source ~/.zshrc");
+  expectExit(out, 0, "source ~/.zshrc with a typo'd key");
+  if (r.envVars.nexacorp?.CHIP_API_KEY !== "nxa_live_7f3k9m2") {
+    fail("source did not apply the typo'd key to the environment");
+  } else if (r.storyFlags.sourced_nexacorp_zshrc) {
+    fail("a wrong CHIP_API_KEY value completed the objective");
+  } else {
+    pass("env set but wrong value leaves the objective open");
+  }
+
+  step("Add Edward's export line to ~/.zshrc, then source it");
+  // Stands in for the nano edit Edward's DM asks for (the runner has no editor).
+  r.writeFile(zshrcPath, `${baseZshrc}\nexport CHIP_API_KEY=nxa_live_7f3k9m2x\n`);
+  out = r.run("source ~/.zshrc");
+  expectExit(out, 0, "source ~/.zshrc after the edit");
   expectFlag(r, "sourced_nexacorp_zshrc");
+
+  step("chip now starts, and rejects a wrong key");
+  out = r.run("chip");
+  if (out.exitCode === 0) pass("chip starts with the real key");
+  else fail(`chip refused the real key: ${out.output.slice(0, 120)}`);
+  r.envVars.nexacorp = { ...r.envVars.nexacorp, CHIP_API_KEY: "nxa_live_wrong" };
+  out = r.run("chip");
+  if (out.exitCode === 1 && out.output.includes("invalid API key")) pass("chip rejects a wrong key");
+  else fail(`chip accepted a wrong key: exit ${out.exitCode} ${out.output.slice(0, 120)}`);
 }
 
 // ── ARC 6: Chapter 2 — Oscar log investigation ────────────────────

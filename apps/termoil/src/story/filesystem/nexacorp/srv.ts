@@ -40,7 +40,7 @@ but was told to wait until after Series A closes.
 
 ## Incident Response
 1. Acknowledge alert in PagerDuty
-2. Join #incident-response Slack channel
+2. Post in the #engineering channel in Piper
 3. Assess severity (P1-P4)
 4. Page on-call engineer if P1/P2
 
@@ -335,12 +335,15 @@ Last updated: 2026-02-15
 - Marcus Reyes (COO)
 - Tom Chen (CMO)
 - Edward Torres (CTO)
-- Maya Okoye (Head of People & Culture)
 
 ### COO: Marcus Reyes
-- Dana Whitfield (Operations Manager)
+- Dana Okafor (Head of Operations)
+- Leah Matsuda (Content & Brand Manager)
 
 ### CMO: Tom Chen
+- James Wilson (Account Manager)
+- Jordan Kessler (Growth Marketing Lead)
+- Maya Johnson (People & Culture Lead)
 - (Hiring: Marketing Content Lead, pending Series A)
 
 ### CTO: Edward Torres
@@ -353,7 +356,7 @@ Last updated: 2026-02-15
 - [open] AI Engineer (Jin Chen backfill, starting Feb 2026)
 
 ## Departed
-- Jin Chen (Data Engineer), resigned Feb 2026
+- Jin Chen (Senior Engineer), resigned Feb 2026
 `),
     }, "rwx------"),
     engineering: dir("engineering", {
@@ -395,8 +398,6 @@ Engineering:
   Oscar Diaz         Infrastructure Engineer
   Auri Park          Data Engineer
   Soham Parekh       Full-Stack Engineer
-
-Product:
   Cassie Moreau      Product Designer
 
 Flagship Product: Chip

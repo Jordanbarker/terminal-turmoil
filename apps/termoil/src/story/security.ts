@@ -123,20 +123,20 @@ export function getTerminationAlertLines(violation: SecurityViolation, pid: numb
       return [
         `${tag} audit: write to ${violation.path} flagged`,
         `${tag} PID ${pid} — session marked for review`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     case "leadership_destruction":
       return [
         `${tag} dlp: destructive op on ${violation.path}`,
         `${tag} PID ${pid} — confidential records affected`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     case "exfiltration": {
       const dest = violation.destPath ?? "unknown destination";
       return [
         `${tag} dlp: confidential file transfer detected`,
         `${tag} source: ${violation.path} → ${dest}`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     }
   }

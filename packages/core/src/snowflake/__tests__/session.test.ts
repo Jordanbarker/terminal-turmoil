@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SnowSqlSession } from "../session/SnowSqlSession";
 import { SnowflakeState } from "../state";
 import type { SnowflakeData } from "../state";
 import { createTestContext } from "./testHelpers";
+import { setSqlQueryTriggers, resetSqlQueryTriggers } from "../queryTriggers";
 
 // Minimal mock Terminal — the session only needs write()
 function mockTerminal() {
@@ -102,5 +103,57 @@ describe("SnowSqlSession line editing", () => {
     expect(getBuffer(session)).toBe("select 2;");
     session.handleInput("\x1b[B"); // down → restores empty input
     expect(getBuffer(session)).toBe("");
+  });
+});
+
+/**
+ * The REPL's story detection is the app's query-trigger table matched against
+ * the submitted SQL. Running it before the error check meant a typo'd or failed
+ * query credited the investigation it was supposed to prove — the player saw an
+ * error and the objective ticked anyway.
+ */
+describe("SnowSqlSession story detection", () => {
+  // Core ships no query triggers of its own; the app registers them.
+  beforeEach(() => {
+    setSqlQueryTriggers([{ pattern: /campaign_metrics/i, detail: "queried_campaign_metrics" }]);
+  });
+  afterEach(() => resetSqlQueryTriggers());
+
+  function runAndExit(session: SnowSqlSession, sql: string) {
+    session.handleInput(sql);
+    session.handleInput("\r");
+    return session.handleInput("exit\r");
+  }
+
+  it("emits no event when the campaign_metrics query errors", () => {
+    const { session } = createSession();
+    // Empty warehouse: the table does not resolve, so this errors.
+    const result = runAndExit(session, "SELECT * FROM campaign_metrics;");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("emits the event once the query actually runs", () => {
+    const { session } = createSession();
+    const result = runAndExit(session, "SELECT 'campaign_metrics' AS t;");
+    expect(result.triggerEvents).toEqual([
+      { type: "command_executed", detail: "queried_campaign_metrics" },
+    ]);
+  });
+
+  it("emits nothing at all when the app registered no table (core ships none)", () => {
+    resetSqlQueryTriggers();
+    const { session } = createSession();
+    const result = runAndExit(session, "SELECT 'campaign_metrics' AS t;");
+    expect(result.triggerEvents).toBeUndefined();
+  });
+
+  it("an errored attempt does not spend the one-shot latch", () => {
+    const { session } = createSession();
+    session.handleInput("SELECT * FROM campaign_metrics;");
+    session.handleInput("\r");
+    const result = runAndExit(session, "SELECT 'campaign_metrics' AS t;");
+    expect(result.triggerEvents).toEqual([
+      { type: "command_executed", detail: "queried_campaign_metrics" },
+    ]);
   });
 });

@@ -17,9 +17,10 @@ export function checkStoryFlagTriggers(
     if (trigger.event === event.type) {
       if (trigger.requiredFlags?.some(f => !currentFlags[f])) continue;
       const matchExact = trigger.path ?? trigger.detail;
-      const matchPrefix = trigger.pathPrefix;
+      const matchPrefix = trigger.pathPrefix ?? trigger.detailPrefix;
       const matchSuffix = trigger.pathSuffix;
       const detail = event.detail;
+      if (trigger.detailNot !== undefined && detail === trigger.detailNot) continue;
       let fired = false;
       if ((matchPrefix || matchSuffix) && detail) {
         const prefixOk = !matchPrefix || detail.startsWith(matchPrefix);

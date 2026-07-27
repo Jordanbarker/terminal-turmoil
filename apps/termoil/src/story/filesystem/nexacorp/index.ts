@@ -1,6 +1,6 @@
 import { DirectoryNode, FileNode } from "@tt/core/filesystem/types";
 import { getNexacorpEmailDefinitions } from "../../emails/nexacorp";
-import { formatEmailContent, slugify } from "../../../engine/mail/mailUtils";
+import { formatEmailContent, mailFilename } from "../../../engine/mail/mailUtils";
 import { StoryFlags } from "../../../state/types";
 import { generateSystemLog, generateSystemLogBak, generateAccessLog, generateAuthLog, generateAuthLogBak, generateChipActivityLog, LogOptions } from "../logs";
 import { file, dir } from "@tt/core/filesystem/builders";
@@ -18,8 +18,7 @@ function buildInitialMailFiles(username: string): Record<string, FileNode> {
     return triggers.some((t) => t.type === "immediate");
   });
   immediateEmails.forEach((def, i) => {
-    const seq = String(i + 1).padStart(3, "0");
-    const filename = `${seq}_${slugify(def.email.subject)}`;
+    const filename = mailFilename(def.email, i + 1);
     files[filename] = {
       type: "file",
       name: filename,

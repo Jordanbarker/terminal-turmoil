@@ -1,6 +1,6 @@
 import { DirectoryNode, FileNode } from "@tt/core/filesystem/types";
 import { getHomeEmailDefinitions } from "../../emails/home";
-import { formatEmailContent, slugify } from "../../../engine/mail/mailUtils";
+import { formatEmailContent, mailFilename } from "../../../engine/mail/mailUtils";
 import { PLAYER } from "../../../state/types";
 import { file, dir } from "@tt/core/filesystem/builders";
 
@@ -13,8 +13,7 @@ export function buildHomeMailFiles(
     return triggers.some((t) => t.type === "immediate");
   });
   immediateEmails.forEach((def, i) => {
-    const seq = String(i + 1).padStart(3, "0");
-    const filename = `${seq}_${slugify(def.email.subject)}`;
+    const filename = mailFilename(def.email, i + 1);
     files[filename] = {
       type: "file",
       name: filename,

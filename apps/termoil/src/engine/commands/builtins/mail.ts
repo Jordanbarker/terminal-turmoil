@@ -75,12 +75,18 @@ function formatMessage(entry: MailEntry): string {
   return lines.join("\n");
 }
 
+/**
+ * Which definition this maildir file is. Keyed on the filename slug (the id
+ * stamped in at delivery), because subject+from is not an identity: the three
+ * termination variants share both, so header matching always resolved to the
+ * first one and `mail` emitted `file_read` for an email the player never got.
+ * Headers stay as the fallback for a file the player renamed or hand-wrote.
+ */
 function findEmailDef(entry: MailEntry, username: string, computer: import("../../../state/types").ComputerId) {
   const defs = getEmailDefinitions(username, computer);
-  return defs.find(
-    (d) =>
-      d.email.subject === entry.parsed.subject &&
-      d.email.from === entry.parsed.from
+  return (
+    defs.find((d) => d.email.id === entry.slug) ??
+    defs.find((d) => d.email.subject === entry.parsed.subject && d.email.from === entry.parsed.from)
   );
 }
 

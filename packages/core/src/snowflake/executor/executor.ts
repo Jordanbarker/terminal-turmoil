@@ -3,7 +3,7 @@ import { Row, Value, DataType } from "../types";
 import { tokenize } from "../lexer/lexer";
 import { parseMultiple } from "../parser/parser";
 import { ParseError } from "../parser/errors";
-import { planSelect } from "../planner/planner";
+import { planSelect, resolveOrderBy } from "../planner/planner";
 import * as Plan from "../planner/plan";
 import * as AST from "../parser/ast";
 import { QueryResult, ResultSet } from "../formatter/result_types";
@@ -124,40 +124,42 @@ function executeStatement(
   }
 }
 
+/**
+ * Run a scalar / IN / EXISTS subquery and hand back its **projected** rows.
+ * Going through `executeSelect` (rather than the bare plan) is what makes the
+ * subquery's select list authoritative; `outerRow` keeps correlation working.
+ */
 function executeSubqueryInner(
   query: AST.SelectStatement,
   outerRow: Row,
   state: SnowflakeState,
   ctx: SessionContext,
   outerCtes?: AST.CTE[]
-): Row[] {
+): Value[][] {
   // Merge outer CTEs if the subquery doesn't define its own
   const subQuery = { ...query, ctes: query.ctes ?? outerCtes };
 
-  const planCtx = {
-    currentDatabase: ctx.currentDatabase,
-    currentSchema: ctx.currentSchema,
-  };
-  const plan = planSelect(subQuery, planCtx);
-
-  // Create an eval context for the subquery that also has subquery support
-  const subEvalCtx: EvalContext = evalContextFromSession(ctx, {
-    executeSubquery: (q, row) => executeSubqueryInner(q, row, state, ctx, subQuery.ctes),
-  });
-
-  // Execute the plan with outer row context for correlated references
-  const rows = executePlan(plan, state, subEvalCtx, subQuery, outerRow);
-
-  return rows;
+  const result = executeSelect(subQuery, state, ctx, undefined, outerRow);
+  if (result.type !== "resultset") {
+    throw new Error(result.type === "error" ? result.message : "Subquery did not produce a result set");
+  }
+  return result.data.rows;
 }
 
-function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: SessionContext, parentEvalCtx?: EvalContext): QueryResult {
+function executeSelect(
+  stmt: AST.SelectStatement,
+  state: SnowflakeState,
+  ctx: SessionContext,
+  parentEvalCtx?: EvalContext,
+  outerRow?: Row,
+): QueryResult {
   const evalCtx: EvalContext = evalContextFromSession(ctx, {
-    executeSubquery: (query: AST.SelectStatement, outerRow: Row) => {
-      return executeSubqueryInner(query, outerRow, state, ctx, stmt.ctes);
+    executeSubquery: (query: AST.SelectStatement, subOuterRow: Row) => {
+      return executeSubqueryInner(query, subOuterRow, state, ctx, stmt.ctes);
     },
     viewDepth: parentEvalCtx?.viewDepth,
   });
+  evalCtx.columnTypes = new Map();
 
   const planCtx = {
     currentDatabase: ctx.currentDatabase,
@@ -165,7 +167,7 @@ function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: Se
   };
 
   const plan = planSelect(stmt, planCtx);
-  let rows = executePlan(plan, state, evalCtx, stmt);
+  let rows = executePlan(plan, state, evalCtx, stmt, outerRow);
 
   // Apply window functions
   rows = executeWindowFunctions(rows, stmt.items, evalCtx, stmt.qualify);
@@ -202,7 +204,7 @@ function executeSelect(stmt: AST.SelectStatement, state: SnowflakeState, ctx: Se
 
   // Set operations
   if (stmt.setOp) {
-    const rightResult = executeSelect(stmt.setOp.right, state, ctx);
+    const rightResult = executeSelect(stmt.setOp.right, state, ctx, parentEvalCtx, outerRow);
     if (rightResult.type !== "resultset") return rightResult;
     return executeSetOp(stmt.setOp.type, { columns, rows: filteredRows, rowCount: filteredRows.length }, rightResult.data);
   }
@@ -238,6 +240,7 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
       if (result.type !== "resultset") {
         throw new Error(result.type === "error" ? result.message : "Derived table did not produce a result set");
       }
+      recordColumnTypes(ctx, result.data.columns, plan.alias);
       return result.data.rows.map((valueRow) => {
         const row: Row = { ...(outerRow ?? {}) };
         result.data.columns.forEach((col, i) => {
@@ -265,6 +268,7 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
           const viewStmt = parseMultiple(tokenize(view.query))[0] as AST.SelectStatement;
           const viewResult = executeSelect(viewStmt, state, sessionFromEvalCtx(ctx), viewCtx);
           if (viewResult.type === "resultset") {
+            recordColumnTypes(ctx, viewResult.data.columns, plan.alias);
             return viewResult.data.rows.map((valueRow) => {
               const row: Row = { ...(outerRow ?? {}) };
               viewResult.data.columns.forEach((col, i) => {
@@ -277,6 +281,8 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
         }
         throw new Error(tableNotFoundError(`${plan.database}.${plan.schema}.${plan.table}`));
       }
+
+      recordColumnTypes(ctx, tbl.columns, plan.alias);
 
       // Prefix columns with alias if present, merge outer row for correlated subqueries
       const rows = tbl.rows.map((row) => {
@@ -337,7 +343,14 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
 
     case "sort": {
       const sourceRows = executePlan(plan.source, state, ctx, originalStmt, outerRow);
-      return sortRows(sourceRows, plan.orderBy, ctx);
+      // `SELECT * ... ORDER BY <ordinal>`: the planner had no column list to
+      // count against, so resolve the ordinal now that the star can expand.
+      const items = originalStmt?.items;
+      const sample = items?.some((i) => i.expr.kind === "star_ref") ? starSampleRow(sourceRows, ctx) : undefined;
+      const orderBy = items && sample
+        ? resolveOrderBy(plan.orderBy, expandSelectItems(items, sample))
+        : plan.orderBy;
+      return sortRows(sourceRows, orderBy, ctx);
     }
 
     case "limit": {
@@ -478,46 +491,89 @@ function executePlan(plan: Plan.LogicalPlan, state: SnowflakeState, ctx: EvalCon
   return [];
 }
 
-function projectRows(
-  rows: Row[],
-  items: AST.SelectItem[],
-  ctx: EvalContext
-): { resultRows: Value[][]; columns: { name: string; type: DataType }[] } {
-  // Handle SELECT * — expand all columns
-  const expandedItems: { expr: AST.Expression; alias?: string }[] = [];
+/**
+ * Remember the declared types of a source's columns so projection can type its
+ * output (only DATE/TIMESTAMP/TIME are actually consumed, see `inferType`).
+ * First writer wins, so the leftmost table of a join owns an ambiguous name.
+ */
+function recordColumnTypes(
+  ctx: EvalContext,
+  columns: { name: string; type: DataType }[],
+  alias?: string,
+): void {
+  const types = ctx.columnTypes;
+  if (!types) return;
+  for (const col of columns) {
+    const name = col.name.toUpperCase();
+    if (!types.has(name)) types.set(name, col.type);
+    if (alias) {
+      const qualified = `${alias.toUpperCase()}.${name}`;
+      if (!types.has(qualified)) types.set(qualified, col.type);
+    }
+  }
+}
+
+/**
+ * A row shaped like the star's output, for expanding `SELECT *`. With no
+ * result rows the scanned schema stands in, so an out-of-range `ORDER BY <n>`
+ * still errors on an empty result instead of quietly returning nothing.
+ */
+function starSampleRow(rows: Row[], ctx: EvalContext): Row | undefined {
+  if (rows.length > 0) return rows[0];
+  const types = ctx.columnTypes;
+  if (!types) return undefined;
+  const sample: Row = {};
+  for (const key of types.keys()) {
+    if (!key.includes(".")) sample[key] = null;
+  }
+  return Object.keys(sample).length > 0 ? sample : undefined;
+}
+
+/** Resolve `*` / `alias.*` against a sample row; other items pass through. */
+function expandSelectItems(items: AST.SelectItem[], sampleRow?: Row): { expr: AST.Expression; alias?: string }[] {
+  const expanded: { expr: AST.Expression; alias?: string }[] = [];
   for (const item of items) {
     if (item.expr.kind === "star_ref" && !item.expr.table) {
-      // SELECT * — use all keys from first row
-      if (rows.length > 0) {
-        for (const key of Object.keys(rows[0])) {
+      // SELECT * — use all keys from the sample row
+      if (sampleRow) {
+        for (const key of Object.keys(sampleRow)) {
           // Skip internal keys (prefixed with __)
           if (key.startsWith("__")) continue;
           // Skip table.column duplicates (keep only unprefixed)
           if (key.includes(".")) continue;
-          expandedItems.push({ expr: { kind: "column_ref", column: key }, alias: key });
+          expanded.push({ expr: { kind: "column_ref", column: key }, alias: key });
         }
       }
       continue;
     }
     if (item.expr.kind === "star_ref" && item.expr.table) {
       // SELECT t.* — expand columns prefixed with table alias
-      if (rows.length > 0) {
+      if (sampleRow) {
         const prefix = item.expr.table + ".";
-        for (const key of Object.keys(rows[0])) {
+        for (const key of Object.keys(sampleRow)) {
           if (key.startsWith(prefix)) {
             const colName = key.slice(prefix.length);
-            expandedItems.push({ expr: { kind: "column_ref", column: key }, alias: colName });
+            expanded.push({ expr: { kind: "column_ref", column: key }, alias: colName });
           }
         }
       }
       continue;
     }
-    expandedItems.push(item);
+    expanded.push(item);
   }
+  return expanded;
+}
+
+function projectRows(
+  rows: Row[],
+  items: AST.SelectItem[],
+  ctx: EvalContext
+): { resultRows: Value[][]; columns: { name: string; type: DataType }[] } {
+  const expandedItems = expandSelectItems(items, rows[0]);
 
   const columns: { name: string; type: DataType }[] = expandedItems.map((item) => ({
     name: (item.alias ?? inferColumnName(item.expr)).toUpperCase(),
-    type: inferType(item.expr, rows[0]),
+    type: inferType(item.expr, ctx.columnTypes),
   }));
 
   const resultRows: Value[][] = rows.map((row) =>
@@ -541,15 +597,80 @@ function inferColumnName(expr: AST.Expression): string {
   }
 }
 
-function inferType(expr: AST.Expression, _row?: Row): DataType {
+/** Functions whose return value is a calendar date, not an instant. */
+const DATE_RETURNING_FUNCTIONS = new Set(["CURRENT_DATE", "TO_DATE", "DATE_FROM_PARTS", "LAST_DAY"]);
+
+/**
+ * Functions that hand back one of their arguments unchanged, so the temporal
+ * type has to travel through them: which arguments can supply it, and the
+ * argument holding the DATEADD/DATE_TRUNC unit (a time unit downgrades a DATE
+ * to a TIMESTAMP, as in Snowflake). Without this a DATE reached through
+ * COALESCE would fall back to VARCHAR and print as a local-time timestamp
+ * beside the same value printed as a calendar day.
+ */
+const TEMPORAL_PASSTHROUGH: Record<string, { values: number; unit?: number }> = {
+  COALESCE: { values: 0 },
+  NVL: { values: 0 },
+  IFNULL: { values: 0 },
+  GREATEST: { values: 0 },
+  LEAST: { values: 0 },
+  IFF: { values: 1 },
+  DATE_TRUNC: { values: 1, unit: 0 },
+  DATEADD: { values: 2, unit: 0 },
+  TIMESTAMPADD: { values: 2, unit: 0 },
+};
+
+const TIME_UNITS = new Set(["hour", "hh", "minute", "mi", "n", "second", "ss", "s", "millisecond", "ms", "microsecond", "nanosecond", "ns"]);
+
+/** First temporal type among `exprs`, if any. */
+function firstTemporal(exprs: AST.Expression[], types?: Map<string, DataType>): DataType | undefined {
+  for (const e of exprs) {
+    const t = inferType(e, types);
+    if (isTemporal(t)) return t;
+  }
+  return undefined;
+}
+
+/**
+ * Column type reported for a projected expression.
+ *
+ * Only the date/time types are resolved from the source schema (`types`): they
+ * are the ones that change how a value renders. Everything else keeps the
+ * historical VARCHAR/NUMBER answer, which the table formatter uses purely for
+ * column alignment.
+ */
+function inferType(expr: AST.Expression, types?: Map<string, DataType>): DataType {
   switch (expr.kind) {
     case "number_literal": return "NUMBER";
     case "string_literal": return "VARCHAR";
     case "boolean_literal": return "BOOLEAN";
     case "null_literal": return "VARCHAR";
-    case "column_ref": return "VARCHAR"; // Could look up from table schema
-    case "aggregate_call": return expr.name === "COUNT" ? "NUMBER" : "NUMBER";
-    case "function_call": return "VARCHAR";
+    case "column_ref": {
+      const key = (expr.table ? `${expr.table}.${expr.column}` : expr.column).toUpperCase();
+      const declared = types?.get(key) ?? (expr.table ? types?.get(expr.column.toUpperCase()) : undefined);
+      return isTemporal(declared) ? declared : "VARCHAR";
+    }
+    case "aggregate_call": {
+      // MIN/MAX preserve their argument's type; the rest are numeric.
+      if ((expr.name === "MIN" || expr.name === "MAX") && expr.arg) {
+        const inner = inferType(expr.arg, types);
+        if (isTemporal(inner)) return inner;
+      }
+      return "NUMBER";
+    }
+    case "function_call": {
+      const name = expr.name.toUpperCase();
+      if (DATE_RETURNING_FUNCTIONS.has(name)) return "DATE";
+      const passthrough = TEMPORAL_PASSTHROUGH[name];
+      if (passthrough) {
+        const carried = firstTemporal(expr.args.slice(passthrough.values), types);
+        if (!carried) return "VARCHAR";
+        const unit = passthrough.unit != null ? expr.args[passthrough.unit] : undefined;
+        const isTimeUnit = unit?.kind === "string_literal" && TIME_UNITS.has(unit.value.toLowerCase().replace(/s$/, ""));
+        return isTimeUnit ? "TIMESTAMP" : carried;
+      }
+      return "VARCHAR";
+    }
     case "cast_expr": {
       const t = expr.targetType.toUpperCase().replace(/\(.*\)/, "");
       if (t === "NUMBER" || t === "INT" || t === "INTEGER") return "NUMBER";
@@ -559,8 +680,17 @@ function inferType(expr: AST.Expression, _row?: Row): DataType {
       if (t === "TIMESTAMP") return "TIMESTAMP";
       return "VARCHAR";
     }
+    case "case_expr":
+      return firstTemporal(
+        [...expr.whenClauses.map((wc) => wc.then), ...(expr.elseClause ? [expr.elseClause] : [])],
+        types,
+      ) ?? "VARCHAR";
     default: return "VARCHAR";
   }
+}
+
+function isTemporal(t?: DataType): t is "DATE" | "TIMESTAMP" | "TIME" {
+  return t === "DATE" || t === "TIMESTAMP" || t === "TIME";
 }
 
 function executeSetOp(type: string, left: ResultSet, right: ResultSet): QueryResult {
