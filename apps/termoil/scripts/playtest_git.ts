@@ -160,7 +160,13 @@ async function main() {
   r = runner.run("git log");
   show("git log", r.output);
   check("log shows commit hash", /commit\s+[0-9a-f]{7}/i.test(r.output));
-  check("log shows author", /Author:.+ren/.test(r.output));
+  // Full author line, not just the username: it is the only guard on the
+  // GIT_AUTHOR_EMAIL_DOMAIN copy play.ts keeps of useTerminal.ts's private map.
+  check(
+    "log shows the full author line (display name + user@domain)",
+    r.output.includes("Author: Ren <ren@nexacorp.com>"),
+    r.output.split("\n").find((l) => l.includes("Author")),
+  );
   check("log shows date", /Date:/.test(r.output));
   check("log shows message", /initial commit/.test(r.output));
 

@@ -252,6 +252,22 @@ function arc4_rejectNexacorp() {
   step("Verify no nexacorp_followup arrives (dead end)");
   if (!r.deliveredEmailIds.includes("nexacorp_followup")) pass("dead end — no nexacorp_followup");
   else fail("dead end leaked nexacorp_followup email");
+
+  step("Late-accept branch: a reply option's own story-flag trigger fires");
+  // Guards selectOption's flag-trigger pass (the useSessionRouter half the
+  // runner does reproduce). accepted_at_180k comes from a storyFlags trigger on
+  // the reply's objective_completed event, not from the option itself.
+  const r2 = new GameRunner("home");
+  r2.run("mail 3");
+  r2.selectOption(2);
+  for (let i = 4; i <= 6; i++) r2.run(`mail ${i}`);
+  r2.selectOption(2);
+  for (let i = 4; i <= 7; i++) r2.run(`mail ${i}`);
+  const accept = r2.selectOption(1);
+  expectObjective(r2, "salary_180k");
+  expectFlag(r2, "accepted_at_180k");
+  if (accept.storyFlagUpdates.some((u) => u.flag === "accepted_at_180k")) pass("reply reports its flag update");
+  else fail(`reply did not report the flag update: ${JSON.stringify(accept.storyFlagUpdates)}`);
 }
 
 // ── ARC 5: Chapter 2 — Edward onboarding ──────────────────────────
@@ -326,6 +342,14 @@ function arc6_oscarLogs() {
   else fail(`diff unexpected exit ${out.exitCode}`);
   expectFlag(r, "oscar_diffed_logs");
   expectFlag(r, "discovered_log_tampering");
+
+  step("Oscar's access-log pipeline (file_read from a piped, non-final command)");
+  simulatePiperUnlocks(r, "processing_tools_unlocked", "inspection_tools_unlocked");
+  out = r.run("sort /var/log/access.log | uniq -c | sort -rn | head");
+  expectExit(out, 0, "sort | uniq -c | sort -rn | head");
+  // Guards buildCtx/intermediateFileReads parity in play.ts: the read that
+  // fires this flag is the FIRST command of the pipe, not the last.
+  expectFlag(r, "oscar_read_access_log");
 }
 
 // ── ARC 7: Chapter 2 — Auri handoff + dbt pipeline ────────────────
@@ -372,8 +396,11 @@ async function arc7_auriDbt() {
   step("cd nexacorp-analytics && dbt build");
   r.run("cd nexacorp-analytics");
   out = await r.runAsync("dbt build");
-  if (out.exitCode === 0) pass(`dbt build ok (output ${out.output.length} bytes)`);
-  else warn(`dbt build exit ${out.exitCode}: ${out.output.slice(-200)}`);
+  expectExit(out, 0, "dbt build");
+  // Every model must materialize. A missing ctx.dbtModelOrder (see buildCtx in
+  // play.ts) runs marts before their staging sources and errors 6 of them.
+  if (/Done\. PASS=21 WARN=0 ERROR=0 SKIP=0 TOTAL=21/.test(out.output)) pass("dbt build: 21/21 models OK");
+  else fail(`dbt build did not finish clean: ${out.output.split("\n").filter((l) => /Done\.|ERROR/.test(l)).slice(-4).join(" | ")}`);
   expectFlag(r, "ran_dbt");
 }
 
@@ -495,50 +522,55 @@ async function arc11_pipelineFix() {
   step("cd to repo and git pull");
   r.run("cd nexacorp-analytics");
   let out = r.run("git pull");
-  if (out.exitCode === 0) pass("git pull ok");
-  else warn(`git pull: ${out.output.slice(0, 200)}`);
-  // pulled_day2_updates is set by git pull handler
-  if (r.storyFlags.pulled_day2_updates) pass("flag pulled_day2_updates");
-  else warn("pulled_day2_updates not auto-set by git pull");
+  expectExit(out, 0, "git pull");
+  // pulled_day2_updates is set by the git pull handler
+  expectFlag(r, "pulled_day2_updates");
 
   step("dbt test → expect failure");
   out = await r.runAsync("dbt test");
-  // The pipeline is supposed to have a failing test on Day 2
-  if (out.output.toLowerCase().includes("fail")) pass(`dbt test reports failures`);
-  else warn(`dbt test output didn't mention 'fail': ${out.output.slice(0, 200)}`);
-  if (r.storyFlags.dbt_test_failed_day2) pass("flag dbt_test_failed_day2");
-  else warn("dbt_test_failed_day2 not set");
+  // The Day 2 pipeline ships with a failing conversion_rate test
+  if (/FAIL\s+not_null_rpt_campaign_performance_conversion_rate/.test(out.output)) {
+    pass("dbt test reports the conversion_rate failure");
+  } else {
+    fail(`dbt test did not report the expected failure: ${out.output.slice(-200)}`);
+  }
+  expectFlag(r, "dbt_test_failed_day2");
 
   step("git checkout -b fix/null-data");
   out = r.run("git checkout -b fix/null-data");
-  if (out.exitCode === 0) pass("checkout -b ok");
-  else fail(`checkout -b failed: ${out.output.slice(0, 200)}`);
-  if (r.storyFlags.created_fix_branch) pass("flag created_fix_branch");
-  else warn("created_fix_branch not set");
+  expectExit(out, 0, "git checkout -b");
+  expectFlag(r, "created_fix_branch");
 
   step("Edit campaign model to fix NULL data");
-  // Read it first to understand
-  out = r.run("cat models/marts/fct_campaign_metrics.sql");
-  if (out.exitCode === 0) pass("read fct_campaign_metrics");
-  else warn(`could not read model: ${out.output.slice(0, 120)}`);
-  // Simulate edit: just overwrite with a different content via writeFile
-  r.writeFile("/home/ren/nexacorp-analytics/models/marts/fct_campaign_metrics.sql",
-    "-- fixed: filter out null campaign_id\nSELECT * FROM source WHERE campaign_id IS NOT NULL\n");
+  // The model Auri names in her DM. Ground truth for the broken/fixed
+  // conversion_rate lines: story/data/dbt/__tests__/day2Quest.test.ts.
+  const modelPath = `${r.fs.homeDir}/nexacorp-analytics/models/marts/rpt_campaign_performance.sql`;
+  out = r.run("cat models/marts/rpt_campaign_performance.sql");
+  expectExit(out, 0, "read rpt_campaign_performance");
+  const broken = "round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2) as conversion_rate";
+  const fixed = "coalesce(round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2), 0) as conversion_rate";
+  const modelSql = r.fs.readFile(modelPath).content ?? "";
+  if (modelSql.includes(broken)) pass("model carries the broken conversion_rate line");
+  else fail(`model does not contain the expected broken line: ${modelSql.slice(0, 200)}`);
+  // The COALESCE fix (what Chip's fix_campaign_model menu item applies).
+  r.writeFile(modelPath, modelSql.replace(broken, fixed));
+
+  step("dbt build then dbt test → green");
+  out = await r.runAsync("dbt build");
+  expectExit(out, 0, "dbt build after fix");
   out = await r.runAsync("dbt test");
-  if (out.output.toLowerCase().includes("pass") || !out.output.toLowerCase().includes("fail")) {
-    pass("dbt test green after fix");
+  const testOut = out.output;
+  if (/PASS\s+not_null_rpt_campaign_performance_conversion_rate/.test(testOut)) {
+    pass("conversion_rate test passes after the fix");
   } else {
-    warn(`dbt test still failing: ${out.output.slice(0, 200)}`);
+    fail(`conversion_rate test not green: ${testOut.split("\n").filter((l) => l.includes("conversion_rate")).join(" | ").slice(0, 200)}`);
   }
-  if (r.storyFlags.fixed_campaign_model) pass("flag fixed_campaign_model");
-  else warn("fixed_campaign_model not auto-set (may need exact edit)");
+  expectFlag(r, "fixed_campaign_model");
 
   step("git push fix branch");
   out = r.run("git push -u origin fix/null-data");
-  if (out.exitCode === 0) pass("push ok");
-  else warn(`push: ${out.output.slice(0, 120)}`);
-  if (r.storyFlags.pushed_fix_branch) pass("flag pushed_fix_branch");
-  else warn("pushed_fix_branch not set");
+  expectExit(out, 0, "git push");
+  expectFlag(r, "pushed_fix_branch");
 }
 
 // ── ARC 12: Chapter 3 — Edward Chip plugin build ──────────────────
@@ -714,42 +746,28 @@ function arc14_marcusEndgame(suspect: "edward" | "sarah" | "erik" | "nobody") {
 function arc15_securityTripwires() {
   arc("Security tripwires — 3 termination kinds");
 
-  // log_tampering
-  step("log_tampering: rm /var/log/system.log");
-  {
+  /**
+   * Every tripwire ends the same way in the real game: computeEffects turns the
+   * violation into terminationReason + a forced route back to home. The runner
+   * reports both on CommandOutput (the cinematic itself is React-side).
+   */
+  function expectTripwire(command: string, kind: string) {
+    step(`${kind}: ${command}`);
     const r = new GameRunner("nexacorp");
     simulatePiperUnlocks(r, "piper_unlocked", "search_tools_unlocked");
-    const out = r.run("rm /var/log/system.log");
-    // The result includes securityViolation → effects.transitionTo=home + terminationReason
-    if (out.output.toLowerCase().includes("connection") || out.output.toLowerCase().includes("permitted") || out.output.toLowerCase().includes("closed")) {
-      pass(`tripwire output: ${out.output.slice(0, 200)}`);
-    } else {
-      warn(`rm output (may rely on terminationReason routing): ${out.output.slice(0, 200)}`);
-    }
-    // Check the result events / triggerEvents for security signal
-    pass(`exit ${out.exitCode}`);
+    const out = r.run(command);
+    if (out.terminationReason?.kind === kind) pass(`tripwire fired: ${kind} on ${out.terminationReason.path}`);
+    else fail(`no ${kind} tripwire for \`${command}\`: reason=${out.terminationReason?.kind ?? "none"} out=${out.output.slice(0, 120)}`);
+    if (out.transitionTo === "home") pass("terminated session routes back to home");
+    else fail(`expected transitionTo home, got ${out.transitionTo ?? "none"}`);
   }
 
-  // leadership_destruction
-  step("leadership_destruction: rm -rf /srv/leadership");
-  {
-    const r = new GameRunner("nexacorp");
-    simulatePiperUnlocks(r, "piper_unlocked", "search_tools_unlocked");
-    const out = r.run("rm -rf /srv/leadership");
-    pass(`output: ${out.output.slice(0, 200)} (exit ${out.exitCode})`);
-  }
-
-  // exfiltration
-  step("exfiltration: cp /srv/leadership/headcount_plan.md ~/");
-  {
-    const r = new GameRunner("nexacorp");
-    simulatePiperUnlocks(r, "piper_unlocked", "search_tools_unlocked");
-    const out = r.run("cp /srv/leadership/headcount_plan.md /home/ren/");
-    pass(`output: ${out.output.slice(0, 200)} (exit ${out.exitCode})`);
-  }
-
-  // Direct vitest run for tripwire is the source of truth.
-  warn("Tripwire transition (back to home + email) is React-side; see security-tripwire vitest tests for assertions");
+  expectTripwire("rm /var/log/system.log", "log_tampering");
+  expectTripwire("echo wiped > /var/log/system.log", "log_tampering");
+  expectTripwire("rm -rf /srv/leadership", "leadership_destruction");
+  // Must be recursive: /srv/leadership is drwx------, so a single-file cp can't
+  // even stat its way in and never reaches the tripwire.
+  expectTripwire("cp -r /srv/leadership /home/ren/", "exfiltration");
 }
 
 // ── Main ────────────────────────────────────────────────────────────
