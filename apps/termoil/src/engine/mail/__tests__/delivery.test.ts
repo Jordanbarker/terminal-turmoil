@@ -175,3 +175,47 @@ describe("checkEmailDeliveries", () => {
     });
   });
 });
+
+/**
+ * edward_end_of_day is the Day 1 -> Day 2 gate, not a flavour reward: reading it
+ * sets `read_end_of_day`, and `isEndOfDayExit` (useComputerTransitions.ts) will
+ * not let `exit` wrap the workday without it. A prereq that can never be
+ * satisfied is therefore an unrecoverable soft-lock, so pin the exact trigger:
+ * after_story_flag `auri_dbt_reported` requiring read_team_info +
+ * oscar_access_completed. (playtest_arcs ARC 9 walks the same gate end-to-end.)
+ */
+describe("edward_end_of_day (the Day 1 exit gate)", () => {
+  const PREREQS = ["auri_dbt_reported", "read_team_info", "oscar_access_completed"] as const;
+  const anyEvent: GameEvent = { type: "command_executed", detail: "ls" };
+  const deliver = (flags: StoryFlags) =>
+    checkEmailDeliveries(makeFS(), anyEvent, [], "nexacorp", flags).newDeliveries;
+
+  it("delivers once all three prereq flags hold", () => {
+    const flags = Object.fromEntries(PREREQS.map((f) => [f, true])) as StoryFlags;
+    expect(deliver(flags)).toContain("edward_end_of_day");
+  });
+
+  it("is an after_story_flag check, so ANY later command delivers it", () => {
+    const flags = Object.fromEntries(PREREQS.map((f) => [f, true])) as StoryFlags;
+    const readEvent: GameEvent = { type: "file_read", detail: "/etc/hostname" };
+    expect(checkEmailDeliveries(makeFS(), readEvent, [], "nexacorp", flags).newDeliveries)
+      .toContain("edward_end_of_day");
+  });
+
+  for (const missing of PREREQS) {
+    it(`does NOT deliver while ${missing} is unset`, () => {
+      const flags = Object.fromEntries(
+        PREREQS.filter((f) => f !== missing).map((f) => [f, true])
+      ) as StoryFlags;
+      expect(deliver(flags)).not.toContain("edward_end_of_day");
+    });
+  }
+
+  it("does not re-deliver once it is already in deliveredEmailIds", () => {
+    const flags = Object.fromEntries(PREREQS.map((f) => [f, true])) as StoryFlags;
+    const { newDeliveries } = checkEmailDeliveries(
+      makeFS(), anyEvent, ["edward_end_of_day"], "nexacorp", flags
+    );
+    expect(newDeliveries).not.toContain("edward_end_of_day");
+  });
+});

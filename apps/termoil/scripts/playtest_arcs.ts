@@ -458,7 +458,9 @@ function arc8_sideQuests() {
 function arc9_endOfDay1() {
   arc("Chapter 2 — End of Day 1, head home, shutdown");
   const r = new GameRunner("nexacorp");
-  // Simulate end-of-day prereqs satisfied
+  // Simulate the two prereqs that can only come from a Piper reply: both
+  // oscar_access_reported and auri_dbt_reported are emitted by every reply
+  // option on their deliveries, and piper sessions aren't drivable headlessly.
   simulatePiperUnlocks(r,
     "piper_unlocked", "read_onboarding",
     "oscar_access_completed", "auri_dbt_reported",
@@ -466,20 +468,28 @@ function arc9_endOfDay1() {
     "search_tools_unlocked", "inspection_tools_unlocked", "processing_tools_unlocked",
     "tabs_unlocked"
   );
-  // Force-deliver edward_end_of_day by reading nexacorp_followup-style trigger.
-  // Easier: simulate by directly running the cat on the trigger file path.
-  // edward_end_of_day fires from after_story_flag triggers; the runner's
-  // delivery checker is invoked on each computeEffects. Let's invoke a noop.
-  r.run("ls"); // triggers delivery cascade evaluation
-  // Email may still not be present without all triggers — accept either path
+
+  step("Read team-info.md (the third edward_end_of_day prereq)");
+  // edward_end_of_day's trigger is after_story_flag auri_dbt_reported with
+  // requiredFlags [read_team_info, oscar_access_completed]. read_team_info is
+  // earnable headlessly, so earn it rather than poking the flag.
+  let out = r.run("cat /srv/engineering/team-info.md");
+  expectExit(out, 0, "cat team-info.md");
+  expectFlag(r, "read_team_info");
+
+  // after_story_flag triggers are re-evaluated by the delivery pass that
+  // computeEffects runs on every command, so any command delivers it.
+  r.run("ls");
   if (r.deliveredEmailIds.includes("edward_end_of_day")) {
-    pass("edward_end_of_day delivered after side quests");
+    pass("edward_end_of_day delivered once all three prereqs hold");
   } else {
-    warn("edward_end_of_day not auto-delivered (triggers may need different prereqs)");
+    // Not a warn: this email gates the whole Day 1 -> Day 2 transition
+    // (isEndOfDayExit reads read_end_of_day), so losing it is a hard soft-lock.
+    fail("edward_end_of_day not delivered with read_team_info + oscar_access_completed + auri_dbt_reported set");
   }
 
   step("Exit NexaCorp (return home)");
-  let out = r.run("exit");
+  out = r.run("exit");
   // exit returns transitionTo: home, sets returned_home_day1 via simulated transition
   if (out.output) pass(`exit produced output (${out.output.length} bytes)`);
   // The home transition is handled by useComputerTransitions in real game; here we
@@ -541,8 +551,9 @@ function arc10_usbTip() {
 async function arc11_pipelineFix() {
   arc("Chapter 3 — Day 2 Auri pipeline fix");
   const r = new GameRunner("nexacorp");
-  // Simulate Day 2 state. Note: skip dbt_project_cloned so that git clone
-  // creates a fresh .git tree (headless runner FS builder doesn't carry .git).
+  // Simulate Day 2 state, reaching the repo by a live `git clone` rather than a
+  // checkpoint. ARC 16 covers the same chain entered via `cheat 3`, where the
+  // repo comes from the checkpoint builder instead.
   simulatePiperUnlocks(r,
     "piper_unlocked", "read_onboarding", "tabs_unlocked",
     "chip_unlocked", "coder_unlocked",
@@ -804,6 +815,98 @@ function arc15_securityTripwires() {
   expectTripwire("cp -r /srv/leadership /home/ren/", "exfiltration");
 }
 
+// ── ARC 16: `cheat 3` → the whole Day 2 git fix chain ─────────────
+
+/**
+ * The playtester's own entry point. ARC 11 reaches the same quest by hand-setting
+ * flags and re-cloning, which hides two things this arc pins:
+ *
+ *  1. The checkpoint's repo is a REAL repo. `cheat 3` sets dbt_project_cloned, so
+ *     the working tree comes from the checkpoint builder rather than from a live
+ *     `git clone`. It used to arrive without a `.git`, which left `git pull` (and
+ *     therefore the entire Day 2 quest) dead on arrival for anyone who cheated in.
+ *  2. `git commit` is on the path. ARC 11 goes straight from editing the model to
+ *     `git push`, so nothing exercises add → commit against the cloned repo.
+ */
+async function arc16_cheatDay2GitChain() {
+  arc("Day 2 fix chain from `cheat 3` (checkpoint repo, incl. commit)");
+  const r = new GameRunner("nexacorp");
+
+  step("cheat 3 → day2-start");
+  let out = r.run("cheat 3");
+  expectExit(out, 0, "cheat 3");
+  r.switchComputer("devcontainer");
+
+  step("the checkpoint's repo is a working git checkout");
+  out = r.run("cd nexacorp-analytics");
+  expectExit(out, 0, "cd nexacorp-analytics");
+  out = r.run("git status");
+  expectExit(out, 0, "git status");
+  if (/On branch main/.test(out.output) && /working tree clean/.test(out.output)) {
+    pass("clean checkout on main (checkpoint shipped a real .git)");
+  } else {
+    fail(`checkpoint repo is not a clean main checkout: ${out.output.slice(0, 200)}`);
+  }
+
+  step("git pull");
+  out = r.run("git pull");
+  expectExit(out, 0, "git pull");
+  expectFlag(r, "pulled_day2_updates");
+
+  step("dbt test → the conversion_rate failure that motivates the branch");
+  out = await r.runAsync("dbt test");
+  expectFlag(r, "dbt_test_failed_day2");
+
+  step("git checkout -b fix/null-data");
+  out = r.run("git checkout -b fix/null-data");
+  expectExit(out, 0, "git checkout -b");
+  // Gated on dbt_test_failed_day2: you branch after you find the bug, not before.
+  expectFlag(r, "created_fix_branch");
+
+  step("apply the COALESCE fix and go green");
+  const modelPath = `${r.fs.homeDir}/nexacorp-analytics/models/marts/rpt_campaign_performance.sql`;
+  const broken = "round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2) as conversion_rate";
+  const fixed = `coalesce(${broken.replace(" as conversion_rate", "")}, 0) as conversion_rate`;
+  const modelSql = r.fs.readFile(modelPath).content ?? "";
+  if (modelSql.includes(broken)) pass("checkpoint model carries the broken line");
+  else fail(`checkpoint model missing the broken line: ${modelSql.slice(0, 200)}`);
+  r.writeFile(modelPath, modelSql.replace(broken, fixed));
+  await r.runAsync("dbt build");
+  out = await r.runAsync("dbt test");
+  expectFlag(r, "fixed_campaign_model");
+
+  step("git add + git commit (the step ARC 11 skips)");
+  out = r.run("git status");
+  if (/modified:\s+models\/marts\/rpt_campaign_performance\.sql/.test(out.output)) {
+    pass("edit shows as an unstaged modification");
+  } else {
+    fail(`edit not seen as modified: ${out.output.slice(0, 200)}`);
+  }
+  out = r.run("git add models/marts/rpt_campaign_performance.sql");
+  expectExit(out, 0, "git add");
+  out = r.run('git commit -m "fix: coalesce null conversion_rate"');
+  expectExit(out, 0, "git commit");
+  if (/\[fix\/null-data [0-9a-f]+\]/.test(out.output)) pass("commit lands on fix/null-data");
+  else fail(`commit output has no branch/sha header: ${out.output.slice(0, 200)}`);
+  out = r.run("git log --oneline");
+  if (/fix: coalesce null conversion_rate/.test(out.output.split("\n")[0])) {
+    pass("the fix is the new HEAD commit");
+  } else {
+    fail(`fix commit is not at HEAD: ${out.output.split("\n")[0]}`);
+  }
+
+  step("git push -u origin fix/null-data");
+  out = r.run("git push -u origin fix/null-data");
+  expectExit(out, 0, "git push");
+  expectFlag(r, "pushed_fix_branch");
+  out = r.run("git status");
+  if (/up to date with 'origin\/fix\/null-data'/.test(out.output) && /working tree clean/.test(out.output)) {
+    pass("branch tracks its pushed remote with a clean tree");
+  } else {
+    fail(`post-push status wrong: ${out.output.slice(0, 200)}`);
+  }
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 
 async function main() {
@@ -826,6 +929,7 @@ async function main() {
   arc14_marcusEndgame("erik");
   arc14_marcusEndgame("nobody");
   arc15_securityTripwires();
+  await arc16_cheatDay2GitChain();
 
   console.log(`\n${"═".repeat(70)}\n  RESULTS\n${"═".repeat(70)}`);
   console.log(`  Passes:   ${totalPass}`);

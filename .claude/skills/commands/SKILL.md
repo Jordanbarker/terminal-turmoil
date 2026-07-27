@@ -7,7 +7,7 @@ description: "Command parser, registry, pipeline execution, and how to add new c
 
 Parses terminal input, dispatches to registered handlers, chains pipelines, and computes side effects — all as pure functions. **Shared `@tt/core` engine** (`packages/core/src/commands`), consumed by both apps.
 
-Code map: `commands/{types,registry,parser,expansion,runPipeline,applyResult,flagValidation,redirection,security,devices,scriptInterceptors,envTriggers}.ts` + `builtins/` (one file per command, plus `helpTexts.ts`; `git.ts`/`dbt.ts`/`snow.ts` are core builtins).
+Code map: `commands/{types,registry,parser,expansion,runPipeline,applyResult,flagValidation,redirection,security,devices,scriptInterceptors,envTriggers,editorTriggers,availability,clock,fsErrors,operands}.ts` + `builtins/` (one file per command, plus `helpTexts.ts`; `git.ts`/`dbt.ts`/`snow.ts` are core builtins).
 
 **Core registers only story-agnostic commands.** Termoil's own builtins live in `apps/termoil/src/engine/commands/builtins/` and self-register into the same registry from that dir's `index.ts` (which imports core's first): `mail`, `ssh`, `ssh-add`, `coder`, `exit`, `apt`, `chip`, `piper`, `shutdown`, `hostname`, `cheat`, `save`/`load`/`newgame`. Their help text is `apps/termoil/.../builtins/helpTexts.ts`, which re-exports core's map merged with termoil's own entries. `apps/term-crunch/src/__tests__/coreSurface.test.ts` fails if a story command reappears in core. Interactive modes: `session/types.ts` (`ISession`/`SessionResult`), `pager/` (less). Orchestration: the store-agnostic chain/pipe loop is core `runPipeline.ts`; the app hooks are thin wrappers around it — `useTerminal.ts` (context building/effects application), `useCommandLine.ts` (input buffer/history/suggestions), `useComputerTransitions.ts`. Read the type definitions in `commands/types.ts` and `applyResult.ts` directly — they are not mirrored here.
 
@@ -125,6 +125,9 @@ Everything core needs to know about a *particular* game arrives through one of t
 - **`snowflake/queryTriggers.ts`** — `setSqlQueryTriggers(table)`. `snow sql -q` and `SnowSqlSession` emit a `command_executed` event when a `pattern` matches the submitted SQL, **only for a statement that ran** (an errored query shows no data, so it credits no investigation). The REPL fires each detail at most once per session. Patterns must not be `g`-flagged. Termoil's table is `src/story/queryTriggers.ts`.
 - **`availability.ts` `setAvailabilityPolicy`** and **`help.ts` `registerMetaCommands`** — gating and the cyan meta-command grouping.
 - **`suggestions/suggest.ts` `addSubcommandCompletions`** — TAB/ghost-text subcommand words. `SUBCOMMAND_MAP` names only core's commands; an app-owned command registers its own (termoil's `apt.ts` adds `apt: [...]` and the `apt` under `sudo`). The registry guard alone does not catch a leak here, so `coreSurface.test.ts` checks the completion tables too.
+- **`CommandContext.gitAuthor`** (`types.ts`) — the commit author git stamps. Absent ⇒ a generic `username <username@localhost>`.
+- **`CommandContext.dbtModelOrder`** (`types.ts`) — the app's authored model execution order. Absent ⇒ models keep their discovered order.
+- **`CommandContext.clock`** (`clock.ts`) — the in-game clock; see the clock section above.
 - **`builtins/man.ts` `registerManSummaries`** — the terse man NAME line for app builtins (termoil registers `TERMOIL_MAN_SUMMARIES` from its builtins index). Unlisted commands render their bare name.
 
 All of these have a `reset*` counterpart (`resetAvailabilityPolicy`, `resetScriptInterceptor`, `resetEnvExportTriggers`, `resetEditorOpenTriggers`, `resetSqlQueryTriggers`, `resetSubcommandCompletions`) for test isolation.
