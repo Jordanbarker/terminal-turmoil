@@ -6,7 +6,7 @@ import {
   gitInit, gitAdd, gitCommit, gitStatus, getCommitLog,
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashApply, gitStashDrop, gitStashList, readStash,
-  gitRm, gitClone, gitPush, gitPull, gitReset, gitMerge, resolveRef,
+  gitRm, gitClone, gitPush, gitPushDelete, gitPull, gitReset, gitMerge, resolveRef,
   resolveHead, readIndex, readCommit, splitRevsAndPaths,
 } from "../repo";
 import { formatStatus, formatLog } from "../output";
@@ -1705,6 +1705,47 @@ describe("git push -f (force push)", () => {
     const force = gitPush(fs, "/home/player", "origin", "main", false, true);
     expect(force.error).toBeUndefined();
     expect(force.output).toContain("(forced update)");
+  });
+});
+
+// ── git push --delete ───────────────────────────────────────────────
+
+describe("git push --delete", () => {
+  /** Repo with a remote, one commit on main, and origin/feature published. */
+  function pushedRepo(): VirtualFS {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = gitCheckout(fs, "/home/player", "feature", true).fs;
+    fs = fs.writeFile("/home/player/b.txt", "work").fs!;
+    fs = addAndCommit(fs, "/home/player", "feature commit");
+    return gitPush(fs, "/home/player", "origin", "feature", true, false).fs;
+  }
+
+  it("deletes an existing remote ref and leaves the local branch alone", () => {
+    const fs = pushedRepo();
+    const result = gitPushDelete(fs, "/home/player", "origin", "feature");
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("To test-remote\n - [deleted]         feature");
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/feature")).toBeNull();
+    expect(result.fs.readFile("/home/player/.git/refs/heads/feature").content).toBeDefined();
+  });
+
+  it("errors when the remote ref does not exist", () => {
+    const fs = pushedRepo();
+    const result = gitPushDelete(fs, "/home/player", "origin", "nosuch");
+    expect(result.error).toBe(
+      "error: unable to delete 'nosuch': remote ref does not exist\n" +
+      "error: failed to push some refs to 'test-remote'",
+    );
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/feature")).not.toBeNull();
+  });
+
+  it("refuses without a ref to delete", () => {
+    const fs = pushedRepo();
+    const result = gitPushDelete(fs, "/home/player", "origin", undefined);
+    expect(result.error).toBe("fatal: --delete doesn't make sense without any refs");
   });
 });
 

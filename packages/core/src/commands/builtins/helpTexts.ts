@@ -421,6 +421,7 @@ export const HELP_TEXTS: Record<string, string> = {
     "      --soft: keep changes staged    --mixed: keep unstaged    --hard: discard them",
     "  git push [-u] [-f] [origin <branch>]   Update remote refs",
     "      -u: set upstream for the branch    -f: force (overwrite remote history)",
+    "  git push -d origin <branch>     Delete a branch on the remote",
     "  git fetch                       Download remote refs (already up to date here)",
     "  git pull [--ff-only|--rebase]   Fetch and merge from remote",
     "      --ff-only: fail rather than merge    --rebase: replay your commits on top",

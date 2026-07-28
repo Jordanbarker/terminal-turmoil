@@ -443,3 +443,36 @@ describe("git fetch / pull / merge remote-route flags", () => {
     expect(git(ctx, ["pull", "--bogus"]).exitCode).toBe(129);
   });
 });
+
+describe("git push --delete", () => {
+  /** Committed repo with a remote and origin/feature published. */
+  function withPushedFeature(): CommandContext {
+    let ctx = setupCommittedRepo();
+    ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/.git/config`, '[remote "origin"]\n  url = test-remote').fs! };
+    for (const args of [["checkout", "-b", "feature"], ["push", "-u", "origin", "feature"]]) {
+      const result = git(ctx, args);
+      expect(result.newFs).toBeDefined();
+      ctx = { ...ctx, fs: result.newFs! };
+    }
+    return ctx;
+  }
+
+  it("deletes the remote branch via the -d short form", () => {
+    const result = git(withPushedFeature(), ["push", "-d", "origin", "feature"]);
+    expect(result.stderr).toBeUndefined();
+    expect(result.output).toContain(" - [deleted]         feature");
+    expect(result.newFs!.getNode(`${HOME}/.git/refs/remotes/origin/feature`)).toBeNull();
+  });
+
+  it("deletes the remote branch via the --delete long form", () => {
+    const result = git(withPushedFeature(), ["push", "--delete", "origin", "feature"]);
+    expect(result.stderr).toBeUndefined();
+    expect(result.newFs!.getNode(`${HOME}/.git/refs/remotes/origin/feature`)).toBeNull();
+  });
+
+  it("errors when the remote ref does not exist", () => {
+    const result = git(withPushedFeature(), ["push", "-d", "origin", "nosuch"]);
+    expect(result.stderr).toContain("error: unable to delete 'nosuch': remote ref does not exist");
+    expect(result.exitCode).toBe(1);
+  });
+});

@@ -9,7 +9,7 @@ import {
   gitInit, gitAdd, gitRm, gitCommit, gitStatus, getCommitLog,
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashApply, gitStashDrop, gitStashList,
-  gitClone, gitPush, gitPull, gitReset,
+  gitClone, gitPush, gitPushDelete, gitPull, gitReset,
   gitRebase, gitRebaseContinue, gitRebaseAbort,
   gitMerge, gitMergeContinue, gitMergeAbort,
   resolveRef, splitRevsAndPaths, filterCommitsByPaths, readRemoteUrl,
@@ -94,7 +94,7 @@ const GIT_SUBCOMMAND_FLAGS: Record<string, KnownFlags> = {
   reset: { long: ["soft", "mixed", "hard"] },
   diff: { long: ["staged", "cached"] },
   stash: { short: ["u"], long: ["include-untracked"] },
-  push: { short: ["u", "f"] },
+  push: { short: ["u", "f", "d"], long: ["delete"] },
   pull: { long: ["ff-only", "rebase"] },
   fetch: {},
   help: {},
@@ -405,6 +405,11 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "push": {
       const remote = subArgs[0];
       const branch = subArgs[1];
+      if (flags["d"] || flags["delete"]) {
+        const result = gitPushDelete(ctx.fs, root, remote, branch);
+        if (result.error) return errorResult(result.error, 1);
+        return { output: result.output, newFs: result.fs };
+      }
       const setUpstream = !!flags["u"];
       const force = !!flags["f"];
       const result = gitPush(ctx.fs, root, remote, branch, setUpstream, force);

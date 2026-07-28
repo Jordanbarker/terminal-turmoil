@@ -1707,6 +1707,46 @@ export function gitPush(
 }
 
 /**
+ * `git push --delete <remote> <branch>` / `-d`. Removes the remote-tracking ref
+ * only: the local branch and its `[branch]` config survive, matching real git
+ * (the deletion is of the ref on the remote, and our remote *is* the tracking
+ * ref). Emits no push events — nothing was published.
+ */
+export function gitPushDelete(
+  fs: VirtualFS, root: string, remote: string | undefined, branch: string | undefined
+): { fs: VirtualFS; output: string; error?: string } {
+  // Unlike a normal push there is nothing to infer: without an explicit ref
+  // there is no candidate to delete, so real git refuses rather than guessing.
+  if (!branch) {
+    return { fs, output: "", error: "fatal: --delete doesn't make sense without any refs" };
+  }
+
+  const targetRemote = remote ?? "origin";
+  const remoteUrl = readRemoteUrl(fs, root);
+  if (!remoteUrl && targetRemote === "origin") {
+    return { fs, output: "", error: "fatal: No configured push destination" };
+  }
+
+  const refPath = `${root}/.git/refs/remotes/${targetRemote}/${branch}`;
+  if (!fs.readFile(refPath).content) {
+    return {
+      fs,
+      output: "",
+      error:
+        `error: unable to delete '${branch}': remote ref does not exist\n` +
+        `error: failed to push some refs to '${remoteUrl ?? targetRemote}'`,
+    };
+  }
+
+  fs = removeOrFail(fs, refPath);
+
+  return {
+    fs,
+    output: [`To ${remoteUrl ?? targetRemote}`, ` - [deleted]         ${branch}`].join("\n"),
+  };
+}
+
+/**
  * Story contract: every successful push emits both the per-branch detail and
  * the generic one, including no-op re-pushes. See the git skill's event table.
  */
