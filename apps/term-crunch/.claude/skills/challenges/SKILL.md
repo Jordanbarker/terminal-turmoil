@@ -42,7 +42,7 @@ State: `activeCategory` + `challengeIndex` (category-relative) + `stepIndex` + `
 
 ## Adding a challenge
 
-1. Create `src/challenges/<id>.ts` exporting a `Challenge`; `setup` seeds only what's needed. Pane challenges build `targetWindow` with `paneTypes` helpers — don't hand-author ids (`paneTreeMatches` compares normalized geometry: ids, ratios, and split order are ignored). Git challenges set `gitRepoPath` and read state via `gitState.ts`.
+1. Create `src/challenges/<id>.ts` exporting a `Challenge`; `setup` seeds only what's needed. Pane challenges build `targetWindow` with `paneTypes` helpers — don't hand-author ids (`paneTreeMatches` compares normalized geometry: ids, ratios, and split order are ignored). Git challenges set `gitRepoPath` and read state via `gitState.ts` — except branch-set predicates, which call `listBranches` from `@tt/core/git/repo` directly (`GitReadout` carries only the current branch; remote-tracking refs come back `remotes/`-prefixed).
 2. Author each `Step` objective-first, set a `brief`, add a pure `isComplete` predicate.
 3. Predicate conventions: steps are **state checkpoints, not an event script** — out-of-order play reaching the same state must complete; use `>=` not `===` for counts; a predicate can't observe a read-only command (gate on the enabling state change); check what the engine actually enforces (e.g. `VirtualFS.readFile` gates on the "other" permission bit); if a wrong move can soft-lock a destructive sandbox, ensure `restartChallenge()` recovers it.
 4. Put challenge-specific mechanics in **comments in the challenge file**, not this skill — docs point, code explains.

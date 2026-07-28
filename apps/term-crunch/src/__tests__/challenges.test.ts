@@ -27,7 +27,7 @@ import {
   type PaneNode,
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
-import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitStashApply, readStash, gitPull } from "@tt/core/git/repo";
+import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitStashApply, readStash, gitPull, listBranches, deleteBranch, gitPushDelete } from "@tt/core/git/repo";
 import { buildBaseFs } from "../lib/seed";
 import { readGitState } from "../lib/gitState";
 import { structKey, paneTreeMatches, paneTreeMatchesWithRatio } from "../lib/paneCompare";
@@ -44,6 +44,7 @@ import { gitUnstage } from "../challenges/git-unstage";
 import { gitStashChallenge } from "../challenges/git-stash";
 import { gitPullFf } from "../challenges/git-pull-ff";
 import { gitRebaseChallenge } from "../challenges/git-rebase";
+import { gitBranchDelete } from "../challenges/git-branch-delete";
 import { rmBomb } from "../challenges/rm-bomb";
 import { chmodPerms } from "../challenges/chmod-perms";
 import { mvOrganize } from "../challenges/mv-organize";
@@ -749,6 +750,79 @@ describe("git-pull-ff dispatch (flags accepted through the git command)", () => 
       expect(readGitState(fs, repo).behind).toBe(0);
       expect(step2.isComplete(at(fs))).toBe(true);
     });
+  });
+});
+
+describe("git-branch-delete challenge", () => {
+  const repo = gitBranchDelete.gitRepoPath!;
+  const [step1, step2, step3] = gitBranchDelete.steps;
+  const win = makeWindow(CRUNCH_MACHINE, repo);
+  const at = (f: ReturnType<typeof gitBranchDelete.setup>) => snap(win, f);
+
+  it("seeds main with a merged branch (local + remote ref) and an unmerged one", () => {
+    const fs = gitBranchDelete.setup(buildBaseFs());
+    expect(findRepoRoot(fs, repo)).toBe(repo);
+    const g = readGitState(fs, repo);
+    expect(g.branch).toBe("main");
+    expect(g.clean).toBe(true);
+    const { branches, remotes } = listBranches(fs, repo, "all");
+    expect(branches).toEqual(["experiment", "feature/login", "main"]);
+    expect(remotes).toEqual(["remotes/origin/feature/login"]);
+    // No step is satisfied by the freshly-loaded board.
+    expect(gitBranchDelete.steps.map((st) => st.isComplete(at(fs)))).toEqual([false, false, false]);
+  });
+
+  it("`-d` deletes the merged branch but refuses the unmerged one", () => {
+    let fs = gitBranchDelete.setup(buildBaseFs());
+
+    const merged = deleteBranch(fs, repo, "feature/login", false);
+    expect(merged.error).toBeUndefined();
+    fs = merged.fs;
+    expect(step1.isComplete(at(fs))).toBe(true);
+    expect(step2.isComplete(at(fs))).toBe(false);
+
+    const refused = deleteBranch(fs, repo, "experiment", false);
+    expect(refused.error).toContain("not fully merged");
+    expect(step2.isComplete(at(refused.fs))).toBe(false);
+
+    // -D forces it through.
+    const forced = deleteBranch(refused.fs, repo, "experiment", true);
+    expect(forced.error).toBeUndefined();
+    expect(step2.isComplete(at(forced.fs))).toBe(true);
+    // The remote ref survives the local deletions, so step 3 needs its own push.
+    expect(step3.isComplete(at(forced.fs))).toBe(false);
+  });
+
+  it("`git push origin --delete` removes the remote-tracking ref", () => {
+    let fs = gitBranchDelete.setup(buildBaseFs());
+    const pushed = gitPushDelete(fs, repo, "origin", "feature/login");
+    expect(pushed.error).toBeUndefined();
+    fs = pushed.fs;
+    expect(listBranches(fs, repo, "remotes").remotes).toEqual([]);
+    expect(step3.isComplete(at(fs))).toBe(true);
+    // Deleting on origin leaves the local branch alone.
+    expect(step1.isComplete(at(fs))).toBe(false);
+  });
+
+  it("walks the full flow through the git command", () => {
+    resetAvailabilityPolicy();
+    let fs = gitBranchDelete.setup(buildBaseFs());
+    const run = (rawArgs: string[]) => {
+      const r = execute("git", [rawArgs[0]], {}, {
+        fs, cwd: repo, homeDir: HOME_DIR, username: "player",
+        activeComputer: CRUNCH_MACHINE, rawArgs,
+      } as CommandContext);
+      expect(r.stderr ?? "").toBe("");
+      expect(r.exitCode ?? 0).toBe(0);
+      fs = r.newFs ?? fs;
+    };
+
+    run(["branch", "-d", "feature/login"]);
+    expect(step1.isComplete(at(fs))).toBe(true);
+    run(["branch", "-D", "experiment"]);
+    expect(step2.isComplete(at(fs))).toBe(true);
+    run(["push", "origin", "--delete", "feature/login"]);
+    expect(step3.isComplete(at(fs))).toBe(true);
   });
 });
 

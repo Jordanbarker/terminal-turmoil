@@ -95,6 +95,11 @@ export const SOLUTIONS: Record<string, Move[]> = {
     "git add config.txt",
     "git rebase --continue",
   ],
+  "git-branch-delete": [
+    "git branch -d feature/login",
+    "git branch -D experiment",
+    "git push origin --delete feature/login",
+  ],
 
   "rm-bomb": ["find ~/work -name BOMB.md", "rm ~/work/reports/2024/BOMB.md"],
   // Both set startCwd to their working dir, so no cd needed.

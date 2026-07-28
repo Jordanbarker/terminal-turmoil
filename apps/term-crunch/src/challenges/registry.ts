@@ -10,6 +10,7 @@ import { gitUnstage } from "./git-unstage";
 import { gitStashChallenge } from "./git-stash";
 import { gitPullFf } from "./git-pull-ff";
 import { gitRebaseChallenge } from "./git-rebase";
+import { gitBranchDelete } from "./git-branch-delete";
 import { rmBomb } from "./rm-bomb";
 import { chmodPerms } from "./chmod-perms";
 import { mvOrganize } from "./mv-organize";
@@ -28,4 +29,4 @@ import { vimReorder } from "./vim-reorder";
 import type { Challenge } from "./types";
 
 /** Ordered, linear progression. The player advances one challenge at a time. */
-export const CHALLENGES: Challenge[] = [panesSplit, panesGrid, panesCleanup, panesResize, panesResizeRows, panesResizeCorner, windowsCreate, gitFirstCommit, gitUnstage, gitStashChallenge, gitPullFf, gitRebaseChallenge, rmBomb, chmodPerms, mvOrganize, envExport, aliasShortcut, copyModeYank, sessionsDetachAttach, sessionsJuggle, sessionsRename, vimFirstEdit, vimDeleteLines, vimFixWord, vimYankPaste, vimSearchFix, vimReorder];
+export const CHALLENGES: Challenge[] = [panesSplit, panesGrid, panesCleanup, panesResize, panesResizeRows, panesResizeCorner, windowsCreate, gitFirstCommit, gitUnstage, gitStashChallenge, gitPullFf, gitBranchDelete, gitRebaseChallenge, rmBomb, chmodPerms, mvOrganize, envExport, aliasShortcut, copyModeYank, sessionsDetachAttach, sessionsJuggle, sessionsRename, vimFirstEdit, vimDeleteLines, vimFixWord, vimYankPaste, vimSearchFix, vimReorder];
