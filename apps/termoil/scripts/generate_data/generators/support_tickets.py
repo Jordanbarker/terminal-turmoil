@@ -15,7 +15,7 @@ FILLER_SUBJECTS = [
     ("Hardware", "Laptop battery draining fast", "Battery drains in under 2 hours", "low"),
     ("Software", "Git authentication issues", "Cannot push to remote, SSH key rejected", "medium"),
     ("Hardware", "External display not detected", "USB-C to HDMI adapter not recognized", "low"),
-    ("Software", "Slack crashes on startup", "Slack desktop app crashes immediately after opening", "medium"),
+    ("Software", "Piper crashes on startup", "Piper desktop app crashes immediately after opening", "medium"),
     ("Network", "WiFi drops in conference room C", "Signal consistently drops during meetings", "medium"),
     ("Access", "Need access to prod monitoring", "Requesting Datadog dashboard access", "low"),
     ("Software", "Email sync delay", "Emails arriving 15-20 minutes late", "low"),

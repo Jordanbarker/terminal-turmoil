@@ -4,13 +4,15 @@ import { createDebouncedStorage } from "./debouncedStorage";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { Mounts } from "@tt/core/filesystem/mounts";
 import "../story/git/remotes"; // side effect: registers this story's clonable git remotes into @tt/core
-import { buildFs, createSaveData, saveToSlot, loadFromSlot, serializeGameState, restoreGameState } from "./saveManager";
+import { buildFs, createSaveData, saveToSlot, loadFromSlot, pickSaveableState, serializeGameState, restoreGameState, SaveableState } from "./saveManager";
 import { SaveSlotId, SavePayload, SAVE_FORMAT_VERSION } from "./saveTypes";
 import { GamePhase, ComputerId, StoryFlags, PLAYER } from "./types";
+import type { StoryFlagName } from "../story/storyFlags";
 import { SnowflakeState } from "@tt/core/snowflake/state";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
-import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
 import { getDefaultEnv, initEnvForComputer, initAliasesForComputer } from "../story/env";
+import { INITIAL_STORY_FLAGS } from "./initialFlags";
+import { buildCheckpointState } from "./checkpointLoad";
 import { findNewlyAvailableChipTopics } from "../engine/chip/notifications";
 import {
   WindowState,
@@ -21,6 +23,7 @@ import {
   allLeaves,
   firstLeaf,
   findLeaf,
+  windowOfPane,
   mapLeaf,
   splitNode,
   collapsePane,
@@ -29,6 +32,8 @@ import {
   nudgeSplitRatio,
   focusDirectionTarget,
   nextLeafId,
+  nearestResizableSplit,
+  cliResizeDelta,
   resetPaneIdCounters,
 } from "@tt/core/terminal/paneTypes";
 import { TmuxSessionSnapshot, snapshotSession, restoreSession } from "@tt/core/terminal/tmuxSessions";
@@ -58,10 +63,6 @@ export function getActivePaneId(state: WindowSlice): string | undefined {
 export function getActiveLeaf(state: WindowSlice): PaneLeaf | undefined {
   const w = getActiveWindow(state);
   return w ? findLeaf(w.root, w.activePaneId) : undefined;
-}
-/** The window that contains a given pane id, or undefined. */
-function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
-  return windows.find((w) => findLeaf(w.root, paneId));
 }
 /** Ensure a window's activePaneId still points at a live leaf. */
 function normalizeFocus(w: WindowState): WindowState {
@@ -124,14 +125,13 @@ interface GameStore {
   copyModeHelpHidden: boolean;
 
   // Actions
-  setUsername: (username: string) => void;
   completeObjective: (id: string) => void;
   setGamePhase: (phase: GamePhase) => void;
   addDeliveredEmails: (ids: string[]) => void;
   addDeliveredPiperMessages: (ids: string[]) => void;
   setSnowflakeState: (state: SnowflakeState) => void;
   setCurrentChapter: (chapter: string) => void;
-  setStoryFlag: (key: string, value: string | boolean) => void;
+  setStoryFlag: (key: StoryFlagName, value: string | boolean) => void;
   setHasSeenIntro: () => void;
   addToast: (message: string) => void;
   removeToast: (id: string) => void;
@@ -172,7 +172,6 @@ interface GameStore {
   setComputerAliases: (computer: ComputerId, aliases: Record<string, string>) => void;
   removeComputer: (computer: ComputerId) => void;
   setPendingPiperNotification: (value: boolean) => void;
-  markChipTopicsNotified: (ids: string[]) => void;
   setCopyModeHelpHidden: (hidden: boolean) => void;
 }
 
@@ -188,8 +187,7 @@ function createInitialState(username = PLAYER.username) {
     deliveredPiperIds: [] as string[],
     gamePhase: "playing" as GamePhase,
     snowflakeState: createInitialSnowflakeState(),
-    // Terminal tabs + copy mode are available from the start of a new game.
-    storyFlags: { tabs_unlocked: true } as StoryFlags,
+    storyFlags: { ...INITIAL_STORY_FLAGS },
     hasSeenIntro: false,
     toasts: [] as Toast[],
     computerState: { home: { fs, envVars: initEnvForComputer("home", username, fs), aliases: initAliasesForComputer("home", username, fs), mounts: {} } } as Partial<Record<ComputerId, { fs: VirtualFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>>,
@@ -217,28 +215,29 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       ...createInitialState(),
 
-      setUsername: (username) => {
-        const state = get();
-        const computerId = (getActiveLeaf(state)?.computerId ?? "home") as ComputerId;
-        const fs = buildFs(username, computerId, state.storyFlags, state.deliveredEmailIds);
-        let finalFs = fs;
-        if (computerId === "nexacorp") {
-          finalFs = syncToVirtualFS(state.snowflakeState, fs);
-        }
-        set({
-          username,
-          computerState: { ...state.computerState, [computerId]: { ...state.computerState[computerId], fs: finalFs, mounts: state.computerState[computerId]?.mounts ?? {} } },
-        });
+      completeObjective: (id) => {
+        // Set-like: an id appearing twice would re-fire anything gated on
+        // `completedObjective`. De-dupe here so no call site can get it wrong.
+        // Early-return (not `set({})`) so a duplicate is a true no-op: zustand
+        // notifies all listeners and re-arms the persist debounce on any set().
+        if (get().completedObjectives.includes(id)) return;
+        set((state) => ({ completedObjectives: [...state.completedObjectives, id] }));
       },
-      completeObjective: (id) =>
-        set((state) => ({
-          completedObjectives: [...state.completedObjectives, id],
-        })),
       setGamePhase: (phase) => set({ gamePhase: phase }),
       addDeliveredEmails: (ids) =>
-        set((state) => ({
-          deliveredEmailIds: [...state.deliveredEmailIds, ...ids],
-        })),
+        set((state) => {
+          // De-dupe here (like addDeliveredPiperMessages) so no call site can
+          // deliver an email twice, e.g. the non-final chain segment applying
+          // effects that executeEffects then re-applies.
+          const known = new Set(state.deliveredEmailIds);
+          const fresh = ids.filter((id) => {
+            if (known.has(id)) return false;
+            known.add(id);
+            return true;
+          });
+          if (fresh.length === 0) return {};
+          return { deliveredEmailIds: [...state.deliveredEmailIds, ...fresh] };
+        }),
       addDeliveredPiperMessages: (ids) =>
         set((state) => {
           const seenPrefixes = ids
@@ -250,7 +249,20 @@ export const useGameStore = create<GameStore>()(
                   (id) => !seenPrefixes.some((prefix) => id.startsWith(prefix))
                 )
               : state.deliveredPiperIds;
-          return { deliveredPiperIds: [...filtered, ...ids] };
+          // deliveredPiperIds is set-like: a delivery/reply id appearing twice
+          // replays the message in the conversation. De-dupe here rather than at
+          // each call site so no caller can get it wrong (the Day 2 nexacorp
+          // transition used to re-seed ids the home call site had already added).
+          const known = new Set(filtered);
+          const additions = ids.filter((id) => {
+            if (known.has(id)) return false;
+            known.add(id);
+            return true;
+          });
+          if (additions.length === 0 && filtered.length === state.deliveredPiperIds.length) {
+            return {};
+          }
+          return { deliveredPiperIds: [...filtered, ...additions] };
         }),
       setSnowflakeState: (sfState) => set({ snowflakeState: sfState }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
@@ -572,6 +584,51 @@ export const useGameStore = create<GameStore>()(
             set({ tmuxDetachedSessions: [] });
             return false;
           }
+          // Window/pane verbs. These mirror the prefix chords exactly, so they
+          // inherit the chord paths' caps and the last-window kill rule; only
+          // an action that destroys or swaps the issuing pane's view returns
+          // true (the prompt is then suppressed).
+          case "new-window": {
+            const leaf = getActiveLeaf(state);
+            get().addWindow((leaf?.computerId ?? "home") as ComputerId, leaf?.cwd ?? state.computerState.home?.fs.homeDir ?? "/");
+            return false;
+          }
+          case "rename-window": {
+            get().renameWindow(action.windowId, action.name);
+            return false;
+          }
+          case "kill-window": {
+            const activePaneWindow = getActiveWindow(state)?.id;
+            get().removeWindow(action.windowId);
+            return action.windowId === activePaneWindow;
+          }
+          case "select-window": {
+            get().setActiveWindow(action.windowId);
+            return false;
+          }
+          case "split-window": {
+            const paneId = getActivePaneId(state);
+            if (paneId) get().splitPane(paneId, action.direction);
+            return false;
+          }
+          case "kill-pane": {
+            const paneId = getActivePaneId(state);
+            if (!paneId) return false;
+            get().closePane(paneId);
+            return true;
+          }
+          case "select-pane": {
+            get().focusDirection(action.dir);
+            return false;
+          }
+          case "resize-pane": {
+            const win = getActiveWindow(state);
+            if (!win) return false;
+            const orientation = action.dir === "L" || action.dir === "R" ? "h" : "v";
+            const splitId = nearestResizableSplit(win.root, win.activePaneId, orientation);
+            if (splitId) get().nudgeSplitRatio(splitId, cliResizeDelta(action.dir, action.cells));
+            return false;
+          }
         }
       },
       consumePendingMuxNotice: () => {
@@ -594,13 +651,6 @@ export const useGameStore = create<GameStore>()(
           return { computerState: rest };
         }),
       setPendingPiperNotification: (value) => set({ pendingPiperNotification: value }),
-      markChipTopicsNotified: (ids) =>
-        set((state) => {
-          const seen = new Set(state.notifiedChipTopicIds);
-          const additions = ids.filter((id) => !seen.has(id));
-          if (additions.length === 0) return {};
-          return { notifiedChipTopicIds: [...state.notifiedChipTopicIds, ...additions] };
-        }),
       resetGame: () => {
         set(createInitialState());
       },
@@ -620,23 +670,9 @@ export const useGameStore = create<GameStore>()(
       loadCheckpointData: (data) => {
         const username = PLAYER.username;
         const homeDir = `/home/${username}`;
-        const sfState = createInitialSnowflakeState({ includeDay2: !!data.storyFlags.day1_shutdown });
-
-        const loadedComputerState: Partial<Record<ComputerId, { fs: VirtualFS; envVars: Record<string, string>; aliases: Record<string, string>; mounts: Mounts }>> = {};
-        for (const computerId of data.computers) {
-          let fs = buildFs(username, computerId, data.storyFlags, data.deliveredEmailIds);
-          if (computerId === "nexacorp") {
-            fs = syncToVirtualFS(sfState, fs);
-          }
-          const baseAliases = initAliasesForComputer(computerId, username, fs);
-          const checkpointAliases = data.aliases?.[computerId] ?? {};
-          loadedComputerState[computerId] = {
-            fs,
-            envVars: { ...initEnvForComputer(computerId, username, fs), ...(data.envVars?.[computerId] ?? {}) },
-            aliases: { ...baseAliases, ...checkpointAliases },
-            mounts: {},
-          };
-        }
+        // Flags (merged over the baseline), Snowflake and every computer's FS
+        // come from the shared builder the headless runner also uses.
+        const { storyFlags, snowflakeState, computerState } = buildCheckpointState(username, data);
 
         const win = makeWindow(data.activeComputer, homeDir);
 
@@ -647,9 +683,12 @@ export const useGameStore = create<GameStore>()(
           completedObjectives: [...data.completedObjectives],
           deliveredEmailIds: [...data.deliveredEmailIds],
           deliveredPiperIds: [...data.deliveredPiperIds],
-          storyFlags: { ...data.storyFlags },
-          snowflakeState: sfState,
-          computerState: loadedComputerState,
+          storyFlags,
+          // A cheat skips the opening cinematic, so the nano tutorial must not
+          // pop later as if the player had never seen it.
+          hasSeenIntro: true,
+          snowflakeState,
+          computerState,
           // Fresh cheat-load: clear the history mirror so each computer's seeded
           // .zsh_history file stands.
           zshHistory: {},
@@ -663,14 +702,19 @@ export const useGameStore = create<GameStore>()(
           pendingMuxNotice: null,
           activeSnowSession: null,
           notifiedChipTopicIds: [],
+          // Transient notice from the pre-cheat session — must not leak in.
+          pendingPiperNotification: false,
         });
         return true;
       },
     }),
     {
       name: "termoil-save",
-      storage: createDebouncedStorage(1000),
-      partialize: (state) => serializeGameState(state),
+      // partialize runs on every set(), so it is only a field pick; the full
+      // multi-FS + Snowflake snapshot (serializeGameState) runs once per
+      // debounce window inside the storage adapter's flush.
+      storage: createDebouncedStorage<SaveableState, SavePayload>(1000, serializeGameState),
+      partialize: (state): SaveableState => pickSaveableState(state),
       merge: (persisted, currentState) => {
         const p = persisted as SavePayload | null;
         // Version mismatch (or pre-versioned blob) => discard and start fresh.

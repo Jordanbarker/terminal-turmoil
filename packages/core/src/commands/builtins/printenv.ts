@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register, registerAlias } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 
 const printenv: CommandHandler = (args, _flags, ctx) => {
@@ -29,3 +30,5 @@ const printenv: CommandHandler = (args, _flags, ctx) => {
 
 register("printenv", printenv, "Print environment variables", HELP_TEXTS.printenv);
 registerAlias("env", "printenv");
+setKnownFlags("printenv", {});
+setKnownFlags("env", {});

@@ -114,6 +114,11 @@ export function findLeaf(node: PaneNode, id: string): PaneLeaf | undefined {
   return allLeaves(node).find((l) => l.id === id);
 }
 
+/** The window whose pane tree contains `paneId`, or undefined. */
+export function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
+  return windows.find((w) => findLeaf(w.root, paneId));
+}
+
 /** Find a split by id, or undefined. */
 export function findSplit(node: PaneNode, id: string): PaneSplit | undefined {
   if (node.kind === "leaf") return undefined;
@@ -249,6 +254,18 @@ export function nearestResizableSplit(
   };
   walk(root);
   return found;
+}
+
+/**
+ * Ratio delta for a CLI `tmux resize-pane -<dir> <cells>`. The chord path
+ * (`useTabManager.applyResize`) converts cells to a ratio using the pane's real
+ * pixel geometry, but a store applying a command has no wrapper to measure, so
+ * approximate one cell as 1% and cap it at a single chord press's worth.
+ * Sign follows the chord path: R/D grow child `a`, L/U shrink it.
+ */
+export function cliResizeDelta(dir: "L" | "R" | "U" | "D", cells: number): number {
+  const magnitude = Math.min(cells * 0.01, MAX_NUDGE_RATIO);
+  return dir === "R" || dir === "D" ? magnitude : -magnitude;
 }
 
 // --- geometry ------------------------------------------------------------

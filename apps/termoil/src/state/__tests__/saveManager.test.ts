@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createSaveData,
+  pickSaveableState,
   serializeGameState,
   restoreGameState,
   saveToSlot,
@@ -92,7 +93,6 @@ function createState(): SaveableState {
   const windows = [win("nexacorp", "/home/player")];
   return {
     username: "player",
-    gamePhase: "playing",
     currentChapter: "chapter-1",
     completedObjectives: ["obj-1"],
     deliveredEmailIds: ["email-1"],
@@ -106,6 +106,7 @@ function createState(): SaveableState {
     tmuxAttachedSession: { name: "0", createdAt: 0 },
     tmuxDetachedSessions: [],
     notifiedChipTopicIds: [],
+    pendingPiperNotification: false,
     snowflakeState: emptySnowflake(),
     copyModeHelpHidden: true,
   };
@@ -133,7 +134,6 @@ describe("createSaveData", () => {
     expect(data.version).toBe(SAVE_FORMAT_VERSION);
     expect(data.label).toBe("Test Save");
     expect(data.username).toBe("player");
-    expect(data.gamePhase).toBe("playing");
     expect(data.currentChapter).toBe("chapter-1");
     expect(data.completedObjectives).toEqual(["obj-1"]);
     expect(data.deliveredEmailIds).toEqual(["email-1"]);
@@ -221,6 +221,24 @@ describe("serializeGameState / restoreGameState round-trip", () => {
     expect(
       restored.computerState.nexacorp!.fs.readFile("/home/player/test.txt").content
     ).toBe("test content");
+  });
+
+  it("never persists gamePhase, so a reload mid-animation still restores as playing", () => {
+    const payload = serializeGameState(createState());
+    expect("gamePhase" in payload).toBe(false);
+    // Even a hand-forged blob claiming a transient phase must restore playable.
+    const forged = { ...payload, gamePhase: "booting" } as typeof payload;
+    expect(restoreGameState(forged).gamePhase).toBe("playing");
+  });
+
+  it("pickSaveableState feeds serializeGameState losslessly (auto-persist payload is unchanged)", () => {
+    // Auto-persist goes state -> partialize (pickSaveableState) -> debounced
+    // flush (serializeGameState). The payload must match serializing the store
+    // state directly, or the cheap partialize dropped a field.
+    const state = createState();
+    // Simulate the extra non-saveable store fields partialize has to strip.
+    const storeLike = { ...state, gamePhase: "playing", toasts: [{ id: "1", message: "hi" }] };
+    expect(serializeGameState(pickSaveableState(storeLike))).toEqual(serializeGameState(state));
   });
 
   it("does not reuse pane ids from before the load (mid-session load keeps ids fresh)", () => {
@@ -312,7 +330,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-2",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -329,6 +346,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -355,7 +373,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-2",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -372,6 +389,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -394,7 +412,6 @@ describe("multi-tab round-trip", () => {
     const windows = [win("nexacorp", "/home/player")];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-1",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -408,6 +425,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };
@@ -431,7 +449,6 @@ describe("multi-tab round-trip", () => {
     ];
     const state: SaveableState = {
       username: "player",
-      gamePhase: "playing",
       currentChapter: "chapter-3",
       completedObjectives: [],
       deliveredEmailIds: [],
@@ -449,6 +466,7 @@ describe("multi-tab round-trip", () => {
       tmuxAttachedSession: { name: "0", createdAt: 0 },
       tmuxDetachedSessions: [],
       notifiedChipTopicIds: [],
+      pendingPiperNotification: false,
       snowflakeState: emptySnowflake(),
       copyModeHelpHidden: false,
     };

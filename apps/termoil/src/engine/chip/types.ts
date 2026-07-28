@@ -1,5 +1,6 @@
 import { GameEvent } from "../mail/delivery";
-import { StoryFlags, ComputerId } from "../../state/types";
+import { ComputerId } from "../../state/types";
+import type { TermoilStoryFlags } from "../../story/storyFlags";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 
 export interface ChipMenuItem {
@@ -19,7 +20,8 @@ export interface ChipMenuItem {
    */
   applyFs?: (fs: VirtualFS) => VirtualFS;
   triggerEvents?: GameEvent[];
-  condition?: (flags: StoryFlags, computer: ComputerId) => boolean;
+  /** Typed flag bag: reading an unregistered flag name is a build error. */
+  condition?: (flags: TermoilStoryFlags, computer: ComputerId) => boolean;
   notifyOnUnlock?: boolean;
 }
 

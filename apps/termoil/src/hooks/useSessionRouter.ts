@@ -363,9 +363,10 @@ export function useSessionRouter(deps: SessionRouterDeps) {
       if (session.type === "editor") {
         const store = useGameStore.getState();
         const currentFs = store.computerState[computerId]!.fs;
-        const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave } = session.info;
+        const { filePath, content, readOnly, triggerRow, triggerEvents, requireSave, contentPredicate } =
+          session.info;
         const trigger = triggerEvents
-          ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave }
+          ? { triggerRow: triggerRow ?? 0, triggerEvents, requireSave, contentPredicate }
           : undefined;
         const EditorClass = editorSessionClass(session.info.editor);
         const editorSession = new EditorClass(
@@ -500,13 +501,6 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     return entry.session.canClose?.() ?? true;
   }, []);
 
-  /** Whether the session in a specific pane (if any) can close without losing work. */
-  const canClosePaneSession = useCallback((paneId: string): boolean => {
-    const entry = sessionMapRef.current.get(paneId);
-    if (!entry) return true;
-    return entry.session.canClose?.() ?? true;
-  }, []);
-
   /**
    * Remove the session entry for a pane being closed.
    * NOTE: This only deletes the map entry — it does NOT write \x1b[?1049l to exit the
@@ -533,5 +527,5 @@ export function useSessionRouter(deps: SessionRouterDeps) {
     sessionMapRef.current.get(paneId)?.session.resize?.();
   }, []);
 
-  return { getActiveSessionType, routeInput, startSession, canCloseCurrentSession, canClosePaneSession, refreshPiperSession, cleanupPane, resizeActiveSession, resizePaneSession };
+  return { getActiveSessionType, routeInput, startSession, canCloseCurrentSession, refreshPiperSession, cleanupPane, resizeActiveSession, resizePaneSession };
 }

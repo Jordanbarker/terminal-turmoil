@@ -205,8 +205,8 @@ Most frequent stuff will be at the top, probably normal. But scroll to the botto
     },
 
     // === Oscar: Follow-up after Chip "reviews" the access log (normal path) ===
-    // Source order intentional: must precede oscar_access_followup so the
-    // file-read followup wins getPendingReply if both deliveries fire.
+    // If this and oscar_access_followup both fire, the reply menu works through
+    // them in delivery order (getPendingReplies), so neither prompt is stranded.
     {
       id: "oscar_access_chip_summary",
       channelId: "dm_oscar",

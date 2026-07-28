@@ -9,7 +9,9 @@ const BROKEN_CONVERSION_RATE_SQL =
 const FIXED_CONVERSION_RATE_SQL =
   "coalesce(round(sum(conversions) * 100.0 / nullif(sum(clicks), 0), 2), 0) as conversion_rate";
 
-const ALL_ITEMS: ChipMenuItem[] = [
+/** Every menu item, before conditions filter it. Exported so render tests can
+ * exercise chip's real reply text rather than a hand-written sample. */
+export const ALL_ITEMS: ChipMenuItem[] = [
   {
     id: "git_help",
     label: "Teach me git concepts/commands",
@@ -17,35 +19,37 @@ const ALL_ITEMS: ChipMenuItem[] = [
     response:
       "A commit is a snapshot of your project at a point in time. " +
       "Each one has a unique hash (e.g. a3f2c1b), a message, an author, and a pointer to its parent commit." +
-      "\n" +
+      "\n\n" +
 
-      "\nStage changes" +
-      "\n  git add app.py    # stage one file" +
-      "\n  git add .         # stage everything" +
+      "Stage changes" +
+      "\n  git add app.py         # stage one file" +
+      "\n  git add .              # stage everything" +
+      "\n  git restore --staged app.py   # unstage, keeping your edits" +
+      "\n  git restore app.py     # throw away your edits (no undo)" +
       "\n\n" +
 
       "Commit changes" +
-      "\n  git commit -m fix/bug.    # commit with a message (-m)" +
-      "\n  git commit -ma fix/bug    # commit with a message (-m) and auto-stage (-a)" +
+      "\n  git commit -m \"fix: handle null clicks\"   # commit with a message (-m)" +
+      "\n  git commit -am \"fix: handle null clicks\"  # same, but auto-stage tracked files (-a)" +
       "\n\n" +
 
       "Browse history" +
-      "\n git log               # full log with author, date, message" +
-      "\n git log --oneline     # compact: one line per commit" +
+      "\n  git log                # full log with author, date, message" +
+      "\n  git log --oneline      # compact: one line per commit" +
       "\n\n" +
-      
+
       "Branching" +
-      "\n git branch            # list local branches" +
-      "\n git branch -a         # list local + remote branches" +
-      "\n git branch -d fix/bug # delete a branch (safe; won't delete if unmerged)" +
-      "\n git branch -D fix/bug # force delete" + 
-      "\n git switch main       # switch to existing branch" +
-      "\n git switch -c fix/bug # create and switch to a new branch" +
-      "\n git restore app.py     # discard changes to a file" +
-      
+      "\n  git branch             # list local branches" +
+      "\n  git branch -a          # list local + remote branches" +
+      "\n  git branch -d fix/bug  # delete a branch (safe; won't delete if unmerged)" +
+      "\n  git branch -D fix/bug  # force delete" +
+      "\n  git switch main        # switch to existing branch" +
+      "\n  git switch -c fix/bug  # create and switch to a new branch" +
+      "\n\n" +
+
       "See what changed" +
-      "\n git status   # summary" +
-      "\n git diff     # line-by-line" +
+      "\n  git status             # summary" +
+      "\n  git diff               # line-by-line" +
       "\n\n" +
 
       "Creating a feature branch:\n" +
@@ -83,35 +87,43 @@ const ALL_ITEMS: ChipMenuItem[] = [
       "NexaCorp builds AI-powered enterprise tools. I'm the flagship product, a chatbot " +
       "that handles internal processes, documentation, and system queries. The company was " +
       "founded by Jessica Langford, Marcus Reyes, Tom Chen, and Edward Torres. We're still " +
-      "about 17 people right now, and growing fast.",
+      "small, 16 people counting you, and growing fast.",
   },
   {
     id: "team",
     label: "Tell me about the team",
+    // The query and its result must stay runnable and truthful: EMPLOYEES lives
+    // in RAW_NEXACORP (the default ANALYTICS schema is empty), and these are the
+    // 15 status='active' rows in seed order. See story/data/snowflake/nexacorp_prod.json.
     response:
       "Let me pull that up...\n" +
       "\n" +
-      "$ snow sql -q \"SELECT full_name, department FROM employees WHERE status = 'active'\"\n" +
+      "$ snow sql -q \"SELECT full_name, department FROM raw_nexacorp.employees WHERE status = 'active'\"\n" +
       "\n" +
       "  Edward Torres      Executive\n" +
+      "  Jessica Langford   Executive\n" +
+      "  Marcus Reyes       Executive\n" +
+      "  Tom Chen           Executive\n" +
       "  Sarah Knight       Engineering\n" +
-      "  Erik Lindstrom     Engineering\n" +
+      "  Dana Okafor        Operations\n" +
       "  Oscar Diaz         Engineering\n" +
+      "  Maya Johnson       People & Culture\n" +
+      "  Cassie Moreau      Engineering\n" +
+      "  James Wilson       Sales\n" +
+      "  Jordan Kessler     Marketing\n" +
+      "  Erik Lindstrom     Engineering\n" +
+      "  Leah Matsuda       Operations\n" +
       "  Auri Park          Engineering\n" +
       "  Soham Parekh       Engineering\n" +
-      "  Cassie Moreau      Product\n" +
-      "  Jordan Kessler     Marketing\n" +
-      "  Dana Okafor        Operations\n" +
-      "  Maya Johnson       People & Culture\n" +
       "\n" +
-      "That's the current active roster. 10 people plus you. The founders " +
-      "(Jessica, Marcus, Tom) are in the executive table but I pulled just the day-to-day team.",
+      "That's the whole active roster: 15 people, plus you. The four founders are in " +
+      "there too, since they're on the payroll like everyone else.",
   },
   {
     id: "jchen",
     label: "Why did Jin Chen leave?",
     response:
-      "Let me check... Employee ID E031, Jin Chen. Department: Engineering. " +
+      "Let me check... Employee ID E006, Jin Chen. Department: Engineering. " +
       "Status: resigned, February 2026. That's all I have in the records. " +
       "HR would know more. I just see what's in the database.",
   },

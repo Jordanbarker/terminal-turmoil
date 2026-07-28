@@ -15,7 +15,8 @@ import { CHALLENGES } from "../challenges/registry";
 import { MONDAY, resetStore } from "./helpers";
 
 const MINUTE = 60_000;
-const DAY = 24 * 60 * MINUTE;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
 const first = { isFirstClear: true, elapsedMs: null, intervalMs: null };
 const repeat = (elapsedMs: number, intervalMs: number | null = null) => ({
@@ -70,6 +71,22 @@ describe("awardCompletion", () => {
     expect(awardCompletion(initialMastery(MONDAY), repeat(DAY, null), MONDAY).awards[0].mp).toBe(4);
   });
 
+  it("sub-day scheduler intervals never shorten the one-day gate", () => {
+    // The scheduler's two sub-day intervals: a lapsed card sits at 10m and a
+    // Hard card at 12h. The gate is max(1 day, interval), so neither can open
+    // an early-payout window; otherwise failing a card would make it the
+    // cheapest thing in the deck to farm.
+    for (const intervalMs of [10 * MINUTE, 12 * HOUR]) {
+      expect(awardCompletion(initialMastery(MONDAY), repeat(11 * MINUTE, intervalMs), MONDAY).awards).toEqual([]);
+      expect(awardCompletion(initialMastery(MONDAY), repeat(13 * HOUR, intervalMs), MONDAY).awards).toEqual([]);
+      expect(awardCompletion(initialMastery(MONDAY), repeat(DAY - 1, intervalMs), MONDAY).awards).toEqual([]);
+      // A full day clears the floor and the curve pays as usual.
+      expect(awardCompletion(initialMastery(MONDAY), repeat(DAY, intervalMs), MONDAY).awards).toEqual([
+        { label: "Retention", mp: 4 },
+      ]);
+    }
+  });
+
   it("repeat awards scale with the elapsed gap survived", () => {
     const award = (elapsedMs: number) =>
       awardCompletion(initialMastery(MONDAY), repeat(elapsedMs), MONDAY).awards[0].mp;
@@ -98,6 +115,27 @@ describe("awardCompletion", () => {
     }
     expect(awarded.filter((l) => l === "Weekly goal")).toHaveLength(1);
     expect(s.daysThisWeek).toHaveLength(5);
+  });
+
+  it("first clears count toward the weekly goal even though they skip the decay tally", () => {
+    // A player working through the registry for the first time only ever earns
+    // first-clear MP, so the weekly goal has to be reachable on that path too.
+    let s = initialMastery(MONDAY);
+    const awarded: string[][] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = awardCompletion(s, first, MONDAY + i * DAY);
+      s = r.state;
+      awarded.push(r.awards.map((a) => a.label));
+    }
+    expect(awarded.slice(0, 3)).toEqual([["First clear"], ["First clear"], ["First clear"]]);
+    expect(awarded[3]).toEqual(["First clear", "Weekly goal"]);
+    expect(s.weeklyGoalMet).toBe(true);
+    expect(s.reviewsToday).toBe(0); // first clears never tick the daily decay counter
+    expect(mp(s)).toBe(4 * 50 + 50);
+
+    // Fires exactly once: a fifth day this week adds no second bonus.
+    const fifth = awardCompletion(s, first, MONDAY + 4 * DAY);
+    expect(fifth.awards).toEqual([{ label: "First clear", mp: 50 }]);
   });
 
   it("rolls the daily counter over and resets the week on a new Monday", () => {

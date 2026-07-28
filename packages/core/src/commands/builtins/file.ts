@@ -1,8 +1,10 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isDirectory, isFile } from "@tt/core/filesystem/types";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 function guessFileType(name: string, content: string): string {
   if (name.endsWith(".pdf")) return "PDF document, version 1.4";
@@ -32,7 +34,7 @@ function guessFileType(name: string, content: string): string {
 
 const file: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "file: missing file operand", exitCode: 1 };
+    return errorResult("file: missing file operand", 1);
   }
 
   const outputs: string[] = [];
@@ -57,3 +59,4 @@ const file: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("file", file, "Determine file type", HELP_TEXTS.file, true);
+setKnownFlags("file", {});

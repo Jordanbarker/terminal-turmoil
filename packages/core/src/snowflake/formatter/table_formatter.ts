@@ -1,5 +1,5 @@
 import { ResultSet, StatusMessage } from "./result_types";
-import { Value } from "../types";
+import { DataType, Value } from "../types";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 
 const MAX_COL_WIDTH = 40;
@@ -8,7 +8,7 @@ export function formatResultSet(rs: ResultSet, elapsed?: number): string {
   if (rs.columns.length === 0) return formatRowCount(rs.rowCount, elapsed);
 
   const headers = rs.columns.map((c) => c.name.toUpperCase());
-  const rows = rs.rows.map((row) => row.map(formatValue));
+  const rows = rs.rows.map((row) => row.map((v, i) => formatValue(v, rs.columns[i]?.type)));
 
   // Calculate column widths
   const widths = headers.map((h, i) => {
@@ -67,11 +67,12 @@ function formatRowCount(count: number, elapsed?: number): string {
   return colorize(`${count} Row(s) produced.${time}`, ansi.dim);
 }
 
-function formatValue(v: Value): string {
+function formatValue(v: Value, type?: DataType): string {
   if (v === null) return "NULL";
   if (v === undefined) return "NULL";
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (v instanceof Date) {
+    if (type === "DATE") return formatDateOnly(v);
     const Y = v.getFullYear();
     const M = String(v.getMonth() + 1).padStart(2, "0");
     const D = String(v.getDate()).padStart(2, "0");
@@ -83,6 +84,23 @@ function formatValue(v: Value): string {
   if (Array.isArray(v)) return JSON.stringify(v);
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
+}
+
+/**
+ * A DATE has no time-of-day, so it must print as `YYYY-MM-DD` and must not
+ * drift with the viewer's UTC offset. Two conventions produce these Dates:
+ * data parsed from an ISO day string lands on UTC midnight, while CURRENT_DATE
+ * builds a local midnight. Read the value in whichever frame it *is* midnight
+ * (UTC first) so the intended calendar day survives either way.
+ */
+function formatDateOnly(v: Date): string {
+  const utcMidnight = v.getUTCHours() === 0 && v.getUTCMinutes() === 0 && v.getUTCSeconds() === 0 && v.getUTCMilliseconds() === 0;
+  const localMidnight = v.getHours() === 0 && v.getMinutes() === 0 && v.getSeconds() === 0 && v.getMilliseconds() === 0;
+  const useLocal = localMidnight && !utcMidnight;
+  const Y = useLocal ? v.getFullYear() : v.getUTCFullYear();
+  const M = String((useLocal ? v.getMonth() : v.getUTCMonth()) + 1).padStart(2, "0");
+  const D = String(useLocal ? v.getDate() : v.getUTCDate()).padStart(2, "0");
+  return `${Y}-${M}-${D}`;
 }
 
 function padRight(s: string, width: number): string {

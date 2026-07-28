@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useGameStore, getActiveLeaf, getActivePaneId, getActiveWindow } from "../gameStore";
+import { useGameStore, getActiveLeaf, getActivePaneId, getActiveWindow, MAX_WINDOWS } from "../gameStore";
 import { allLeaves, findSplit, MAX_NUDGE_RATIO, PaneNode } from "@tt/core/terminal/paneTypes";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
+import { startObjectivePromotion } from "../objectivePromotion";
+import { CHAPTERS } from "../../engine/narrative/chapters";
 
 function createMinimalFS(username = "player"): VirtualFS {
   const root: DirectoryNode = {
@@ -311,6 +313,143 @@ describe("pane actions", () => {
   });
 });
 
+describe("tmux window/pane verbs (applyTmuxAction)", () => {
+  const store = () => useGameStore.getState();
+  const win = () => getActiveWindow(store())!;
+
+  it("new-window appends a window on the active pane's computer/cwd", () => {
+    store().setActivePaneCwd("/tmp");
+    expect(store().applyTmuxAction({ type: "new-window" })).toBe(false);
+    const s = store();
+    expect(s.windows).toHaveLength(2);
+    expect(s.activeWindowId).toBe(s.windows[1].id);
+    expect(getActiveLeaf(s)!.cwd).toBe("/tmp");
+    expect(getActiveLeaf(s)!.computerId).toBe("home");
+  });
+
+  it("new-window is a silent no-op at MAX_WINDOWS", () => {
+    for (let i = 1; i < MAX_WINDOWS; i++) store().addWindow("home", "/tmp");
+    expect(store().windows).toHaveLength(MAX_WINDOWS);
+    expect(store().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(store().windows).toHaveLength(MAX_WINDOWS);
+  });
+
+  it("rename-window renames the targeted window", () => {
+    const id = store().addWindow("home", "/tmp");
+    expect(store().applyTmuxAction({ type: "rename-window", windowId: id, name: "logs" })).toBe(false);
+    expect(store().windows.find((w) => w.id === id)!.name).toBe("logs");
+  });
+
+  it("kill-window returns true only for the window holding the active pane", () => {
+    const first = store().activeWindowId;
+    const second = store().addWindow("home", "/tmp"); // becomes active
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: first })).toBe(false);
+    expect(store().windows).toHaveLength(1);
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: second })).toBe(true);
+  });
+
+  it("kill-window on the last window kills the session (real tmux)", () => {
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: store().activeWindowId })).toBe(true);
+    expect(store().tmuxAttachedSession).toBeNull();
+    expect(store().pendingMuxNotice).toBe("[exited]");
+  });
+
+  it("select-window switches windows without swapping the client view", () => {
+    const first = store().activeWindowId;
+    store().addWindow("home", "/tmp");
+    expect(store().applyTmuxAction({ type: "select-window", windowId: first })).toBe(false);
+    expect(store().activeWindowId).toBe(first);
+  });
+
+  it("split-window splits the active pane and focuses the new one", () => {
+    const original = getActivePaneId(store())!;
+    expect(store().applyTmuxAction({ type: "split-window", direction: "h" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(2);
+    expect((win().root as Extract<PaneNode, { kind: "split" }>).direction).toBe("h");
+    expect(getActivePaneId(store())).not.toBe(original);
+  });
+
+  it("split-window is a silent no-op at the pane cap", () => {
+    for (let i = 0; i < 5; i++) store().splitPane(getActivePaneId(store())!, "v");
+    expect(allLeaves(win().root)).toHaveLength(6); // MAX_PANES_PER_WINDOW
+    expect(store().applyTmuxAction({ type: "split-window", direction: "v" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(6);
+  });
+
+  it("kill-pane closes the active pane and suppresses the prompt", () => {
+    const first = getActivePaneId(store())!;
+    store().splitPane(first, "h");
+    expect(store().applyTmuxAction({ type: "kill-pane" })).toBe(true);
+    expect(allLeaves(win().root)).toHaveLength(1);
+    expect(getActivePaneId(store())).toBe(first);
+  });
+
+  it("select-pane moves the focus in the given direction", () => {
+    const left = getActivePaneId(store())!;
+    const right = store().splitPane(left, "h")!;
+    expect(store().applyTmuxAction({ type: "select-pane", dir: "L" })).toBe(false);
+    expect(getActivePaneId(store())).toBe(left);
+    store().applyTmuxAction({ type: "select-pane", dir: "R" });
+    expect(getActivePaneId(store())).toBe(right);
+  });
+
+  it("resize-pane nudges the nearest split on the axis, capped at one chord press", () => {
+    store().splitPane(getActivePaneId(store())!, "h");
+    const splitId = (win().root as Extract<PaneNode, { kind: "split" }>).id;
+    store().applyTmuxAction({ type: "resize-pane", dir: "R", cells: 2 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52);
+    store().applyTmuxAction({ type: "resize-pane", dir: "L", cells: 100 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52 - MAX_NUDGE_RATIO);
+  });
+
+  it("resize-pane is a no-op when no split exists on that axis", () => {
+    store().splitPane(getActivePaneId(store())!, "h");
+    const before = win().root;
+    store().applyTmuxAction({ type: "resize-pane", dir: "U", cells: 5 });
+    expect(win().root).toBe(before);
+  });
+});
+
+describe("addDeliveredPiperMessages", () => {
+  const store = () => useGameStore.getState();
+
+  // Regression: the Day 2 nexacorp transition re-seeded the same immediate
+  // deliveries the home call site had already added (it lacked the manual
+  // deliveredPiperIds filter), delivering those messages twice. De-duping in
+  // the action means no call site can get it wrong.
+  it("delivers an id once even when called twice with the same ids", () => {
+    store().addDeliveredPiperMessages(["alex_intro", "olive_hello"]);
+    store().addDeliveredPiperMessages(["alex_intro", "olive_hello"]);
+    expect(store().deliveredPiperIds).toEqual(["alex_intro", "olive_hello"]);
+  });
+
+  it("de-dupes within a single batch and keeps genuinely new ids", () => {
+    store().addDeliveredPiperMessages(["a", "a", "b"]);
+    store().addDeliveredPiperMessages(["b", "c"]);
+    expect(store().deliveredPiperIds).toEqual(["a", "b", "c"]);
+  });
+
+  it("de-dupes reply ids too", () => {
+    store().addDeliveredPiperMessages(["auri_day2:0"]);
+    store().addDeliveredPiperMessages(["reply:auri_day2:0"]);
+    store().addDeliveredPiperMessages(["reply:auri_day2:0"]);
+    expect(store().deliveredPiperIds).toEqual(["auri_day2:0", "reply:auri_day2:0"]);
+  });
+
+  it("still replaces a stale seen: marker for the same channel", () => {
+    store().addDeliveredPiperMessages(["dm_auri", "seen:dm_auri:2"]);
+    store().addDeliveredPiperMessages(["seen:dm_auri:5"]);
+    expect(store().deliveredPiperIds).toEqual(["dm_auri", "seen:dm_auri:5"]);
+  });
+
+  it("leaves state untouched when every id is already delivered", () => {
+    store().addDeliveredPiperMessages(["a", "b"]);
+    const before = store().deliveredPiperIds;
+    store().addDeliveredPiperMessages(["a", "b"]);
+    expect(store().deliveredPiperIds).toBe(before);
+  });
+});
+
 describe("activeSnowSession", () => {
   it("defaults to null", () => {
     expect(useGameStore.getState().activeSnowSession).toBeNull();
@@ -396,5 +535,54 @@ describe("multi-pane integration", () => {
     expect(totalPanes).toBe(3);
     expect(state.computerState.home).toBeDefined();
     expect(state.computerState.nexacorp).toBeDefined();
+  });
+});
+
+describe("completeObjective", () => {
+  const store = () => useGameStore.getState();
+
+  it("records an objective once, even when called repeatedly", () => {
+    store().completeObjective("obj-a");
+    store().completeObjective("obj-a");
+    store().completeObjective("obj-b");
+    expect(store().completedObjectives).toEqual(["obj-a", "obj-b"]);
+  });
+
+  it("leaves state untouched when the objective is already complete", () => {
+    store().completeObjective("obj-a");
+    const before = store().completedObjectives;
+    store().completeObjective("obj-a");
+    expect(store().completedObjectives).toBe(before);
+  });
+});
+
+describe("objective promotion", () => {
+  const store = () => useGameStore.getState();
+
+  it("promotes flag-satisfied objectives without the HUD being mounted", () => {
+    const unsubscribe = startObjectivePromotion();
+    try {
+      // Chapter 1's "read_the_resume" objective checks the read_resume flag.
+      expect(store().completedObjectives).not.toContain("read_resume");
+      store().setStoryFlag("read_resume", true);
+
+      const chapter1 = CHAPTERS.find((c) => c.id === "chapter-1")!;
+      const flagged = chapter1.objectives.filter(
+        (o) => o.check.source === "storyFlag" && o.check.key === "read_resume"
+      );
+      expect(flagged.length).toBeGreaterThan(0);
+      for (const obj of flagged) {
+        expect(store().completedObjectives).toContain(obj.id);
+      }
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("stops promoting once unsubscribed", () => {
+    startObjectivePromotion()();
+    const before = store().completedObjectives.length;
+    store().setStoryFlag("read_resume", true);
+    expect(store().completedObjectives).toHaveLength(before);
   });
 });

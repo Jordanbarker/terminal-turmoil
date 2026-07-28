@@ -2,14 +2,16 @@ import { CommandHandler, CommandResult, TmuxContext } from "@tt/core/commands/ty
 import { register } from "../registry";
 import { skipFlagValidation } from "../flagValidation";
 import { nextSessionName, formatTmuxLs } from "@tt/core/terminal/tmuxSessions";
+import { DEFAULT_RESIZE_CELLS } from "@tt/core/terminal/tmuxConfig";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 // Real tmux error strings (single client, default socket).
 const NESTED = "sessions should be nested with care, unset $TMUX to force";
 const NO_SERVER = "no server running on /tmp/tmux-1000/default";
 
-function err(output: string): CommandResult {
-  return { output, exitCode: 1 };
+function err(message: string): CommandResult {
+  return errorResult(message, 1);
 }
 
 /** Value of a `-s`/`-t` style option in the raw token list, or null. */
@@ -29,6 +31,29 @@ function positionals(tokens: string[], sub: string): string[] {
     out.push(tokens[i]);
   }
   return out;
+}
+
+type PaneDir = "L" | "R" | "U" | "D";
+const PANE_DIRS: PaneDir[] = ["L", "R", "U", "D"];
+
+/** The `-L`/`-R`/`-U`/`-D` direction flag present in the tokens, or null. */
+function dirFlag(tokens: string[]): PaneDir | null {
+  return PANE_DIRS.find((d) => tokens.includes(`-${d}`)) ?? null;
+}
+
+/**
+ * Window id for a `-t` target (null target = the current window). Names win
+ * over indexes; `session:window.pane` grammar is deliberately unsupported.
+ * Returns null when nothing matches — callers turn that into a tmux error.
+ */
+function resolveWindow(tmux: TmuxContext, target: string | null): string | null {
+  const windows = tmux.windows ?? [];
+  if (target === null) return windows.find((w) => w.active)?.id ?? null;
+  if (/[:.]/.test(target)) return null;
+  const byName = windows.find((w) => w.name === target);
+  if (byName) return byName.id;
+  if (/^\d+$/.test(target)) return windows.find((w) => w.index === Number(target))?.id ?? null;
+  return null;
 }
 
 function serverRunning(tmux: TmuxContext): boolean {
@@ -118,6 +143,102 @@ const tmux: CommandHandler = (args, _flags, ctx) => {
     case "kill-server": {
       if (!serverRunning(state)) return err(NO_SERVER);
       return { output: "", tmuxAction: { type: "kill-server" } };
+    }
+
+    // Window/pane verbs. All of them act on the client's current session, so
+    // they need an attached client; pane verbs act on the pane the command was
+    // typed in, which is the active one by construction.
+    case "neww":
+    case "new-window": {
+      if (state.attachedSession === null) return err("no current client");
+      return { output: "", tmuxAction: { type: "new-window" } };
+    }
+
+    case "renamew":
+    case "rename-window": {
+      if (state.attachedSession === null) return err("no current client");
+      const target = optValue(tokens, "-t");
+      const windowId = resolveWindow(state, target);
+      if (windowId === null) return err(`can't find window: ${target ?? ""}`);
+      const name = positionals(tokens, sub)[0];
+      if (name === undefined) return err("usage: rename-window [-t target-window] new-name");
+      return { output: "", tmuxAction: { type: "rename-window", windowId, name } };
+    }
+
+    case "killw":
+    case "kill-window": {
+      if (state.attachedSession === null) return err("no current client");
+      const target = optValue(tokens, "-t");
+      const windowId = resolveWindow(state, target);
+      if (windowId === null) return err(`can't find window: ${target ?? ""}`);
+      return { output: "", tmuxAction: { type: "kill-window", windowId } };
+    }
+
+    case "selectw":
+    case "select-window": {
+      if (state.attachedSession === null) return err("no current client");
+      const target = optValue(tokens, "-t");
+      if (target === null) return err("usage: select-window -t target-window");
+      const windowId = resolveWindow(state, target);
+      if (windowId === null) return err(`can't find window: ${target}`);
+      return { output: "", tmuxAction: { type: "select-window", windowId } };
+    }
+
+    case "splitw":
+    case "split-window": {
+      if (state.attachedSession === null) return err("no current client");
+      return {
+        output: "",
+        tmuxAction: { type: "split-window", direction: tokens.includes("-h") ? "h" : "v" },
+      };
+    }
+
+    case "killp":
+    case "kill-pane": {
+      if (state.attachedSession === null) return err("no current client");
+      const target = optValue(tokens, "-t");
+      // No pane addressing: the only pane a command can reach is its own.
+      if (target !== null) return err(`can't find pane: ${target}`);
+      return { output: "", tmuxAction: { type: "kill-pane" } };
+    }
+
+    case "selectp":
+    case "select-pane": {
+      if (state.attachedSession === null) return err("no current client");
+      const target = optValue(tokens, "-t");
+      if (target !== null) return err(`can't find pane: ${target}`);
+      const dir = dirFlag(tokens);
+      if (dir === null) return err("usage: select-pane [-LRUD]");
+      return { output: "", tmuxAction: { type: "select-pane", dir } };
+    }
+
+    case "resizep":
+    case "resize-pane": {
+      if (state.attachedSession === null) return err("no current client");
+      const usage = "usage: resize-pane [-LRUD] [adjustment]";
+      const target = optValue(tokens, "-t");
+      if (target !== null) return err(`can't find pane: ${target}`);
+      const dir = dirFlag(tokens);
+      if (dir === null) return err(usage);
+      // Direction flags take no value, so `positionals` would eat the
+      // adjustment as one — scan for it directly.
+      let amount: string | undefined;
+      for (let i = tokens.indexOf(sub) + 1; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (PANE_DIRS.some((d) => t === `-${d}`)) continue;
+        if (t.startsWith("-")) {
+          i++; // skip this option's value
+          continue;
+        }
+        amount = t;
+        break;
+      }
+      let cells = DEFAULT_RESIZE_CELLS;
+      if (amount !== undefined) {
+        if (!/^\d+$/.test(amount) || Number(amount) === 0) return err(usage);
+        cells = Number(amount);
+      }
+      return { output: "", tmuxAction: { type: "resize-pane", dir, cells } };
     }
 
     default:

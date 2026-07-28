@@ -11,24 +11,35 @@ export interface EditorTrigger {
   triggerRow: number;
   triggerEvents: GameEvent[];
   requireSave?: boolean;
+  /**
+   * Predicate over the last-saved buffer, supplied by the app (see
+   * commands/editorTriggers). Without it "save the file" is the whole
+   * condition, so a save that changed nothing completes a fix-this objective.
+   */
+  contentPredicate?: (content: string) => boolean;
 }
 
 /**
  * Build the SessionResult for leaving an editor: merge the file_created/modified
  * events with the explicit story trigger, which only fires once the reader has
- * scrolled to `triggerRow` and (if `requireSave`) actually saved. Shared by nano
- * and vim so the same file edited in either editor fires the same story events.
+ * scrolled to `triggerRow`, (if `requireSave`) actually saved, and (if
+ * `contentPredicate`) saved something the app accepts. Shared by nano and vim so
+ * the same file edited in either editor fires the same story events.
  */
 export function buildEditorExitResult(
   fs: VirtualFS,
   fileEvents: GameEvent[],
   trigger: EditorTrigger | undefined,
   maxRowReached: number,
-  hasSaved: boolean
+  hasSaved: boolean,
+  savedContent?: string | null
 ): SessionResult {
   const rowOk = !trigger || maxRowReached >= trigger.triggerRow;
   const saveOk = !trigger?.requireSave || hasSaved;
-  const explicitTrigger = trigger && rowOk && saveOk ? trigger.triggerEvents : [];
+  const contentOk =
+    !trigger?.contentPredicate ||
+    (savedContent != null && trigger.contentPredicate(savedContent));
+  const explicitTrigger = trigger && rowOk && saveOk && contentOk ? trigger.triggerEvents : [];
   const triggerEvents = [...fileEvents, ...explicitTrigger];
   return {
     type: "exit",
@@ -46,6 +57,8 @@ export class EditorSession implements ISession {
   private trigger?: EditorTrigger;
   private maxRowReached = 0;
   private hasSaved = false;
+  /** Bytes of the most recent successful save; fed to `trigger.contentPredicate`. */
+  private savedContent: string | null = null;
   private fileEvents: GameEvent[] = [];
   /** Whether the buffer ends with a newline; re-attached on write. */
   private eol: boolean;
@@ -711,11 +724,20 @@ export class EditorSession implements ISession {
 
     const content = this.serialize();
     const existedBefore = !!this.fs.getNode(input);
+    // Ctrl+O to the file being edited is a save of that file — the footer
+    // advertises it as "Write Out", and it is how most players save in nano.
+    // Writing out to a *different* path leaves the tracked file untouched, so
+    // it must not satisfy `requireSave`/`contentPredicate` for it.
+    const isTrackedFile = input === this.state.filePath;
     const result = this.fs.writeFile(input, content);
     if (result.fs) {
       this.fs = result.fs;
       this.onSave(result.fs);
       this.state.modified = false;
+      if (isTrackedFile) {
+        this.hasSaved = true;
+        this.savedContent = content;
+      }
       this.state.filePath = input;
       this.state.fileName = input.split("/").pop() || input;
       this.fileEvents.push({
@@ -882,6 +904,7 @@ export class EditorSession implements ISession {
       this.onSave(result.fs);
       this.state.modified = false;
       this.hasSaved = true;
+      this.savedContent = content;
       this.fileEvents.push({
         type: existedBefore ? "file_modified" : "file_created",
         detail: this.state.filePath,
@@ -904,7 +927,9 @@ export class EditorSession implements ISession {
 
   private exitEditor(): SessionResult {
     this.terminal.write("\x1b[?25h\x1b[?1049l"); // Show cursor + exit alt buffer
-    return buildEditorExitResult(this.fs, this.fileEvents, this.trigger, this.maxRowReached, this.hasSaved);
+    return buildEditorExitResult(
+      this.fs, this.fileEvents, this.trigger, this.maxRowReached, this.hasSaved, this.savedContent
+    );
   }
 
   // === Rendering ===

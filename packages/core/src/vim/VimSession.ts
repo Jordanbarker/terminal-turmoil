@@ -725,7 +725,12 @@ export class VimSession implements ISession {
 
   private exitSession(): SessionResult {
     this.terminal.write("\x1b[0 q\x1b[?25h\x1b[?1049l"); // Reset cursor shape, show cursor, exit alt buffer
-    return buildEditorExitResult(this.fs, this.fileEvents, this.trigger, this.maxRowReached, this.hasSaved);
+    // lastSavedText starts as the on-open content and only moves on `:w` to
+    // this file, so it is the saved buffer whenever hasSaved is true.
+    return buildEditorExitResult(
+      this.fs, this.fileEvents, this.trigger, this.maxRowReached, this.hasSaved,
+      this.hasSaved ? this.lastSavedText : null
+    );
   }
 
   // === Shared helpers ===

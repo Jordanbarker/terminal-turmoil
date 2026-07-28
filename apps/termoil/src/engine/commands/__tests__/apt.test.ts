@@ -5,6 +5,7 @@ import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
 import { getErikpcStoryFlagTriggers } from "../../../story/storyFlags";
 import { checkStoryFlagTriggers } from "../../narrative/storyFlags";
+import { getSubcommandCompletions } from "@tt/core/suggestions/suggest";
 
 import "../builtins";
 
@@ -107,5 +108,18 @@ describe("apt usage", () => {
   it("shows usage for unknown subcommand", () => {
     const result = execute("apt", ["remove"], {}, ctx({ elevated: true }));
     expect(result.output).toContain("Usage: apt <update|upgrade|install>");
+  });
+});
+
+// apt is this app's command, so its TAB/ghost-text entries are registered
+// through the core `addSubcommandCompletions` seam rather than core's table.
+describe("apt completions", () => {
+  it("registers apt under sudo and its own subcommands", () => {
+    expect(getSubcommandCompletions("sudo")).toContain("apt");
+    expect(getSubcommandCompletions("apt")).toContain("install");
+  });
+
+  it("leaves core's own subcommand entries alone", () => {
+    expect(getSubcommandCompletions("snow")).toEqual(["sql"]);
   });
 });

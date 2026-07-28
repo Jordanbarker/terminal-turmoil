@@ -2,6 +2,13 @@
 export interface GitCommit {
   hash: string;
   parent: string | null;
+  /**
+   * Second parent, present only on merge commits. Deliberately optional so every
+   * existing `.parent` reader, remote-repo literal, and save file stays valid;
+   * only `parentsOf`/`ancestorSet` and `^2` look at it. All other walks
+   * (`git log`, `~N`, pull's ff check, rebase) are first-parent by design.
+   */
+  parent2?: string;
   message: string;
   author: string;
   timestamp: number;
@@ -19,6 +26,13 @@ export interface GitIndex {
 export interface GitStashEntry {
   tree: Record<string, string>;
   message: string;
+  /**
+   * HEAD content of each stashed path at save time (path absent = the file did not
+   * exist in HEAD). Used by apply/pop to detect that the working tree has moved on
+   * since the stash was taken. Optional so entries persisted before this field
+   * existed still parse; a missing base simply skips the conflict check.
+   */
+  base?: Record<string, string>;
 }
 
 /**
@@ -32,6 +46,18 @@ export interface GitRebaseState {
   originalHead: string; // that branch's tip before rebase started (for --abort)
   todo: string[]; // ORIGINAL commit hashes still to replay, oldest first ([0] = current when conflicted)
   current: string | null; // original hash stopped on a conflict (null when not conflicted)
+  conflictFiles: string[]; // working-tree files carrying conflict markers
+}
+
+/**
+ * In-progress merge, persisted to .git/merge-state.json (real git's MERGE_HEAD).
+ * Written only when a merge stops on conflicts; cleared by the concluding commit,
+ * `git merge --continue`, or `git merge --abort`. HEAD never moves while it exists.
+ */
+export interface GitMergeState {
+  targetHash: string; // commit being merged in — becomes the merge commit's parent2
+  targetLabel: string; // the revision the player typed (conflict-marker label + story event)
+  message: string; // prepared merge message, used by `git merge --continue`
   conflictFiles: string[]; // working-tree files carrying conflict markers
 }
 

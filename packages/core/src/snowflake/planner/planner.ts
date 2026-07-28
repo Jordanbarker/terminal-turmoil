@@ -56,7 +56,7 @@ export function planSelect(stmt: AST.SelectStatement, ctx: PlannerContext): Plan
 
   // ORDER BY
   if (stmt.orderBy) {
-    plan = { kind: "sort", source: plan, orderBy: stmt.orderBy };
+    plan = { kind: "sort", source: plan, orderBy: resolveOrderBy(stmt.orderBy, stmt.items) };
   }
 
   // LIMIT / OFFSET / TOP
@@ -72,6 +72,105 @@ export function planSelect(stmt: AST.SelectStatement, ctx: PlannerContext): Plan
   // Set operations are handled in executeSelect after projection — not here
 
   return plan;
+}
+
+/**
+ * Rewrite ORDER BY terms that name the select list rather than the source:
+ * an ordinal (`ORDER BY 2`) or a select-list alias (`ORDER BY total`). Sorting
+ * runs before projection, so those terms would otherwise evaluate to NULL and
+ * silently leave the rows unsorted. Anything that already resolves against the
+ * source rows is left untouched.
+ *
+ * A `*` in the select list has no column list until execution time, so
+ * ordinals are left for the sort node to resolve against the expanded star
+ * (see `executePlan`); that is also why the range check is skipped here.
+ */
+export function resolveOrderBy(orderBy: AST.OrderByItem[], items: AST.SelectItem[]): AST.OrderByItem[] {
+  const hasStar = items.some((i) => i.expr.kind === "star_ref");
+  return orderBy.map((item) => {
+    const expr = ordinalTarget(item.expr, items, hasStar) ?? substituteAliases(item.expr, items);
+    return expr === item.expr ? item : { ...item, expr };
+  });
+}
+
+/**
+ * A numeric ORDER BY term is always a select-list position in Snowflake, so
+ * anything that cannot be one (negative, fractional, out of range) is an
+ * error rather than a constant that quietly sorts nothing.
+ */
+function ordinalTarget(expr: AST.Expression, items: AST.SelectItem[], hasStar: boolean): AST.Expression | undefined {
+  const position = ordinalValue(expr);
+  if (position === undefined) return undefined;
+  if (Number.isInteger(position) && position >= 1) {
+    // With a star the real column list only exists at execution time, so the
+    // range check waits until the sort node can expand it.
+    if (hasStar) return undefined;
+    const item = items[position - 1];
+    if (item) return item.expr;
+  }
+  throw new Error(`ORDER BY position ${position} is not in select list`);
+}
+
+function ordinalValue(expr: AST.Expression): number | undefined {
+  if (expr.kind === "number_literal") return expr.value;
+  if (expr.kind === "unary_expr" && expr.op === "-" && expr.operand.kind === "number_literal") {
+    return -expr.operand.value;
+  }
+  return undefined;
+}
+
+/**
+ * Replace every bare identifier that names a select-list alias with that
+ * item's expression, at any depth, so `ORDER BY ABS(total)` sorts the same way
+ * `ORDER BY total` does. Substituted expressions are not re-walked, so
+ * `SELECT x AS x` cannot recurse forever. Returns the original node when
+ * nothing matched, letting callers detect a no-op by identity.
+ */
+function substituteAliases(expr: AST.Expression, items: AST.SelectItem[]): AST.Expression {
+  const walk = (e: AST.Expression): AST.Expression => {
+    switch (e.kind) {
+      case "column_ref": {
+        if (e.table) return e;
+        const name = e.column.toUpperCase();
+        // An explicit alias wins over a same-named source column, as in Snowflake.
+        const item = items.find((i) => i.alias?.toUpperCase() === name);
+        return item ? item.expr : e;
+      }
+      case "binary_expr": return rebuild(e, { left: walk(e.left), right: walk(e.right) });
+      case "unary_expr": return rebuild(e, { operand: walk(e.operand) });
+      case "function_call": return rebuild(e, { args: walkAll(e.args) });
+      case "aggregate_call": return e.arg ? rebuild(e, { arg: walk(e.arg) }) : e;
+      case "cast_expr": return rebuild(e, { expr: walk(e.expr) });
+      case "case_expr": return rebuild(e, {
+        operand: e.operand ? walk(e.operand) : undefined,
+        whenClauses: e.whenClauses.map((wc) => ({ when: walk(wc.when), then: walk(wc.then) })),
+        elseClause: e.elseClause ? walk(e.elseClause) : undefined,
+      });
+      case "between_expr": return rebuild(e, { expr: walk(e.expr), low: walk(e.low), high: walk(e.high) });
+      case "like_expr": return rebuild(e, { expr: walk(e.expr), pattern: walk(e.pattern) });
+      case "is_null_expr": return rebuild(e, { expr: walk(e.expr) });
+      case "in_expr": return e.values ? rebuild(e, { expr: walk(e.expr), values: walkAll(e.values) }) : rebuild(e, { expr: walk(e.expr) });
+      case "array_construct": return rebuild(e, { elements: walkAll(e.elements) });
+      case "dot_access": return rebuild(e, { object: walk(e.object) });
+      case "bracket_access": return rebuild(e, { object: walk(e.object), index: walk(e.index) });
+      // Window calls resolve after the sort runs, and subqueries carry their
+      // own scope; neither can borrow an outer alias.
+      default: return e;
+    }
+  };
+  const walkAll = (exprs: AST.Expression[]): AST.Expression[] => {
+    const next = exprs.map(walk);
+    return next.some((e, i) => e !== exprs[i]) ? next : exprs;
+  };
+  return walk(expr);
+}
+
+/** Rebuild `node` only if a rewritten child actually changed. */
+function rebuild<T extends AST.Expression>(node: T, changes: Partial<T>): T {
+  for (const [key, value] of Object.entries(changes)) {
+    if (value !== (node as unknown as Record<string, unknown>)[key]) return { ...node, ...changes };
+  }
+  return node;
 }
 
 function planTableRef(ref: AST.TableRef, ctx: PlannerContext): Plan.LogicalPlan {

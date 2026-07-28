@@ -202,6 +202,41 @@ describe("git rebase — conflict workflow", () => {
   });
 });
 
+describe("git rebase — remote-tracking upstream", () => {
+  it("fast-forwards onto origin/<branch> when strictly behind", () => {
+    let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;
+    fs = commitFile(fs, "a.txt", "v1\n", "base");
+    fs = createBranch(fs, ROOT, "ahead").fs;
+    fs = checkout(fs, "ahead");
+    fs = commitFile(fs, "b.txt", "v1\n", "upstream work");
+    const upstreamTip = resolveHead(fs, ROOT)!;
+    fs = checkout(fs, "main");
+    fs = fs.writeFile(`${ROOT}/.git/refs/remotes/origin/main`, upstreamTip).fs!;
+
+    const res = gitRebase(fs, ROOT, "origin/main");
+    expect(res.error).toBeUndefined();
+    expect(res.output).toBe("Successfully rebased and updated refs/heads/main.");
+    expect(res.fs.readFile(`${ROOT}/.git/refs/heads/main`).content!.trim()).toBe(upstreamTip);
+    expect(res.fs.readFile(`${ROOT}/b.txt`).content).toBe("v1\n");
+  });
+
+  it("replays local commits on top of origin/<branch> when diverged", () => {
+    let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;
+    fs = commitFile(fs, "a.txt", "v1\n", "base");
+    fs = createBranch(fs, ROOT, "ahead").fs;
+    fs = checkout(fs, "ahead");
+    fs = commitFile(fs, "b.txt", "v1\n", "upstream work");
+    const upstreamTip = resolveHead(fs, ROOT)!;
+    fs = checkout(fs, "main");
+    fs = fs.writeFile(`${ROOT}/.git/refs/remotes/origin/main`, upstreamTip).fs!;
+    fs = commitFile(fs, "c.txt", "mine\n", "local work");
+
+    const res = gitRebase(fs, ROOT, "origin/main");
+    expect(res.error).toBeUndefined();
+    expect(messages(res.fs)).toEqual(["local work", "upstream work", "base"]);
+  });
+});
+
 describe("git rebase — errors & helpers", () => {
   it("errors on an invalid upstream", () => {
     let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;

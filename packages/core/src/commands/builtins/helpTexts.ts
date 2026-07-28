@@ -71,17 +71,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "  :w  :q  :wq  :q! Save, quit, save-and-quit, quit without saving",
   ].join("\n"),
 
-  mail: [
-    "Usage: mail [MESSAGE_NUMBER]",
-    "       mail -s SUBJECT RECIPIENT",
-    "",
-    "Read and send email.",
-    "",
-    "  mail              Show inbox listing",
-    "  mail N            Read message number N",
-    "  mail -s SUB TO    Send a message with subject SUB to recipient TO",
-  ].join("\n"),
-
   python: [
     "Usage: python [FILE] [-c CODE]",
     "",
@@ -161,9 +150,11 @@ export const HELP_TEXTS: Record<string, string> = {
   ].join("\n"),
 
   less: [
-    "Usage: less [FILE]",
+    "Usage: less [-N] [FILE]",
     "",
     "View file contents with paging. With no FILE, read from standard input.",
+    "",
+    "  -N   number each line",
     "",
     "  q  Ctrl+C       Quit",
     "  j  Down  Enter  Forward one line",
@@ -279,14 +270,6 @@ export const HELP_TEXTS: Record<string, string> = {
     "Usage: whoami",
     "",
     "Print the current username.",
-  ].join("\n"),
-
-  hostname: [
-    "Usage: hostname [-I]",
-    "",
-    "Print the system hostname.",
-    "",
-    "  -I   list all configured IP addresses",
   ].join("\n"),
 
   file: [
@@ -414,12 +397,23 @@ export const HELP_TEXTS: Record<string, string> = {
     "  git status [-s]                 Show the working tree status (-s: short format)",
     "  git commit -m 'msg'             Record staged changes to the repository",
     "      -a: also stage modified tracked files    --amend: replace the last commit",
-    "  git log [--oneline] [--graph]   Show commit history (compact / with branch graph)",
+    "  git log [-n <count>] [<rev>] [-- <path>]   Show commit history",
+    "      --oneline: one line each    --graph: with branch graph",
+    "      <rev>: a branch, HEAD, or a commit — with ~N / ^ / ^2 steps (e.g. HEAD~2)",
     "  git branch [<name>]             List branches, or create branch <name>",
     "      -a: include remote branches    -d/-D: delete a branch (-D even if unmerged)",
     "  git switch [-c] <branch>        Switch branches (-c: create it first)",
+    "      -d/--detach <commit>: detach HEAD onto a commit instead of a branch",
     "  git checkout [-b] <branch>      Switch or create branches (legacy; -b: create)",
-    "  git diff [--staged]             Show unstaged changes (--staged: staged instead)",
+    "  git checkout <commit>           Detach HEAD onto a commit (e.g. a sha, HEAD~1)",
+    "  git checkout -- <file>          Discard working-tree changes (legacy; see restore)",
+    "  git diff [--staged] [<rev>[..<rev>]] [-- <path>]   Show changes",
+    "      --staged: staged instead of unstaged    <rev>: compare against a commit",
+    "  git restore [--staged] <file>   Discard working-tree changes (--staged: unstage)",
+    "  git merge [--ff-only] <rev>     Join another history into this branch",
+    "      fast-forwards when possible, else makes a merge commit",
+    "      --ff-only: fail instead of making a merge commit",
+    "  git merge --continue|--abort    Conclude or cancel a conflicted merge",
     "  git rebase <branch>             Reapply your commits on top of another branch",
     "  git rebase --continue|--abort   Resume or cancel an in-progress rebase",
     "  git reset [<paths>]             Unstage changes",
@@ -427,17 +421,16 @@ export const HELP_TEXTS: Record<string, string> = {
     "      --soft: keep changes staged    --mixed: keep unstaged    --hard: discard them",
     "  git push [-u] [-f] [origin <branch>]   Update remote refs",
     "      -u: set upstream for the branch    -f: force (overwrite remote history)",
-    "  git pull [--ff-only]            Fetch and merge from remote (--ff-only: no merges)",
-    "  git rm [-r] <file>              Remove files from tracking (-r: recurse into dirs)",
+    "  git fetch                       Download remote refs (already up to date here)",
+    "  git pull [--ff-only|--rebase]   Fetch and merge from remote",
+    "      --ff-only: fail rather than merge    --rebase: replay your commits on top",
+    "  git rm [-r] [--cached] <file>   Remove files from tracking (-r: recurse into dirs)",
+    "      --cached: untrack but keep the file on disk",
     "  git stash [push] [-u]           Set changes aside (-u: include untracked files)",
-    "  git stash pop                   Re-apply the most recent stash",
+    "  git stash pop                   Re-apply the most recent stash and drop it",
+    "  git stash apply                 Re-apply the most recent stash, keeping it",
+    "  git stash drop                  Discard the most recent stash",
     "  git stash list                  List stashes",
-  ].join("\n"),
-
-  exit: [
-    "Usage: exit",
-    "",
-    "Exit the current remote session (e.g. after ssh), returning to the previous shell.",
   ].join("\n"),
 
   true: [
@@ -478,42 +471,11 @@ export const HELP_TEXTS: Record<string, string> = {
     "Use man <command> for detailed usage.",
   ].join("\n"),
 
-  save: [
-    "Usage: save [1|2|3]",
-    "",
-    "Save game state to a numbered slot.",
-    "If no slot is given, save to slot 1.",
-  ].join("\n"),
-
-  load: [
-    "Usage: load [1|2|3|auto]",
-    "",
-    "Restore game from a save slot.",
-    "Use 'auto' to load the most recent autosave.",
-  ].join("\n"),
-
-  newgame: [
-    "Usage: newgame",
-    "",
-    "Start a fresh game, erasing current progress.",
-  ].join("\n"),
-
   sudo: [
     "Usage: sudo COMMAND [ARG ...]",
     "",
     "Run a command with elevated privileges.",
     "Required for system operations like installing packages.",
-  ].join("\n"),
-
-  apt: [
-    "Usage: apt <command> [options]",
-    "",
-    "Commands:",
-    "  update     Update package lists from repositories",
-    "  upgrade    Upgrade all upgradable packages",
-    "  install    Install new packages",
-    "",
-    "Requires sudo.",
   ].join("\n"),
 
   tmux: [
@@ -530,63 +492,24 @@ export const HELP_TEXTS: Record<string, string> = {
     "  kill-session [-t name]  Destroy a session",
     "  kill-server             Destroy all sessions and stop the server",
     "",
+    "Windows (-t targets a window by name or 1-based index; default: current):",
+    "",
+    "  new-window              Create a window (neww)",
+    "  rename-window [-t target] new-name",
+    "                          Rename a window (renamew)",
+    "  select-window -t target Switch to a window (selectw)",
+    "  kill-window [-t target] Destroy a window (killw)",
+    "",
+    "Panes (always the current pane — there is no pane addressing):",
+    "",
+    "  split-window [-h]       Split the pane: -h side-by-side, default stacked (splitw)",
+    "  select-pane -L|-R|-U|-D Move the focus (selectp)",
+    "  resize-pane -L|-R|-U|-D [n]",
+    "                          Resize by n cells, default 5 (resizep)",
+    "  kill-pane               Destroy the current pane (killp)",
+    "",
     "Detached sessions keep their windows and panes; reattaching restores the",
     "layout with fresh shells.",
-  ].join("\n"),
-
-  ssh: [
-    "Usage: ssh [user@]hostname",
-    "",
-    "Open a secure shell connection to a remote host.",
-    "Reads ~/.ssh/config for host aliases.",
-  ].join("\n"),
-
-  "ssh-add": [
-    "Usage: ssh-add [-lL]",
-    "",
-    "Adds private key identities to the OpenSSH authentication agent.",
-    "",
-    "  -l   List fingerprints of all identities currently represented by the agent.",
-    "  -L   List public-key parameters of all identities currently represented by the agent.",
-    "",
-    "Reads SSH_AUTH_SOCK to locate the agent. If unset, prints",
-    "\"Could not open a connection to your authentication agent.\" and exits 2.",
-  ].join("\n"),
-
-  coder: [
-    "Usage: coder <subcommand> [options]",
-    "",
-    "Manage Coder remote development workspaces.",
-    "",
-    "  coder list            List workspaces (alias: coder ls)",
-    "  coder start <name>    Start a workspace",
-    "  coder stop <name>     Stop a workspace",
-    "  coder ssh <name>      SSH into a workspace",
-    "  coder logs <name>     Show workspace build logs",
-    "  coder create          Create a new workspace (requires admin permissions)",
-    "  coder delete          Delete a workspace (requires admin permissions)",
-  ].join("\n"),
-
-  chip: [
-    "Usage: chip",
-    "",
-    "Start an interactive session with Chip, NexaCorp's AI assistant.",
-  ].join("\n"),
-
-  piper: [
-    "Usage: piper",
-    "",
-    "Open Piper, the team messaging client.",
-    "Read channel messages and reply to direct messages from colleagues.",
-  ].join("\n"),
-
-  shutdown: [
-    "Usage: shutdown [-h now]",
-    "",
-    "Power off the system.",
-    "",
-    "  shutdown          Begin shutdown (60-second delay)",
-    "  shutdown -h now   Halt and power off immediately",
   ].join("\n"),
 
   printenv: [

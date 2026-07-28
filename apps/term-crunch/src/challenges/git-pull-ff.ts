@@ -6,6 +6,7 @@ import {
 } from "@tt/core/git/repo";
 import { GIT_AUTHOR } from "../lib/machine";
 import { readGitState } from "../lib/gitState";
+import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const PROJECT_DIR = "/home/player/project";
@@ -26,22 +27,6 @@ const SCHEMA = "create table warehouse.credit_card (id int, masked_pan string);\
 // Fixed timestamps keep seeded commit hashes deterministic.
 const TS = 1_700_000_000_000;
 
-/** Write a file, creating any missing parent directories, throwing on failure. */
-function writeP(fs: VirtualFS, path: string, content: string): VirtualFS {
-  const parts = path.slice(PROJECT_DIR.length + 1).split("/");
-  for (let i = 1; i < parts.length; i++) {
-    const dir = `${PROJECT_DIR}/${parts.slice(0, i).join("/")}`;
-    if (!fs.getNode(dir)) {
-      const r = fs.makeDirectory(dir);
-      if (!r.fs) throw new Error(r.error ?? `git-pull-ff: mkdir ${dir} failed`);
-      fs = r.fs;
-    }
-  }
-  const r = fs.writeFile(path, content);
-  if (!r.fs) throw new Error(r.error ?? `git-pull-ff: write ${path} failed`);
-  return r.fs;
-}
-
 function mkCommit(parent: string | null, message: string, ts: number, tree: Record<string, string>): GitCommit {
   const hash = shortHash(message + ts + (parent ?? "") + JSON.stringify(tree));
   return { hash, parent, message, author: GIT_AUTHOR, timestamp: ts, tree };
@@ -57,11 +42,8 @@ function mkCommit(parent: string | null, message: string, ts: number, tree: Reco
  * exactly the state `git status` reports as "behind by 2, can be fast-forwarded".
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(PROJECT_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? "git-pull-ff: mkdir failed");
-
-  let fs = writeP(mk.fs, `${PROJECT_DIR}/README.md`, README);
-  fs = writeP(fs, LOAD, LOAD_BASE);
+  let fs = writeOrThrow(base, `${PROJECT_DIR}/README.md`, README);
+  fs = writeOrThrow(fs, LOAD, LOAD_BASE);
   fs = gitInit(fs, PROJECT_DIR, GIT_AUTHOR).fs;
   fs = gitAdd(fs, PROJECT_DIR, PROJECT_DIR, [], true).fs;
   fs = gitCommit(fs, PROJECT_DIR, "Initial pipeline", GIT_AUTHOR, false, false, TS).fs;
@@ -79,21 +61,21 @@ function setup(base: VirtualFS): VirtualFS {
   const c1 = mkCommit(c0, "Add changelog", TS + 1000, { ...c0Tree, "CHANGELOG.md": CHANGELOG });
   const c2 = mkCommit(c1.hash, "Add warehouse schema", TS + 2000, { ...c1.tree, "sql/schema.sql": SCHEMA });
   for (const c of [c1, c2]) {
-    fs = writeP(fs, `${PROJECT_DIR}/.git/objects/${c.hash}.json`, JSON.stringify(c));
+    fs = writeOrThrow(fs, `${PROJECT_DIR}/.git/objects/${c.hash}.json`, JSON.stringify(c));
   }
   // refs/remotes/origin/feat/add-sql → c2 (the slash in the branch needs the nested dir).
-  fs = writeP(fs, `${PROJECT_DIR}/.git/refs/remotes/origin/${BRANCH}`, c2.hash);
+  fs = writeOrThrow(fs, `${PROJECT_DIR}/.git/refs/remotes/origin/${BRANCH}`, c2.hash);
 
   // Remote + per-branch upstream config (so `git pull` resolves origin/feat/add-sql).
-  fs = writeP(
+  fs = writeOrThrow(
     fs,
     `${PROJECT_DIR}/.git/config`,
     `[remote "origin"]\n  url = ${REMOTE_URL}\n  fetch = +refs/heads/*:refs/remotes/origin/*\n[branch "${BRANCH}"]\n  remote = origin\n  merge = refs/heads/${BRANCH}\n`,
   );
 
   // Dirty the tree: an unstaged edit to a tracked file + a brand-new untracked file.
-  fs = writeP(fs, LOAD, LOAD_WIP);
-  fs = writeP(fs, SCRATCH, SCRATCH_SQL);
+  fs = writeOrThrow(fs, LOAD, LOAD_WIP);
+  fs = writeOrThrow(fs, SCRATCH, SCRATCH_SQL);
   return fs;
 }
 
@@ -121,17 +103,18 @@ export const gitPullFf: Challenge = {
       command: "git pull --ff-only",
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
-        return g.behind === 0 && g.commitCount === 3 && readStash(s.fs, PROJECT_DIR).length > 0;
+        // >= 3: `behind === 0` is what proves the fast-forward landed; a player
+        // who also committed something of their own must not be stranded.
+        return g.behind === 0 && g.commitCount >= 3 && readStash(s.fs, PROJECT_DIR).length > 0;
       },
     },
     {
       instruction: "Restore your stashed work on top of the new commits.",
-      hint: "Reapply the most recent stash and drop it from the list.",
+      hint: "Reapply the most recent stash; pop also drops it from the list.",
       command: "git stash pop",
+      // Content-only (no `stash.length === 0`) so `git stash apply` also counts.
       isComplete: (s) =>
-        readStash(s.fs, PROJECT_DIR).length === 0 &&
-        (s.fs.readFile(LOAD).content ?? "") === LOAD_WIP &&
-        s.fs.getNode(SCRATCH) !== null,
+        (s.fs.readFile(LOAD).content ?? "") === LOAD_WIP && s.fs.getNode(SCRATCH) !== null,
     },
   ],
 };

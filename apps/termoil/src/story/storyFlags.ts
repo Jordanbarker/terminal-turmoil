@@ -7,6 +7,14 @@ export interface StoryFlagTrigger {
   pathPrefix?: string;
   pathSuffix?: string;
   detail?: string;
+  /**
+   * Prefix match on a `command_executed` detail, for events whose detail
+   * carries a variable tail the player chose (`git_push_origin_<branch>`).
+   * Same matcher as `pathPrefix`, named for the non-path events.
+   */
+  detailPrefix?: string;
+  /** Exact detail that must NOT match, applied after `detailPrefix`. */
+  detailNot?: string;
   flag: StoryFlagName;
   value: string | boolean;
   toast?: string;
@@ -150,7 +158,6 @@ export const STORY_FLAG_NAMES = [
   "anon_tip_quest_started",
   "anon_tip_dm_resolved",
   "accepted_usb_drive",
-  "declined_usb_tip",
   "ran_lsblk_for_usb",
   "mounted_usb_drive",
   "read_usb_note",
@@ -190,6 +197,15 @@ export const STORY_FLAG_NAMES = [
 
 export type StoryFlagName = (typeof STORY_FLAG_NAMES)[number];
 
+/**
+ * Termoil's typed view of core's opaque `StoryFlags` bag: only registered flag
+ * names are allowed as keys. Use it on hand-authored flag data (checkpoints,
+ * trigger/condition definitions) so a typo is a type error rather than a flag
+ * that silently never fires. Runtime code that just reads the live bag keeps
+ * using `StoryFlags`.
+ */
+export type TermoilStoryFlags = Partial<Record<StoryFlagName, string | boolean>>;
+
 export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
   const p = HOME_PATHS;
   return [
@@ -228,7 +244,13 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     // dir + reading it (cat, less, nano, redirected `> dest` then verify, etc.) also credits.
     { event: "command_executed", detail: "cp", flag: "copied_scripts_backup", value: true },
     { event: "file_read", path: p.backupsScripts(username), flag: "copied_scripts_backup", value: true },
-    { event: "file_read", path: p.backupLog(username), flag: "created_backup_log", value: true },
+    // Olive's step 3 is `echo ... >> ~/backup.log`, so the flag has to fire on
+    // the write, not on a later read: redirection emits file_created for the
+    // first append and file_modified for every one after, which also credits
+    // nano/vim/`touch`/`cp` routes to the same file. A `cat` of a log the
+    // player never wrote is not the step.
+    { event: "file_created", path: p.backupLog(username), flag: "created_backup_log", value: true },
+    { event: "file_modified", path: p.backupLog(username), flag: "created_backup_log", value: true },
     { event: "file_read", path: p.backupsScripts(username), flag: "verified_backup", value: true },
 
     // Quest 4: Olive's Power Tools (post day 1)
@@ -264,7 +286,6 @@ export function getStoryFlagTriggers(username: string): StoryFlagTrigger[] {
     // accept branch sets accepted_usb_drive and reveals the device + scaffold.
     { event: "objective_completed", detail: "accepted_usb_drive", flag: "accepted_usb_drive", value: true, toast: "USB drive plugged in. lsblk and mount unlocked." },
     { event: "objective_completed", detail: "accepted_usb_drive", flag: "anon_tip_dm_resolved", value: true },
-    { event: "objective_completed", detail: "declined_usb_tip",   flag: "declined_usb_tip",   value: true },
     { event: "objective_completed", detail: "declined_usb_tip",   flag: "anon_tip_dm_resolved", value: true },
 
     // Scaffold step flags. ran_lsblk_for_usb only counts if the player has
@@ -322,7 +343,10 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "command_executed", detail: "chip_api_error", flag: "chip_error_seen", value: true },
     { event: "objective_completed", detail: "told_edward_chip_error", flag: "told_edward_chip_error", value: true },
     { event: "piper_delivered", detail: "edward_chip_fix", flag: "printenv_unlocked", value: true, toast: "printenv command unlocked!" },
-    { event: "command_executed", detail: "sourced_zshrc", flag: "sourced_nexacorp_zshrc", value: true, requiredFlags: ["printenv_unlocked"] },
+    // "Set CHIP_API_KEY in your environment" completes on the assignment
+    // landing, never on the act of sourcing: `export` and `source ~/.zshrc`
+    // both route through the ENV_EXPORT_TRIGGERS table (story/envTriggers.ts),
+    // which matches the literal key, so an unedited .zshrc ticks nothing.
     { event: "command_executed", detail: "exported_chip_api_key", flag: "sourced_nexacorp_zshrc", value: true, requiredFlags: ["printenv_unlocked"] },
     { event: "file_read", detail: "welcome_edward", flag: "piper_unlocked", value: true, toast: "piper command unlocked!" },
     { event: "file_read", detail: "edward_end_of_day", flag: "read_end_of_day", value: true },
@@ -441,7 +465,11 @@ export function getDevcontainerStoryFlagTriggers(_username: string): StoryFlagTr
     { event: "command_executed", detail: "queried_campaign_metrics", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
     { event: "command_executed", detail: "git_checkout_b", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },
     { event: "command_executed", detail: "dbt_test_all_pass", flag: "fixed_campaign_model", value: true, requiredFlags: ["dbt_test_failed_day2"] },
-    { event: "command_executed", detail: "git_push", flag: "pushed_fix_branch", value: true, requiredFlags: ["fixed_campaign_model"] },
+    // "Push the fix branch": keyed on the per-branch `git_push_origin_<branch>`
+    // event, not the bare `git_push`, and explicitly not on main. The branch
+    // name is the player's, so the objective can only check that they published
+    // something other than the branch Auri asked them to keep clean.
+    { event: "command_executed", detailPrefix: "git_push_origin_", detailNot: "git_push_origin_main", flag: "pushed_fix_branch", value: true, requiredFlags: ["fixed_campaign_model"] },
     // Cascade: a green dbt build proves the upstream investigation + branching happened, even if the player took an unconventional path
     { event: "command_executed", detail: "dbt_test_all_pass", flag: "investigated_null_data", value: true, requiredFlags: ["dbt_test_failed_day2"] },
     { event: "command_executed", detail: "dbt_test_all_pass", flag: "created_fix_branch", value: true, requiredFlags: ["dbt_test_failed_day2"] },

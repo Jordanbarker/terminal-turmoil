@@ -26,7 +26,7 @@ const CHIP_TICKET_TEMPLATES: { category: string; subjects: string[] }[] = [
   ]},
   { category: "Software", subjects: [
     "IDE plugin update needed", "License seat request", "Build tool version mismatch",
-    "Package registry timeout", "Dev certificate expired", "Slack integration error",
+    "Package registry timeout", "Dev certificate expired", "Piper integration error",
   ]},
   { category: "Hardware", subjects: [
     "Keyboard replacement request", "Docking station not detected", "Headset mic not working",

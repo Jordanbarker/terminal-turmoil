@@ -13,7 +13,7 @@ import {
   nextIntervalMs,
   type ReviewStat,
 } from "../challenges/scheduler";
-import { UNLOCKS, levelFor, progressInLevel } from "../challenges/mastery";
+import { levelFor, progressInLevel } from "../challenges/mastery";
 import type { Step } from "../challenges/types";
 import SchematicView from "./SchematicView";
 import WindowStripView from "./WindowStripView";
@@ -201,7 +201,9 @@ export default function ChallengePanel() {
             />
           )}
 
-          {challenge.type === "tmux" && challenge.targetWindow && activeWindow && (
+          {/* Gated on the field, not the type (same rule as fsWatchPath below):
+              any challenge that declares a target layout gets the schematic. */}
+          {challenge.targetWindow && activeWindow && (
             <div className="flex flex-col gap-3">
               <div>
                 <div className="mb-1 text-xs uppercase tracking-wide text-[#6b7680]">Current</div>
@@ -214,7 +216,7 @@ export default function ChallengePanel() {
             </div>
           )}
 
-          {challenge.type === "tmux" && challenge.targetWindows && (
+          {challenge.targetWindows && (
             <div className="flex flex-col gap-3">
               <div>
                 <div className="mb-1 text-xs uppercase tracking-wide text-[#6b7680]">Current</div>
@@ -237,7 +239,7 @@ export default function ChallengePanel() {
           {/* Gated on the field, not the type: an fs-detected challenge in any
               track (e.g. the copy-mode tmux challenge) still gets the tree. */}
           {challenge.fsWatchPath && (
-            <FsTreeView fs={fs} watchPath={challenge.fsWatchPath} />
+            <FsTreeView fs={fs} watchPath={challenge.fsWatchPath} dangerPath={challenge.fsDangerPath} />
           )}
 
           <button
@@ -477,10 +479,8 @@ function MasteryBlock({ mp }: { mp: number }) {
   const pct = barHold ? 100 : progress;
   // The footer reads off the FINAL mp, not the animating display: the total, the
   // chip and the bar are already moving, and a fourth number counting down at
-  // the same time is just noise. Unlocks are keyed by level threshold, so the
-  // next one is the next band's.
+  // the same time is just noise.
   const { next } = levelFor(mp);
-  const unlock = next === null ? undefined : UNLOCKS[next];
   return (
     <div className="flex flex-col gap-1">
       <div className="relative text-xs text-[#b3b1ad]">
@@ -517,7 +517,7 @@ function MasteryBlock({ mp }: { mp: number }) {
       )}
       {next !== null && (
         <div className="text-xs text-[#6b7680]">
-          {`${(next - mp).toLocaleString("en-US")} MP to ${levelFor(next).title}${unlock ? ` · unlocks ${unlock}` : ""}`}
+          {`${(next - mp).toLocaleString("en-US")} MP to ${levelFor(next).title}`}
         </div>
       )}
     </div>

@@ -120,21 +120,21 @@ describe("mount", () => {
     BLOCK_DEVICES.home = [SDB1];
     const result = execute("mount", ["/dev/nope", "/mnt/test"], {}, ctx(fsWithMnt()));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("no such device");
+    expect(result.stderr).toContain("no such device");
   });
 
   it("rejects mountpoint that is not a directory", () => {
     BLOCK_DEVICES.home = [SDB1];
     const result = execute("mount", ["/dev/sdb1", "/etc/passwd"], {}, ctx(fsWithMnt()));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("not a directory");
+    expect(result.stderr).toContain("not a directory");
   });
 
   it("rejects mountpoint that does not exist", () => {
     BLOCK_DEVICES.home = [SDB1];
     const result = execute("mount", ["/dev/sdb1", "/nope/test"], {}, ctx(fsWithMnt()));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("does not exist");
+    expect(result.stderr).toContain("does not exist");
   });
 
   it("rejects mounting on a non-empty directory", () => {
@@ -143,8 +143,8 @@ describe("mount", () => {
     const withFile = fs.writeFile("/mnt/test/existing.txt", "hi").fs!;
     const result = execute("mount", ["/dev/sdb1", "/mnt/test"], {}, ctx(withFile));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("not mounting");
-    expect(result.output).toContain("not empty");
+    expect(result.stderr).toContain("not mounting");
+    expect(result.stderr).toContain("not empty");
   });
 
   it("rejects double-mounting on the same path", () => {
@@ -152,7 +152,7 @@ describe("mount", () => {
     const mounts: Mounts = { "/mnt/test": { device: "/dev/sdb1", mountpath: "/mnt/test", fstype: "ext4" } };
     const result = execute("mount", ["/dev/sdb1", "/mnt/test"], {}, ctx(fsWithMnt(), mounts));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("already mounted");
+    expect(result.stderr).toContain("already mounted");
   });
 
   it("normalizes paths so /mnt/test/ and mnt/test/ key the same entry", () => {
@@ -249,6 +249,6 @@ describe("umount", () => {
   it("errors if not mounted", () => {
     const result = execute("umount", ["/mnt/test"], {}, ctx(fsWithMnt()));
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("not mounted");
+    expect(result.stderr).toContain("not mounted");
   });
 });

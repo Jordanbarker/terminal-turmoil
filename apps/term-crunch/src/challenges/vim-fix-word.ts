@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readTrimmed, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -9,15 +10,7 @@ const SEED = ["environment = staging", "debug = true"].join("\n");
 const TARGET = ["environment = production", "debug = true"].join("\n");
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-fix-word: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, SEED + "\n");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-fix-word: seed write failed");
-  return wr.fs;
-}
-
-function read(fs: VirtualFS): string {
-  return (fs.readFile(FILE).content ?? "").replace(/\n+$/, "");
+  return writeOrThrow(base, FILE, SEED + "\n");
 }
 
 export const vimFixWord: Challenge = {
@@ -38,7 +31,7 @@ export const vimFixWord: Challenge = {
         "Move onto the start of the word (w jumps forward by word), then cw " +
         "changes the whole word and drops you into insert mode to type the new one.",
       command: "vim app.conf\nthen: move onto 'staging'  cw  production  <Esc>  :wq",
-      isComplete: (s) => read(s.fs) === TARGET,
+      isComplete: (s) => readTrimmed(s.fs, FILE) === TARGET,
     },
   ],
 };

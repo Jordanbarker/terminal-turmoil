@@ -172,7 +172,7 @@ describe("lsblk: baseline system disks (real BLOCK_DEVICES)", () => {
 
   it("mount refuses to re-mount a baseline system device", () => {
     const result = execute("mount", ["/dev/sda1", "/mnt/x"], {}, ctx({ activeComputer: "nexacorp" }));
-    expect(result.output).toContain("already mounted on /");
+    expect(result.stderr).toContain("already mounted on /");
     expect(result.exitCode).toBe(1);
   });
 });

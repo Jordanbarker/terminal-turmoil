@@ -1,6 +1,7 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
+import { HELP_TEXTS } from "./helpTexts";
 
 const VALID_SLOTS = ["1", "2", "3"];
 
@@ -18,3 +19,4 @@ const load: CommandHandler = (args) => {
 };
 
 register("load", load, "Load game from a slot (load [1|2|3])", HELP_TEXTS.load);
+setKnownFlags("load", {});

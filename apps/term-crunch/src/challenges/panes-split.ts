@@ -35,7 +35,7 @@ export const panesSplit: Challenge = {
     {
       instruction:
         "Match the TARGET: split side-by-side with prefix |, then stack the " +
-        "right pane with prefix - (prefix = Ctrl+Space).",
+        "right pane with prefix -.",
       isComplete: (s) => paneTreeMatches(s.activeWindow.root, targetWindow.root),
     },
   ],

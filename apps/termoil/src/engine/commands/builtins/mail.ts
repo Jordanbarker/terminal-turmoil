@@ -3,17 +3,18 @@ import { register } from "@tt/core/commands/registry";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { pad2 } from "@tt/core/lib/format";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { basename } from "@tt/core/lib/pathUtils";
+import { HELP_TEXTS } from "./helpTexts";
 import {
   getMailDir,
   getSentDir,
   getMailEntries,
   markAsRead,
-  hasReplyInSent,
+  hasReplyToEmail,
   MailEntry,
 } from "../../mail/mailUtils";
 import { getEmailDefinitions } from "../../mail/emails";
-import { ReplyOption } from "../../mail/types";
+import { ReplyEmail, ReplyOption } from "../../mail/types";
 import { PromptOption, PromptSessionInfo } from "../../prompt/types";
 import { GameEvent } from "../../mail/delivery";
 import { PLAYER, ComputerId } from "../../../state/types";
@@ -74,12 +75,18 @@ function formatMessage(entry: MailEntry): string {
   return lines.join("\n");
 }
 
+/**
+ * Which definition this maildir file is. Keyed on the filename slug (the id
+ * stamped in at delivery), because subject+from is not an identity: the three
+ * termination variants share both, so header matching always resolved to the
+ * first one and `mail` emitted `file_read` for an email the player never got.
+ * Headers stay as the fallback for a file the player renamed or hand-wrote.
+ */
 function findEmailDef(entry: MailEntry, username: string, computer: import("../../../state/types").ComputerId) {
   const defs = getEmailDefinitions(username, computer);
-  return defs.find(
-    (d) =>
-      d.email.subject === entry.parsed.subject &&
-      d.email.from === entry.parsed.from
+  return (
+    defs.find((d) => d.email.id === entry.slug) ??
+    defs.find((d) => d.email.subject === entry.parsed.subject && d.email.from === entry.parsed.from)
   );
 }
 
@@ -99,22 +106,34 @@ function buildPromptSession(
   entry: MailEntry,
   username: string,
   computer: import("../../../state/types").ComputerId,
-  gameNowMs: number
+  gameNowMs: number,
+  inReplyTo: string
 ): PromptSessionInfo {
   const fromDomain = computer === "home" ? "email.com" : "nexacorp.com";
-  const promptOptions: PromptOption[] = options.map((opt, idx) => ({
-    label: opt.label,
-    replyEmail: {
-      id: `reply_${gameNowMs}_${idx}`,
+  const promptOptions: PromptOption[] = options.map((opt, idx) => {
+    // Keyed on the parent email id, never the clock: gameNowMs is the
+    // interpolated in-game time, which is constant across a whole day segment,
+    // so a timestamped filename let the next reply of the session overwrite the
+    // previous one and resurrect its prompt. (parent, option) is also exactly
+    // the dedup identity, so one reply per email is enforced by the filesystem.
+    const replyEmail: ReplyEmail = {
+      // Typed as ReplyEmail (not inlined) so `inReplyTo` survives assignment to
+      // PromptOption.replyEmail, whose declared type is core's plain Email.
+      id: `reply_${inReplyTo}_${idx}`,
       from: `${username}@${fromDomain}`,
       to: entry.parsed.from,
       date: formatRfc2822(new Date(gameNowMs)),
       subject: `Re: ${entry.parsed.subject}`,
       body: opt.replyBody,
-    },
-    replyFilename: `sent_${gameNowMs}_${idx}`,
-    triggerEvents: opt.triggerEvents,
-  }));
+      inReplyTo,
+    };
+    return {
+      label: opt.label,
+      replyEmail,
+      replyFilename: `sent_${inReplyTo}_${idx}`,
+      triggerEvents: opt.triggerEvents,
+    };
+  });
 
   return {
     promptText: `Select [1-${options.length}]: `,
@@ -123,7 +142,8 @@ function buildPromptSession(
 }
 
 const mail: CommandHandler = (args, flags, ctx) => {
-  const username = ctx.homeDir.split("/").pop() || PLAYER.username;
+  // homeDir is always /home/<user>; the fallback only covers a degenerate "/".
+  const username = basename(ctx.homeDir) || PLAYER.username;
   const computer = ctx.activeComputer as ComputerId;
   const fromDomain = computer === "home" ? "email.com" : "nexacorp.com";
 
@@ -178,14 +198,15 @@ const mail: CommandHandler = (args, flags, ctx) => {
     }
 
     // Check for reply options on this email (hide if already replied)
-    const replyOptions = emailDef?.replyOptions;
     let output = formatMessage(entry);
     let promptSession: PromptSessionInfo | undefined;
 
-    if (replyOptions && !hasReplyInSent(newFs, username, entry.parsed.subject)) {
-      output += formatReplyOptions(replyOptions);
+    if (emailDef?.replyOptions && !hasReplyToEmail(newFs, username, emailDef.email.id)) {
+      output += formatReplyOptions(emailDef.replyOptions);
       const gameNowMs = (ctx.clock?.now() ?? new Date()).getTime();
-      promptSession = buildPromptSession(replyOptions, entry, username, computer, gameNowMs);
+      promptSession = buildPromptSession(
+        emailDef.replyOptions, entry, username, computer, gameNowMs, emailDef.email.id
+      );
     }
 
     return {

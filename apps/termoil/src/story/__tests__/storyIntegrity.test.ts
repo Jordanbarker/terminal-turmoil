@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { STORY_FLAG_NAMES, getStoryFlagTriggers, getNexacorpStoryFlagTriggers, getDevcontainerStoryFlagTriggers } from "../storyFlags";
 import { HOME_EMAIL_IDS, getHomeEmailDefinitions } from "../emails/home";
 import { NEXACORP_EMAIL_IDS, getNexacorpEmailDefinitions } from "../emails/nexacorp";
-import { PIPER_DELIVERY_IDS, getPiperDeliveries } from "../piper/messages";
+import { getPiperDeliveries } from "../piper/messages";
 import { CHAPTERS } from "../chapters";
+import { CHECKPOINTS } from "../checkpoints";
 
 const TEST_USERNAME = "ren";
 const ALL_FLAG_NAMES = new Set(STORY_FLAG_NAMES);
-const ALL_PIPER_DELIVERY_IDS = new Set(PIPER_DELIVERY_IDS);
 
 // Collect all email IDs for cross-reference lookups
 const allEmailIds = new Set([...HOME_EMAIL_IDS, ...NEXACORP_EMAIL_IDS]);
@@ -132,23 +132,18 @@ describe("Story Integrity", () => {
     });
   });
 
-  describe("6. PIPER_DELIVERY_IDS matches actual deliveries", () => {
-    it("all IDs in PIPER_DELIVERY_IDS exist in actual piper deliveries", () => {
-      for (const id of PIPER_DELIVERY_IDS) {
-        expect(
-          allPiperDeliveryIds.has(id),
-          `PIPER_DELIVERY_IDS contains '${id}' which doesn't exist in getPiperDeliveries()`
-        ).toBe(true);
+  describe("6. Piper delivery IDs are unique", () => {
+    // Delivery ids key `deliveredPiperIds`, `after_piper_reply`, and
+    // `requireDelivered`, so a duplicate id silently makes two conversations
+    // share progression state.
+    it("no two piper deliveries share an id", () => {
+      const seen = new Set<string>();
+      const duplicates: string[] = [];
+      for (const delivery of allPiperDeliveries) {
+        if (seen.has(delivery.id)) duplicates.push(delivery.id);
+        seen.add(delivery.id);
       }
-    });
-
-    it("all actual piper delivery IDs are in PIPER_DELIVERY_IDS", () => {
-      for (const id of allPiperDeliveryIds) {
-        expect(
-          ALL_PIPER_DELIVERY_IDS.has(id as (typeof PIPER_DELIVERY_IDS)[number]),
-          `Piper delivery '${id}' exists in getPiperDeliveries() but not in PIPER_DELIVERY_IDS`
-        ).toBe(true);
-      }
+      expect(duplicates, `Duplicate piper delivery ids: ${duplicates.join(", ")}`).toEqual([]);
     });
   });
 
@@ -199,7 +194,23 @@ describe("Story Integrity", () => {
     });
   });
 
-  describe("9. NEXACORP_EMAIL_IDS matches actual nexacorp email definitions", () => {
+  describe("9. Checkpoint story flags are real flag names", () => {
+    // Checkpoints are hand-written flag bags fed straight into the store by
+    // `cheat load`, so a typo here silently produces an unreachable game state
+    // instead of a type error.
+    it("every checkpoint flag key is in STORY_FLAG_NAMES", () => {
+      for (const checkpoint of CHECKPOINTS) {
+        for (const key of Object.keys(checkpoint.storyFlags)) {
+          expect(
+            ALL_FLAG_NAMES.has(key as (typeof STORY_FLAG_NAMES)[number]),
+            `Checkpoint '${checkpoint.id}' sets '${key}' which is not in STORY_FLAG_NAMES`
+          ).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("10. NEXACORP_EMAIL_IDS matches actual nexacorp email definitions", () => {
     it("all IDs in NEXACORP_EMAIL_IDS exist in actual definitions", () => {
       const nexaEmailDefs = getNexacorpEmailDefinitions(TEST_USERNAME);
       const actualIds = new Set(nexaEmailDefs.map((d) => d.email.id));

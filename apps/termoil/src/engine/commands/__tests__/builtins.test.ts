@@ -3,10 +3,11 @@ import { execute, executeAsync } from "@tt/core/commands/registry";
 import { CommandContext } from "@tt/core/commands/types";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "../builtins/helpTexts";
 import { stripAnsi } from "@tt/core/lib/ansi";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { createDefaultContext } from "@tt/core/snowflake/session/context";
+import { createDeviceProvider } from "../../../story/blockDevices";
 
 // Import builtins to trigger registration
 import "@tt/core/commands/builtins/ls";
@@ -179,7 +180,7 @@ describe("ls", () => {
 
   it("returns error for nonexistent path", () => {
     const result = execute("ls", ["/missing"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns empty output for empty directory", () => {
@@ -218,7 +219,7 @@ describe("ls", () => {
 
   it("shows error and still lists valid target", () => {
     const result = execute("ls", ["/nonexistent", "docs"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
     expect(result.output).toContain("readme.md");
   });
 
@@ -308,12 +309,12 @@ describe("cd", () => {
 
   it("returns error for nonexistent directory", () => {
     const result = execute("cd", ["/missing"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error when cd to a file", () => {
     const result = execute("cd", ["notes.txt"], {}, ctx());
-    expect(result.output).toContain("Not a directory");
+    expect(result.stderr).toContain("Not a directory");
   });
 
   it("updates OLDPWD on successful cd", () => {
@@ -338,7 +339,7 @@ describe("cd", () => {
     const c = { ...ctx(), envVars: {}, setEnvVars: () => {} };
     const result = execute("cd", ["-"], {}, c);
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("OLDPWD not set");
+    expect(result.stderr).toContain("OLDPWD not set");
   });
 });
 
@@ -356,17 +357,17 @@ describe("cat", () => {
 
   it("returns error for missing file operand", () => {
     const result = execute("cat", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
   });
 
   it("returns error for nonexistent file", () => {
     const result = execute("cat", ["missing.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("returns error for directory", () => {
     const result = execute("cat", ["docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
   });
 });
 
@@ -469,17 +470,17 @@ describe("nano", () => {
 
   it("rejects directory as target", () => {
     const result = execute("nano", ["docs"], {}, ctx());
-    expect(result.output).toContain("Is a directory");
+    expect(result.stderr).toContain("Is a directory");
   });
 
   it("rejects file in nonexistent directory", () => {
     const result = execute("nano", ["/missing/file.txt"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
   });
 
   it("shows usage with no args", () => {
     const result = execute("nano", [], {}, ctx());
-    expect(result.output).toContain("Usage");
+    expect(result.stderr).toContain("Usage");
   });
 });
 
@@ -785,7 +786,7 @@ describe("mail", () => {
 describe("unknown command", () => {
   it("returns command not found", () => {
     const result = execute("foobar", [], {}, ctx());
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
   });
 });
 
@@ -825,39 +826,53 @@ describe("less", () => {
 
   it("errors when no file and no stdin", () => {
     const result = execute("less", [], {}, ctx());
-    expect(result.output).toContain("missing file operand");
+    expect(result.stderr).toContain("missing file operand");
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
 
   it("errors when the file does not exist", () => {
     const result = execute("less", ["missing.txt"], {}, ctx());
-    expect(result.output).toMatch(/less:/);
+    expect(result.stderr).toMatch(/less:/);
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
 
   it("errors when the target is a directory", () => {
     const result = execute("less", ["docs"], {}, ctx());
-    expect(stripAnsi(result.output)).toMatch(/Is a directory/);
+    expect(stripAnsi(result.stderr ?? "")).toMatch(/Is a directory/);
     expect(result.exitCode).toBe(1);
     expect(result.lessSession).toBeUndefined();
   });
 });
 
 describe("df", () => {
+  const dfCtx = (computer: "nexacorp" | "chipinfra") => ({
+    ...ctx(),
+    activeComputer: computer,
+    devices: createDeviceProvider(computer),
+  });
+
   it("shows filesystem usage", () => {
-    const result = execute("df", [], {}, ctx());
+    const result = execute("df", [], {}, dfCtx("nexacorp"));
     expect(result.output).toContain("Filesystem");
     expect(result.output).toContain("/dev/sda1");
     expect(result.output).toContain("Mounted on");
   });
 
   it("shows human-readable sizes with -h", () => {
-    const result = execute("df", [], { h: true }, ctx());
-    // NexaCorp = 1T total → "1.0T" (coreutils keeps the .0 for single-digit values)
+    const result = execute("df", [], { h: true }, dfCtx("nexacorp"));
+    // NexaCorp root partition is 1T → "1.0T" (coreutils keeps the .0 for single-digit values)
     expect(result.output).toContain("1.0T");
     expect(result.output).toContain("/dev/sda1");
+  });
+
+  it("reports the machine's own root partition, matching lsblk", () => {
+    // chipinfra is a 200G vda1; before df read the device registry it fell
+    // through to a hardcoded 1T /dev/sda1 and disagreed with lsblk.
+    const result = execute("df", [], { h: true }, dfCtx("chipinfra"));
+    expect(result.output).toContain("/dev/vda1");
+    expect(result.output).toContain("200G");
   });
 });
 
@@ -923,7 +938,7 @@ describe("--help", () => {
       fs = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["init"] }).newFs ?? fs;
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["add", "-all"] });
       expect(result.exitCode).toBe(129);
-      expect(stripAnsi(result.output)).toBe("error: unknown switch `a'");
+      expect(stripAnsi(result.stderr ?? "")).toBe("error: unknown switch `a'");
     });
   });
 
@@ -953,7 +968,7 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "main"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("already exists");
+      expect(stripAnsi(result.stderr ?? "")).toContain("already exists");
     });
 
     it("git switch <branch> switches to an existing branch", () => {
@@ -975,14 +990,14 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch", "nonexistent"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("fatal: invalid reference: nonexistent");
+      expect(stripAnsi(result.stderr ?? "")).toContain("fatal: invalid reference: nonexistent");
     });
 
     it("git switch with no arg errors", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["switch"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("missing branch");
+      expect(stripAnsi(result.stderr ?? "")).toContain("missing branch");
     });
 
     it("git branch -a lists locals plus remotes/origin/<branch>", () => {
@@ -1012,7 +1027,7 @@ describe("--help", () => {
       const fs = initialRepo();
       const result = execute("git", [], {}, { ...devCtx(fs), rawArgs: ["branch", "-a", "newbranch"] });
       expect(result.exitCode).toBe(128);
-      expect(stripAnsi(result.output)).toContain("fatal: branch name required");
+      expect(stripAnsi(result.stderr ?? "")).toContain("fatal: branch name required");
     });
   });
 
@@ -1029,7 +1044,7 @@ describe("--help", () => {
 describe("invalid flag rejection", () => {
   it("ls -z returns coreutils-style error and exit code 2", () => {
     const result = execute("ls", [], { z: true }, ctx());
-    expect(result.output).toBe(
+    expect(result.stderr).toBe(
       "ls: invalid option -- 'z'\nTry 'ls --help' for more information.",
     );
     expect(result.exitCode).toBe(2);
@@ -1037,7 +1052,7 @@ describe("invalid flag rejection", () => {
 
   it("ls --foo returns 'unrecognized option' for long flags", () => {
     const result = execute("ls", [], { foo: true }, ctx());
-    expect(result.output).toContain("unrecognized option '--foo'");
+    expect(result.stderr).toContain("unrecognized option '--foo'");
     expect(result.exitCode).toBe(2);
   });
 
@@ -1048,13 +1063,13 @@ describe("invalid flag rejection", () => {
 
   it("cat -z errors (cat has no flags)", () => {
     const result = execute("cat", ["notes.txt"], { z: true }, ctx());
-    expect(result.output).toContain("invalid option -- 'z'");
+    expect(result.stderr).toContain("invalid option -- 'z'");
     expect(result.exitCode).toBe(2);
   });
 
   it("grep -X errors", () => {
     const result = execute("grep", ["foo", "notes.txt"], { X: true }, ctx());
-    expect(result.output).toContain("invalid option -- 'X'");
+    expect(result.stderr).toContain("invalid option -- 'X'");
     expect(result.exitCode).toBe(2);
   });
 
@@ -1103,6 +1118,93 @@ describe("invalid flag rejection", () => {
   });
 });
 
+describe("git merge / detached checkout (dispatcher)", () => {
+  const devCtx = (f: VirtualFS) => ({ ...ctx(f), activeComputer: "devcontainer" as const });
+  const git = (fs: VirtualFS, ...rawArgs: string[]) =>
+    execute("git", [], {}, { ...devCtx(fs), rawArgs });
+  const run = (fs: VirtualFS, ...rawArgs: string[]) => git(fs, ...rawArgs).newFs ?? fs;
+
+  /** One commit on main, plus a `feature` branch one commit ahead (fast-forwardable). */
+  function repoWithFeature(): VirtualFS {
+    let fs = createTestFS();
+    fs = run(fs, "init");
+    fs = run(fs, "add", "-A");
+    fs = run(fs, "commit", "-m", "initial");
+    fs = run(fs, "switch", "-c", "feature");
+    fs = fs.writeFile("/home/player/notes.txt", "feature edit").fs!;
+    fs = run(fs, "commit", "-am", "feature edit");
+    fs = run(fs, "switch", "main");
+    return fs;
+  }
+
+  it("git merge <branch> fast-forwards", () => {
+    const result = git(repoWithFeature(), "merge", "feature");
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(stripAnsi(result.output)).toContain("Fast-forward");
+    expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_merge_feature" }]);
+  });
+
+  it("git merge reports conflicts on stdout with exit 1", () => {
+    // Diverge main from feature so the same file conflicts.
+    let fs = repoWithFeature();
+    fs = fs.writeFile("/home/player/notes.txt", "main edit").fs!;
+    fs = run(fs, "commit", "-am", "main edit");
+
+    const result = git(fs, "merge", "feature");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr ?? "").toBe("");
+    expect(stripAnsi(result.output)).toContain("CONFLICT (content): Merge conflict in notes.txt");
+    expect(result.triggerEvents).toBeUndefined();
+
+    // The concluding commit carries the merge event.
+    fs = result.newFs!;
+    fs = fs.writeFile("/home/player/notes.txt", "resolved").fs!;
+    fs = run(fs, "add", "notes.txt");
+    const concluded = git(fs, "commit", "-m", "resolve merge");
+    expect(concluded.triggerEvents).toEqual([{ type: "command_executed", detail: "git_merge_feature" }]);
+  });
+
+  it("accepts merge's --abort/--continue and rejects an unknown merge flag", () => {
+    const fs = repoWithFeature();
+    expect(git(fs, "merge", "--abort").exitCode).not.toBe(129);
+    expect(git(fs, "merge", "--continue").exitCode).not.toBe(129);
+    const bogus = git(fs, "merge", "--bogus");
+    expect(bogus.exitCode).toBe(129);
+    expect(stripAnsi(bogus.stderr ?? "")).toBe("error: unknown option `bogus'");
+  });
+
+  it("git checkout <sha> detaches instead of being read as a pathspec", () => {
+    let fs = repoWithFeature();
+    const sha = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    const result = git(fs, "checkout", sha);
+    expect(stripAnsi(result.output)).toContain(`HEAD is now at ${sha.slice(0, 7)}`);
+    expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_detached" }]);
+    fs = result.newFs!;
+    expect(fs.readFile("/home/player/.git/HEAD").content).toBe(sha);
+  });
+
+  it("git checkout <file> still restores the file", () => {
+    let fs = repoWithFeature();
+    fs = fs.writeFile("/home/player/notes.txt", "scribble").fs!;
+    fs = run(fs, "checkout", "notes.txt");
+    expect(fs.readFile("/home/player/notes.txt").content).toBe("hello world");
+  });
+
+  it("git switch <sha> refuses without --detach", () => {
+    const fs = repoWithFeature();
+    const sha = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    const refused = git(fs, "switch", sha);
+    expect(refused.exitCode).toBe(128);
+    expect(stripAnsi(refused.stderr ?? "")).toBe(`fatal: a branch is expected, got commit '${sha}'`);
+
+    for (const flag of ["--detach", "-d"]) {
+      const ok = git(fs, "switch", flag, sha);
+      expect(ok.exitCode ?? 0).toBe(0);
+      expect(stripAnsi(ok.output)).toContain("HEAD is now at");
+    }
+  });
+});
+
 describe("git invalid flag rejection", () => {
   // git/snow live in the dev container (DEVCONTAINER_ONLY in commandGates).
   const devCtx = (): CommandContext => ({ ...ctx(), activeComputer: "devcontainer" });
@@ -1112,7 +1214,7 @@ describe("git invalid flag rejection", () => {
       ...devCtx(),
       rawArgs: ["status", "-z"],
     });
-    expect(result.output).toBe("error: unknown switch `z'");
+    expect(result.stderr).toBe("error: unknown switch `z'");
     expect(result.exitCode).toBe(129);
   });
 
@@ -1121,7 +1223,7 @@ describe("git invalid flag rejection", () => {
       ...devCtx(),
       rawArgs: ["log", "--bogus"],
     });
-    expect(result.output).toBe("error: unknown option `bogus'");
+    expect(result.stderr).toBe("error: unknown option `bogus'");
     expect(result.exitCode).toBe(129);
   });
 
@@ -1144,7 +1246,7 @@ describe("git invalid flag rejection", () => {
 describe("snow invalid flag rejection", () => {
   it("snow sql -X uses 'snow sql:' prefix and exit 2", () => {
     const result = execute("snow", ["sql"], { X: true }, { ...ctx(), activeComputer: "devcontainer" });
-    expect(result.output).toContain("snow sql: invalid option -- 'X'");
+    expect(result.stderr).toContain("snow sql: invalid option -- 'X'");
     expect(result.exitCode).toBe(2);
   });
 });
@@ -1167,7 +1269,7 @@ describe("snow sql -q exit codes", () => {
   it("exits 1 on a SQL error", () => {
     const result = execute("snow", ["sql", "SELECT 1/0"], { q: true }, snowCtx());
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("Division by zero");
+    expect(result.stderr).toContain("Division by zero");
   });
 
   it("resolves a derived table end-to-end", () => {

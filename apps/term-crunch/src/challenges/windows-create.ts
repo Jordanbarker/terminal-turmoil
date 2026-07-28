@@ -28,17 +28,23 @@ export const windowsCreate: Challenge = {
   setup: (base) => base,
   steps: [
     {
-      instruction: "Open a second window:  prefix then c  (prefix = Ctrl+Space).",
+      instruction: "Open a second window.",
+      hint: "Windows are the layer above panes; a prefix chord creates one, and the status bar grows a tab.",
+      command: "prefix c",
       isComplete: (s) => s.windows.length >= 2,
     },
     {
-      instruction: "Open a third window:  prefix then c.",
+      instruction: "Open a third window.",
+      hint: "Same chord as before.",
+      command: "prefix c",
       isComplete: (s) => s.windows.length >= 3,
     },
     {
-      instruction:
-        "Name a window:  prefix then r, type a name, press Enter. " +
-        "(Switch windows with prefix n / p or 1-3.)",
+      instruction: "Give one of the windows a name.",
+      hint:
+        "A prefix chord opens a rename prompt for the current window: type a name, press Enter. " +
+        "Switch windows with prefix n / p or a number key.",
+      command: "prefix r",
       isComplete: (s) => s.windows.some((w) => !!w.name),
     },
   ],

@@ -2,8 +2,11 @@ import { register } from "../registry";
 import { rejectUnknownFlags, skipFlagValidation } from "../flagValidation";
 import { CommandResult, CommandContext } from "@tt/core/commands/types";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
+import { realWallClock } from "@tt/core/commands/clock";
 import { execute } from "@tt/core/snowflake/executor/executor";
 import { formatResultSet, formatStatusMessage, formatError } from "@tt/core/snowflake/formatter/table_formatter";
+import { matchSqlQueryTriggers } from "@tt/core/snowflake/queryTriggers";
 
 register(
   "snow",
@@ -16,10 +19,10 @@ register(
     const subcommand = args[0];
 
     if (subcommand !== "sql") {
-      return {
-        output: `snow: unknown command '${subcommand}'\n\nAvailable commands:\n  sql    Execute SQL queries\n\nRun 'snow --help' for usage.`,
-        exitCode: 1,
-      };
+      return errorResult(
+        `snow: unknown command '${subcommand}'\n\nAvailable commands:\n  sql    Execute SQL queries\n\nRun 'snow --help' for usage.`,
+        1,
+      );
     }
 
     // Shift args past the subcommand
@@ -30,10 +33,7 @@ register(
 
     // -q requires a SQL argument
     if (flags["q"] && sqlArgs.length === 0) {
-      return {
-        output: `snow sql: -q requires a SQL query argument\n\nUsage: snow sql -q 'SELECT ...'`,
-        exitCode: 1,
-      };
+      return errorResult(`snow sql: -q requires a SQL query argument\n\nUsage: snow sql -q 'SELECT ...'`, 1);
     }
 
     // Single-query mode: snow sql -q "SELECT 1"
@@ -43,7 +43,7 @@ register(
 
       const sessionCtx = {
         ...ctx.snowflakeContext,
-        gameNow: ctx.clock?.now() ?? new Date(),
+        gameNow: (ctx.clock ?? realWallClock()).now(),
       };
 
       const start = performance.now();
@@ -59,6 +59,7 @@ register(
       Object.assign(ctx.snowflakeContext, newCtx);
 
       const outputLines: string[] = [];
+      const errorLines: string[] = [];
       for (const result of results) {
         switch (result.type) {
           case "resultset":
@@ -68,21 +69,21 @@ register(
             outputLines.push(formatStatusMessage(result.data, elapsed));
             break;
           case "error":
-            outputLines.push(formatError(result.message));
+            errorLines.push(formatError(result.message));
             break;
         }
       }
 
-      // Detect campaign_metrics query for story progression (mirrors SnowSqlSession)
-      const triggerEvents: import("@tt/core").GameEvent[] = [];
-      if (/campaign_metrics/i.test(sql)) {
-        triggerEvents.push({ type: "command_executed", detail: "queried_campaign_metrics" });
-      }
+      // Story detection via the app's query-trigger table (mirrors
+      // SnowSqlSession). Only a query that actually ran counts: a syntax error
+      // or a missing table shows the player nothing, so it must not credit an
+      // investigation.
+      const triggerEvents = errorLines.length === 0 ? matchSqlQueryTriggers(sql) : [];
 
-      const hasError = results.some((r) => r.type === "error");
       return {
         output: outputLines.join("\n"),
-        exitCode: hasError ? 1 : 0,
+        ...(errorLines.length > 0 && { stderr: errorLines.join("\n") }),
+        exitCode: errorLines.length > 0 ? 1 : 0,
         ...(triggerEvents.length > 0 && { triggerEvents }),
       };
     }

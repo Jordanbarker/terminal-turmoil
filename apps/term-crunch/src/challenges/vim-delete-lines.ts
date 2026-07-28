@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { readLines, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -17,15 +18,7 @@ const SEED = [
 const KEEPERS = ["keep: alpha", "keep: beta", "keep: gamma"];
 
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(WORK_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `vim-delete-lines: mkdir ${WORK_DIR} failed`);
-  const wr = mk.fs.writeFile(FILE, SEED + "\n");
-  if (!wr.fs) throw new Error(wr.error ?? "vim-delete-lines: seed write failed");
-  return wr.fs;
-}
-
-function lines(fs: VirtualFS): string[] {
-  return (fs.readFile(FILE).content ?? "").replace(/\n+$/, "").split("\n");
+  return writeOrThrow(base, FILE, SEED + "\n");
 }
 
 export const vimDeleteLines: Challenge = {
@@ -49,7 +42,7 @@ export const vimDeleteLines: Challenge = {
       // Exact match: the three keepers, nothing else. Deleting too much (a
       // keeper) or too little (a leftover scratch line) both fail.
       isComplete: (s) => {
-        const l = lines(s.fs);
+        const l = readLines(s.fs, FILE);
         return l.length === KEEPERS.length && l.every((line, i) => line === KEEPERS[i]);
       },
     },

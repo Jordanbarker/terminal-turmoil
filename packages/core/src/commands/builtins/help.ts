@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register, getAvailableCommands } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -49,3 +50,4 @@ const help: CommandHandler = (_args, _flags, ctx) => {
 };
 
 register("help", help, "Show available commands", HELP_TEXTS.help);
+setKnownFlags("help", {});

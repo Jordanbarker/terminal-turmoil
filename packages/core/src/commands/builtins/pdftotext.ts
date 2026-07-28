@@ -1,12 +1,13 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isFile } from "@tt/core/filesystem/types";
 import { HELP_TEXTS } from "./helpTexts";
 
 const pdftotext: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "pdftotext: missing PDF file operand\nUsage: pdftotext FILE" };
+    return { output: "", stderr: "pdftotext: missing PDF file operand\nUsage: pdftotext FILE" };
   }
 
   const filePath = args[0];
@@ -14,11 +15,11 @@ const pdftotext: CommandHandler = (args, _flags, ctx) => {
   const node = ctx.fs.getNode(absPath);
 
   if (!node) {
-    return { output: `pdftotext: ${filePath}: No such file or directory` };
+    return { output: "", stderr: `pdftotext: ${filePath}: No such file or directory` };
   }
 
   if (!isFile(node)) {
-    return { output: `pdftotext: ${filePath}: Is a directory` };
+    return { output: "", stderr: `pdftotext: ${filePath}: Is a directory` };
   }
 
   if (!node.name.endsWith(".pdf")) {
@@ -34,3 +35,4 @@ const pdftotext: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("pdftotext", pdftotext, "Convert PDF to text", HELP_TEXTS.pdftotext, true);
+setKnownFlags("pdftotext", {});

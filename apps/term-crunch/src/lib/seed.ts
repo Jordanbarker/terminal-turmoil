@@ -7,8 +7,9 @@ import { HOME_DIR } from "./machine";
  * `.zsh_history` (so up-arrow recall has a file to parse). Challenge `setup`
  * functions add whatever else they need (e.g. a git repo) on top of this.
  *
- * NOTE: VirtualFS.writeFile has no mkdir-p, so a challenge setup must create
- * parent directories (makeDirectory) before writing files into them.
+ * NOTE: VirtualFS.writeFile has no mkdir-p; challenge setups should use the
+ * seedFs.ts helpers (writeOrThrow/mkdirOrThrow), which create parents and
+ * throw rather than yield a half-built board.
  */
 export function buildBaseFs(): VirtualFS {
   const root = dir("/", {

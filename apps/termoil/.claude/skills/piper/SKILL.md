@@ -7,11 +7,13 @@ description: "How the Piper team messaging system works — channels, DMs, messa
 
 NexaCorp's Slack-style team chat — casual colleague conversations (quick asks, tool intros, help). Email handles formal/system comms.
 
-Code map: `src/engine/piper/` (`types.ts` — all types, read them there; `delivery.ts` = `checkPiperDeliveries`/`seedImmediatePiper`/`getConversationHistory`/`getPendingReply`/`getVisibleChannels`; `timestamp.ts`; `render.ts`; `PiperSession.ts`). Content in `src/story/piper/`: `channels.ts` (`PIPER_CHANNELS`), `messages.ts` (auto-includes all per-character files in `messages/` — one per character). Command registration `commands/builtins/piper.ts`.
+Code map: `src/engine/piper/` (`types.ts` — all types, read them there; `delivery.ts` = `checkPiperDeliveries`/`seedImmediatePiper`/`getConversationHistory`/`getPendingReplies`/`getVisibleChannels`; `timestamp.ts`; `render.ts`; `PiperSession.ts` — `pickVisibleReply`). Content in `src/story/piper/`: `channels.ts` (`PIPER_CHANNELS`), `messages.ts` (auto-includes all per-character files in `messages/` — one per character). Command registration `src/engine/commands/builtins/piper.ts` (app-side, like the rest of the story builtins).
 
 ## Storage
 
 State-based, not FS-based. `deliveredPiperIds: string[]` (Zustand) tracks arrivals, chosen replies (`reply:{deliveryId}:{optionIndex}`), and unread markers (`seen:{channelId}:{count}`). Content is static in `story/piper/messages/`.
+
+It is **set-like**: a repeated id replays the message in the conversation, so `addDeliveredPiperMessages` de-dupes against current state. Call sites (transitions, `seedImmediatePiper`, session exit) may pass ids that were already delivered without filtering first. `seen:` markers are the exception: adding one drops any earlier marker for the same channel.
 
 ## Delivery flow
 
@@ -26,6 +28,8 @@ Player action → `GameEvent` → `computeEffects()` calls `checkPiperDeliveries
 ## Interactive session
 
 Two views (channel list ↔ conversation); arrows/number keys, Enter select, `q` back/exit. On exit, collected trigger events + updated `deliveredPiperIds` (replies + seen markers) sync back via `useSessionRouter`. Selecting a reply adds the reply ID to `deliveredPiperIds`, collects its trigger events, and re-renders with the player's message inline.
+
+**A channel can hold several unanswered reply prompts at once**, and every one of them stays answerable. `getPendingReplies` lists them oldest-first (delivery order, not definition order); `pickVisibleReply` in `PiperSession.ts` takes the oldest whose options aren't all gated away, and answering it surfaces the next. Never assume a delivery supersedes an earlier prompt in the same channel: reply-gated unlocks (Oscar's `search_tools_accepted`, Auri's `inspection_tools_accepted`) are only reachable through their own prompt, so a "newest wins" rule silently deletes them from the game.
 
 **Multi-digit menu selection** (`consumeDigit()` in `PiperSession.ts`) — the menu can exceed 9 items. A digit `d` commits when `(buffer+d)*10 > menuLength` (no longer selection reachable); otherwise it's buffered until Enter or another digit. Any non-digit/non-Enter clears the buffer. Footer shows the in-progress buffer as `[NN_]`. Same rule for the reply menu.
 

@@ -1,10 +1,12 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { HELP_TEXTS } from "./helpTexts";
 import { Mount, normalizeMountKey } from "@tt/core/filesystem/mounts";
 import { dir } from "@tt/core/filesystem/builders";
 import { isDirectory } from "@tt/core/filesystem/types";
 import { basename } from "@tt/core/lib/pathUtils";
+import { errorResult } from "../fsErrors";
 
 const mount: CommandHandler = (args, _flags, ctx) => {
   const mounts = ctx.mounts ?? {};
@@ -17,41 +19,41 @@ const mount: CommandHandler = (args, _flags, ctx) => {
   }
 
   if (args.length !== 2) {
-    return { output: "mount: bad usage\nTry 'mount --help' for more information.", exitCode: 1 };
+    return errorResult("mount: bad usage\nTry 'mount --help' for more information.", 1);
   }
 
   const [deviceArg, pathArg] = args;
   const device = ctx.devices?.findDevice(deviceArg);
   if (!device) {
-    return { output: `mount: ${deviceArg}: no such device`, exitCode: 1 };
+    return errorResult(`mount: ${deviceArg}: no such device`, 1);
   }
   if (device.mountpoint) {
-    return { output: `mount: ${device.devicePath} already mounted on ${device.mountpoint}`, exitCode: 1 };
+    return errorResult(`mount: ${device.devicePath} already mounted on ${device.mountpoint}`, 1);
   }
 
   const mountpath = normalizeMountKey(pathArg, ctx.cwd, ctx.homeDir);
   if (mountpath === "/") {
-    return { output: `mount: /: cannot mount on root`, exitCode: 1 };
+    return errorResult(`mount: /: cannot mount on root`, 1);
   }
 
   const target = ctx.fs.getNode(mountpath);
   if (!target) {
-    return { output: `mount: ${pathArg}: mount point does not exist`, exitCode: 1 };
+    return errorResult(`mount: ${pathArg}: mount point does not exist`, 1);
   }
   if (!isDirectory(target)) {
-    return { output: `mount: ${pathArg}: mount point is not a directory`, exitCode: 1 };
+    return errorResult(`mount: ${pathArg}: mount point is not a directory`, 1);
   }
   if (Object.keys(target.children).length > 0) {
-    return { output: `mount: ${pathArg}: not mounting — directory is not empty`, exitCode: 1 };
+    return errorResult(`mount: ${pathArg}: not mounting — directory is not empty`, 1);
   }
   if (mounts[mountpath]) {
-    return { output: `mount: ${pathArg}: already mounted`, exitCode: 1 };
+    return errorResult(`mount: ${pathArg}: already mounted`, 1);
   }
 
   const overlay = dir(basename(mountpath), device.getContents?.() ?? {});
   const insertResult = ctx.fs.insertNode(mountpath, overlay);
   if (insertResult.error || !insertResult.fs) {
-    return { output: `mount: ${insertResult.error ?? "failed"}`, exitCode: 1 };
+    return errorResult(`mount: ${insertResult.error ?? "failed"}`, 1);
   }
 
   const newMount: Mount = { device: device.devicePath, mountpath, fstype: device.fstype };
@@ -72,3 +74,4 @@ const mount: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("mount", mount, "Mount a filesystem", HELP_TEXTS.mount);
+setKnownFlags("mount", {});

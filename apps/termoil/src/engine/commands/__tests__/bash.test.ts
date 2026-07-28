@@ -153,7 +153,7 @@ describe("bash command", () => {
   it("continues after command errors", async () => {
     const result = await executeAsync("bash", ["bad-cmd.sh"], {}, ctx());
     expect(result.output).toContain("before");
-    expect(result.output).toContain("command not found");
+    expect(result.stderr).toContain("command not found");
     expect(result.output).toContain("after");
   });
 
@@ -167,13 +167,13 @@ describe("bash command", () => {
 
   it("returns file not found error", async () => {
     const result = await executeAsync("bash", ["nonexistent.sh"], {}, ctx());
-    expect(result.output).toContain("No such file or directory");
+    expect(result.stderr).toContain("No such file or directory");
     expect(result.exitCode).toBe(1);
   });
 
   it("returns usage error with no args", async () => {
     const result = await executeAsync("bash", [], {}, ctx());
-    expect(result.output).toContain("interactive mode not supported");
+    expect(result.stderr).toContain("interactive mode not supported");
   });
 
   it("executes inline command with -c", async () => {
@@ -194,7 +194,7 @@ describe("bash command", () => {
     });
     const result = await executeAsync("bash", ["exit-script.sh"], {}, c);
     expect(result.output).toContain("before");
-    expect(result.output).toContain("cannot transition computers");
+    expect(result.stderr).toContain("cannot transition computers");
     expect(result.transitionTo).toBeUndefined();
   });
 
@@ -235,13 +235,13 @@ describe("path execution (./script.sh)", () => {
 
   it("returns permission denied without execute bit", async () => {
     const result = await executeAsync("./no-exec.sh", [], {}, ctx());
-    expect(result.output).toBe("zsh: permission denied: ./no-exec.sh");
+    expect(result.stderr).toBe("zsh: permission denied: ./no-exec.sh");
     expect(result.exitCode).toBe(126);
   });
 
   it("returns not found for nonexistent path", async () => {
     const result = await executeAsync("./missing.sh", [], {}, ctx());
-    expect(result.output).toBe("zsh: no such file or directory: ./missing.sh");
+    expect(result.stderr).toBe("zsh: no such file or directory: ./missing.sh");
     expect(result.exitCode).toBe(127);
   });
 
@@ -458,7 +458,7 @@ describe("bash -c quote-aware redirection", () => {
       ctx(),
     );
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("no such file or directory");
+    expect(result.stderr).toContain("no such file or directory");
     expect(result.output).not.toContain("ran");
   });
 
@@ -480,7 +480,7 @@ describe("bash -c quote-aware redirection", () => {
       ctx(),
     );
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain("is a directory");
+    expect(result.stderr).toContain("is a directory");
     expect(result.newFs ?? undefined).toBeUndefined();
   });
 });

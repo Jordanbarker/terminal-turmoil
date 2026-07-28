@@ -8,6 +8,7 @@ import { colorize, ansi } from "@tt/core/lib/ansi";
 import { expandZshPrompt } from "@tt/core/lib/promptExpand";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { createDefaultContext } from "@tt/core/snowflake/session/context";
+import { createBusyGate } from "./busyGate";
 import { SaveSlotId } from "../state/saveTypes";
 import { formatSlotName } from "../state/saveManager";
 import { COMPUTERS, ComputerId, getConnectionClosure } from "../state/types";
@@ -22,6 +23,7 @@ import { computeEffects, AppliedEffects } from "@tt/core/commands/applyResult";
 import { processDeliveries } from "../engine/commands/processDeliveries";
 import { renderSavesList, renderCheckpointsList } from "../story/listingOutput";
 import { CHECKPOINTS } from "../story/checkpoints";
+import type { StoryFlagName } from "../story/storyFlags";
 import { useSessionRouter } from "./useSessionRouter";
 import { useCommandLine } from "./useCommandLine";
 import { useComputerTransitions } from "./useComputerTransitions";
@@ -37,6 +39,23 @@ import { Mounts } from "@tt/core/filesystem/mounts";
 // Per-computer command queue: serializes FS mutations to prevent TOCTOU races
 // between tabs on the same computer.
 const computerQueues: Partial<Record<ComputerId, Promise<void>>> = {};
+
+/**
+ * Push core's flag updates (plus their toasts) into the store.
+ *
+ * Core types `StoryFlagUpdate.flag` as an opaque string because it knows
+ * nothing about this story's flags, but every update originates in this app's
+ * trigger tables (`checkStoryFlagTriggers`, which does return `StoryFlagName`).
+ * Narrowing happens here, at the one core→app seam, so the store action keeps
+ * its typed signature.
+ */
+function applyStoryFlagUpdates(updates: AppliedEffects["storyFlagUpdates"]) {
+  const store = useGameStore.getState();
+  for (const update of updates) {
+    store.setStoryFlag(update.flag as StoryFlagName, update.value);
+    if (update.toast) store.addToast(update.toast);
+  }
+}
 
 function enqueueCommand(computerId: ComputerId, fn: () => void | Promise<void>): Promise<void> {
   const prev = computerQueues[computerId] ?? Promise.resolve();
@@ -119,6 +138,13 @@ function buildCommandContext(
           attached: false,
         })),
       ],
+      // Window strip of the attached session, for `-t` targeting by name/index.
+      windows: store.windows.map((w, i) => ({
+        id: w.id,
+        index: i + 1,
+        name: w.name ?? null,
+        active: w.id === store.activeWindowId,
+      })),
     },
   };
 }
@@ -127,8 +153,8 @@ function buildCommandContext(
 import "../engine/commands/builtins";
 
 export function useTerminal() {
-  const busyRef = useRef(false);
-  const busyPaneIdRef = useRef<string | null>(null);
+  // Token-owned input gate — see busyGate.ts for why a bare boolean isn't enough.
+  const busyRef = useRef(createBusyGate());
   const confirmNewGameRef = useRef(false);
   const pendingNotificationsRef = useRef<{ email: number; piper: number } | null>(null);
 
@@ -137,6 +163,12 @@ export function useTerminal() {
   const initLeaf = getActiveLeaf(initState);
   const cwdRef = useRef(initLeaf?.cwd ?? `/home/${initState.username}`);
   const activeComputerRef = useRef<ComputerId>((initLeaf?.computerId ?? "home") as ComputerId);
+  /**
+   * `$?` per pane. It is shell state, not game state: each pane is its own
+   * shell, so it is keyed by pane and dropped with the pane, and it is
+   * deliberately NOT persisted — a reload starts a new shell, where `$?` is 0.
+   */
+  const lastExitCodeRef = useRef(new Map<string, number>());
 
   // Sync refs whenever the active pane changes (split, focus move, window switch, …)
   useEffect(() => {
@@ -229,12 +261,7 @@ export function useTerminal() {
         store.setActivePaneCwd(effects.newCwd);
         cwdRef.current = effects.newCwd;
       }
-      for (const update of effects.storyFlagUpdates) {
-        useGameStore.getState().setStoryFlag(update.flag, update.value);
-        if (update.toast) {
-          useGameStore.getState().addToast(update.toast);
-        }
-      }
+      applyStoryFlagUpdates(effects.storyFlagUpdates);
       if (effects.newDeliveredEmailIds.length > 0) {
         useGameStore.getState().addDeliveredEmails(effects.newDeliveredEmailIds);
       }
@@ -303,8 +330,13 @@ export function useTerminal() {
       // Incremental line-by-line rendering (e.g. dbt output)
       if (effects.incrementalLines) {
         applyStateEffects(effects, computerId);
-        busyRef.current = true;
-        busyPaneIdRef.current = getActivePaneId(useGameStore.getState()) ?? null;
+        // Take ownership of the input gate for the whole stream. The enqueued
+        // command that started us resolves as soon as this returns, so its
+        // `finally` must not be the thing that unlocks input. Gate the pane
+        // that SUBMITTED the command (the one `term` belongs to), not the
+        // currently focused pane: focus may have moved while the command sat
+        // in the per-computer queue.
+        const streamToken = busyRef.current.acquire(tabId ?? getActivePaneId(useGameStore.getState()) ?? null);
         const lines = effects.incrementalLines;
         let i = 0;
         const writeNext = () => {
@@ -314,8 +346,7 @@ export function useTerminal() {
             i++;
             setTimeout(writeNext, i < lines.length ? lines[i].delayMs : 0);
           } else {
-            busyRef.current = false;
-            busyPaneIdRef.current = null;
+            busyRef.current.release(streamToken);
             // The box is down once the broadcast/countdown lines finish.
             closeTabsForDownedComputer();
             if (effects.gameAction?.type === "shutdown") {
@@ -441,9 +472,8 @@ export function useTerminal() {
       // Route input to active session if one exists
       if (sessionRouter.routeInput(term, data)) return;
 
-      // Ignore input while an async command is running in this tab
-      const activePaneId = getActivePaneId(useGameStore.getState());
-      if (busyRef.current && activePaneId === busyPaneIdRef.current) return;
+      // Ignore input while an async command or line animation owns this pane
+      if (busyRef.current.isBlocked(getActivePaneId(useGameStore.getState()))) return;
 
       // Cursor-aware line editing (arrows, Home/End, word-skip, Ctrl+A/E/U/K/L/W/D,
       // ghost/TAB completion) is owned by the shared @tt/core LineEditor.
@@ -484,8 +514,7 @@ export function useTerminal() {
       const submittingPaneId = getActivePaneId(useGameStore.getState());
 
       // Gate input while command is queued/executing
-      busyRef.current = true;
-      busyPaneIdRef.current = submittingPaneId ?? null;
+      const commandToken = busyRef.current.acquire(submittingPaneId ?? null);
 
       // Enqueue command execution to serialize FS mutations per computer
       enqueueCommand(computerId, async () => {
@@ -515,6 +544,7 @@ export function useTerminal() {
             storyFlags: latestStore.storyFlags,
             fs: runningFs,
             targetComputerExists: targetComputer ? !!latestStore.computerState[targetComputer as ComputerId] : undefined,
+            securityHomeMachine: "home",
             processDeliveries,
             renderSavesList,
             renderCheckpointsList,
@@ -523,12 +553,7 @@ export function useTerminal() {
           if (!isFinal) {
             // Per-segment: apply story flags, deliveries to store (needed for gating)
             // but do NOT write FS, notifications, or prompt
-            for (const update of effects.storyFlagUpdates) {
-              useGameStore.getState().setStoryFlag(update.flag, update.value);
-              if (update.toast) {
-                useGameStore.getState().addToast(update.toast);
-              }
-            }
+            applyStoryFlagUpdates(effects.storyFlagUpdates);
             if (effects.newDeliveredEmailIds.length > 0) {
               useGameStore.getState().addDeliveredEmails(effects.newDeliveredEmailIds);
             }
@@ -562,6 +587,7 @@ export function useTerminal() {
           cwd: cwdRef.current,
           homeDir,
           mounts: initialMounts,
+          initialExitCode: submittingPaneId ? lastExitCodeRef.current.get(submittingPaneId) : undefined,
           buildContext: ({ fs, cwd, stdin, rawArgs, isPiped, mounts }) =>
             buildCommandContext(fs, cwd, computerId, homeDir, stdin, rawArgs, isPiped, useGameStore.getState(), mounts),
           write: (t) => term.write(t),
@@ -574,6 +600,9 @@ export function useTerminal() {
             applyCommandResult(cmdResult, parsedCmd, state.fs, isFinal),
         });
         let runningFs = run.fs;
+
+        // `$?` for the next line typed in THIS pane (see lastExitCodeRef).
+        if (submittingPaneId) lastExitCodeRef.current.set(submittingPaneId, run.lastExitCode);
 
         // Append command to .zsh_history in the virtual filesystem (HIST_IGNORE_DUPS)
         if (!result.skipHistory) {
@@ -599,9 +628,18 @@ export function useTerminal() {
         if (!run.earlyReturn) {
           writePrompt(term);
         }
+        } catch (err) {
+          // Last line of defence. An engine throw used to reach
+          // enqueueCommand's `.catch`, which logs and moves on — leaving the
+          // player at a dead terminal with no prompt and the input gate about
+          // to release into nothing. Surface it and hand the shell back.
+          console.error("[useTerminal]", err);
+          term.write("\r\n" + colorize("zsh: internal error — the command was aborted", ansi.red));
+          writePrompt(term);
         } finally {
-          busyRef.current = false;
-          busyPaneIdRef.current = null;
+          // No-op if an incrementalLines animation took ownership of the gate;
+          // that stream releases it when the last line lands.
+          busyRef.current.release(commandToken);
         }
       });
     },
@@ -613,9 +651,11 @@ export function useTerminal() {
     getPrompt,
     startSession: sessionRouter.startSession,
     canCloseCurrentSession: sessionRouter.canCloseCurrentSession,
-    canClosePaneSession: sessionRouter.canClosePaneSession,
     getActiveSessionType: sessionRouter.getActiveSessionType,
-    cleanupPane: sessionRouter.cleanupPane,
+    cleanupPane: (paneId: string) => {
+      lastExitCodeRef.current.delete(paneId); // the pane's shell is gone; so is its `$?`
+      sessionRouter.cleanupPane(paneId);
+    },
     resizeActiveSession: sessionRouter.resizeActiveSession,
     resizePaneSession: sessionRouter.resizePaneSession,
   };

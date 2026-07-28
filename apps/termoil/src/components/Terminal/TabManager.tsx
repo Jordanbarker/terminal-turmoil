@@ -7,7 +7,7 @@ import PaneDividers from "@tt/core/components/PaneDividers";
 import { useGameStore, getActiveLeaf, MAX_WINDOWS } from "../../state/gameStore";
 import { allLeaves, paneRects } from "@tt/core/terminal/paneTypes";
 import { useTerminal } from "../../hooks/useTerminal";
-import { nexacorpLogo, homeWelcome, coderBanner, UNLOCK_BOX } from "@tt/core/lib/ascii";
+import { nexacorpLogo, homeWelcome, coderBanner, UNLOCK_BOX } from "@/lib/ascii";
 import { seedImmediatePiper } from "../../engine/piper/delivery";
 import { COPY_MODE_HINT, COPY_MODE_HINT_HIDDEN } from "@tt/core/terminal/copyMode";
 import { sessionUsesAltScreen } from "@tt/core/session/types";

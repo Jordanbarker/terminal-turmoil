@@ -4,6 +4,7 @@ import { skipFlagValidation } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isDirectory, isFile, FSNode } from "@tt/core/filesystem/types";
 import { HELP_TEXTS } from "./helpTexts";
+import { errorResult } from "../fsErrors";
 
 function globToRegex(glob: string): RegExp {
   const escaped = glob
@@ -36,7 +37,7 @@ const find: CommandHandler = (args, _flags, ctx) => {
   // Use rawArgs to preserve -name/-type tokens that the parser strips
   const effectiveArgs = ctx.rawArgs ?? args;
   if (effectiveArgs.length === 0) {
-    return { output: HELP_TEXTS.find, exitCode: 1 };
+    return errorResult(HELP_TEXTS.find, 1);
   }
   let searchPath = ctx.cwd;
   let namePattern: RegExp | null = null;
@@ -53,17 +54,17 @@ const find: CommandHandler = (args, _flags, ctx) => {
   while (i < effectiveArgs.length) {
     if (effectiveArgs[i] === "-name") {
       if (i + 1 >= effectiveArgs.length) {
-        return { output: "find: -name: requires additional arguments", exitCode: 1 };
+        return errorResult("find: -name: requires additional arguments", 1);
       }
       namePattern = globToRegex(effectiveArgs[i + 1]);
       i += 2;
     } else if (effectiveArgs[i] === "-type") {
       if (i + 1 >= effectiveArgs.length) {
-        return { output: "find: -type: requires additional arguments", exitCode: 1 };
+        return errorResult("find: -type: requires additional arguments", 1);
       }
       const t = effectiveArgs[i + 1];
       if (t !== "f" && t !== "d") {
-        return { output: `find: -type: ${t}: unknown type`, exitCode: 1 };
+        return errorResult(`find: -type: ${t}: unknown type`, 1);
       }
       typeFilter = t;
       i += 2;
@@ -76,7 +77,7 @@ const find: CommandHandler = (args, _flags, ctx) => {
 
   const node = ctx.fs.getNode(searchPath);
   if (!node) {
-    return { output: `find: '${searchPath}': No such file or directory`, exitCode: 1 };
+    return errorResult(`find: '${searchPath}': No such file or directory`, 1);
   }
   if (!isDirectory(node)) {
     // Single file — check if it matches

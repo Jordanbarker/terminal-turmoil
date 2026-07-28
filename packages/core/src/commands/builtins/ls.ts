@@ -122,10 +122,6 @@ const ls: CommandHandler = (args, flags, ctx) => {
 
   const sections: string[] = [];
 
-  if (errors.length > 0) {
-    sections.push(errors.join("\n"));
-  }
-
   const formatEntries = (entries: FSNode[]): string => {
     if (longFormat) {
       return formatLongEntries(entries, humanReadable, useClassify).join("\n");
@@ -160,6 +156,7 @@ const ls: CommandHandler = (args, flags, ctx) => {
 
   return {
     output: sections.join("\n\n"),
+    ...(errors.length > 0 && { stderr: errors.join("\n") }),
     exitCode: errors.length > 0 ? 1 : 0,
     ...(visitedDirs.length > 0 && {
       triggerEvents: visitedDirs.map((p) => ({ type: "directory_visit" as const, detail: p })),

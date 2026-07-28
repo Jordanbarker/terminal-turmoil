@@ -267,6 +267,9 @@ describe("security tripwire — redirection", () => {
     expect(result.securityViolation?.descendantCount).toBe(1);
   });
 
+  // The machine check lives in the POLICY (story/security.ts), not in core's
+  // redirection code — so this has to run the real policy against a non-nexacorp
+  // machine id. Omitting the policy argument would pass vacuously.
   it("does NOT flag log redirection when not on nexacorp", () => {
     const fs = makeNexacorpFs();
     const lastResult: CommandResult = { output: "" };
@@ -277,8 +280,20 @@ describe("security tripwire — redirection", () => {
       "/home/ren",
       fs,
       "home",
+      NEXACORP_SECURITY_POLICY,
     );
     expect(result.securityViolation).toBeUndefined();
+    // Same policy, same path, nexacorp instead: proves the path itself matches.
+    const { result: onNexacorp } = applyRedirection(
+      [{ file: "/var/log/system.log", append: false }],
+      { output: "" },
+      "/home/ren",
+      "/home/ren",
+      fs,
+      "nexacorp",
+      NEXACORP_SECURITY_POLICY,
+    );
+    expect(onNexacorp.securityViolation?.kind).toBe("log_tampering");
   });
 
   it("preserves a pre-existing violation through redirection", () => {

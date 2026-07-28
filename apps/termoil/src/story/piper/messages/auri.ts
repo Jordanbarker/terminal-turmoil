@@ -337,7 +337,7 @@ Then inside the container:
           id: "auri_tfd_2",
           from: "Auri Park",
           timestamp: "",
-          body: "Can you check the raw data? Try querying CAMPAIGN_METRICS in snow sql. Look for rows where CLICKS IS NULL.",
+          body: "Can you check the raw data? Try querying RAW_NEXACORP.CAMPAIGN_METRICS in snow sql. Qualify it with the schema like that! A session drops you in ANALYTICS, which is empty, so an unqualified table name just errors out. Look for rows where CLICKS IS NULL.",
         },
         {
           id: "auri_tfd_3",

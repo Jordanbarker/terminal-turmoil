@@ -9,12 +9,15 @@ import {
   splitNode,
   collapsePane,
   findLeaf,
+  windowOfPane,
   firstLeaf,
   allLeaves,
   focusDirectionTarget,
   nextLeafId,
   setSplitRatio,
   nudgeSplitRatio,
+  nearestResizableSplit,
+  cliResizeDelta,
   mapLeaf,
 } from "@tt/core/terminal/paneTypes";
 import { parseEnvAssignments, parseAliases } from "@tt/core/terminal/envParse";
@@ -47,10 +50,6 @@ function activeCwd(windows: WindowState[], activeWindowId: string): string {
   const win = windows.find((w) => w.id === activeWindowId) ?? windows[0];
   if (!win) return HOME_DIR;
   return findLeaf(win.root, win.activePaneId)?.cwd ?? HOME_DIR;
-}
-
-function windowOfPane(windows: WindowState[], paneId: string): WindowState | undefined {
-  return windows.find((w) => findLeaf(w.root, paneId));
 }
 
 /**
@@ -287,7 +286,6 @@ export const useGameStore = create<GameState>()(
       activeWindow,
       windows: state.windows,
       fs: state.fs,
-      cwd: activeCwd(state.windows, state.activeWindowId),
       tmux: {
         attachedSession: state.tmuxAttachedSession?.name ?? null,
         detachedSessions: state.tmuxDetachedSessions.map((s) => ({
@@ -338,9 +336,10 @@ export const useGameStore = create<GameState>()(
       },
       now
     );
-    // Stamped even when the sub-day gate paid nothing, so repeats keep
-    // measuring from the most recent completion.
-    const lastMpAt = { ...state.lastMpAt, [challenge.id]: now };
+    // Stamped ONLY when this completion actually paid. A zero-pay re-clear
+    // must not push the retention clock forward: replaying a card too early
+    // would otherwise keep deferring the next real award indefinitely.
+    const lastMpAt = awards.length > 0 ? { ...state.lastMpAt, [challenge.id]: now } : state.lastMpAt;
 
     const nextIndex = state.challengeIndex + 1;
     // In review mode the gate always rises (even on the last registry
@@ -487,17 +486,36 @@ export const useGameStore = create<GameState>()(
   // Save edited configs: persist the strings, re-seed them into the current fs,
   // and re-derive envVars/aliases from the new zshrc so the change takes effect
   // immediately (no challenge reset). tmux.conf is read reactively by TabManager.
-  // Re-merge the challenge's initialEnv so a mid-challenge Settings save can't
-  // wipe a seeded var and falsely satisfy an unset-style predicate.
+  //
+  // The rebuild is a REPLACE of the outgoing zshrc's keys, not a wipe: runtime
+  // keys the player exported, aliased, changed, or unset survive a Settings save
+  // (a challenge's initialEnv seed rides along in keptEnv and is deliberately
+  // NOT re-applied, or a save would revert an unset the challenge asked for).
+  // Only keys the OLD zshrc owned are surrendered to the new one, which is also
+  // what keeps "removed from the zshrc" actually remove them.
   setConfigs: (zshrc, tmuxConf) => {
-    const challenge = getCategory(get().activeCategory).challenges[get().challengeIndex];
-    set((state) => ({
-      zshrc,
-      tmuxConf,
-      fs: applyConfigs(state.fs, zshrc, tmuxConf),
-      envVars: { ...parseEnvAssignments(zshrc), ...challenge?.initialEnv },
-      aliases: parseAliases(zshrc),
-    }));
+    set((state) => {
+      const oldEnv = parseEnvAssignments(state.zshrc);
+      const oldAliases = parseAliases(state.zshrc);
+      const keptEnv = Object.fromEntries(
+        Object.entries(state.envVars).filter(([k]) => !(k in oldEnv))
+      );
+      const keptAliases = Object.fromEntries(
+        Object.entries(state.aliases).filter(([k]) => !(k in oldAliases))
+      );
+      return {
+        zshrc,
+        tmuxConf,
+        fs: applyConfigs(state.fs, zshrc, tmuxConf),
+        envVars: { ...keptEnv, ...parseEnvAssignments(zshrc) },
+        aliases: { ...keptAliases, ...parseAliases(zshrc) },
+      };
+    });
+    // Editing the zshrc is a genuine env/alias mutation, so it's a legitimate
+    // route through an export/alias challenge — no different from typing the
+    // command. Safe because every such challenge gates its later steps behind a
+    // step the config edit alone can't satisfy (see the cascade notes).
+    get().checkCompletion();
   },
 
   resetConfigs: () => get().setConfigs(DEFAULT_ZSHRC, DEFAULT_TMUX_CONF),
@@ -725,6 +743,52 @@ export const useGameStore = create<GameState>()(
         }
         set({ tmuxDetachedSessions: [] });
         get().checkCompletion();
+        return false;
+      }
+      // Window/pane verbs. These delegate to the same actions the prefix chords
+      // use (each of which already runs checkCompletion), so they inherit the
+      // window/pane caps and the last-window kill rule; only an action that
+      // destroys or swaps the issuing pane's view returns true.
+      case "new-window": {
+        get().newWindow();
+        return false;
+      }
+      case "rename-window": {
+        get().renameWindow(action.windowId, action.name);
+        return false;
+      }
+      case "kill-window": {
+        const activePaneWindow = state.activeWindowId;
+        get().closeWindow(action.windowId);
+        return action.windowId === activePaneWindow;
+      }
+      case "select-window": {
+        get().selectWindow(action.windowId);
+        get().checkCompletion();
+        return false;
+      }
+      case "split-window": {
+        const paneId = state.windows.find((w) => w.id === state.activeWindowId)?.activePaneId;
+        if (paneId) get().splitPane(paneId, action.direction);
+        return false;
+      }
+      case "kill-pane": {
+        const paneId = state.windows.find((w) => w.id === state.activeWindowId)?.activePaneId;
+        if (!paneId) return false;
+        get().closePane(paneId);
+        return true;
+      }
+      case "select-pane": {
+        get().focusDirection(action.dir);
+        get().checkCompletion();
+        return false;
+      }
+      case "resize-pane": {
+        const win = state.windows.find((w) => w.id === state.activeWindowId);
+        if (!win) return false;
+        const orientation = action.dir === "L" || action.dir === "R" ? "h" : "v";
+        const splitId = nearestResizableSplit(win.root, win.activePaneId, orientation);
+        if (splitId) get().nudgePaneRatio(splitId, cliResizeDelta(action.dir, action.cells));
         return false;
       }
     }

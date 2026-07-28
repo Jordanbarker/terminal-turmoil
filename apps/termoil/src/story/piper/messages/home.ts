@@ -545,7 +545,7 @@ that last one is your best friend. if you forget how something works, just man i
           timestamp: "",
           body: `1. create a backup dir:  mkdir ~/backups
 2. copy your scripts:     cp -r ~/scripts ~/backups/scripts
-3. log what you did:      echo "backup completed $(date)" >> ~/backup.log
+3. stamp a run log:       date >> ~/backup.log
 4. verify it worked:      cat ~/backups/scripts/backup.sh
 
 once you're confident the manual backup works, you can trust the timer to do the same thing automatically. an untested backup is just a wish.`,

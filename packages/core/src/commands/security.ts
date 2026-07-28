@@ -63,6 +63,10 @@ export interface SecurityPolicy {
   ): SecurityViolation | null;
   /** chmod: when a restrictive change lands on `path`, what kind of violation (or none)? */
   classifyChmodTarget(path: string): Exclude<SecurityViolationKind, "exfiltration"> | null;
-  /** Output redirection (`>`/`>>`): is writing to `path` log tampering? */
-  isLogTamperPath(path: string): boolean;
+  /**
+   * Output redirection (`>`/`>>`): is writing to `path` on `machineId` log
+   * tampering? The policy owns the machine check — the engine has no opinion
+   * about which host the rules apply to.
+   */
+  isLogTamperPath(path: string, machineId: MachineId): boolean;
 }

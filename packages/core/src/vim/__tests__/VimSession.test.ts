@@ -736,6 +736,32 @@ describe("VimSession", () => {
       const r2 = s2.handleInput(":q\r");
       expect(r2.triggerEvents).toEqual([{ type: "file_read", detail: "seen" }]);
     });
+
+    // Without a content predicate "save the file" is the whole condition, so
+    // `:wq` on an untouched buffer completes a fix-this-file objective.
+    it("withholds trigger events when the saved buffer fails the predicate", () => {
+      const fussy: EditorTrigger = {
+        triggerRow: 0,
+        triggerEvents: [{ type: "file_read", detail: "fixed" }],
+        contentPredicate: (content) => !content.includes("TYPO"),
+      };
+      const { session } = createSession("has TYPO here", { trigger: fussy });
+      session.handleInput("x");
+      const result = session.handleInput(":wq\r");
+      expect(result.triggerEvents).not.toContainEqual({ type: "file_read", detail: "fixed" });
+    });
+
+    it("fires trigger events once the saved buffer satisfies the predicate", () => {
+      const fussy: EditorTrigger = {
+        triggerRow: 0,
+        triggerEvents: [{ type: "file_read", detail: "fixed" }],
+        contentPredicate: (content) => !content.includes("TYPO"),
+      };
+      const { session } = createSession("TYPO", { trigger: fussy });
+      session.handleInput("dd");
+      const result = session.handleInput(":wq\r");
+      expect(result.triggerEvents).toContainEqual({ type: "file_read", detail: "fixed" });
+    });
   });
 
   describe("screen handling", () => {

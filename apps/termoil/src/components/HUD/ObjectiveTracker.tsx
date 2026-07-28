@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useGameStore } from "../../state/gameStore";
 import { CHAPTERS } from "../../engine/narrative/chapters";
 import {
@@ -165,33 +165,12 @@ export default function ObjectiveTracker() {
   const deliveredEmailIds = useGameStore((s) => s.deliveredEmailIds);
 
   const chapter = CHAPTERS.find((c) => c.id === currentChapter);
-
-  // Resolved unconditionally (empty when no chapter) so the effect below can run
-  // before any early return, keeping hook order stable across renders. Memoized so
-  // the effect's dependency identity is stable across renders.
-  const objectives = useMemo(
-    () =>
-      chapter
-        ? resolveObjectives(chapter, storyFlags, completedObjectives, deliveredEmailIds)
-        : [],
-    [chapter, storyFlags, completedObjectives, deliveredEmailIds]
-  );
-
-  // Auto-sync objectives that resolved as completed (via story flags, etc.)
-  // into the completedObjectives store so downstream visibleWhen: completedObjective works.
-  useEffect(() => {
-    const newlyCompleted = objectives.filter(
-      (o) => o.completed && !completedObjectives.includes(o.id)
-    );
-    if (newlyCompleted.length > 0) {
-      const store = useGameStore.getState();
-      for (const obj of newlyCompleted) {
-        store.completeObjective(obj.id);
-      }
-    }
-  }, [objectives, completedObjectives]);
-
   if (!chapter) return null;
+
+  // Read-only view. Writing resolved completions back into the store is
+  // `startObjectivePromotion` (state/objectivePromotion.ts), so promotion keeps
+  // running while this component is unmounted during transitions.
+  const objectives = resolveObjectives(chapter, storyFlags, completedObjectives, deliveredEmailIds);
 
   if (storyFlags.terminated_for_misconduct) {
     return (

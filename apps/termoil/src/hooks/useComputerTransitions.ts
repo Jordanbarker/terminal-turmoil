@@ -2,18 +2,13 @@ import { useCallback } from "react";
 import { Terminal } from "@xterm/xterm";
 import { useGameStore, buildFs, getActiveLeaf } from "../state/gameStore";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
-import { createDevcontainerFilesystem } from "../story/filesystem/devcontainer";
 import { createChipinfraFilesystem } from "../story/filesystem/chipinfra";
-import { createHomeFilesystem } from "../story/filesystem/home";
-import { checkEmailDeliveries, seedDeliveredEmails, GameEvent } from "../engine/mail/delivery";
-import { getReadEmailIds } from "../engine/mail/mailUtils";
-import { getEmailDefinitions } from "../engine/mail/emails";
+import { checkEmailDeliveries, GameEvent } from "../engine/mail/delivery";
 import { seedImmediatePiper, deliverPiperAndCascade } from "../engine/piper/delivery";
-import { gitClone } from "@tt/core/git/repo";
 import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { colorize, ansi } from "@tt/core/lib/ansi";
-import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "@tt/core/lib/ascii";
+import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "@/lib/ascii";
 import {
   BOOT_LINE_INTERVAL_MS,
   SECURITY_ALERT_LINE_INTERVAL_MS,
@@ -31,10 +26,10 @@ interface TransitionDeps {
 }
 
 /**
- * A "genuine end-of-day" exit from NexaCorp tears the workday down (home FS
- * rebuild, work machines removed from computerState, evening deliveries).
- * Anything else is a mid-shift logoff and gets a plain ssh-style soft
- * disconnect that preserves tabs and work-machine state.
+ * A "genuine end-of-day" exit from NexaCorp tears the workday down (work
+ * machines removed from computerState, evening deliveries at home). Anything
+ * else is a mid-shift logoff and gets a plain ssh-style soft disconnect that
+ * preserves tabs and work-machine state. Home itself survives either way.
  *
  * read_end_of_day is set on Day 1 and persists into Day 2, so it alone can't
  * distinguish a Day 2 mid-shift exit: Day 1 ends once read_end_of_day is set
@@ -42,6 +37,46 @@ interface TransitionDeps {
  */
 function isEndOfDayExit(flags: Record<string, string | boolean>): boolean {
   return !!flags.accusation_made || (!!flags.read_end_of_day && !flags.day1_shutdown);
+}
+
+/**
+ * The home box the player comes back to, at the end of a day or after a forced
+ * termination. **Keeps the live filesystem**; it only builds one from seed if
+ * the home machine somehow has no state at all.
+ *
+ * These transitions used to rebuild home wholesale (`createHomeFilesystem` +
+ * `seedDeliveredEmails` + `initComputer`), which threw away everything the
+ * player had done there: files they created, the read/unread state of their
+ * mail, the `sent/` maildir (so an already-answered job offer became answerable
+ * again, and declining post-hire spawned a recruiting email), plus every
+ * exported env var and alias, since `initComputer` re-derives both from the
+ * fresh FS.
+ *
+ * Nothing in that rebuild was load-bearing. `createHomeFilesystem(username)`
+ * takes no story flags and has no per-day content, so a rebuild is byte-for-byte
+ * the Day 1 seed, and the re-seed step could only ever restore mail the live FS
+ * already had (email delivery is computer-scoped — see `processDeliveries` — so
+ * home mail is only ever delivered while the player is at home). New evening /
+ * overnight mail still arrives the normal way: each transition runs its own
+ * `checkEmailDeliveries` pass after this.
+ *
+ * `known_hosts` no longer needs its bespoke copy-forward either: it is just
+ * another file on a filesystem that now survives.
+ *
+ * Exported for tests: the transitions themselves are hook-bound cinematics
+ * with no headless equivalent, so this is the seam the preservation contract
+ * is asserted against (`homeContinuity.test.ts`).
+ */
+export function resolveHomeForReentry(): VirtualFS {
+  const s = useGameStore.getState();
+  const existing = s.computerState.home?.fs;
+  if (existing) return existing;
+  s.initComputer("home", buildFs(s.username, "home", {
+    storyFlags: s.storyFlags,
+    deliveredEmailIds: s.deliveredEmailIds,
+    completedObjectives: s.completedObjectives,
+  }));
+  return useGameStore.getState().computerState.home!.fs;
 }
 
 export function useComputerTransitions(deps: TransitionDeps) {
@@ -58,7 +93,11 @@ export function useComputerTransitions(deps: TransitionDeps) {
     // Lazy-init: only build the FS the first time. Re-pivots preserve any edits.
     let entry = store.computerState["erik-pc"];
     if (!entry) {
-      const newFs = buildFs(username, "erik-pc", store.storyFlags, store.deliveredEmailIds);
+      const newFs = buildFs(username, "erik-pc", {
+        storyFlags: store.storyFlags,
+        deliveredEmailIds: store.deliveredEmailIds,
+        completedObjectives: store.completedObjectives,
+      });
       store.initComputer("erik-pc", newFs);
       entry = useGameStore.getState().computerState["erik-pc"]!;
     }
@@ -141,7 +180,11 @@ export function useComputerTransitions(deps: TransitionDeps) {
           }
 
           // Build NexaCorp filesystem directly and init computer state
-          const nexaFs = buildFs(username, "nexacorp", s.storyFlags, s.deliveredEmailIds);
+          const nexaFs = buildFs(username, "nexacorp", {
+            storyFlags: s.storyFlags,
+            deliveredEmailIds: s.deliveredEmailIds,
+            completedObjectives: s.completedObjectives,
+          });
           const sfState = useGameStore.getState().snowflakeState;
           const finalFs = syncToVirtualFS(sfState, nexaFs);
           s.initComputer("nexacorp", finalFs);
@@ -222,15 +265,9 @@ export function useComputerTransitions(deps: TransitionDeps) {
       const root = createChipinfraFilesystem(username, storyFlags);
       return new VirtualFS(root, `/home/${username}`, `/home/${username}`);
     }
-    // devcontainer: rebuild with dbt_project_cloned suppressed; gitClone re-creates it with .git below.
-    const rebuildFlags = { ...storyFlags, dbt_project_cloned: false };
-    const root = createDevcontainerFilesystem(username, rebuildFlags);
-    let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-    if (storyFlags.dbt_project_cloned) {
-      const cloneResult = gitClone(newFs, `/home/${username}`, "nexacorp/nexacorp-analytics", username);
-      if (!cloneResult.error) newFs = cloneResult.fs;
-    }
-    return newFs;
+    // devcontainer: buildFs owns the dbt_project_cloned → real `git clone` path,
+    // so checkpoint loads and workspace revisits produce the same repo.
+    return buildFs(username, "devcontainer", { storyFlags });
   };
 
   const runCoderTransition = useCallback((term: Terminal, target: "devcontainer" | "chipinfra" = "devcontainer") => {
@@ -388,35 +425,9 @@ export function useComputerTransitions(deps: TransitionDeps) {
         // only through it). The active pane is preserved and retargeted to home below.
         s.closePanesForComputers(["nexacorp", "devcontainer", "chipinfra", "erik-pc"]);
 
-        // Rebuild home FS
         const username = s.username;
-        const prevHomeFs = s.computerState.home?.fs;
-
-        // Capture read email IDs before rebuilding FS
-        const readIds = prevHomeFs
-          ? getReadEmailIds(prevHomeFs, getEmailDefinitions(username, "home").map((d) => d.email))
-          : new Set<string>();
-
-        const root = createHomeFilesystem(username);
-        let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-
-        // Re-seed previously delivered emails, preserving read state
-        const allDelivered = s.deliveredEmailIds;
-        if (allDelivered.length > 0) {
-          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, s.storyFlags);
-        }
-
-        // Preserve known_hosts from previous FS
-        if (prevHomeFs) {
-          const knownHostsPath = `/home/${username}/.ssh/known_hosts`;
-          const prev = prevHomeFs.readFile(knownHostsPath);
-          if (prev.content) {
-            const result = newFs.writeFile(knownHostsPath, prev.content);
-            if (result.fs) newFs = result.fs;
-          }
-        }
-
-        s.initComputer("home", newFs);
+        // The home box is left exactly as the player left it — see resolveHomeForReentry.
+        const homeFsAtReentry = resolveHomeForReentry();
 
         // Tracks-exposed scan. If the player pivoted to Erik's PC and left
         // chipinfra's ~/.ssh/known_hosts containing the nexacorp-lt05 entry that
@@ -439,8 +450,9 @@ export function useComputerTransitions(deps: TransitionDeps) {
         s.removeComputer("chipinfra");
         s.removeComputer("erik-pc");
 
-        // Repurpose current tab to home
-        const homeCwd = newFs.cwd;
+        // Repurpose current tab to home. Coming home is a fresh login shell, so
+        // land in ~ rather than wherever the last home session was cd'd to.
+        const homeCwd = homeFsAtReentry.homeDir;
         s.setActivePaneComputer("home", homeCwd);
         activeComputerRef.current = "home";
         cwdRef.current = homeCwd;
@@ -460,7 +472,7 @@ export function useComputerTransitions(deps: TransitionDeps) {
           // Pass storyFlags so after_story_flag triggers (e.g. marcus_board_debrief)
           // fire and any flag-branched bodies render correctly.
           const latest = useGameStore.getState();
-          const homeFs = latest.computerState.home?.fs ?? newFs;
+          const homeFs = latest.computerState.home?.fs ?? homeFsAtReentry;
           const deliveryResult = checkEmailDeliveries(
             homeFs,
             { type: "objective_completed", detail: "head_home" },
@@ -551,12 +563,14 @@ export function useComputerTransitions(deps: TransitionDeps) {
         } else {
           clearInterval(bootInterval);
           term.write("\x1b[?25h"); // restore cursor
+          // No writePrompt here: the booting -> playing effect in TabManager
+          // owns the prompt for every boot animation (same as the nexacorp and
+          // Day 2 boots below). Writing one here printed it twice.
           useGameStore.getState().setGamePhase("playing");
-          writePrompt(term);
         }
       }, BOOT_LINE_INTERVAL_MS);
     }, 2500);
-  }, [cwdRef, writePrompt]);
+  }, [cwdRef]);
 
   const runShutdownTransition = useCallback((term: Terminal) => {
     const store = useGameStore.getState();
@@ -594,49 +608,25 @@ export function useComputerTransitions(deps: TransitionDeps) {
       s.removeComputer("chipinfra");
       s.removeComputer("erik-pc");
 
-      // Capture read email IDs before rebuilding FS
-      const prevHomeFs = s.computerState.home?.fs;
-      const readIds = prevHomeFs
-        ? getReadEmailIds(prevHomeFs, getEmailDefinitions(username, "home").map((d) => d.email))
-        : new Set<string>();
-
-      // Rebuild home FS for Day 2
-      const root = createHomeFilesystem(username);
-      let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-      const allDelivered = s.deliveredEmailIds;
-      if (allDelivered.length > 0) {
-        newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, s.storyFlags);
-      }
-
-      // Preserve known_hosts from previous FS
-      if (prevHomeFs) {
-        const knownHostsPath = `/home/${username}/.ssh/known_hosts`;
-        const prev = prevHomeFs.readFile(knownHostsPath);
-        if (prev.content) {
-          const result = newFs.writeFile(knownHostsPath, prev.content);
-          if (result.fs) newFs = result.fs;
-        }
-      }
-
-      // (.zsh_history is now restored generically by initComputer from the
-      // durable zshHistory mirror — no per-transition preservation needed.)
-
-      s.initComputer("home", newFs);
+      // The machine reboots overnight; its disk does not get reimaged. Home
+      // survives untouched — see resolveHomeForReentry. Day 2 content is state,
+      // not files: the flags below plus the delivery cascade further down.
+      const homeFsAtReentry = resolveHomeForReentry();
 
       // Set Day 2 state
       s.setStoryFlag("day1_shutdown", true);
       s.setStoryFlag("apt_unlocked", true);
       s.setCurrentChapter("chapter-3");
 
-      // Repurpose current tab to home
-      const homeCwd = newFs.cwd;
+      // Repurpose current tab to home — a post-boot login shell starts in ~.
+      const homeCwd = homeFsAtReentry.homeDir;
       s.setActivePaneComputer("home", homeCwd);
       activeComputerRef.current = "home";
       cwdRef.current = homeCwd;
 
       // Run delivery cascade for day1_shutdown
       const latest = useGameStore.getState();
-      const homeFs = latest.computerState.home?.fs ?? newFs;
+      const homeFs = latest.computerState.home?.fs ?? homeFsAtReentry;
       const shutdownEvent: GameEvent = { type: "command_executed", detail: "shutdown" };
       const emailResult = checkEmailDeliveries(
         homeFs,
@@ -693,10 +683,11 @@ export function useComputerTransitions(deps: TransitionDeps) {
   }, [cwdRef, activeComputerRef]);
 
   /**
-   * Forced disconnect from NexaCorp after a security tripwire fires. Mirrors
-   * the FS-rebuild path of runExitToHome but: prints a hostile-disconnect line,
-   * sets the termination flags before delivery, and triggers the termination
-   * email via a synthesized `terminated` event.
+   * Forced disconnect from NexaCorp after a security tripwire fires. Same
+   * end-of-day shape as runExitToHome (work machines torn down, player returned
+   * to their untouched home box via resolveHomeForReentry) but: prints a
+   * hostile-disconnect line, sets the termination flags before delivery, and
+   * triggers the termination email via a synthesized `terminated` event.
    */
   const runTerminationTransition = useCallback(
     (term: Terminal, violation: SecurityViolation) => {
@@ -751,41 +742,21 @@ export function useComputerTransitions(deps: TransitionDeps) {
       setTimeout(() => {
         const s = useGameStore.getState();
         const username = s.username;
-        const prevHomeFs = s.computerState.home?.fs;
-        const readIds = prevHomeFs
-          ? getReadEmailIds(prevHomeFs, getEmailDefinitions(username, "home").map((d) => d.email))
-          : new Set<string>();
+        // Being fired doesn't reimage the player's own PC — see resolveHomeForReentry.
+        const homeFsAtReentry = resolveHomeForReentry();
 
-        const root = createHomeFilesystem(username);
-        let newFs = new VirtualFS(root, `/home/${username}`, `/home/${username}`);
-
-        const allDelivered = s.deliveredEmailIds;
-        if (allDelivered.length > 0) {
-          newFs = seedDeliveredEmails(newFs, allDelivered, "home", username, readIds, s.storyFlags);
-        }
-
-        if (prevHomeFs) {
-          const knownHostsPath = `/home/${username}/.ssh/known_hosts`;
-          const prev = prevHomeFs.readFile(knownHostsPath);
-          if (prev.content) {
-            const result = newFs.writeFile(knownHostsPath, prev.content);
-            if (result.fs) newFs = result.fs;
-          }
-        }
-
-        s.initComputer("home", newFs);
         s.removeComputer("nexacorp");
         s.removeComputer("devcontainer");
         s.removeComputer("chipinfra");
         s.removeComputer("erik-pc");
 
-        const homeCwd = newFs.cwd;
+        const homeCwd = homeFsAtReentry.homeDir;
         s.setActivePaneComputer("home", homeCwd);
         activeComputerRef.current = "home";
         cwdRef.current = homeCwd;
 
         const finalState = useGameStore.getState();
-        const homeFs = finalState.computerState.home?.fs ?? newFs;
+        const homeFs = finalState.computerState.home?.fs ?? homeFsAtReentry;
         const deliveryResult = checkEmailDeliveries(
           homeFs,
           { type: "terminated", detail: violation.kind },

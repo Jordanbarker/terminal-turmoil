@@ -1,11 +1,13 @@
-import { ComputerId, StoryFlags } from "../state/types";
+import { ComputerId } from "../state/types";
+import type { TermoilStoryFlags } from "./storyFlags";
 
 export interface Checkpoint {
   id: string;
   description: string;
   chapter: string;
   activeComputer: ComputerId;
-  storyFlags: StoryFlags;
+  /** Typed so a mistyped flag name fails the build instead of silently never firing. */
+  storyFlags: TermoilStoryFlags;
   deliveredEmailIds: string[];
   deliveredPiperIds: string[];
   completedObjectives: string[];
@@ -57,15 +59,30 @@ const DAY1_START: Checkpoint = {
     "welcome_edward",
     "it_provisioned",
   ],
+  // Reply markers (`reply:<deliveryId>:<index>`) are as load-bearing as the
+  // deliveries: an unanswered prompt stays live in the channel. The rule is
+  // that only the NEWEST delivery in a channel may still be awaiting a reply.
+  // Anything older is backlog the player has visibly moved past, and leaving it
+  // pending lets them re-decide a branch this checkpoint already recorded, or
+  // re-fire a cascade whose result is already in this list.
   deliveredPiperIds: [
     // Home immediate
     "alex_checkin",
+    "reply:alex_checkin:1", // neutral "slowly but I'll get there"
     "olive_linux_basics",
+    // `piper_reply:olive_linux_basics` is a completed objective below, so the
+    // prompt has to read as answered too.
+    "reply:olive_linux_basics:0",
     "bubble_buddies_history",
     // Home triggered
     "alex_nudge_accepted",
+    // Accept path: "I GOT THE JOB". Its cascade (alex_react_accepted) is right
+    // below, which is the proof this prompt was answered.
+    "reply:alex_nudge_accepted:0",
+    // Newest in dm_alex at this checkpoint, so deliberately left unanswered.
     "alex_react_accepted",
     "olive_tree_tip",
+    "reply:olive_tree_tip:1", // "good tip, thanks" — `tree` is not installed here
     // Olive basic challenges (chapter 1)
     "olive_challenges_intro",
     "reply:olive_challenges_intro:0",
@@ -84,6 +101,7 @@ const DAY1_START: Checkpoint = {
     "olive_challenges_complete",
     // NexaCorp immediate
     "general_edward_welcome",
+    "reply:general_edward_welcome:0", // said hi; general_tom_wins already landed after it
     "general_tom_wins",
   ],
   completedObjectives: [
@@ -119,6 +137,12 @@ const DAY1_END: Checkpoint = {
     oscar_checked_backups: true,
     oscar_diffed_logs: true,
     oscar_access_completed: true,
+    // Set by the same beat as oscar_checked_backups / oscar_diffed_logs:
+    // reading system.log.bak and diffing it against system.log. Omitting them
+    // left the Day 1 investigation half-recorded for anything downstream that
+    // gates on the discovery itself rather than on Oscar's quest steps.
+    found_backup_files: true,
+    discovered_log_tampering: true,
     // Auri quest
     inspection_tools_unlocked: true,
     processing_tools_unlocked: true,
@@ -159,18 +183,43 @@ const DAY1_END: Checkpoint = {
     // NexaCorp onboarding triggered
     "eng_sarah_welcome",
     "eng_code_review_debate",
-    // Oscar quest
+    // Oscar quest. Every prompt here is answered: a delivered-but-pending
+    // prompt whose option completes an already-completed objective lets the
+    // player re-decide a branch the checkpoint has already recorded (and, for
+    // oscar_access_review, record BOTH branches).
     "oscar_log_check",
+    "reply:oscar_log_check:0", // took the task; search_tools_tips_requested is not completed
     "oscar_access_review",
+    // Branch 0 ("nothing weird"): oscar_logs_normal is completed and Oscar's
+    // normal-path follow-up (oscar_log_normal) is what got delivered.
+    // discovered_log_tampering is set, so branch 1 is *visible* but was not taken.
+    "reply:oscar_access_review:0",
     "oscar_log_normal",
+    "reply:oscar_log_normal:0", // took the task; processing_tools_tips_requested is not completed
     "oscar_access_followup",
+    // Branch 0 ("that doesn't seem right"): proven by oscar_access_reaction
+    // below, which only delivers after oscar_access_suspicious.
+    "reply:oscar_access_followup:0",
     "oscar_access_reaction",
     // Auri quest
     "auri_hello",
+    "reply:auri_hello:0", // single option; inspection_tools_accepted is completed
     "auri_pipeline_help",
+    // Branch 0 (curious about Chen): either branch satisfies handoff_reviewed,
+    // so the mystery-forward one is picked to match this checkpoint's
+    // investigation flags. Its response chain is what completed
+    // pipeline_tools_accepted, so it has to be delivered and answered too.
+    "reply:auri_pipeline_help:0",
+    "auri_chen_response",
+    "reply:auri_chen_response:0",
     "auri_dbt_results",
+    // Branch 0 ("some tests warned"): both branches complete auri_dbt_reported,
+    // and the Day 1 build really does warn, so the truthful reply is recorded.
+    "reply:auri_dbt_results:0",
     "dana_welcome",
-    // Home post-day1
+    // Home post-day1. alex_react_accepted was the live dm_alex prompt at
+    // day1-start; alex_day1_checkin supersedes it, so it gets answered here.
+    "reply:alex_react_accepted:0",
     "alex_day1_checkin",
     "openclam_end_of_day",
     "olive_power_tools_intro",
@@ -195,11 +244,16 @@ const DAY1_END: Checkpoint = {
     "oscar_logs_normal",
     "processing_tools_accepted",
     "oscar_access_reported",
+    // The branch objective behind oscar_access_reaction's delivery; recorded so
+    // the reply above and the delivery below agree.
+    "oscar_access_suspicious",
     "help_oscar_logs",
     // Auri quest
     "inspection_tools_accepted",
     "review_handoff",
     "handoff_reviewed",
+    // Branch objective behind auri_chen_response's delivery (see deliveredPiperIds).
+    "handoff_curious_about_chen",
     "pipeline_tools_accepted",
     "help_auri_pipeline",
     "clone_analytics_repo",
@@ -254,6 +308,12 @@ const DAY2_PIPELINE_FIXED: Checkpoint = {
   ...DAY2_START,
   id: "day2-pipeline-fixed",
   description: "Day 2, pipeline fixed, Edward's plugin DM waiting (Chapter 3, nexacorp)",
+  // KNOWN DRIFT (backlog, deliberate): these flags say the player pulled,
+  // branched, fixed and pushed, but the devcontainer repo is a fresh clone
+  // sitting on `main` at the pre-pull tip, so `git log`/`git branch` do not show
+  // that work. Every quest check downstream reads story flags, not repo state,
+  // so the arc still resolves; replaying the real git history into a checkpoint
+  // would mean building quest-replay machinery for a debug shortcut. Don't.
   storyFlags: {
     ...DAY2_START.storyFlags,
     pulled_day2_updates: true,
@@ -273,8 +333,13 @@ const DAY2_PIPELINE_FIXED: Checkpoint = {
     "auri_test_failure_reaction",
     "reply:auri_test_failure_reaction:0",
     "auri_test_failure_details",
+    // "I'll check it out." — the player then diagnosed the NULLs in the
+    // terminal (investigated_null_data), rather than asking Auri to explain.
+    "reply:auri_test_failure_details:0",
     "auri_fix_pushed",
     "reply:auri_fix_pushed:0",
+    // ...and the cascade that reply triggers (after_piper_reply: auri_fix_pushed)
+    "auri_fix_pushed_reply",
     // Edward's plugin request — delivered, awaiting reply
     "edward_plugin_request",
   ],

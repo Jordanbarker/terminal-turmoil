@@ -3,26 +3,30 @@ import { register } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { splitLines } from "@tt/core/lib/textUtils";
+import { readFileForCommand, errorResult, READ_FAILURE_EXIT } from "../fsErrors";
+import { fileOperands } from "../operands";
 import { HELP_TEXTS } from "./helpTexts";
 
 const uniq: CommandHandler = (args, flags, ctx) => {
   const showCount = flags["c"];
   const duplicatesOnly = flags["d"];
   const ignoreCase = flags["i"];
-  const fileArgs = args.filter((a) => !a.startsWith("-"));
+
+  // `uniq` / `uniq -`: read stdin.
+  const { files, readStdin } = fileOperands(args);
 
   let content: string;
-  if (fileArgs.length === 0 && ctx.stdin !== undefined) {
+  if (readStdin && ctx.stdin !== undefined) {
     content = ctx.stdin;
-  } else if (fileArgs.length > 0) {
-    const absPath = resolvePath(fileArgs[0], ctx.cwd, ctx.homeDir);
-    const result = ctx.fs.readFile(absPath);
+  } else if (files.length > 0) {
+    const absPath = resolvePath(files[0], ctx.cwd, ctx.homeDir);
+    const result = readFileForCommand("uniq", absPath, ctx);
     if (result.error) {
-      return { output: result.error.replace("cat:", "uniq:"), exitCode: 2 };
+      return errorResult(result.error, READ_FAILURE_EXIT);
     }
     content = result.content ?? "";
   } else {
-    return { output: "uniq: missing file operand", exitCode: 2 };
+    return errorResult("uniq: missing file operand", 2);
   }
 
   const lines = splitLines(content);
@@ -52,9 +56,16 @@ const uniq: CommandHandler = (args, flags, ctx) => {
     return g.line;
   });
 
+  // `groups.length < lines.length` means at least one run of adjacent
+  // duplicates actually collapsed; on all-unique input uniq is a no-op and
+  // must not fire the story trigger.
+  const collapsed = groups.length < lines.length;
+
   return {
     output: outputLines.join("\n"),
-    triggerEvents: [{ type: "command_executed", detail: "data_deduped" }],
+    ...(collapsed && {
+      triggerEvents: [{ type: "command_executed" as const, detail: "data_deduped" }],
+    }),
   };
 };
 

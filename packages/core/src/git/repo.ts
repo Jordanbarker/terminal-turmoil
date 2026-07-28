@@ -1,7 +1,8 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory, isFile } from "@tt/core/filesystem/types";
 import { normalizePath } from "@tt/core/lib/pathUtils";
-import { GitCommit, GitIndex, GitRepo, GitStashEntry, GitRebaseState } from "./types";
+import { computeDiff } from "@tt/core/lib/diff";
+import { GitCommit, GitIndex, GitRepo, GitStashEntry, GitRebaseState, GitMergeState } from "./types";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -32,6 +33,27 @@ export function shortHash(input: string): string {
     h2 = Math.imul(h2, 0x01000193);
   }
   return ((h >>> 0).toString(16).padStart(8, "0") + (h2 >>> 0).toString(16).padStart(8, "0")).slice(0, 7);
+}
+
+/**
+ * Split file content into diffable lines. Empty content is zero lines (not one
+ * empty one), and a single trailing newline is the line terminator rather than
+ * an extra blank line — both so line counts match real git's.
+ */
+export function contentLines(content: string): string[] {
+  if (content === "") return [];
+  return content.replace(/\n$/, "").split("\n");
+}
+
+/** Exact insertion/deletion counts between two file contents (real-git `--stat` math). */
+export function countLineChanges(oldContent: string, newContent: string): { insertions: number; deletions: number } {
+  let insertions = 0;
+  let deletions = 0;
+  for (const entry of computeDiff(contentLines(oldContent), contentLines(newContent))) {
+    if (entry.type === "added") insertions++;
+    else if (entry.type === "removed") deletions++;
+  }
+  return { insertions, deletions };
 }
 
 /** Recursively collect all files under dirPath, skipping .git/, returning paths relative to relativeTo */
@@ -75,6 +97,14 @@ export function readStash(fs: VirtualFS, root: string): GitStashEntry[] {
 
 export function readRebaseState(fs: VirtualFS, root: string): GitRebaseState | null {
   const file = fs.readFile(`${root}/.git/rebase-state.json`);
+  if (file.content) {
+    try { return JSON.parse(file.content); } catch { /* fall through */ }
+  }
+  return null;
+}
+
+export function readMergeState(fs: VirtualFS, root: string): GitMergeState | null {
+  const file = fs.readFile(`${root}/.git/merge-state.json`);
   if (file.content) {
     try { return JSON.parse(file.content); } catch { /* fall through */ }
   }
@@ -272,11 +302,12 @@ export function gitAdd(fs: VirtualFS, root: string, cwd: string, paths: string[]
     }
   }
 
-  // Unmerged paths in a rebase must always re-stage, even when the resolved content
-  // equals HEAD (player resolved "in favor of one side"). HEAD here is the original
-  // branch tip, not the rebase target, so content-equality is not a meaningful signal.
-  const rebaseState = readRebaseState(fs, root);
-  const unmerged = new Set(rebaseState?.conflictFiles ?? []);
+  // Unmerged paths in a rebase or merge must always re-stage, even when the resolved
+  // content equals HEAD (player resolved "in favor of ours"). HEAD is only one side of
+  // the merge, so content-equality with it is not a meaningful "nothing to do" signal.
+  const unmerged = new Set(
+    readRebaseState(fs, root)?.conflictFiles ?? readMergeState(fs, root)?.conflictFiles ?? [],
+  );
 
   // Only stage files that differ from HEAD (or are unmerged during a rebase)
   for (const [relPath, content] of Object.entries(filesToStage)) {
@@ -294,8 +325,24 @@ export function gitAdd(fs: VirtualFS, root: string, cwd: string, paths: string[]
 
 // ── git rm ───────────────────────────────────────────────────────────
 
-export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: boolean): { fs: VirtualFS; output: string; error?: string } {
+/**
+ * `cached` is `git rm --cached`: untrack the path (stage a deletion) but leave the
+ * working-tree file alone, so `git status` then lists it under untracked. The engine
+ * models no .gitignore, which is real git's behavior here anyway.
+ */
+export function gitRm(
+  fs: VirtualFS, root: string, paths: string[], recursive: boolean, cached = false
+): { fs: VirtualFS; output: string; error?: string } {
   const index = readIndex(fs, root);
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+
+  // A path only becomes a staged `deleted:` if HEAD actually tracks it; for a file
+  // that was staged but never committed, dropping it from the index IS the removal.
+  const untrack = (relPath: string) => {
+    delete index.staged[relPath];
+    if (relPath in headTree && !index.deleted.includes(relPath)) index.deleted.push(relPath);
+  };
 
   for (const p of paths) {
     const absPath = p.startsWith("/") ? p : normalizePath(`${root}/${p}`);
@@ -309,16 +356,11 @@ export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: b
     const relPath = absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : p;
     if (isDirectory(node)) {
       // Collect all files in directory and mark them deleted
-      const dirFiles = collectFiles(fs, absPath, root);
-      for (const filePath of Object.keys(dirFiles)) {
-        if (!index.deleted.includes(filePath)) index.deleted.push(filePath);
-        delete index.staged[filePath];
-      }
+      for (const filePath of Object.keys(collectFiles(fs, absPath, root))) untrack(filePath);
     } else {
-      if (!index.deleted.includes(relPath)) index.deleted.push(relPath);
-      delete index.staged[relPath];
+      untrack(relPath);
     }
-    fs = removeOrFail(fs, absPath);
+    if (!cached) fs = removeOrFail(fs, absPath);
   }
 
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(index));
@@ -329,11 +371,16 @@ export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: b
 
 export function gitCommit(
   fs: VirtualFS, root: string, message: string, author: string, amend: boolean, autoStage: boolean, timestamp: number
-): { fs: VirtualFS; output: string; error?: string } {
+): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
   const index = readIndex(fs, root);
   const headHash = resolveHead(fs, root);
   const headCommit = headHash ? readCommit(fs, root, headHash) : null;
   const headTree = headCommit?.tree ?? {};
+  const mergeState = readMergeState(fs, root);
+
+  if (mergeState && amend) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
 
   // Auto-stage modified tracked files if -a flag
   if (autoStage) {
@@ -352,28 +399,49 @@ export function gitCommit(
     }
   }
 
-  const hasChanges = Object.keys(index.staged).length > 0 || index.deleted.length > 0;
-  if (!hasChanges && !amend) {
-    return { fs, output: "nothing to commit, working tree clean" };
-  }
+  let newTree: Record<string, string>;
+  let parent2: string | undefined;
 
-  if (amend && !headCommit) {
-    return { fs, output: "", error: "fatal: You have nothing to amend." };
-  }
+  if (mergeState) {
+    // Concluding a conflicted merge. The clean side of the merge only exists in the
+    // working tree (never staged), so rebuild the merged tree and lay the player's
+    // staged resolutions over it — the same shape as `git rebase --continue`.
+    const unresolved = unresolvedConflictError(fs, root, mergeState, index);
+    if (unresolved) return { fs, output: "", error: unresolved };
 
-  // Build new tree: start from head tree, apply staged, remove deleted
-  const newTree: Record<string, string> = { ...headTree };
-  for (const [path, content] of Object.entries(index.staged)) {
-    newTree[path] = content;
-  }
-  for (const path of index.deleted) {
-    delete newTree[path];
+    const base = mergeBase(fs, root, headHash!, mergeState.targetHash);
+    newTree = mergeTrees(fs, root, base, headHash!, mergeState.targetHash, mergeState.targetLabel).tree;
+    for (const [path, content] of Object.entries(index.staged)) newTree[path] = content;
+    for (const path of index.deleted) delete newTree[path];
+    parent2 = mergeState.targetHash;
+  } else {
+    const hasChanges = Object.keys(index.staged).length > 0 || index.deleted.length > 0;
+    if (!hasChanges && !amend) {
+      return { fs, output: "nothing to commit, working tree clean" };
+    }
+
+    if (amend && !headCommit) {
+      return { fs, output: "", error: "fatal: You have nothing to amend." };
+    }
+
+    // Build new tree: start from head tree, apply staged, remove deleted
+    newTree = { ...headTree };
+    for (const [path, content] of Object.entries(index.staged)) {
+      newTree[path] = content;
+    }
+    for (const path of index.deleted) {
+      delete newTree[path];
+    }
+    // Amending a merge commit keeps it one: the second parent is part of the history
+    // being rewritten, not of the change being amended.
+    if (amend) parent2 = headCommit!.parent2;
   }
 
   const parent = amend ? headCommit!.parent : (headHash ?? null);
-  const hash = shortHash(message + timestamp + (parent ?? "") + JSON.stringify(newTree));
+  // `parent2 ?? ""` keeps the hash of every non-merge commit byte-identical to before.
+  const hash = shortHash(message + timestamp + (parent ?? "") + (parent2 ?? "") + JSON.stringify(newTree));
 
-  const commit: GitCommit = { hash, parent, message, author, timestamp, tree: newTree };
+  const commit: GitCommit = { hash, parent, ...(parent2 ? { parent2 } : {}), message, author, timestamp, tree: newTree };
   fs = writeOrFail(fs, `${root}/.git/objects/${hash}.json`, JSON.stringify(commit));
 
   // Update branch ref
@@ -387,14 +455,50 @@ export function gitCommit(
 
   // Clear index
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
+  if (mergeState) fs = clearMergeState(fs, root);
 
-  const fileCount = Object.keys(index.staged).length + index.deleted.length;
-  const branchStr = branch ?? hash.slice(0, 7);
+  const branchStr = branch ?? "detached HEAD";
   const rootStr = parent ? "" : " (root-commit)";
+  // Amend replaces HEAD, so its stat is measured against the *parent*, not HEAD.
+  const baseTree = parent ? (readCommit(fs, root, parent)?.tree ?? {}) : {};
+  // Real git prints no diffstat for a merge commit — the interesting change is the
+  // topology, and the per-file numbers would double-count both sides' work.
+  const stat = mergeState ? [] : formatCommitStat(baseTree, newTree);
   return {
     fs,
-    output: `[${branchStr}${rootStr} ${hash}] ${message}\n ${fileCount} file${fileCount !== 1 ? "s" : ""} changed`,
+    output: [`[${branchStr}${rootStr} ${hash}] ${message}`, ...stat].join("\n"),
+    ...(mergeState ? { triggerEvents: mergeEvents(mergeState.targetLabel) } : {}),
   };
+}
+
+/**
+ * Real-git commit summary: the `N files changed, X insertions(+), Y deletions(-)`
+ * line followed by create/delete mode lines. Zero-valued clauses are omitted, as
+ * in git. Mode is always 100644 — the VFS has no executable bit.
+ */
+function formatCommitStat(oldTree: Record<string, string>, newTree: Record<string, string>): string[] {
+  const paths = [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])]
+    .filter((p) => oldTree[p] !== newTree[p])
+    .sort();
+
+  let insertions = 0;
+  let deletions = 0;
+  for (const p of paths) {
+    const counts = countLineChanges(oldTree[p] ?? "", newTree[p] ?? "");
+    insertions += counts.insertions;
+    deletions += counts.deletions;
+  }
+
+  const parts = [`${paths.length} file${paths.length !== 1 ? "s" : ""} changed`];
+  if (insertions > 0) parts.push(`${insertions} insertion${insertions !== 1 ? "s" : ""}(+)`);
+  if (deletions > 0) parts.push(`${deletions} deletion${deletions !== 1 ? "s" : ""}(-)`);
+
+  const modeLines = paths.flatMap((p) => {
+    if (!(p in oldTree)) return [` create mode 100644 ${p}`];
+    if (!(p in newTree)) return [` delete mode 100644 ${p}`];
+    return [];
+  });
+  return [` ${parts.join(", ")}`, ...modeLines];
 }
 
 // ── git status ───────────────────────────────────────────────────────
@@ -404,8 +508,15 @@ export interface StatusResult {
   staged: { path: string; status: "new file" | "modified" | "deleted" }[];
   unstaged: { path: string; status: "modified" | "deleted" }[];
   untracked: string[];
+  /** Commit a detached HEAD points at; present exactly when `branch` is null and a commit exists. */
+  detachedAt?: string;
   /** Present while a rebase is in progress; `unmerged` excludes paths already `git add`ed. */
   rebase?: { onto: string; branch: string; unmerged: string[] };
+  /**
+   * Present while a conflicted merge is in progress. Unlike `rebase`, this is additive:
+   * the branch/tracking header still prints above it, as in real git.
+   */
+  merge?: { target: string; unmerged: string[] };
   /**
    * Branch tracking info vs `refs/remotes/origin/<branch>`. Present ONLY when that
    * remote-tracking ref exists (so repos with no remote are byte-for-byte unchanged).
@@ -413,7 +524,14 @@ export interface StatusResult {
   tracking?: { remoteRef: string; ahead: number; behind: number };
 }
 
-export function gitStatus(fs: VirtualFS, root: string): StatusResult {
+/**
+ * `paths` are pathspecs resolved against `cwd`; they narrow the change lists only
+ * (branch/tracking info is unaffected). Unlike diff/log, a pathspec that matches
+ * nothing is not fatal in real git — the sections just come back empty.
+ */
+export function gitStatus(
+  fs: VirtualFS, root: string, cwd?: string, paths?: string[]
+): StatusResult {
   const repo = readRepo(fs, root);
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
@@ -422,6 +540,10 @@ export function gitStatus(fs: VirtualFS, root: string): StatusResult {
   const staged: StatusResult["staged"] = [];
   const unstaged: StatusResult["unstaged"] = [];
   const untracked: string[] = [];
+
+  const matches = paths && paths.length > 0
+    ? pathMatcher(paths.map((p) => toRepoRelative(root, cwd ?? root, p)))
+    : null;
 
   // Staged changes (index vs HEAD)
   for (const [path, content] of Object.entries(repo.index.staged)) {
@@ -462,23 +584,59 @@ export function gitStatus(fs: VirtualFS, root: string): StatusResult {
 
   const tracking = computeTracking(fs, root, repo.currentBranch, headHash);
 
-  // During a rebase, unresolved conflict files show as "both modified" under Unmerged
-  // paths until `git add`ed; pull them out of the plain unstaged list.
+  const keptStaged = matches ? staged.filter((s) => matches(s.path)) : staged;
+  const keptUnstaged = matches ? unstaged.filter((u) => matches(u.path)) : unstaged;
+  const keptUntracked = matches ? untracked.filter(matches) : untracked;
+
+  const detachedAt = !repo.currentBranch && headHash ? { detachedAt: headHash } : {};
+
+  // During a rebase or merge, unresolved conflict files show as "both modified" under
+  // Unmerged paths until `git add`ed; pull them out of the plain unstaged list.
   const rebaseState = readRebaseState(fs, root);
   if (rebaseState) {
     const unmerged = rebaseState.conflictFiles.filter((f) => !(f in repo.index.staged));
     const unmergedSet = new Set(unmerged);
     return {
       branch: repo.currentBranch,
-      staged,
-      unstaged: unstaged.filter((u) => !unmergedSet.has(u.path)),
-      untracked,
-      rebase: { onto: rebaseState.onto, branch: rebaseState.originalBranch, unmerged },
+      ...detachedAt,
+      staged: keptStaged,
+      unstaged: keptUnstaged.filter((u) => !unmergedSet.has(u.path)),
+      untracked: keptUntracked,
+      rebase: {
+        onto: rebaseState.onto,
+        branch: rebaseState.originalBranch,
+        unmerged: matches ? unmerged.filter(matches) : unmerged,
+      },
       tracking,
     };
   }
 
-  return { branch: repo.currentBranch, staged, unstaged, untracked, tracking };
+  const mergeState = readMergeState(fs, root);
+  if (mergeState) {
+    const unmerged = mergeState.conflictFiles.filter((f) => !(f in repo.index.staged));
+    const unmergedSet = new Set(unmerged);
+    return {
+      branch: repo.currentBranch,
+      ...detachedAt,
+      staged: keptStaged,
+      unstaged: keptUnstaged.filter((u) => !unmergedSet.has(u.path)),
+      untracked: keptUntracked,
+      merge: {
+        target: mergeState.targetLabel,
+        unmerged: matches ? unmerged.filter(matches) : unmerged,
+      },
+      tracking,
+    };
+  }
+
+  return {
+    branch: repo.currentBranch,
+    ...detachedAt,
+    staged: keptStaged,
+    unstaged: keptUnstaged,
+    untracked: keptUntracked,
+    tracking,
+  };
 }
 
 /**
@@ -504,12 +662,10 @@ function computeTracking(
 
 // ── git log ──────────────────────────────────────────────────────────
 
-export function getCommitLog(fs: VirtualFS, root: string): GitCommit[] {
-  const headHash = resolveHead(fs, root);
-  if (!headHash) return [];
-
+/** First-parent walk from `startHash` (default HEAD), newest first. */
+export function getCommitLog(fs: VirtualFS, root: string, startHash?: string): GitCommit[] {
   const commits: GitCommit[] = [];
-  let current: string | null = headHash;
+  let current: string | null = startHash ?? resolveHead(fs, root);
   while (current) {
     const commit = readCommit(fs, root, current);
     if (!commit) break;
@@ -517,6 +673,21 @@ export function getCommitLog(fs: VirtualFS, root: string): GitCommit[] {
     current = commit.parent;
   }
   return commits;
+}
+
+/** Keep only commits that changed at least one path under `relPaths` (`git log -- <path>`). */
+export function filterCommitsByPaths(
+  fs: VirtualFS, root: string, commits: GitCommit[], relPaths: string[]
+): GitCommit[] {
+  const matches = pathMatcher(relPaths);
+  return commits.filter((commit) => {
+    const parentTree = commit.parent ? (readCommit(fs, root, commit.parent)?.tree ?? {}) : {};
+    const keys = new Set([...Object.keys(commit.tree), ...Object.keys(parentTree)]);
+    for (const key of keys) {
+      if (matches(key) && commit.tree[key] !== parentTree[key]) return true;
+    }
+    return false;
+  });
 }
 
 // ── git branch ───────────────────────────────────────────────────────
@@ -584,8 +755,12 @@ export function deleteBranch(fs: VirtualFS, root: string, name: string, force: b
   }
 
   if (!force) {
+    // "Fully merged" is reachability from HEAD, not tip equality: after merging a
+    // branch in, its tip is an ancestor of HEAD but no longer equal to it, and that
+    // is exactly when `-d` is supposed to work.
     const headHash = resolveHead(fs, root);
-    if (branchRef.content.trim() !== headHash) {
+    const merged = headHash ? ancestorSet(fs, root, headHash).has(branchRef.content.trim()) : false;
+    if (!merged) {
       return { fs, output: "", error: `error: The branch '${name}' is not fully merged.\nIf you are sure you want to delete it, run 'git branch -D ${name}'.` };
     }
   }
@@ -597,9 +772,17 @@ export function deleteBranch(fs: VirtualFS, root: string, name: string, force: b
 
 // ── git checkout ─────────────────────────────────────────────────────
 
+/**
+ * `git checkout <branch|-b new|<rev>>`. A target that isn't a branch but resolves as a
+ * revision detaches HEAD onto it. `allowDetach: false` is how `git switch` refuses a
+ * commit without `--detach`.
+ */
 export function gitCheckout(
-  fs: VirtualFS, root: string, target: string, createBranch: boolean
+  fs: VirtualFS, root: string, target: string, createBranch: boolean, allowDetach = true
 ): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
   const index = readIndex(fs, root);
@@ -623,13 +806,22 @@ export function gitCheckout(
     return { fs, output: `Switched to a new branch '${target}'`, triggerEvents: [{ type: "command_executed", detail: "git_checkout_b" }] };
   }
 
-  // Switch to existing branch
-  const targetRef = fs.readFile(`${root}/.git/refs/heads/${target}`);
-  if (!targetRef.content) {
-    return { fs, output: "", error: `error: pathspec '${target}' did not match any file(s) known to git` };
+  // `git checkout HEAD` is a no-op in real git — it must not detach a branch onto its own tip.
+  if (target === "HEAD" && !fs.readFile(`${root}/.git/refs/heads/HEAD`).content) {
+    return { fs, output: "" };
   }
 
-  const targetHash = targetRef.content.trim();
+  // Switch to an existing branch, or detach onto any other revision.
+  const branchHash = fs.readFile(`${root}/.git/refs/heads/${target}`).content?.trim();
+  const detachHash = branchHash ? null : resolveRef(fs, root, target);
+  if (!branchHash && !detachHash) {
+    return { fs, output: "", error: `error: pathspec '${target}' did not match any file(s) known to git` };
+  }
+  if (detachHash && !allowDetach) {
+    return { fs, output: "", error: `fatal: a branch is expected, got commit '${target}'` };
+  }
+
+  const targetHash = branchHash ?? detachHash!;
   const targetCommit = readCommit(fs, root, targetHash);
   if (!targetCommit) {
     return { fs, output: "", error: `error: unable to read commit ${targetHash}` };
@@ -677,11 +869,21 @@ export function gitCheckout(
     }
   }
 
-  // Update HEAD
-  fs = writeOrFail(fs, `${root}/.git/HEAD`, `ref: refs/heads/${target}`);
+  // Update HEAD: a branch ref, or the raw hash when detaching.
+  fs = writeOrFail(fs, `${root}/.git/HEAD`, detachHash ? targetHash : `ref: refs/heads/${target}`);
   // Clear index
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
 
+  if (detachHash) {
+    // Real git follows this with a paragraph about experimenting in a detached state;
+    // the two lines players act on are enough.
+    const subject = targetCommit.message.split("\n")[0];
+    return {
+      fs,
+      output: `Note: switching to '${target}'.\n\nHEAD is now at ${targetHash.slice(0, 7)} ${subject}`,
+      triggerEvents: [{ type: "command_executed", detail: "git_checkout_detached" }],
+    };
+  }
   return { fs, output: `Switched to branch '${target}'` };
 }
 
@@ -689,29 +891,85 @@ export function gitCheckout(
 
 export type GitResetMode = "soft" | "mixed" | "hard";
 
-/**
- * Resolve a revision to a commit hash: branch name, full object hash, HEAD,
- * or any of those with a `~N` suffix (bare `~` = `~1`). Returns null when the
- * revision doesn't exist or `~N` walks past the root commit.
- */
-export function resolveRef(fs: VirtualFS, root: string, ref: string): string | null {
-  const m = ref.match(/^([^~]+)(~(\d*))?$/);
-  if (!m) return null;
-  const [, base, tilde, count] = m;
+/** A commit's parents, first parent first. Merge commits have two. */
+export function parentsOf(commit: GitCommit): string[] {
+  const out: string[] = [];
+  if (commit.parent) out.push(commit.parent);
+  if (commit.parent2) out.push(commit.parent2);
+  return out;
+}
 
-  let hash: string | null;
-  if (base === "HEAD") {
-    hash = resolveHead(fs, root);
-  } else {
-    const refFile = fs.readFile(`${root}/.git/refs/heads/${base}`);
-    hash = refFile.content?.trim() ?? (readCommit(fs, root, base) ? base : null);
+/**
+ * The one object whose hash starts with `prefix`. Null when nothing matches or
+ * more than one does — real git's "ambiguous argument", which callers surface as
+ * an unknown revision rather than picking a winner.
+ */
+function uniqueObjectByPrefix(fs: VirtualFS, root: string, prefix: string): string | null {
+  const lower = prefix.toLowerCase();
+  const { entries } = fs.listDirectory(`${root}/.git/objects`);
+  const matches = entries
+    .filter(isFile)
+    .map((e) => e.name.replace(/\.json$/, ""))
+    .filter((hash) => hash.startsWith(lower));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** Resolve the leading name of a revision (everything before the first `^`/`~`). */
+function resolveRevBase(fs: VirtualFS, root: string, token: string, allowPrefix: boolean): string | null {
+  if (token === "HEAD") return resolveHead(fs, root);
+
+  const local = fs.readFile(`${root}/.git/refs/heads/${token}`).content?.trim();
+  if (local) return local;
+
+  // A slashed name that isn't a local branch is a remote-tracking ref, so
+  // `origin/main` resolves without a special case at each call site.
+  if (token.includes("/")) {
+    const remote = fs.readFile(`${root}/.git/refs/remotes/${token}`).content?.trim();
+    if (remote) return remote;
   }
 
-  if (tilde !== undefined) {
-    let n = count === "" ? 1 : parseInt(count, 10);
-    while (hash && n-- > 0) {
-      hash = readCommit(fs, root, hash)?.parent ?? null;
+  if (readCommit(fs, root, token)) return token;
+  if (allowPrefix && /^[0-9a-f]{4,}$/i.test(token)) return uniqueObjectByPrefix(fs, root, token);
+  return null;
+}
+
+/**
+ * Resolve a revision to a commit hash. The grammar is a base name followed by any
+ * number of `^`/`~` steps (`HEAD~2`, `main^`, `abc1234~1^2`):
+ *
+ * - base: `HEAD`, a local branch, a remote-tracking ref (`origin/main`), an exact
+ *   object hash, or a unique abbreviated hash of 4+ hex chars.
+ * - `~N` (bare `~` = `~1`): walk N first parents.
+ * - `^`/`^1`: first parent. `^2`: a merge commit's second parent. `^0`: the commit itself.
+ *
+ * Returns null when any step doesn't exist — an unknown name, an ambiguous
+ * abbreviation, `^2` on a non-merge commit, or a walk past the root commit.
+ *
+ * `allowPrefix: false` disables abbreviated-hash matching so pathspec parsing can
+ * prefer a real file named e.g. `cafe` over a same-prefixed object.
+ */
+export function resolveRef(
+  fs: VirtualFS, root: string, ref: string, opts: { allowPrefix?: boolean } = {},
+): string | null {
+  const m = ref.match(/^([^^~]+)((?:[\^~]\d*)*)$/);
+  if (!m) return null;
+  const [, base, ops] = m;
+
+  let hash = resolveRevBase(fs, root, base, opts.allowPrefix !== false);
+
+  for (const [, op, digits] of ops.matchAll(/([\^~])(\d*)/g)) {
+    if (!hash) return null;
+    const n = digits === "" ? 1 : parseInt(digits, 10);
+    if (op === "~") {
+      let remaining = n;
+      while (hash && remaining-- > 0) {
+        hash = readCommit(fs, root, hash)?.parent ?? null;
+      }
+    } else if (n > 0) {
+      const commit = readCommit(fs, root, hash);
+      hash = commit ? (parentsOf(commit)[n - 1] ?? null) : null;
     }
+    // `^0` is the commit itself — no step.
   }
   return hash;
 }
@@ -722,8 +980,12 @@ function unstagePaths(
 ): { index: GitIndex; error?: string } {
   for (const p of paths) {
     const absPath = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
-    const rel = absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : absPath;
-    const matches = (key: string) => key === rel || key.startsWith(rel + "/");
+    // A pathspec resolving to the repo root (`.` at root) matches everything;
+    // index keys are repo-relative, so its `rel` is "" rather than a prefix.
+    const rel = absPath === root
+      ? ""
+      : absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : absPath;
+    const matches = (key: string) => rel === "" || key === rel || key.startsWith(rel + "/");
     const hadEntry = Object.keys(index.staged).some(matches) || index.deleted.some(matches);
     if (!hadEntry && !fs.getNode(absPath) && !(rel in headTree)) {
       return { index, error: `fatal: pathspec '${p}' did not match any files` };
@@ -742,34 +1004,56 @@ export function gitReset(
   if (readRebaseState(fs, root)) {
     return { fs, output: "", error: "fatal: cannot reset during a rebase; finish it or run 'git rebase --abort' first" };
   }
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
 
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
 
-  // Split args into an optional leading revision and trailing pathspecs.
-  // With an explicit mode flag, the sole arg is always a revision. Without
-  // one, a lone arg that resolves as a revision is one; anything else (or
-  // args after a revision, e.g. `git reset HEAD file`) are pathspecs.
-  let target = "HEAD";
+  // Split args into an optional leading revision and trailing pathspecs. A
+  // literal `--` is authoritative (as in `splitRevsAndPaths`). Without one:
+  // with an explicit mode flag the sole arg is always a revision; otherwise a
+  // lone arg that resolves as a revision is one, and anything else (or args
+  // after a revision, e.g. `git reset HEAD file`) are pathspecs.
+  let explicitTarget: string | null = null;
   let paths: string[] = [];
-  if (mode !== null) {
-    if (args.length > 1) {
-      return { fs, output: "", error: `fatal: Cannot do ${mode} reset with paths.` };
+  const sep = args.indexOf("--");
+  if (sep !== -1) {
+    const revs = args.slice(0, sep);
+    if (revs.length > 1) {
+      return { fs, output: "", error: `fatal: ambiguous argument '${revs[1]}': unknown revision or path not in the working tree.` };
     }
-    target = args[0] ?? "HEAD";
+    explicitTarget = revs[0] ?? null;
+    paths = args.slice(sep + 1);
+  } else if (mode !== null) {
+    explicitTarget = args[0] ?? null;
+    paths = args.slice(1);
   } else if (args.length > 0) {
     if (resolveRef(fs, root, args[0]) !== null) {
-      target = args[0];
+      explicitTarget = args[0];
       paths = args.slice(1);
     } else {
       paths = args;
     }
   }
+  if (mode !== null && paths.length > 0) {
+    return { fs, output: "", error: `fatal: Cannot do ${mode} reset with paths.` };
+  }
+  const target = explicitTarget ?? "HEAD";
 
-  // Path form: reset index entries only.
+  // Path form: reset index entries only, relative to the target commit's tree.
   if (paths.length > 0) {
+    let pathTree = headTree;
+    if (explicitTarget !== null) {
+      const hash = resolveRef(fs, root, explicitTarget);
+      if (!hash) {
+        return { fs, output: "", error: `fatal: ambiguous argument '${explicitTarget}': unknown revision or path not in the working tree.` };
+      }
+      pathTree = readCommit(fs, root, hash)?.tree ?? {};
+    }
     const index = readIndex(fs, root);
-    const result = unstagePaths(fs, root, cwd, index, headTree, paths);
+    const result = unstagePaths(fs, root, cwd, index, pathTree, paths);
     if (result.error) return { fs, output: "", error: result.error };
     fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(result.index));
     return { fs, output: "" };
@@ -822,60 +1106,247 @@ export function gitReset(
   return { fs, output: `Unstaged changes after reset:\n${unstagedLines.sort().join("\n")}` };
 }
 
+// ── git restore ──────────────────────────────────────────────────────
+
+/**
+ * `git restore [--staged] <paths>`. `--staged` drops the paths from the index
+ * (same machinery as `git reset <paths>`); the working-tree form rewrites each
+ * file from the index if it's staged there, else from HEAD. Both are silent on
+ * success, as real git is.
+ */
+export function gitRestore(
+  fs: VirtualFS, root: string, cwd: string, paths: string[], staged: boolean
+): { fs: VirtualFS; output: string; error?: string } {
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+
+  if (staged) {
+    const result = unstagePaths(fs, root, cwd, readIndex(fs, root), headTree, paths);
+    if (result.error) return { fs, output: "", error: result.error };
+    return { fs: writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(result.index)), output: "" };
+  }
+
+  const index = readIndex(fs, root);
+  const source: Record<string, string> = { ...headTree, ...index.staged };
+  for (const p of paths) {
+    const rel = toRepoRelative(root, cwd, p);
+    const matches = Object.keys(source).filter((key) => rel === "" || key === rel || key.startsWith(rel + "/"));
+    if (matches.length === 0) {
+      return { fs, output: "", error: `error: pathspec '${p}' did not match any file(s) known to git` };
+    }
+    for (const key of matches) {
+      fs = writeFileWithDirs(fs, root, key, source[key]);
+    }
+  }
+  return { fs, output: "" };
+}
+
 // ── git diff ─────────────────────────────────────────────────────────
 
 export interface DiffFile {
   path: string;
   oldContent: string;
   newContent: string;
+  /** Drives the `new file mode` / `deleted file mode` headers; "" content alone can't tell them apart. */
+  status: "added" | "modified" | "deleted";
 }
 
-export function gitDiffFiles(fs: VirtualFS, root: string, staged: boolean): DiffFile[] {
+export interface DiffOptions {
+  /** Compare the index rather than the working tree (`--staged`/`--cached`). */
+  staged?: boolean;
+  /** Commit hash for the "a" side; without it the comparison is index/worktree based. */
+  from?: string;
+  /** Commit hash for the "b" side; with `from` but no `to`, "b" is the working tree. */
+  to?: string;
+  /** Repo-relative pathspecs (file or directory prefix); `""` means the whole repo. */
+  paths?: string[];
+}
+
+/** Effective tracked tree: HEAD overlaid with the index. */
+function trackedTreeOf(fs: VirtualFS, root: string, headTree: Record<string, string>): Record<string, string> {
+  const index = readIndex(fs, root);
+  const tracked: Record<string, string> = { ...headTree, ...index.staged };
+  for (const path of index.deleted) delete tracked[path];
+  return tracked;
+}
+
+function diffTreePair(oldTree: Record<string, string>, newTree: Record<string, string>): DiffFile[] {
+  const diffs: DiffFile[] = [];
+  for (const path of [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])].sort()) {
+    const oldContent = oldTree[path];
+    const newContent = newTree[path];
+    if (oldContent === newContent) continue;
+    diffs.push({
+      path,
+      oldContent: oldContent ?? "",
+      newContent: newContent ?? "",
+      status: oldContent === undefined ? "added" : newContent === undefined ? "deleted" : "modified",
+    });
+  }
+  return diffs;
+}
+
+export function gitDiffFiles(fs: VirtualFS, root: string, opts: DiffOptions = {}): DiffFile[] {
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
-  const diffs: DiffFile[] = [];
+  let diffs: DiffFile[];
 
-  if (staged) {
+  if (opts.from) {
+    const oldTree = readCommit(fs, root, opts.from)?.tree ?? {};
+    let newTree: Record<string, string>;
+    if (opts.to) {
+      newTree = readCommit(fs, root, opts.to)?.tree ?? {};
+    } else if (opts.staged) {
+      // `git diff --cached <rev>` compares the index against <rev>.
+      newTree = trackedTreeOf(fs, root, headTree);
+    } else {
+      // Working-tree side, restricted to paths git knows about — untracked files
+      // stay out of `git diff <rev>` just as they do out of plain `git diff`.
+      const workingTree = collectFiles(fs, root, root);
+      const known = new Set([...Object.keys(oldTree), ...Object.keys(trackedTreeOf(fs, root, headTree))]);
+      newTree = {};
+      for (const path of known) {
+        if (path in workingTree) newTree[path] = workingTree[path];
+      }
+    }
+    diffs = diffTreePair(oldTree, newTree);
+  } else if (opts.staged) {
     const index = readIndex(fs, root);
+    diffs = [];
     for (const [path, content] of Object.entries(index.staged)) {
       const oldContent = headTree[path] ?? "";
       if (oldContent !== content) {
-        diffs.push({ path, oldContent, newContent: content });
+        diffs.push({ path, oldContent, newContent: content, status: path in headTree ? "modified" : "added" });
       }
     }
     for (const path of index.deleted) {
       if (path in headTree) {
-        diffs.push({ path, oldContent: headTree[path], newContent: "" });
+        diffs.push({ path, oldContent: headTree[path], newContent: "", status: "deleted" });
       }
     }
   } else {
-    const index = readIndex(fs, root);
-    const trackedTree: Record<string, string> = { ...headTree };
-    for (const [path, content] of Object.entries(index.staged)) {
-      trackedTree[path] = content;
-    }
-    for (const path of index.deleted) {
-      delete trackedTree[path];
-    }
-
+    const trackedTree = trackedTreeOf(fs, root, headTree);
     const workingTree = collectFiles(fs, root, root);
+    diffs = [];
     for (const [path, content] of Object.entries(trackedTree)) {
       if (path in workingTree) {
         if (workingTree[path] !== content) {
-          diffs.push({ path, oldContent: content, newContent: workingTree[path] });
+          diffs.push({ path, oldContent: content, newContent: workingTree[path], status: "modified" });
         }
       } else {
-        diffs.push({ path, oldContent: content, newContent: "" });
+        diffs.push({ path, oldContent: content, newContent: "", status: "deleted" });
       }
     }
-    for (const [path, content] of Object.entries(workingTree)) {
-      if (!(path in trackedTree)) {
-        diffs.push({ path, oldContent: "", newContent: content });
-      }
-    }
+    // Untracked files are deliberately absent: real `git diff` only reports
+    // changes to tracked paths.
   }
 
+  if (opts.paths && opts.paths.length > 0) {
+    const matches = pathMatcher(opts.paths);
+    diffs = diffs.filter((d) => matches(d.path));
+  }
   return diffs;
+}
+
+// ── pathspec / revision arguments ────────────────────────────────────
+
+/** Match repo-relative keys against pathspecs (exact file, or directory prefix; `""` = everything). */
+function pathMatcher(relPaths: string[]): (key: string) => boolean {
+  if (relPaths.some((p) => p === "")) return () => true;
+  return (key) => relPaths.some((p) => key === p || key.startsWith(p + "/"));
+}
+
+/** Normalize a user-supplied pathspec to a repo-relative key; the repo root becomes `""`. */
+export function toRepoRelative(root: string, cwd: string, p: string): string {
+  const abs = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
+  if (abs === root) return "";
+  return abs.startsWith(root + "/") ? abs.slice(root.length + 1) : abs;
+}
+
+/** A single revision, or a `<rev1>..<rev2>` range — the two forms `git diff` accepts. */
+export interface ParsedRev {
+  from: string;
+  to?: string;
+}
+
+/**
+ * Split `git diff` / `git log` arguments into revisions and repo-relative pathspecs.
+ *
+ * A literal `--` is authoritative: everything before it is a revision, everything
+ * after a path (unvalidated, as in real git). Without one, each argument that
+ * resolves as a revision is one and the rest are paths — but a path that names
+ * nothing git knows about is the classic `ambiguous argument` fatal, not a
+ * silently-empty result.
+ *
+ * Undivided arguments try a *strict* revision parse first (no abbreviated hashes),
+ * then a known path, then the loose parse. Otherwise a file named `cafe` would be
+ * read as a revision the moment some object's hash happened to start with it.
+ */
+export function splitRevsAndPaths(
+  fs: VirtualFS, root: string, cwd: string, args: string[]
+): { revs: ParsedRev[]; paths: string[]; error?: string } {
+  const sep = args.indexOf("--");
+  const rel = (p: string) => toRepoRelative(root, cwd, p);
+  if (sep !== -1) {
+    const revs: ParsedRev[] = [];
+    for (const token of args.slice(0, sep)) {
+      const parsed = parseRevToken(fs, root, token, true);
+      if (!parsed) return { revs: [], paths: [], error: ambiguousArg(token) };
+      revs.push(parsed);
+    }
+    return { revs, paths: args.slice(sep + 1).map(rel) };
+  }
+
+  const revs: ParsedRev[] = [];
+  const paths: string[] = [];
+  for (const token of args) {
+    // Once a path has been seen, later args can't go back to being revisions.
+    const revsStillOpen = paths.length === 0;
+    const strict = revsStillOpen ? parseRevToken(fs, root, token, false) : null;
+    if (strict) {
+      revs.push(strict);
+      continue;
+    }
+    if (pathIsKnown(fs, root, cwd, token)) {
+      paths.push(rel(token));
+      continue;
+    }
+    const loose = revsStillOpen ? parseRevToken(fs, root, token, true) : null;
+    if (loose) {
+      revs.push(loose);
+      continue;
+    }
+    return { revs: [], paths: [], error: ambiguousArg(token) };
+  }
+  return { revs, paths };
+}
+
+function ambiguousArg(token: string): string {
+  return `fatal: ambiguous argument '${token}': unknown revision or path not in the working tree.`;
+}
+
+function parseRevToken(fs: VirtualFS, root: string, token: string, allowPrefix: boolean): ParsedRev | null {
+  const opts = { allowPrefix };
+  const range = token.split("..");
+  if (range.length === 2 && range[0] && range[1]) {
+    const from = resolveRef(fs, root, range[0], opts);
+    const to = resolveRef(fs, root, range[1], opts);
+    return from && to ? { from, to } : null;
+  }
+  const hash = resolveRef(fs, root, token, opts);
+  return hash ? { from: hash } : null;
+}
+
+/** True when a pathspec names something on disk or tracked by HEAD/the index. */
+function pathIsKnown(fs: VirtualFS, root: string, cwd: string, p: string): boolean {
+  const abs = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
+  if (fs.getNode(abs)) return true;
+  const relPath = toRepoRelative(root, cwd, p);
+  if (relPath === "") return true;
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+  const matches = pathMatcher([relPath]);
+  return Object.keys(trackedTreeOf(fs, root, headTree)).some(matches);
 }
 
 // ── git stash ────────────────────────────────────────────────────────
@@ -883,6 +1354,9 @@ export function gitDiffFiles(fs: VirtualFS, root: string, staged: boolean): Diff
 export function gitStashSave(
   fs: VirtualFS, root: string, includeUntracked = false
 ): { fs: VirtualFS; output: string; error?: string } {
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
   const workingTree = collectFiles(fs, root, root);
@@ -916,7 +1390,13 @@ export function gitStashSave(
   const repo = readRepo(fs, root);
   const branch = repo.currentBranch ?? "detached HEAD";
   const message = `WIP on ${branch}: ${headHash?.slice(0, 7) ?? "no commits"}`;
-  stash.unshift({ tree: modified, message });
+  // Snapshot what HEAD said about each stashed path, so apply/pop can tell "the tree
+  // is still where I left it" from "someone else changed this file since".
+  const base: Record<string, string> = {};
+  for (const path of Object.keys(modified)) {
+    if (path in headTree) base[path] = headTree[path];
+  }
+  stash.unshift({ tree: modified, message, base });
 
   fs = writeOrFail(fs, `${root}/.git/stash.json`, JSON.stringify(stash));
 
@@ -937,27 +1417,79 @@ export function gitStashSave(
   return { fs, output: `Saved working directory and index state ${message}` };
 }
 
-export function gitStashPop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
-  const stash = readStash(fs, root);
-  if (stash.length === 0) {
-    return { fs, output: "", error: "error: No stash entries found." };
+const STASH_EMPTY = "error: No stash entries found.";
+
+/**
+ * Paths whose current working-tree content would be lost by restoring `entry`.
+ * A path conflicts when it exists on disk with content matching neither the stash's
+ * recorded HEAD base nor the stashed content itself. Entries saved before `base`
+ * existed skip the check entirely (restore stays unconditional, as it always was).
+ */
+function stashConflicts(fs: VirtualFS, root: string, entry: GitStashEntry): string[] {
+  if (!entry.base) return [];
+  const conflicts: string[] = [];
+  for (const [relPath, stashed] of Object.entries(entry.tree)) {
+    const node = fs.getNode(`${root}/${relPath}`);
+    if (!node) continue; // nothing to overwrite (covers the untracked `-u` case)
+    const current = fs.readFile(`${root}/${relPath}`).content ?? "";
+    if (current !== entry.base[relPath] && current !== stashed) {
+      conflicts.push(relPath);
+    }
   }
+  return conflicts;
+}
+
+function restoreStashTree(fs: VirtualFS, root: string, entry: GitStashEntry): VirtualFS {
+  for (const [relPath, content] of Object.entries(entry.tree)) {
+    const parts = relPath.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      fs = mkdirOrFail(fs, `${root}/${parts.slice(0, i).join("/")}`);
+    }
+    fs = writeOrFail(fs, `${root}/${relPath}`, content);
+  }
+  return fs;
+}
+
+function conflictError(paths: string[]): string {
+  return [
+    "error: Your local changes to the following files would be overwritten by merge:",
+    ...paths.map((p) => `        ${p}`),
+    "The stash entry is kept in case you need it again.",
+  ].join("\n");
+}
+
+/** Restore the newest stash entry into the working tree, keeping it in the list. */
+export function gitStashApply(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const stash = readStash(fs, root);
+  if (stash.length === 0) return { fs, output: "", error: STASH_EMPTY };
+
+  const conflicts = stashConflicts(fs, root, stash[0]);
+  if (conflicts.length > 0) return { fs, output: "", error: conflictError(conflicts) };
+
+  fs = restoreStashTree(fs, root, stash[0]);
+  return { fs, output: `On branch ${getCurrentBranch(readHead(fs, root)) ?? "HEAD"}, changes restored` };
+}
+
+/** Discard the newest stash entry without touching the working tree. */
+export function gitStashDrop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const stash = readStash(fs, root);
+  if (stash.length === 0) return { fs, output: "", error: STASH_EMPTY };
 
   const entry = stash.shift()!;
   fs = writeOrFail(fs, `${root}/.git/stash.json`, JSON.stringify(stash));
+  return { fs, output: `Dropped refs/stash@{0} (${entry.message})` };
+}
 
-  // Restore stashed files
-  for (const [relPath, content] of Object.entries(entry.tree)) {
-    const absPath = `${root}/${relPath}`;
-    const parts = relPath.split("/");
-    for (let i = 1; i < parts.length; i++) {
-      const dirPath = `${root}/${parts.slice(0, i).join("/")}`;
-      fs = mkdirOrFail(fs, dirPath);
-    }
-    fs = writeOrFail(fs, absPath, content);
-  }
-
-  return { fs, output: `On branch ${getCurrentBranch(readHead(fs, root)) ?? "HEAD"}, changes restored` };
+/**
+ * Apply then drop. The drop happens only on success, so a pop that would clobber
+ * a different branch's version of a stashed file refuses and keeps the entry.
+ */
+export function gitStashPop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const applied = gitStashApply(fs, root);
+  if (applied.error) return applied;
+  const dropped = gitStashDrop(applied.fs, root);
+  if (dropped.error) return dropped;
+  return { fs: dropped.fs, output: applied.output };
 }
 
 export function gitStashList(fs: VirtualFS, root: string): string {
@@ -1077,24 +1609,54 @@ export function gitPush(
     return { fs, output: "", error: "fatal: No configured push destination" };
   }
 
-  const headHash = resolveHead(fs, root);
-  if (!headHash) {
-    return { fs, output: "", error: "error: src refspec does not match any" };
+  // A remote exists but bare `git push` has nothing to aim at: real git refuses
+  // rather than guessing origin/<current>. `-u` alone doesn't help — it needs a
+  // destination to record, which is why the hint spells out the full command. A
+  // positional remote (`git push origin`) suffices, as with push.default=simple.
+  if (!remote && !branch && !repo.upstream) {
+    return {
+      fs,
+      output: "",
+      error:
+        `fatal: The current branch ${targetBranch} has no upstream branch.\n` +
+        `To push the current branch and set the remote as upstream, use\n\n` +
+        `    git push --set-upstream origin ${targetBranch}\n`,
+    };
+  }
+
+  // Push the *named* ref, not HEAD. `git push origin other` from main used to
+  // send main's tip under the name `other`, silently publishing the wrong
+  // commits; a branch that doesn't exist locally is a refspec error, not a
+  // no-op push of whatever happens to be checked out.
+  const localHash = fs.readFile(`${root}/.git/refs/heads/${targetBranch}`).content?.trim();
+  if (!localHash) {
+    return {
+      fs,
+      output: "",
+      error: `error: src refspec ${targetBranch} does not match any\nerror: failed to push some refs to '${remoteUrl ?? targetRemote}'`,
+    };
   }
 
   // Check if remote ref is ahead (non-force)
   const remoteRefFile = fs.readFile(`${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`);
   const remoteHash = remoteRefFile.content?.trim();
 
-  // Already up to date
-  if (remoteHash === headHash) {
-    return { fs, output: "Everything up-to-date" };
+  // Already up to date. Still emit the push events: a player re-running the
+  // command has performed the push, and story flags are set-to-true, so
+  // re-crediting is idempotent. Without this a flag missed on the first push
+  // (e.g. its gate wasn't satisfied yet) could never be earned.
+  if (remoteHash === localHash) {
+    return {
+      fs,
+      output: "Everything up-to-date",
+      triggerEvents: pushEvents(targetBranch),
+    };
   }
 
-  if (remoteHash && remoteHash !== headHash && !force) {
+  if (remoteHash && remoteHash !== localHash && !force) {
     // Simple check: if the remote hash isn't an ancestor of local, reject
     let isAncestor = false;
-    let current: string | null = headHash;
+    let current: string | null = localHash;
     while (current) {
       if (current === remoteHash) { isAncestor = true; break; }
       const commit = readCommit(fs, root, current);
@@ -1107,8 +1669,8 @@ export function gitPush(
 
   // Update remote ref (writeRefOrFail mkdir-p's the parent chain, including
   // the remote dir itself and any nested branch path like feature/x).
-  const oldHash = remoteHash ?? "0000000";
-  fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, headHash);
+  const isNewBranch = remoteHash === undefined;
+  fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, localHash);
 
   // Set upstream if requested — write a per-branch section so each branch
   // tracks its own upstream independently (real git layout).
@@ -1132,19 +1694,27 @@ export function gitPush(
   }
 
   const forceStr = force ? "+ " : "";
+  const refLine = isNewBranch
+    ? ` * [new branch]      ${targetBranch} -> ${targetBranch}`
+    : `   ${forceStr}${remoteHash!.slice(0, 7)}..${localHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`;
   const output = [
     `To ${remoteUrl ?? targetRemote}`,
-    `   ${forceStr}${oldHash.slice(0, 7)}..${headHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`,
+    refLine,
     ...(setUpstream ? [`branch '${targetBranch}' set up to track '${targetRemote}/${targetBranch}'.`] : []),
   ].join("\n");
 
-  return {
-    fs, output,
-    triggerEvents: [
-      { type: "command_executed", detail: `git_push_origin_${targetBranch}` },
-      { type: "command_executed", detail: "git_push" },
-    ],
-  };
+  return { fs, output, triggerEvents: pushEvents(targetBranch) };
+}
+
+/**
+ * Story contract: every successful push emits both the per-branch detail and
+ * the generic one, including no-op re-pushes. See the git skill's event table.
+ */
+function pushEvents(targetBranch: string): { type: "command_executed"; detail: string }[] {
+  return [
+    { type: "command_executed", detail: `git_push_origin_${targetBranch}` },
+    { type: "command_executed", detail: "git_push" },
+  ];
 }
 
 // ── tree diff helper ────────────────────────────────────────────────
@@ -1153,31 +1723,50 @@ function diffTrees(
   oldTree: Record<string, string>,
   newTree: Record<string, string>
 ): { path: string; insertions: number; deletions: number }[] {
-  const allPaths = new Set([...Object.keys(oldTree), ...Object.keys(newTree)]);
-  const changes: { path: string; insertions: number; deletions: number }[] = [];
-  for (const path of allPaths) {
-    const oldContent = oldTree[path];
-    const newContent = newTree[path];
-    if (oldContent === newContent) continue;
-    const oldLines = oldContent ? oldContent.split("\n").length : 0;
-    const newLines = newContent ? newContent.split("\n").length : 0;
-    const ins = Math.max(0, newLines - oldLines);
-    const del = Math.max(0, oldLines - newLines);
-    // Ensure both show non-zero for modified files (content differs but same line count)
-    if (oldContent && newContent && ins === 0 && del === 0) {
-      changes.push({ path, insertions: 1, deletions: 1 });
-    } else {
-      changes.push({ path, insertions: ins, deletions: del });
-    }
-  }
-  return changes.sort((a, b) => a.path.localeCompare(b.path));
+  return [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])]
+    .filter((p) => oldTree[p] !== newTree[p])
+    .sort()
+    .map((p) => ({ path: p, ...countLineChanges(oldTree[p] ?? "", newTree[p] ?? "") }));
+}
+
+/**
+ * Real git's `--stat` block between two trees: one `path | N +++---` line per changed
+ * file (bars scaled to a 40-column budget) then the `N files changed, ...` summary.
+ * Shared by `git pull` and `git merge`, which print the identical block. The summary
+ * line is always emitted, even for an empty change set.
+ */
+function formatDiffStat(oldTree: Record<string, string>, newTree: Record<string, string>): string[] {
+  const changes = diffTrees(oldTree, newTree);
+
+  const maxPathLen = Math.max(...changes.map((c) => c.path.length), 0);
+  const maxTotal = Math.max(...changes.map((c) => c.insertions + c.deletions), 0);
+  const barWidth = Math.min(maxTotal, 40);
+
+  const fileLines = changes.map((c) => {
+    const total = c.insertions + c.deletions;
+    const scale = maxTotal > 0 ? barWidth / maxTotal : 0;
+    const bar = "+".repeat(Math.round(c.insertions * scale)) + "-".repeat(Math.round(c.deletions * scale));
+    return ` ${c.path.padEnd(maxPathLen)} | ${String(total).padStart(3)} ${bar}`;
+  });
+
+  const totalIns = changes.reduce((s, c) => s + c.insertions, 0);
+  const totalDel = changes.reduce((s, c) => s + c.deletions, 0);
+  const summaryParts = [`${changes.length} file${changes.length !== 1 ? "s" : ""} changed`];
+  if (totalIns > 0) summaryParts.push(`${totalIns} insertion${totalIns !== 1 ? "s" : ""}(+)`);
+  if (totalDel > 0) summaryParts.push(`${totalDel} deletion${totalDel !== 1 ? "s" : ""}(-)`);
+
+  return [...fileLines, ` ${summaryParts.join(", ")}`];
 }
 
 // ── git pull ─────────────────────────────────────────────────────────
 
 export function gitPull(
-  fs: VirtualFS, root: string, remote: string | undefined, branch: string | undefined, storyFlags: Record<string, string | boolean>, ffOnly = false
+  fs: VirtualFS, root: string, remote: string | undefined, branch: string | undefined,
+  storyFlags: Record<string, string | boolean>, opts: { ffOnly?: boolean; rebase?: boolean } = {},
 ): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
   const repo = readRepo(fs, root);
   const targetBranch = branch ?? repo.upstream?.branch ?? repo.currentBranch;
   if (!targetBranch) {
@@ -1198,10 +1787,22 @@ export function gitPull(
   const trackingTip = fs.readFile(`${root}/.git/refs/remotes/origin/${targetBranch}`).content?.trim();
   const localBehindTracking =
     !!localTip && !!trackingTip && trackingTip !== localTip && ancestorSet(fs, root, trackingTip).has(localTip);
-  if (ffOnly && localTip && trackingTip && trackingTip !== localTip && !localBehindTracking
-      && !ancestorSet(fs, root, localTip).has(trackingTip)) {
-    // Diverged: neither tip is an ancestor of the other.
-    return { fs, output: "", error: "fatal: Not possible to fast-forward, aborting." };
+  // Diverged: neither tip is an ancestor of the other.
+  const divergedFromTracking =
+    !!localTip && !!trackingTip && trackingTip !== localTip && !localBehindTracking
+    && !ancestorSet(fs, root, localTip).has(trackingTip);
+  if (divergedFromTracking && opts.ffOnly) {
+    return { fs, output: "", error: NOT_FAST_FORWARD };
+  }
+  if (divergedFromTracking && opts.rebase) {
+    // `pull --rebase` is fetch + rebase onto the tracking ref; the refs are already seeded.
+    const rebased = gitRebase(fs, root, `origin/${targetBranch}`);
+    if (rebased.error) return { fs, output: "", error: rebased.error };
+    return {
+      fs: rebased.fs,
+      output: rebased.output,
+      triggerEvents: [{ type: "command_executed", detail: `git_pull_origin_${targetBranch}` }],
+    };
   }
   if (localBehindTracking) {
     const newTree = readCommit(fs, root, trackingTip)?.tree ?? {};
@@ -1262,8 +1863,8 @@ export function gitPull(
     if (newCommits.length === 0) {
       return { fs, output: "Already up to date." };
     }
-    if (ffOnly && newCommits[0].parent !== headHash) {
-      return { fs, output: "", error: "fatal: Not possible to fast-forward, aborting." };
+    if (opts.ffOnly && newCommits[0].parent !== headHash) {
+      return { fs, output: "", error: NOT_FAST_FORWARD };
     }
 
     // Write new commit objects
@@ -1295,29 +1896,9 @@ export function gitPull(
 
     const oldTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
     const newTree = newCommits[newCommits.length - 1].tree;
-    const changes = diffTrees(oldTree, newTree);
-
-    const maxPathLen = Math.max(...changes.map(c => c.path.length), 0);
-    const maxTotal = Math.max(...changes.map(c => c.insertions + c.deletions), 0);
-    const barWidth = Math.min(maxTotal, 40);
-
-    const fileLines = changes.map(c => {
-      const total = c.insertions + c.deletions;
-      const scale = maxTotal > 0 ? barWidth / maxTotal : 0;
-      const plusCount = Math.round(c.insertions * scale);
-      const minusCount = Math.round(c.deletions * scale);
-      const bar = "+".repeat(plusCount) + "-".repeat(minusCount);
-      return ` ${c.path.padEnd(maxPathLen)} | ${String(total).padStart(3)} ${bar}`;
-    });
-
-    const totalIns = changes.reduce((s, c) => s + c.insertions, 0);
-    const totalDel = changes.reduce((s, c) => s + c.deletions, 0);
-    const summaryParts = [`${changes.length} file${changes.length !== 1 ? "s" : ""} changed`];
-    if (totalIns > 0) summaryParts.push(`${totalIns} insertion${totalIns !== 1 ? "s" : ""}(+)`);
-    if (totalDel > 0) summaryParts.push(`${totalDel} deletion${totalDel !== 1 ? "s" : ""}(-)`);
 
     const header = `From ${remoteUrl}\n   ${(headHash ?? "0000000").slice(0, 7)}..${(lastHash ?? "0000000").slice(0, 7)}  ${targetBranch} -> origin/${targetBranch}\nFast-forward`;
-    const output = [header, ...fileLines, ` ${summaryParts.join(", ")}`].join("\n");
+    const output = [header, ...formatDiffStat(oldTree, newTree)].join("\n");
 
     return {
       fs,
@@ -1345,15 +1926,46 @@ export function hasConflictMarkers(content: string): boolean {
   return /^<{7} /m.test(content) || /^={7}\s*$/m.test(content) || /^>{7} /m.test(content);
 }
 
-/** All ancestor hashes of `hash`, inclusive. */
+/**
+ * All ancestor hashes of `hash`, inclusive, following BOTH parents of merge
+ * commits. Merge-awareness is what makes merge-base, `branch -d` safety, and
+ * "Already up to date." correct once a merge exists; on linear history the walk is
+ * identical to a first-parent one.
+ */
 function ancestorSet(fs: VirtualFS, root: string, hash: string): Set<string> {
   const set = new Set<string>();
-  let current: string | null = hash;
-  while (current && !set.has(current)) {
+  const stack: string[] = [hash];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (set.has(current)) continue;
     set.add(current);
-    current = readCommit(fs, root, current)?.parent ?? null;
+    const commit = readCommit(fs, root, current);
+    if (commit) stack.push(...parentsOf(commit));
   }
   return set;
+}
+
+/**
+ * Closest common ancestor of two commits: a breadth-first walk out from `a`, so the
+ * first commit that is also an ancestor of `b` is the nearest one. Null for
+ * unrelated histories (merge then treats the base as the empty tree).
+ */
+function mergeBase(fs: VirtualFS, root: string, a: string, b: string): string | null {
+  const bAncestors = ancestorSet(fs, root, b);
+  const seen = new Set<string>();
+  let frontier = [a];
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const hash of frontier) {
+      if (seen.has(hash)) continue;
+      seen.add(hash);
+      if (bAncestors.has(hash)) return hash;
+      const commit = readCommit(fs, root, hash);
+      if (commit) next.push(...parentsOf(commit));
+    }
+    frontier = next;
+  }
+  return null;
 }
 
 /** Commits reachable from branchTip but not upstreamTip, oldest first (the work to replay). */
@@ -1410,6 +2022,29 @@ function writeTreeToWorkingDir(
     fs = writeFileWithDirs(fs, root, relPath, content);
   }
   for (const path of removable) {
+    if (!(path in newTree)) {
+      const abs = `${root}/${path}`;
+      if (fs.getNode(abs)) fs = removeOrFail(fs, abs);
+    }
+  }
+  return fs;
+}
+
+/**
+ * Land a merge result on the working tree, touching only the paths the merge actually
+ * changes relative to HEAD. Files the merge leaves alone keep their working-copy
+ * content, so uncommitted edits to unrelated files survive a merge as they do in real
+ * git. (A *staged* edit to such a file survives only as an unstaged change, since the
+ * concluding merge commit clears the index — an accepted approximation.)
+ */
+function writeMergeToWorkingDir(
+  fs: VirtualFS, root: string, headTree: Record<string, string>, newTree: Record<string, string>,
+): VirtualFS {
+  for (const [relPath, content] of Object.entries(newTree)) {
+    if (headTree[relPath] === content) continue;
+    fs = writeFileWithDirs(fs, root, relPath, content);
+  }
+  for (const path of Object.keys(headTree)) {
     if (!(path in newTree)) {
       const abs = `${root}/${path}`;
       if (fs.getNode(abs)) fs = removeOrFail(fs, abs);
@@ -1519,6 +2154,9 @@ export function gitRebase(fs: VirtualFS, root: string, upstream: string | undefi
   if (readRebaseState(fs, root)) {
     return { fs, output: "", error: 'fatal: It seems that there is already a rebase in progress.\nUse "git rebase (--continue | --abort)".' };
   }
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
   if (!upstream) {
     return { fs, output: "", error: "fatal: invalid upstream (no upstream specified)" };
   }
@@ -1526,7 +2164,8 @@ export function gitRebase(fs: VirtualFS, root: string, upstream: string | undefi
   if (!branch) {
     return { fs, output: "", error: "fatal: It looks like 'git rebase' is being run with a detached HEAD." };
   }
-  const upstreamTip = fs.readFile(`${root}/.git/refs/heads/${upstream}`).content?.trim();
+  // resolveRef so `origin/<branch>` and raw hashes work as upstreams, not just local branches.
+  const upstreamTip = resolveRef(fs, root, upstream);
   if (!upstreamTip) {
     return { fs, output: "", error: `fatal: invalid upstream '${upstream}'` };
   }
@@ -1609,4 +2248,274 @@ export function gitRebaseAbort(fs: VirtualFS, root: string): { fs: VirtualFS; ou
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
   fs = clearRebaseState(fs, root);
   return { fs, output: "" };
+}
+
+// ── git merge ────────────────────────────────────────────────────────
+
+/**
+ * Refusal shared by every operation that would strand a conflicted merge. Real git
+ * spells it MERGE_HEAD; the sim's equivalent is `.git/merge-state.json`.
+ */
+export const MERGE_IN_PROGRESS = "fatal: You have not concluded your merge (MERGE_HEAD exists).";
+/** What `--ff-only` prints (from `git merge` and `git pull` alike) when the merge isn't a fast-forward. */
+export const NOT_FAST_FORWARD = "fatal: Not possible to fast-forward, aborting.";
+
+function writeMergeState(fs: VirtualFS, root: string, state: GitMergeState): VirtualFS {
+  return writeOrFail(fs, `${root}/.git/merge-state.json`, JSON.stringify(state));
+}
+
+function clearMergeState(fs: VirtualFS, root: string): VirtualFS {
+  const path = `${root}/.git/merge-state.json`;
+  return fs.getNode(path) ? removeOrFail(fs, path) : fs;
+}
+
+/**
+ * Three-way merge of two commit trees against their base. Unlike `mergeCommitOnto`
+ * (which is rebase-shaped: "theirs" is always a replayed commit and its own parent is
+ * the base), both sides here are arbitrary commits and the base is the merge base.
+ * `theirsLabel` is the revision the player typed, so it lands in the `>>>>>>>` marker.
+ */
+function mergeTrees(
+  fs: VirtualFS, root: string, baseHash: string | null, oursHash: string, theirsHash: string, theirsLabel: string,
+): { tree: Record<string, string>; conflictFiles: string[] } {
+  const baseTree = baseHash ? (readCommit(fs, root, baseHash)?.tree ?? {}) : {};
+  const oursTree = readCommit(fs, root, oursHash)?.tree ?? {};
+  const theirsTree = readCommit(fs, root, theirsHash)?.tree ?? {};
+
+  const allPaths = [...new Set([...Object.keys(baseTree), ...Object.keys(oursTree), ...Object.keys(theirsTree)])].sort();
+  const tree: Record<string, string> = {};
+  const conflictFiles: string[] = [];
+  for (const path of allPaths) {
+    const m = threeWayMergeFile(baseTree[path], oursTree[path], theirsTree[path], theirsLabel);
+    if (m.conflict) {
+      conflictFiles.push(path);
+      tree[path] = m.content as string;
+    } else if (m.content !== undefined) {
+      tree[path] = m.content;
+    }
+  }
+  return { tree, conflictFiles };
+}
+
+/**
+ * Paths with uncommitted work that landing `newTree` would clobber. Only paths the
+ * merge actually changes relative to HEAD count — a dirty file the merge leaves alone
+ * is none of its business, which is why `newTree[p] !== headTree[p]` gates the check.
+ */
+function overwriteCollisions(
+  fs: VirtualFS, root: string, headTree: Record<string, string>, newTree: Record<string, string>,
+): string[] {
+  const status = gitStatus(fs, root);
+  const dirty = new Set([
+    ...status.staged.map((s) => s.path),
+    ...status.unstaged.map((u) => u.path),
+    ...status.untracked,
+  ]);
+  return [...dirty]
+    .filter((p) => p in newTree && newTree[p] !== headTree[p] && newTree[p] !== fs.readFile(`${root}/${p}`).content)
+    .sort();
+}
+
+function overwriteRefusal(collisions: string[]): string {
+  return (
+    `error: Your local changes to the following files would be overwritten by merge:\n` +
+    `${collisions.map((p) => `\t${p}`).join("\n")}\n` +
+    `Please commit your changes or stash them before you merge.`
+  );
+}
+
+/** Point the current branch — or raw HEAD when detached — at `hash`. */
+function moveHeadTo(fs: VirtualFS, root: string, hash: string): VirtualFS {
+  const branch = getCurrentBranch(readHead(fs, root));
+  return branch
+    ? writeRefOrFail(fs, `${root}/.git/refs/heads/${branch}`, hash)
+    : writeOrFail(fs, `${root}/.git/HEAD`, hash);
+}
+
+/** Story contract: one event per successful merge, keyed on the revision the player typed. */
+function mergeEvents(targetLabel: string): { type: "command_executed"; detail: string }[] {
+  return [{ type: "command_executed", detail: `git_merge_${targetLabel}` }];
+}
+
+/**
+ * The message real git prepares for a merge commit. `git merge --continue` uses it
+ * verbatim (we have no editor to open); `git commit -m` overrides it with the
+ * player's own message, as real git does.
+ */
+function mergeMessageFor(fs: VirtualFS, root: string, target: string): string {
+  if (fs.readFile(`${root}/.git/refs/heads/${target}`).content) return `Merge branch '${target}'`;
+  if (target.includes("/") && fs.readFile(`${root}/.git/refs/remotes/${target}`).content) {
+    return `Merge remote-tracking branch '${target}'`;
+  }
+  return `Merge commit '${target}'`;
+}
+
+export interface GitMergeResult {
+  fs: VirtualFS;
+  output: string;
+  error?: string;
+  /** Set when the merge stopped on conflicts — the caller exits 1 with `output` on stdout. */
+  conflict?: boolean;
+  triggerEvents?: { type: "command_executed"; detail: string }[];
+}
+
+/**
+ * `git merge <rev>`. Fast-forwards when HEAD is an ancestor of the target, otherwise
+ * builds a true merge commit with `parent2` set. Conflicts stop the merge and persist
+ * `GitMergeState`; the player resolves, stages, and concludes with `git commit -m` or
+ * `git merge --continue`, or backs out with `git merge --abort`.
+ *
+ * Detached HEAD is allowed: both the ff and the commit path move raw HEAD.
+ */
+export function gitMerge(
+  fs: VirtualFS, root: string, target: string | undefined, author: string, timestamp: number,
+  opts: { ffOnly?: boolean } = {},
+): GitMergeResult {
+  if (readRebaseState(fs, root)) {
+    return { fs, output: "", error: 'fatal: It seems that there is already a rebase in progress.\nUse "git rebase (--continue | --abort)".' };
+  }
+  if (readMergeState(fs, root)) {
+    return { fs, output: "", error: MERGE_IN_PROGRESS };
+  }
+  if (!target) {
+    return { fs, output: "", error: "fatal: No commit specified and merge.defaultToUpstream not set." };
+  }
+
+  const headHash = resolveHead(fs, root);
+  const headCommit = headHash ? readCommit(fs, root, headHash) : null;
+  if (!headHash || !headCommit) {
+    return { fs, output: "", error: `merge: ${target} - not something we can merge` };
+  }
+
+  const targetHash = resolveRef(fs, root, target);
+  const targetCommit = targetHash ? readCommit(fs, root, targetHash) : null;
+  if (!targetHash || !targetCommit) {
+    return { fs, output: "", error: `merge: ${target} - not something we can merge` };
+  }
+
+  // Target already reachable from HEAD (including "merge the branch I'm on").
+  if (targetHash === headHash || ancestorSet(fs, root, headHash).has(targetHash)) {
+    return { fs, output: "Already up to date." };
+  }
+
+  const headTree = headCommit.tree;
+
+  // Fast-forward: nothing of ours to preserve, so the target tree lands as-is.
+  if (ancestorSet(fs, root, targetHash).has(headHash)) {
+    const collisions = overwriteCollisions(fs, root, headTree, targetCommit.tree);
+    if (collisions.length > 0) {
+      return { fs, output: "", error: overwriteRefusal(collisions) };
+    }
+    fs = moveHeadTo(fs, root, targetHash);
+    fs = writeMergeToWorkingDir(fs, root, headTree, targetCommit.tree);
+    fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
+    return {
+      fs,
+      output: [
+        `Updating ${headHash.slice(0, 7)}..${targetHash.slice(0, 7)}`,
+        "Fast-forward",
+        ...formatDiffStat(headTree, targetCommit.tree),
+      ].join("\n"),
+      triggerEvents: mergeEvents(target),
+    };
+  }
+
+  // Past the fast-forward path, a real merge commit is the only way forward.
+  if (opts.ffOnly) {
+    return { fs, output: "", error: NOT_FAST_FORWARD };
+  }
+
+  const base = mergeBase(fs, root, headHash, targetHash);
+  const { tree, conflictFiles } = mergeTrees(fs, root, base, headHash, targetHash, target);
+
+  const collisions = overwriteCollisions(fs, root, headTree, tree);
+  if (collisions.length > 0) {
+    return { fs, output: "", error: overwriteRefusal(collisions) };
+  }
+
+  fs = writeMergeToWorkingDir(fs, root, headTree, tree);
+
+  if (conflictFiles.length > 0) {
+    fs = writeMergeState(fs, root, {
+      targetHash,
+      targetLabel: target,
+      message: mergeMessageFor(fs, root, target),
+      conflictFiles,
+    });
+    const lines: string[] = [];
+    for (const f of conflictFiles) {
+      lines.push(`Auto-merging ${f}`);
+      lines.push(`CONFLICT (content): Merge conflict in ${f}`);
+    }
+    lines.push("Automatic merge failed; fix conflicts and then commit the result.");
+    return { fs, output: lines.join("\n"), conflict: true };
+  }
+
+  const message = mergeMessageFor(fs, root, target);
+  fs = writeMergeCommit(fs, root, { message, author, timestamp, parent: headHash, parent2: targetHash, tree });
+  return {
+    fs,
+    output: ["Merge made by the 'ort' strategy.", ...formatDiffStat(headTree, tree)].join("\n"),
+    triggerEvents: mergeEvents(target),
+  };
+}
+
+/** Write a merge commit object, move HEAD onto it, and clear the index. */
+function writeMergeCommit(
+  fs: VirtualFS,
+  root: string,
+  c: { message: string; author: string; timestamp: number; parent: string; parent2: string; tree: Record<string, string> },
+): VirtualFS {
+  const hash = shortHash(c.message + c.timestamp + c.parent + c.parent2 + JSON.stringify(c.tree));
+  const commit: GitCommit = {
+    hash, parent: c.parent, parent2: c.parent2, message: c.message,
+    author: c.author, timestamp: c.timestamp, tree: c.tree,
+  };
+  fs = writeOrFail(fs, `${root}/.git/objects/${hash}.json`, JSON.stringify(commit));
+  fs = moveHeadTo(fs, root, hash);
+  return writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
+}
+
+/**
+ * `git merge --continue`: same validation as the concluding `git commit`, but with the
+ * message real git would have opened an editor on. Delegates so there is exactly one
+ * place that turns merge state into a merge commit.
+ */
+export function gitMergeContinue(
+  fs: VirtualFS, root: string, author: string, timestamp: number,
+): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
+  const state = readMergeState(fs, root);
+  if (!state) {
+    return { fs, output: "", error: "fatal: There is no merge in progress (MERGE_HEAD missing)." };
+  }
+  return gitCommit(fs, root, state.message, author, false, false, timestamp);
+}
+
+/** `git merge --abort`: restore HEAD's tree, drop the index and the merge state. */
+export function gitMergeAbort(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const state = readMergeState(fs, root);
+  if (!state) {
+    return { fs, output: "", error: "fatal: There is no merge to abort (MERGE_HEAD missing)." };
+  }
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+  fs = writeTreeToWorkingDir(fs, root, headTree, trackedUnion(fs, root, headHash ?? "", state.targetHash));
+  fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
+  fs = clearMergeState(fs, root);
+  return { fs, output: "" };
+}
+
+/**
+ * Every conflict file must be staged and marker-free before a merge can be concluded
+ * (the same bar `git rebase --continue` sets). Returns real git's refusal, or null.
+ */
+function unresolvedConflictError(fs: VirtualFS, root: string, state: GitMergeState, index: GitIndex): string | null {
+  for (const f of state.conflictFiles) {
+    const node = fs.getNode(`${root}/${f}`);
+    const working = node && isFile(node) ? node.content : "";
+    if (!(f in index.staged) || hasConflictMarkers(working) || hasConflictMarkers(index.staged[f] ?? "")) {
+      return "error: you must edit all merge conflicts and then mark them as resolved using git add";
+    }
+  }
+  return null;
 }

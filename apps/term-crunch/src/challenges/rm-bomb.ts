@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { mkdirOrThrow, writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const WORK_DIR = "/home/player/work";
@@ -17,30 +18,18 @@ const SURVIVORS = [
   `${WORK_DIR}/reports/2024/q1.md`,
 ];
 
-/** Dirs created before any file is written (writeFile has no mkdir-p). */
-const DIRS = [WORK_DIR, `${WORK_DIR}/reports`, `${WORK_DIR}/reports/2024`];
-
 /**
  * Seed a small tree under ~/work where BOMB.md sits beside a sibling (`q1.md`)
  * inside a nested directory. Deletion granularity matters: only `rm`-ing the
- * single file leaves the survivors intact.
+ * single file leaves the survivors intact. WORK_DIR itself is created up front
+ * so the panel's tree readout has a root even if every file were removed.
  */
 function setup(base: VirtualFS): VirtualFS {
-  let fs = base;
-
-  for (const d of DIRS) {
-    const mk = fs.makeDirectory(d);
-    if (!mk.fs) throw new Error(mk.error ?? `rm-bomb: mkdir ${d} failed`);
-    fs = mk.fs;
-  }
-
+  let fs = mkdirOrThrow(base, WORK_DIR);
   for (const path of [...SURVIVORS, BOMB_PATH]) {
     const name = path.slice(path.lastIndexOf("/") + 1);
-    const wr = fs.writeFile(path, `# ${name}\n`);
-    if (!wr.fs) throw new Error(wr.error ?? `rm-bomb: write ${path} failed`);
-    fs = wr.fs;
+    fs = writeOrThrow(fs, path, `# ${name}\n`);
   }
-
   return fs;
 }
 
@@ -49,6 +38,7 @@ export const rmBomb: Challenge = {
   title: "Defuse the BOMB",
   type: "fs",
   fsWatchPath: WORK_DIR,
+  fsDangerPath: BOMB_PATH,
   commands: ["find", "rm", "ls", "tree", "cat", "cd", "pwd"],
   brief:
     "BOMB.md is hidden somewhere under ~/work. Delete just that file; " +

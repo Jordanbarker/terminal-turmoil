@@ -1,33 +1,16 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "../registry";
 import { HELP_TEXTS } from "./helpTexts";
-import { GameTime } from "@tt/core/commands/clock";
+import { realWallClock } from "@tt/core/commands/clock";
+import { setKnownFlags } from "../flagValidation";
 
 const MONTH_NUM: Record<string, string> = {
   Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06",
   Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12",
 };
 
-const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** Fallback when no game clock is injected: the real wall clock. */
-function realGameTime(): GameTime {
-  const d = new Date();
-  const p = (n: number) => n.toString().padStart(2, "0");
-  return {
-    hour: p(d.getHours()),
-    minute: p(d.getMinutes()),
-    second: p(d.getSeconds()),
-    dow: DOW_NAMES[d.getDay()],
-    month: MONTH_NAMES[d.getMonth()],
-    day: d.getDate().toString(),
-    year: d.getFullYear().toString(),
-  };
-}
-
 const date: CommandHandler = (args, _flags, ctx) => {
-  const time = ctx.clock?.time() ?? realGameTime();
+  const time = (ctx.clock ?? realWallClock()).time();
 
   if (args.length > 0 && args[0].startsWith("+")) {
     const formatCodes: Record<string, string> = {
@@ -51,3 +34,5 @@ const date: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("date", date, "Display current date and time", HELP_TEXTS.date);
+// Takes a `+FORMAT` operand, not flags.
+setKnownFlags("date", {});

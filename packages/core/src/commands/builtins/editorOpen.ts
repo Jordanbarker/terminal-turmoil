@@ -2,12 +2,13 @@ import { CommandContext, CommandResult } from "@tt/core/commands/types";
 import type { EditorId } from "@tt/core/session/editorRegistry";
 import { resolvePath, parentPath } from "@tt/core/lib/pathUtils";
 import { isFile, isDirectory } from "@tt/core/filesystem/types";
+import { matchEditorOpenTrigger } from "../editorTriggers";
 
 /**
  * Shared open/validation logic for the editor builtins (nano, vim): directory
  * and permission checks, readOnly detection, new-file parent check, and the
- * home backup.sh story trigger. `editor` selects which session class the app
- * routers instantiate (see editorRegistry).
+ * app-supplied story trigger for this path (see ../editorTriggers). `editor`
+ * selects which session class the app routers instantiate (see editorRegistry).
  */
 export function openFileForEditing(
   target: string | undefined,
@@ -15,23 +16,23 @@ export function openFileForEditing(
   editor: EditorId
 ): CommandResult {
   if (!target) {
-    return { output: `Usage: ${editor} <filename>` };
+    return { output: "", stderr: `Usage: ${editor} <filename>` };
   }
 
   const absolutePath = resolvePath(target, ctx.cwd, ctx.homeDir);
   const node = ctx.fs.getNode(absolutePath);
 
   if (node && isDirectory(node)) {
-    return { output: `${editor}: "${target}": Is a directory` };
+    return { output: "", stderr: `${editor}: "${target}": Is a directory` };
   }
 
   if (node && isFile(node)) {
     const traversalError = ctx.fs.checkTraversal(absolutePath);
     if (traversalError) {
-      return { output: `${editor}: "${target}": Permission denied` };
+      return { output: "", stderr: `${editor}: "${target}": Permission denied` };
     }
     const readOnly = !node.permissions.startsWith("rw");
-    const isBackupScript = ctx.activeComputer === "home" && absolutePath.endsWith("/scripts/backup.sh");
+    const story = matchEditorOpenTrigger(absolutePath, ctx.activeComputer);
     return {
       output: "",
       editorSession: {
@@ -40,10 +41,11 @@ export function openFileForEditing(
         readOnly,
         isNewFile: false,
         editor,
-        ...(isBackupScript && {
-          triggerRow: 0,
-          triggerEvents: [{ type: "file_read" as const, detail: "fixed_backup_script" }],
-          requireSave: true,
+        ...(story && {
+          triggerRow: story.triggerRow ?? 0,
+          triggerEvents: story.events,
+          requireSave: story.requireSave || !!story.contentPredicate,
+          ...(story.contentPredicate && { contentPredicate: story.contentPredicate }),
         }),
       },
     };
@@ -53,11 +55,11 @@ export function openFileForEditing(
   const parent = parentPath(absolutePath);
   const parentNode = ctx.fs.getNode(parent);
   if (!parentNode || !isDirectory(parentNode)) {
-    return { output: `${editor}: "${target}": No such file or directory` };
+    return { output: "", stderr: `${editor}: "${target}": No such file or directory` };
   }
   const traversalError = ctx.fs.checkTraversal(absolutePath);
   if (traversalError) {
-    return { output: `${editor}: "${target}": Permission denied` };
+    return { output: "", stderr: `${editor}: "${target}": Permission denied` };
   }
 
   return {

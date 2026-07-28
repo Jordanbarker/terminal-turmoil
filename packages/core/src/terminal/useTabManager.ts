@@ -34,6 +34,8 @@ export interface PaneRuntime {
   fitAddon: FitAddon;
   containerEl: HTMLDivElement;
   onDataDisposable: IDisposable;
+  /** Kept so `disposeRuntime` can detach it; the container outlives React here. */
+  onMouseDown: (e: MouseEvent) => void;
   copyMode: CopyModeController;
   /** Last applied pixel size — lets the layout effect skip redundant fit()/resize(). */
   lastW: number;
@@ -280,10 +282,11 @@ export function useTabManager({ windows, activeWindowId, tmuxConf, adapter, ext 
 
     // Clicking a pane focuses it (and makes it the active pane), so input routes
     // to the right session. Without this the single-focused-pane invariant breaks.
-    containerEl.addEventListener("mousedown", () => {
+    const onMouseDown = () => {
       if (activeWindow()?.activePaneId !== paneId) adapterRef.current.setActivePane(paneId);
       term.focus();
-    });
+    };
+    containerEl.addEventListener("mousedown", onMouseDown);
 
     // tmux/vi copy mode (entered via `<prefix> [`) — per pane, since each pane
     // owns its own controller. The engine controller owns cursor/selection;
@@ -339,6 +342,7 @@ export function useTabManager({ windows, activeWindowId, tmuxConf, adapter, ext 
       containerEl,
       copyMode,
       onDataDisposable: null as unknown as IDisposable,
+      onMouseDown,
       lastW: 0,
       lastH: 0,
     };
@@ -350,10 +354,38 @@ export function useTabManager({ windows, activeWindowId, tmuxConf, adapter, ext 
     extRef.current.onPaneDisposed?.(paneId);
     if (rt.copyMode.isActive()) rt.copyMode.exit({ refocus: false });
     rt.onDataDisposable.dispose();
+    rt.containerEl.removeEventListener("mousedown", rt.onMouseDown);
     rt.term.dispose();
     rt.containerEl.remove();
   }
 
+
+  // Tear every pane runtime down when the hook itself unmounts. The pane-set
+  // effect below only disposes panes that LEFT the tree, so without this the
+  // xterm instances, their imperatively-appended DOM nodes and the per-pane
+  // mousedown listeners all outlive the component.
+  //
+  // The teardown must be SYMMETRIC with mount, because React StrictMode (on by
+  // default in Next dev) runs mount → cleanup → mount. If it disposed the
+  // runtimes but left the "have we booted yet" bookkeeping set, the second
+  // mount would recreate every pane as `kind: "restored"` with `firstPane:
+  // false` and the app would skip its splash/intro. Clearing both refs makes
+  // pass 2 a genuine first mount; the effect above re-runs first and re-seeds
+  // knownPaneIds with the same mount-time snapshot it had on pass 1.
+  useEffect(() => {
+    // Both are useRef containers created once, so capturing them here is the
+    // same object the cleanup would read later.
+    const runtimes = runtimesRef.current;
+    const knownPaneIds = knownPaneIdsRef.current;
+    const firstPaneConsumed = firstPaneConsumedRef;
+    return () => {
+      for (const [id, rt] of runtimes) disposeRuntime(id, rt);
+      runtimes.clear();
+      knownPaneIds.clear();
+      firstPaneConsumed.current = false;
+    };
+    // disposeRuntime closes over refs only, so the mount-time copy stays valid.
+  }, []);
 
   // Mount/unmount pane instances when the set of panes changes (split/close/window add).
   useEffect(() => {

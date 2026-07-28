@@ -86,13 +86,13 @@ describe("dbt run", () => {
   it("returns error for unknown model", () => {
     const ctx = makeCtx(projectDir);
     const result = runModels(ctx, "nonexistent");
-    expect(result.output).toContain("not found");
+    expect(result.stderr).toContain("not found");
   });
 
   it("fails outside dbt project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = runModels(ctx);
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 });
 
@@ -198,7 +198,7 @@ describe("dbt compile", () => {
   it("returns error for unknown model", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx, "nonexistent");
-    expect(result.output).toContain("not found");
+    expect(result.stderr).toContain("not found");
   });
 
   it("returns newFs when writing to target/compiled/", () => {
@@ -230,7 +230,7 @@ describe("dbt show", () => {
   it("returns error for unknown model", () => {
     const ctx = makeCtx(projectDir);
     const result = showModel(ctx, "nonexistent");
-    expect(result.output).toContain("not found");
+    expect(result.stderr).toContain("not found");
   });
 });
 
@@ -364,14 +364,15 @@ describe("dbt command handler", () => {
   it("shows error for unknown subcommand", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["snapshot"], {}, ctx);
-    expect(result.output).toContain("Unknown dbt command 'snapshot'");
-    expect(result.output).toContain("Usage: dbt COMMAND");
+    expect(result.stderr).toContain("Unknown dbt command 'snapshot'");
+    expect(result.stderr).toContain("Usage: dbt COMMAND");
+    expect(result.output).toBe("");
   });
 
   it("shows compile usage when --select is missing", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["compile"], {}, ctx);
-    expect(result.output).toContain("Usage: dbt compile --select MODEL_NAME");
+    expect(result.stderr).toContain("Usage: dbt compile --select MODEL_NAME");
   });
 });
 
@@ -506,7 +507,7 @@ describe("dbt build (additional)", () => {
   it("fails outside project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = runBuild(ctx);
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 });
 
@@ -528,7 +529,7 @@ describe("dbt ls (additional)", () => {
   it("fails outside project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = listResources(ctx);
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 
   it("prefixes each resource with project name", () => {
@@ -557,7 +558,7 @@ describe("dbt debug (additional)", () => {
   it("fails outside project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = debugProject(ctx);
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 });
 
@@ -565,7 +566,7 @@ describe("dbt compile (additional)", () => {
   it("shows usage when no model specified", () => {
     const ctx = makeCtx(projectDir);
     const result = compileModel(ctx);
-    expect(result.output).toContain("Usage: dbt compile --select MODEL_NAME");
+    expect(result.stderr).toContain("Usage: dbt compile --select MODEL_NAME");
   });
 
   it("writes compiled file to target/compiled/", () => {
@@ -579,7 +580,7 @@ describe("dbt compile (additional)", () => {
   it("fails outside project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = compileModel(ctx, "dim_employees");
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 });
 
@@ -587,13 +588,13 @@ describe("dbt show (additional)", () => {
   it("shows usage when no model specified", () => {
     const ctx = makeCtx(projectDir);
     const result = showModel(ctx);
-    expect(result.output).toContain("Usage: dbt show --select MODEL_NAME");
+    expect(result.stderr).toContain("Usage: dbt show --select MODEL_NAME");
   });
 
   it("fails outside project directory", () => {
     const ctx = makeCtx(`/home/${username}`);
     const result = showModel(ctx, "dim_employees");
-    expect(result.output).toContain("Could not find dbt_project.yml");
+    expect(result.stderr).toContain("Could not find dbt_project.yml");
   });
 });
 
@@ -744,25 +745,25 @@ describe("dbt argument validation", () => {
   it("dbt build with extra arg returns error", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["build", "asdasd"], {}, ctx);
-    expect(result.output).toContain("Error: Got unexpected extra argument (asdasd)");
+    expect(result.stderr).toContain("Error: Got unexpected extra argument (asdasd)");
   });
 
   it("dbt test with extra arg returns error", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["test", "foo"], {}, ctx);
-    expect(result.output).toContain("Error: Got unexpected extra argument (foo)");
+    expect(result.stderr).toContain("Error: Got unexpected extra argument (foo)");
   });
 
   it("dbt debug with extra arg returns error", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["debug", "extra"], {}, ctx);
-    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+    expect(result.stderr).toContain("Error: Got unexpected extra argument (extra)");
   });
 
   it("dbt run with extra arg returns error", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["run", "extra"], {}, ctx);
-    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+    expect(result.stderr).toContain("Error: Got unexpected extra argument (extra)");
   });
 
   it("dbt run --select model still works", () => {
@@ -774,7 +775,7 @@ describe("dbt argument validation", () => {
   it("dbt ls with extra arg returns error", () => {
     const ctx = makeCtx(projectDir);
     const result = execute("dbt", ["ls", "extra"], {}, ctx);
-    expect(result.output).toContain("Error: Got unexpected extra argument (extra)");
+    expect(result.stderr).toContain("Error: Got unexpected extra argument (extra)");
   });
 
   it("dbt ls --resource-type test still works", () => {
@@ -840,6 +841,6 @@ describe("dbt run materialization", () => {
       storyFlags: { devcontainer_visited: true },
     };
     const result = runModels(ctx);
-    expect(result.output).toContain("Snowflake connection required");
+    expect(result.stderr).toContain("Snowflake connection required");
   });
 });

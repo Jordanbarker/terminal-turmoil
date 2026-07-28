@@ -160,7 +160,13 @@ async function main() {
   r = runner.run("git log");
   show("git log", r.output);
   check("log shows commit hash", /commit\s+[0-9a-f]{7}/i.test(r.output));
-  check("log shows author", /Author:.+ren/.test(r.output));
+  // Full author line, not just the username: it is the only guard on the
+  // GIT_AUTHOR_EMAIL_DOMAIN copy play.ts keeps of useTerminal.ts's private map.
+  check(
+    "log shows the full author line (display name + user@domain)",
+    r.output.includes("Author: Ren <ren@nexacorp.com>"),
+    r.output.split("\n").find((l) => l.includes("Author")),
+  );
   check("log shows date", /Date:/.test(r.output));
   check("log shows message", /initial commit/.test(r.output));
 
@@ -249,6 +255,24 @@ async function main() {
 
   runner.run("git commit -m \"remove a and sub\"");
 
+  // --cached on an already-committed file, undone with a plain `git reset`: no new
+  // commits and no fs changes, so the later sections' history/file-set assumptions hold.
+  r = runner.run("git rm --cached b.txt");
+  show("git rm --cached b.txt", r.output);
+  check("--cached is accepted", !/unknown option/.test(r.output));
+
+  r = runner.run("git status");
+  show("git status (after rm --cached)", r.output);
+  check("b.txt staged as deleted", /deleted:.*b\.txt/.test(r.output));
+  check("b.txt now shows as untracked", /Untracked files:[\s\S]*b\.txt/.test(r.output));
+
+  r = runner.run("cat b.txt");
+  check("--cached left the file on disk", /beta/.test(r.output));
+
+  runner.run("git reset");
+  r = runner.run("git status");
+  check("reset re-tracks b.txt", /clean|nothing to commit/.test(r.output));
+
   // ─────────────────────────────────────────────────────────────────────
   section("git commit -am (auto-stage)");
   // ─────────────────────────────────────────────────────────────────────
@@ -272,6 +296,119 @@ async function main() {
   const linesPostAmend = r.output.split("\n").filter(l => l.trim());
   check("amended message in log", /modify b \(amended\)/.test(r.output));
   check("amend kept commit count at 6 (not 7)", linesPostAmend.length === 6);
+
+  // ─────────────────────────────────────────────────────────────────────
+  section("git log -n / revisions / pathspecs");
+  // ─────────────────────────────────────────────────────────────────────
+  const logLines = (out: string) => out.split("\n").filter(l => l.trim());
+
+  r = runner.run("git log --oneline -n 2");
+  show("git log --oneline -n 2", r.output);
+  check("log -n 2 limits to two commits", logLines(r.output).length === 2);
+
+  r = runner.run("git log --oneline -3");
+  check("log -3 shorthand limits to three", logLines(r.output).length === 3);
+
+  r = runner.run("git log -n");
+  check("log -n with no value errors", /switch `n' requires a value/.test(r.output));
+
+  r = runner.run("git branch -5");
+  check("numeric shorthand rejected where -n is unknown", /unknown switch `n'/.test(r.output));
+
+  r = runner.run("git log --oneline -- d.txt");
+  show("git log --oneline -- d.txt", r.output);
+  check("log -- <path> keeps only commits touching it",
+    logLines(r.output).length === 1 && /add d/.test(r.output));
+
+  r = runner.run("git log --oneline HEAD~1");
+  check("log <rev> starts below HEAD", logLines(r.output).length === 5);
+
+  r = runner.run("git log bogusref");
+  check("log rejects an unknown revision", /ambiguous argument 'bogusref'/.test(r.output));
+
+  // ─────────────────────────────────────────────────────────────────────
+  section("git diff (revisions, hunks, index lines)");
+  // ─────────────────────────────────────────────────────────────────────
+  r = runner.run("git diff HEAD~1 HEAD");
+  show("git diff HEAD~1 HEAD", r.output);
+  check("diff has a `diff --git` header", /^diff --git a\/b\.txt b\/b\.txt$/m.test(r.output));
+  check("diff has an index line", /^index [0-9a-f]{7}\.\.[0-9a-f]{7} 100644$/m.test(r.output));
+  check("diff has a hunk header", /^@@ -\d+(,\d+)? \+\d+(,\d+)? @@$/m.test(r.output));
+
+  r = runner.run("git diff HEAD~3..HEAD");
+  show("git diff HEAD~3..HEAD", r.output);
+  check("range diff spans several files", /a\/b\.txt/.test(r.output) && /a\/d\.txt/.test(r.output));
+  check("an added file is marked new", /^new file mode 100644$/m.test(r.output));
+
+  r = runner.run("git diff HEAD~3..HEAD -- d.txt");
+  show("git diff HEAD~3..HEAD -- d.txt", r.output);
+  check("pathspec narrows the diff", /d\.txt/.test(r.output) && !/b\.txt/.test(r.output));
+
+  r = runner.run("git diff nosuchref");
+  check("diff rejects an unknown revision", /ambiguous argument 'nosuchref'/.test(r.output));
+
+  // A staged file inside filterdir/ plus an untracked one at the root: a pathspec
+  // must keep the first and drop the second. (sub/ is gone by now — git rm'd above.)
+  runner.run(`mkdir -p ${HOME}/myproj/filterdir`);
+  runner.writeFile(`${HOME}/myproj/filterdir/inside.txt`, "inside\n");
+  runner.writeFile(`${HOME}/myproj/filtertest.txt`, "at root\n");
+  runner.run("git add filterdir/inside.txt");
+  r = runner.run("git status -s filterdir");
+  show("git status -s filterdir", r.output);
+  check("pathspec narrows status",
+    /filterdir\/inside\.txt/.test(r.output) && !/filtertest\.txt/.test(r.output));
+  r = runner.run("git status nosuchdir");
+  check("an unmatched status pathspec is not fatal",
+    r.exitCode === 0 && /nothing to commit, working tree clean/.test(r.output));
+  runner.run("git restore --staged filterdir/inside.txt");
+  runner.run("rm -r filterdir");
+  runner.run("rm filtertest.txt");
+
+  runner.writeFile(`${HOME}/myproj/untracked.txt`, "not staged, not tracked\n");
+  r = runner.run("git diff");
+  check("untracked files never appear in diff", r.output.trim() === "" && r.exitCode === 0);
+  runner.run("rm untracked.txt");
+
+  // ─────────────────────────────────────────────────────────────────────
+  section("git restore / git checkout -- <file>");
+  // ─────────────────────────────────────────────────────────────────────
+  runner.writeFile(`${HOME}/myproj/b.txt`, "clobbered\n");
+  r = runner.run("git status");
+  show("git status (dirty)", r.output);
+  check("status suggests restore to discard",
+    /\(use "git restore <file>\.\.\." to discard changes in working directory\)/.test(r.output));
+
+  r = runner.run("git restore b.txt");
+  check("restore is silent on success", r.output.trim() === "" && r.exitCode === 0);
+  r = runner.run("cat b.txt");
+  check("restore recovered the committed content", /beta MODIFIED AGAIN/.test(r.output));
+
+  runner.writeFile(`${HOME}/myproj/b.txt`, "clobbered again\n");
+  runner.run("git add b.txt");
+  r = runner.run("git status");
+  show("git status (staged)", r.output);
+  check("status suggests restore --staged to unstage",
+    /\(use "git restore --staged <file>\.\.\." to unstage\)/.test(r.output));
+
+  r = runner.run("git restore --staged b.txt");
+  check("restore --staged is silent", r.output.trim() === "" && r.exitCode === 0);
+  r = runner.run("git status -s");
+  check("restore --staged left the edit in the working tree", /^\s+M b\.txt$/m.test(r.output));
+
+  r = runner.run("git checkout -- b.txt");
+  check("checkout -- <file> is silent", r.output.trim() === "" && r.exitCode === 0);
+  r = runner.run("cat b.txt");
+  check("checkout -- <file> recovered the content", /beta MODIFIED AGAIN/.test(r.output));
+
+  r = runner.run("git restore ghost.txt");
+  check("restore of an unknown path errors", /did not match any file\(s\) known to git/.test(r.output));
+
+  r = runner.run("git restore");
+  check("restore with no pathspec errors", /must specify path\(s\) to restore/.test(r.output));
+
+  r = runner.run("git push");
+  show("git push (no remote at all)", r.output);
+  check("push without any remote errors", /No configured push destination/.test(r.output));
 
   // ─────────────────────────────────────────────────────────────────────
   section("git branch");
@@ -389,6 +526,30 @@ async function main() {
   r = runner.run("git stash pop");
   check("pop on empty stash errors", /No stash entries/.test(r.output));
 
+  r = runner.run("git stash apply");
+  check("apply on empty stash errors", /No stash entries/.test(r.output));
+  r = runner.run("git stash drop");
+  check("drop on empty stash errors", /No stash entries/.test(r.output));
+
+  // apply keeps the entry; drop then clears it without touching the working tree
+  runner.writeFile(`${HOME}/myproj/b.txt`, "apply test\n");
+  runner.run("git stash");
+  r = runner.run("git stash apply");
+  show("git stash apply", r.output);
+  check("apply succeeds", /changes restored/.test(r.output));
+  r = runner.run(`cat ${HOME}/myproj/b.txt`);
+  check("file restored by apply", /apply test/.test(r.output));
+  r = runner.run("git stash list");
+  check("apply keeps the stash entry", /stash@\{0\}/.test(r.output));
+
+  r = runner.run("git stash drop");
+  show("git stash drop", r.output);
+  check("drop reports the dropped ref", /Dropped refs\/stash@\{0\}/.test(r.output));
+  r = runner.run("git stash list");
+  check("stash list empty after drop", r.output.trim() === "");
+  r = runner.run(`cat ${HOME}/myproj/b.txt`);
+  check("drop leaves the working tree alone", /apply test/.test(r.output));
+
   // Discard the stash test changes
   runner.writeFile(`${HOME}/myproj/b.txt`, "beta MODIFIED AGAIN\n");
 
@@ -450,9 +611,18 @@ async function main() {
   runner.writeFile(`${HOME}/clones/nexacorp-analytics/feat.md`, "feature\n");
   runner.run("git add feat.md");
   runner.run("git commit -m \"feat\"");
+  r = runner.run("git push");
+  show("git push (branch has no upstream)", r.output);
+  check("bare push on an untracked branch errors",
+    /fatal: The current branch local-only has no upstream branch\./.test(r.output));
+  check("no-upstream error spells out the fix",
+    /git push --set-upstream origin local-only/.test(r.output));
+
   r = runner.run("git push -u origin local-only");
   show("git push -u", r.output);
   check("push -u sets upstream", /set up to track/.test(r.output));
+  check("first push of a branch says [new branch]", /\* \[new branch\]\s+local-only -> local-only/.test(r.output));
+  check("first push never prints a 0000000 range", !/0000000/.test(r.output));
 
   runner.writeFile(`${HOME}/clones/nexacorp-analytics/feat.md`, "feature v2\n");
   runner.run("git add feat.md");

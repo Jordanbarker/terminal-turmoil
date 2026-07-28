@@ -123,20 +123,20 @@ export function getTerminationAlertLines(violation: SecurityViolation, pid: numb
       return [
         `${tag} audit: write to ${violation.path} flagged`,
         `${tag} PID ${pid} — session marked for review`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     case "leadership_destruction":
       return [
         `${tag} dlp: destructive op on ${violation.path}`,
         `${tag} PID ${pid} — confidential records affected`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     case "exfiltration": {
       const dest = violation.destPath ?? "unknown destination";
       return [
         `${tag} dlp: confidential file transfer detected`,
         `${tag} source: ${violation.path} → ${dest}`,
-        `${tag} forwarding workstation telemetry to security@nexacorp.io`,
+        `${tag} forwarding workstation telemetry to security@nexacorp.com`,
       ];
     }
   }
@@ -151,5 +151,7 @@ export const NEXACORP_SECURITY_POLICY: SecurityPolicy = {
   checkPathOp: (fs, rootPath, opKind, ctx) => opTouchesProtectedPath(fs, rootPath, opKind, ctx),
   classifyChmodTarget: (p) =>
     isLogTamperPath(p) ? "log_tampering" : isLeadershipPath(p) ? "leadership_destruction" : null,
-  isLogTamperPath,
+  // Scoped to NexaCorp: other machines may incidentally hold /var/log/*.log
+  // files that nobody is auditing.
+  isLogTamperPath: (p, machineId) => machineId === "nexacorp" && isLogTamperPath(p),
 };

@@ -5,6 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { isDirectory, FSNode } from "@tt/core/filesystem/types";
 import { collectDescendantPaths } from "@tt/core/filesystem/walk";
 import { HELP_TEXTS } from "./helpTexts";
+import { labelFsError, errorResult } from "../fsErrors";
 import { chmodIsRestrictive, SecurityViolation } from "@tt/core/commands/security";
 
 const PERM_MAP: Record<string, string> = {
@@ -75,7 +76,7 @@ function defaultPermsForNode(node: FSNode): string {
 
 const chmod: CommandHandler = (args, flags, ctx) => {
   if (args.length < 2) {
-    return { output: "chmod: missing operand\nUsage: chmod [-R] MODE FILE...", exitCode: 1 };
+    return errorResult("chmod: missing operand\nUsage: chmod [-R] MODE FILE...");
   }
 
   const mode = args[0];
@@ -87,7 +88,7 @@ const chmod: CommandHandler = (args, flags, ctx) => {
   const symbolicClauses = octalPerms ? null : parseSymbolicMode(mode);
 
   if (!octalPerms && !symbolicClauses) {
-    return { output: `chmod: invalid mode: '${mode}'`, exitCode: 1 };
+    return errorResult(`chmod: invalid mode: '${mode}'`);
   }
 
   let currentFs = ctx.fs;
@@ -105,7 +106,12 @@ const chmod: CommandHandler = (args, flags, ctx) => {
 
     const paths = recursive ? collectDescendantPaths(currentFs, absPath) : [absPath];
     const commandStr = `chmod ${recursive ? "-R " : ""}${mode} ${target}`;
+    // Subtrees the walk cannot descend into (see the traversability rule below).
+    // Pre-order guarantees a blocking directory is seen before its children.
+    const blocked: string[] = [];
+
     for (const p of paths) {
+      if (blocked.some((prefix) => p.startsWith(prefix))) continue; // already reported
       const node = currentFs.getNode(p);
       if (!node) continue;
       const currentPerms = defaultPermsForNode(node);
@@ -118,17 +124,39 @@ const chmod: CommandHandler = (args, flags, ctx) => {
         }
       }
 
-      const result = currentFs.setPermissions(p, newPerms);
+      // The named target gets the normal traversal-checked mutator. Descendants
+      // use the privileged insertNode because setPermissions would re-walk from
+      // the root and re-judge ancestors this very command is rewriting; the
+      // walk does its own gate instead (`blocked`, below).
+      const result = p === absPath
+        ? currentFs.setPermissions(p, newPerms)
+        : currentFs.insertNode(p, { ...node, permissions: newPerms });
       if (result.error) {
-        errors.push(result.error);
-      } else if (result.fs) {
-        currentFs = result.fs;
+        errors.push(labelFsError("chmod", result.error));
+        // The named target is unreachable — its whole subtree is too.
+        if (p === absPath) break;
+        continue;
+      }
+      if (result.fs) currentFs = result.fs;
+
+      // Traversability gate for the NEXT level down. A directory can be
+      // descended into if the player could already traverse it, or if this very
+      // chmod just opened it (real chmod -R holds the descriptor it opened, so
+      // `chmod -R 777 /` does get into a locked subtree, while `chmod -R 700 /`
+      // does not). Skipping is reported once, rm-style, and does not abort the
+      // rest of the walk. The named target is exempt: naming it is the open.
+      if (isDirectory(node) && p !== absPath) {
+        const couldEnter = currentPerms[8] === "x" || newPerms[8] === "x";
+        if (!couldEnter) {
+          blocked.push(p + "/");
+          errors.push(`chmod: cannot read directory '${p}': Permission denied`);
+        }
       }
     }
   }
 
   if (errors.length > 0) {
-    return { output: errors.join("\n"), exitCode: 1, newFs: currentFs, securityViolation };
+    return { output: "", stderr: errors.join("\n"), exitCode: 1, newFs: currentFs, securityViolation };
   }
   return { output: "", newFs: currentFs, securityViolation };
 };

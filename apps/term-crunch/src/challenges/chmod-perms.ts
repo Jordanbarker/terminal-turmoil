@@ -1,4 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
+import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const VAULT_DIR = "/home/player/vault";
@@ -16,13 +17,8 @@ DB_PASSWORD=hunter2
  * step is to grant read (chmod +r / 644 / o+r) so the file becomes readable.
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(VAULT_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? `chmod-perms: mkdir ${VAULT_DIR} failed`);
-
-  const wr = mk.fs.writeFile(SECRETS_PATH, SECRETS_BODY);
-  if (!wr.fs) throw new Error(wr.error ?? `chmod-perms: write ${SECRETS_PATH} failed`);
-
-  const lock = wr.fs.setPermissions(SECRETS_PATH, "rw-------");
+  const fs = writeOrThrow(base, SECRETS_PATH, SECRETS_BODY);
+  const lock = fs.setPermissions(SECRETS_PATH, "rw-------");
   if (!lock.fs) throw new Error(lock.error ?? `chmod-perms: lock ${SECRETS_PATH} failed`);
 
   return lock.fs;

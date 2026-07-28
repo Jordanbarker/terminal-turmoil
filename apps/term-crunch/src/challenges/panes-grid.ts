@@ -37,7 +37,7 @@ export const panesGrid: Challenge = {
   setup: (base) => base,
   steps: [
     {
-      instruction: "Match the TARGET 2×2 grid (prefix = Ctrl+Space).",
+      instruction: "Match the TARGET 2×2 grid.",
       hint:
         "| and - split the FOCUSED pane. Make two columns first, then split each " +
         "into rows, moving focus back to the left column for its split.",

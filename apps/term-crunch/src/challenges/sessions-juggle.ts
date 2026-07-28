@@ -8,7 +8,9 @@ import type { Challenge } from "./types";
 //
 // Steps are cumulative state checkpoints, so out-of-order play still
 // completes: e.g. killing "scratch" while detached and then attaching to 0
-// satisfies steps 4 and 5 in one cascade pass.
+// satisfies steps 4 and 5 in one cascade pass, and killing "scratch" from
+// inside it (which drops the client to a bare shell) satisfies step 3 on the
+// way, so the following `attach -t 0` still cascades to the end.
 export const sessionsJuggle: Challenge = {
   id: "sessions-juggle",
   title: "Juggle two sessions",
@@ -40,10 +42,14 @@ export const sessionsJuggle: Challenge = {
       instruction: "Detach from scratch, keeping both sessions alive.",
       hint: "Same move as before; the server now holds two sessions.",
       command: "tmux detach",
+      // Deliberately does NOT require scratch to still be alive: killing
+      // scratch from inside it lands the player detached with only 0 — the
+      // same never-again predicate trap step 3's comment describes. The
+      // looser check is cascade-safe: step 1 (attached to scratch) gates
+      // entry to this step, and no state on the way there satisfies it.
       isComplete: (s) =>
         s.tmux.attachedSession === null &&
-        s.tmux.detachedSessions.some((d) => d.name === "0") &&
-        s.tmux.detachedSessions.some((d) => d.name === "scratch"),
+        s.tmux.detachedSessions.some((d) => d.name === "0"),
     },
     {
       instruction: "Reattach to your original session (0), not scratch.",

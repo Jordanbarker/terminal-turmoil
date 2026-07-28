@@ -1,4 +1,5 @@
 import { CommandResult } from "@tt/core/commands/types";
+import { errorResult } from "./fsErrors";
 
 export interface KnownFlags {
   short?: readonly string[];
@@ -73,15 +74,12 @@ export function rejectUnknownFlags(
       const msg = isShort
         ? `error: unknown switch \`${flag}'`
         : `error: unknown option \`${flag}'`;
-      return { output: msg, exitCode: 129 };
+      return errorResult(msg, 129);
     }
     const headline = isShort
       ? `${command}: invalid option -- '${flag}'`
       : `${command}: unrecognized option '--${flag}'`;
-    return {
-      output: `${headline}\nTry '${command} --help' for more information.`,
-      exitCode: 2,
-    };
+    return errorResult(`${headline}\nTry '${command} --help' for more information.`, 2);
   }
   return null;
 }

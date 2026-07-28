@@ -50,22 +50,14 @@ export interface Level {
   min: number;
 }
 
+// Levels are titles only: they gate nothing. Anything added here must be a
+// reward the game actually delivers, or the sidebar advertises vapor.
 export const LEVELS: Level[] = [
   { title: "Curious", min: 0 },
   { title: "Learner", min: 500 },
   { title: "Scholar", min: 2_000 },
   { title: "Master", min: 6_000 },
 ];
-
-/**
- * Named rewards gated on each level threshold. Placeholders for now: nothing
- * reads them yet beyond the sidebar's "next unlock" line.
- */
-export const UNLOCKS: Record<number, string> = {
-  500: "Speedrun timers",
-  2_000: "Custom review decks",
-  6_000: "Master gauntlet",
-};
 
 /** Level band containing `mp`; `next` is the next band's threshold, or null at the top. */
 export function levelFor(mp: number): { title: string; min: number; next: number | null } {

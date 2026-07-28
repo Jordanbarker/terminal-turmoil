@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { execute } from "@tt/core/commands/registry";
 import type { CommandContext } from "@tt/core/commands/types";
 import "../engine/commands/navigation"; // register challenges/review/goto/...
@@ -6,7 +6,7 @@ import { consumePendingNavigation } from "../engine/commands/navigation";
 import { getCategory, registryIndex as idx } from "../challenges/categories";
 import { CHALLENGES } from "../challenges/registry";
 import { INITIAL_EASE, type ReviewStat } from "../challenges/scheduler";
-import { resetStore } from "./helpers";
+import { MONDAY, resetStore } from "./helpers";
 import { useGameStore } from "../state/gameStore";
 import { buildBaseFs } from "../lib/seed";
 import { CRUNCH_MACHINE, HOME_DIR } from "../lib/machine";
@@ -232,6 +232,61 @@ describe("review sessions", () => {
     // Replaying immediately: bestTimes blocks first-clear, the sub-day gate
     // (measured from lastMpAt) blocks retention.
     completePanesSplit();
+    expect(state().mastery.mp).toBe(50);
+  });
+
+  it("a sub-day re-clear pays 0 MP and does not move lastMpAt", () => {
+    const state = useGameStore.getState;
+    completePanesSplit();
+    const firstAt = state().lastMpAt["panes-split"];
+    expect(firstAt).toBe(MONDAY);
+
+    // An hour later, well inside the one-day retention gate.
+    state().jumpToChallenge(idx("rm-bomb"));
+    vi.setSystemTime(MONDAY + HOUR);
+    completePanesSplit();
+    expect(state().lastAwards).toEqual([]);
+    expect(state().mastery.mp).toBe(50); // nothing paid
+    // The zero-pay clear must NOT push the clock forward: measuring from the
+    // original clear is what lets a genuine next-day repeat still earn.
+    expect(state().lastMpAt["panes-split"]).toBe(firstAt);
+
+    state().jumpToChallenge(idx("rm-bomb"));
+    vi.setSystemTime(MONDAY + DAY + HOUR);
+    completePanesSplit();
+    expect(state().lastAwards).toEqual([{ mp: 4, label: "Retention" }]);
+    expect(state().lastMpAt["panes-split"]).toBe(MONDAY + DAY + HOUR);
+  });
+
+  it("the end-of-track banner writes the completion MP too", () => {
+    // The `completed` branch of checkCompletion is a SEPARATE set() from the
+    // mid-track gate; if the mastery write is dropped from it, the last
+    // challenge of every track silently pays nothing.
+    const state = useGameStore.getState;
+    const all = getCategory("all").challenges;
+    const last = all[all.length - 1];
+    // The recipe.txt shortcut below is vim-reorder's solution; fail loudly if
+    // a new challenge is appended to the registry instead of mysteriously.
+    expect(last.id).toBe("vim-reorder");
+    state().loadChallenge(all.length - 1);
+    // Same recipe.txt shortcut as above: vim keystrokes can't be driven here.
+    const wr = state().fs.writeFile(
+      "/home/player/work/recipe.txt",
+      "Step 1: chop the vegetables\nStep 2: simmer for 20 minutes\nStep 3: serve\n",
+    );
+    if (!wr.fs) throw new Error(wr.error ?? "seed recipe.txt failed");
+    state().setFs(wr.fs);
+    useGameStore.setState({ stepIndex: last.steps.length - 1 });
+    state().checkCompletion();
+
+    expect(state().completed).toBe(true);
+    expect(state().mastery.mp).toBe(50);
+    expect(state().lastAwards).toEqual([{ mp: 50, label: "First clear" }]);
+    expect(state().lastMpAt[last.id]).toBe(MONDAY);
+    expect(state().bestTimes[last.id]).toBeDefined();
+
+    // Grading the banner only schedules; it must not pay a second time.
+    state().continueToNext("good");
     expect(state().mastery.mp).toBe(50);
   });
 

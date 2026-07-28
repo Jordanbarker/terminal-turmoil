@@ -34,17 +34,18 @@ function run(name: string, rawArgs: string[]) {
   return execute(name, rawArgs, {}, { ...ctx, rawArgs });
 }
 
+// Usage errors (bad/missing -n value) are exit 2; read failures are exit 1.
 describe("head/tail -n value handling", () => {
   it("head -n with no value errors instead of treating -n as a file", () => {
     const result = run("head", ["-n"]);
-    expect(result.output).toBe("head: option requires an argument -- 'n'");
-    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("head: option requires an argument -- 'n'");
+    expect(result.exitCode).toBe(2);
   });
 
   it("head -n with a non-numeric value errors instead of defaulting to 10", () => {
     const result = run("head", ["-n", "abc", "notes.txt"]);
-    expect(result.output).toBe("head: invalid number of lines: 'abc'");
-    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("head: invalid number of lines: 'abc'");
+    expect(result.exitCode).toBe(2);
   });
 
   it("head -n 2 still works", () => {
@@ -54,33 +55,33 @@ describe("head/tail -n value handling", () => {
 
   it("tail -n with no value errors", () => {
     const result = run("tail", ["-n"]);
-    expect(result.output).toBe("tail: option requires an argument -- 'n'");
-    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("tail: option requires an argument -- 'n'");
+    expect(result.exitCode).toBe(2);
   });
 
   it("tail -n '' errors", () => {
     const result = run("tail", ["-n", "", "notes.txt"]);
-    expect(result.output).toBe("tail: invalid number of lines: ''");
-    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe("tail: invalid number of lines: ''");
+    expect(result.exitCode).toBe(2);
   });
 });
 
 describe("find expression value handling", () => {
   it("dangling -name errors instead of listing everything", () => {
     const result = run("find", [".", "-name"]);
-    expect(result.output).toBe("find: -name: requires additional arguments");
+    expect(result.stderr).toBe("find: -name: requires additional arguments");
     expect(result.exitCode).toBe(1);
   });
 
   it("dangling -type errors", () => {
     const result = run("find", [".", "-type"]);
-    expect(result.output).toBe("find: -type: requires additional arguments");
+    expect(result.stderr).toBe("find: -type: requires additional arguments");
     expect(result.exitCode).toBe(1);
   });
 
   it("invalid -type errors", () => {
     const result = run("find", [".", "-type", "x"]);
-    expect(result.output).toBe("find: -type: x: unknown type");
+    expect(result.stderr).toBe("find: -type: x: unknown type");
     expect(result.exitCode).toBe(1);
   });
 
@@ -93,7 +94,7 @@ describe("find expression value handling", () => {
 describe("missing-operand exit codes", () => {
   it.each(["mkdir", "rm", "mv", "cp", "cat", "file"])("%s with no args exits 1", (cmd) => {
     const result = run(cmd, []);
-    expect(result.output).toContain("missing");
+    expect(result.stderr).toContain("missing");
     expect(result.exitCode).toBe(1);
   });
 });
@@ -117,7 +118,7 @@ describe("unset", () => {
 
   it("with no args exits 1", () => {
     const result = run("unset", []);
-    expect(result.output).toBe("unset: not enough arguments");
+    expect(result.stderr).toBe("unset: not enough arguments");
     expect(result.exitCode).toBe(1);
   });
 });

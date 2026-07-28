@@ -8,13 +8,15 @@ A narrative-driven browser game that teaches Linux/terminal through a workplace 
 
 ## In-Game Commands
 
-The full builtin roster + registration lives in `src/engine/commands/builtins/` and `story/commandGates.ts` — read there rather than a mirror. Highlights: standard coreutils (`ls`/`cd`/`cat`/`grep`/`find`/`sort`/etc.), editors/viewers (`nano`/`vim`/`less`), narrative tools (`mail`/`piper`/`chip`), data tools (`snow`/`dbt`/`git`, dev-container only), computer nav (`ssh`/`coder`/`exit`/`shutdown`), and save control (`save`/`load`/`newgame`). Pipes (`|`), redirection (`>`/`>>`, zsh multios, prechecked), stdin passing, and chaining (`&&`/`||`/`;`) are all supported; shell-layer errors use zsh wording (only the `bash` script runner keeps `bash:` prefixes). See the **commands** skill.
+The full builtin roster + registration lives in `src/engine/commands/builtins/index.ts` and `story/commandGates.ts` — read there rather than a mirror. That index pulls in `@tt/core`'s story-agnostic builtins, then this app's story ones (which sit in the same directory) and the seams core's builtins read (`../scriptInterceptor`, `story/envTriggers`). Highlights: standard coreutils, editors/viewers (`nano`/`vim`/`less`), narrative tools (`mail`/`piper`/`chip`), data tools (`snow`/`dbt`/`git`, dev-container only), computer nav (`ssh`/`coder`/`exit`/`shutdown`), and save control (`save`/`load`/`newgame`). Pipes, redirection (zsh multios, prechecked), chaining, and word expansion ($VAR + globs with zsh nomatch) are all supported; shell-layer errors use zsh wording (only the `bash` script runner keeps `bash:` prefixes). See the **commands** skill.
 
 ## Project Structure
 
-Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) is a sibling of `src/`. Under `src/`: `app/` (Next.js App Router, single page), `components/` (`Terminal/`, `Assistant/`, `HUD/`, `Game/`), `engine/` (game systems — most story-coupled; the generic engine now lives in `@tt/core`), `story/` (all content: emails, piper, filesystem builders, chapters, flags, chip menu, seed data), `state/` (Zustand store + save system), `hooks/`, `lib/`.
+Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) is a sibling of `src/`. Under `src/`: `app/` (Next.js App Router, single page), `components/` (`Terminal/`, `HUD/`, `Game/`), `engine/` (game systems — most story-coupled; the generic engine now lives in `@tt/core`), `story/` (all content: emails, piper, filesystem builders, chapters, flags, chip menu, seed data), `state/` (Zustand store + save system), `hooks/`, `lib/`.
 
 > **Path convention.** Skill docs may cite bare `src/...` paths. Resolve them as `apps/termoil/src/...` for app/story code, **except** the generic engine modules that moved to `@tt/core` — `commands`, `filesystem`, `git`, `dbt`, `snowflake`, `session`, `suggestions`, `terminal` (paneTypes/copyMode/tmuxConfig/ansiPalette/zshHistory), and `PaneDividers` — which live at `packages/core/src/...`. Story-coupled bits (`engine/mail`, `engine/piper`, `engine/prompt`, `engine/narrative`, `engine/chip`, story command builtins) stayed in the app. The per-directory detail is in the relevant skill; don't duplicate the tree here.
+
+> **`src/lib/`** holds what looks generic but is really story content: `ascii.ts` (NexaCorp logo, maniac-iv login/boot copy, Coder banners, credits) and `timing.ts` (Chip/Piper pacing). Engine-level pacing — boot, shutdown, dbt, the security-termination cinematic — stays in `@tt/core/lib/timing`.
 
 ## Key Architectural Decisions
 
@@ -31,6 +33,8 @@ Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) 
 
 ## Story Docs
 
-- `docs/storyboard/chapter-{1,2,3}.md` — per-chapter narrative beats, dialogue, key player actions.
-- `docs/characters.md` — read before writing character dialogue: personality, motivations, relationships, mystery angle.
-- `docs/timeline.md` — master timeline of story events.
+- `apps/termoil/docs/storyboard/chapter-{1,2,3}.md` — per-chapter narrative beats, dialogue, key player actions.
+- `apps/termoil/docs/characters.md` — read before writing character dialogue: personality, motivations, relationships, mystery angle.
+- `apps/termoil/docs/timeline.md` — master timeline of story events.
+- `apps/termoil/docs/mystery.md` — the clue chain, act by act.
+- `apps/termoil/docs/notes.md` — unstructured scratch (quest ideas, log inventory, cheatsheets); not authoritative.

@@ -1,6 +1,6 @@
 import { GameEvent } from "../mail/delivery";
 import { StoryFlags } from "../../state/types";
-import type { StoryFlagTrigger } from "../../story/storyFlags";
+import type { StoryFlagName, StoryFlagTrigger } from "../../story/storyFlags";
 
 // Re-export story data for convenience
 export type { StoryFlagName, StoryFlagTrigger } from "../../story/storyFlags";
@@ -10,16 +10,17 @@ export function checkStoryFlagTriggers(
   event: GameEvent,
   triggers: StoryFlagTrigger[],
   currentFlags: StoryFlags
-): { flag: string; value: string | boolean; toast?: string }[] {
-  const results: { flag: string; value: string | boolean; toast?: string }[] = [];
+): { flag: StoryFlagName; value: string | boolean; toast?: string }[] {
+  const results: { flag: StoryFlagName; value: string | boolean; toast?: string }[] = [];
 
   for (const trigger of triggers) {
     if (trigger.event === event.type) {
       if (trigger.requiredFlags?.some(f => !currentFlags[f])) continue;
       const matchExact = trigger.path ?? trigger.detail;
-      const matchPrefix = trigger.pathPrefix;
+      const matchPrefix = trigger.pathPrefix ?? trigger.detailPrefix;
       const matchSuffix = trigger.pathSuffix;
       const detail = event.detail;
+      if (trigger.detailNot !== undefined && detail === trigger.detailNot) continue;
       let fired = false;
       if ((matchPrefix || matchSuffix) && detail) {
         const prefixOk = !matchPrefix || detail.startsWith(matchPrefix);
@@ -28,7 +29,13 @@ export function checkStoryFlagTriggers(
       } else if (matchExact && detail === matchExact) {
         fired = true;
       }
-      if (fired && currentFlags[trigger.flag] === undefined) {
+      // Idempotency: only emit when the flag isn't already at the target value.
+      // This is what keeps read-pair cascades from double-counting (a second
+      // trigger for an already-true flag is a no-op) while still allowing state
+      // flags to toggle back — `coder start` resets coder_workspace_stopped to
+      // false, and a later `coder stop` can set it to true again. A plain
+      // `=== undefined` guard would let the flag latch on its first value.
+      if (fired && currentFlags[trigger.flag] !== trigger.value) {
         results.push({ flag: trigger.flag, value: trigger.value, toast: trigger.toast });
       }
     }

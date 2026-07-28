@@ -245,7 +245,7 @@ After each dbt run:
 ## Snowflake Performance
 
 Track query warehouse utilization:
-- Warn when avg query time exceeds 30s for ANALYTICS_WH
+- Warn when avg query time exceeds 30s for NEXACORP_WH
 - Alert when warehouse credit usage exceeds daily budget
 - Report on queries scanning >1B rows without filters
 

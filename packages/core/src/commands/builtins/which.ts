@@ -1,5 +1,6 @@
 import { CommandHandler, CommandContext } from "@tt/core/commands/types";
 import { register, getAvailableCommands } from "../registry";
+import { setKnownFlags } from "../flagValidation";
 import { isCommandAvailable } from "../availability";
 import { HELP_TEXTS } from "./helpTexts";
 
@@ -44,14 +45,16 @@ export const COMMAND_PATHS: Record<string, string> = {
 export function resolveCommandPath(name: string, ctx: CommandContext): string | null {
   if (!isCommandAvailable(name, ctx.activeComputer, ctx.storyFlags)) return null;
   if (COMMAND_PATHS[name]) return COMMAND_PATHS[name];
-  const commandNames = getAvailableCommands(ctx.activeComputer).map((c) => c.name);
+  // storyFlags matters: without it a flag-gated but already-unlocked command is
+  // filtered out of the list and `which` wrongly reports "not found".
+  const commandNames = getAvailableCommands(ctx.activeComputer, ctx.storyFlags).map((c) => c.name);
   if (commandNames.includes(name)) return `/usr/bin/${name}`;
   return null;
 }
 
 const which: CommandHandler = (args, _flags, ctx) => {
   if (args.length === 0) {
-    return { output: "which: missing command argument" };
+    return { output: "", stderr: "which: missing command argument" };
   }
 
   const outputs: string[] = [];
@@ -68,3 +71,4 @@ const which: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("which", which, "Show command path", HELP_TEXTS.which);
+setKnownFlags("which", {});

@@ -4,10 +4,10 @@ import { DirectoryNode } from "@tt/core/filesystem/types";
 import {
   findRepoRoot, shortHash, collectFiles,
   gitInit, gitAdd, gitCommit, gitStatus, getCommitLog,
-  listBranches, createBranch, deleteBranch, gitCheckout, gitDiffFiles,
-  gitStashSave, gitStashPop, gitStashList,
-  gitRm, gitClone, gitPush, gitPull, gitReset, resolveRef,
-  resolveHead, readIndex,
+  listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
+  gitStashSave, gitStashPop, gitStashApply, gitStashDrop, gitStashList, readStash,
+  gitRm, gitClone, gitPush, gitPull, gitReset, gitMerge, resolveRef,
+  resolveHead, readIndex, readCommit, splitRevsAndPaths,
 } from "../repo";
 import { formatStatus, formatLog } from "../output";
 import { buildSimpleRemote, REMOTE_REPOS } from "../remotes";
@@ -118,6 +118,60 @@ describe("git add and commit", () => {
     expect(result.error).toBeUndefined();
     expect(result.output).toContain("first commit");
     expect(result.output).toContain("1 file changed");
+  });
+
+  it("reports exact insertion/deletion counts and mode lines", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/keep.txt", "one\ntwo\nthree\n").fs!;
+    fs = fs.writeFile("/home/player/gone.txt", "bye\n").fs!;
+    const first = gitCommit(gitAdd(fs, "/home/player", "/home/player", ["."], false).fs,
+      "/home/player", "first", AUTHOR, false, false, TEST_TS);
+    expect(first.output.split("\n").slice(1)).toEqual([
+      " 2 files changed, 4 insertions(+)",
+      " create mode 100644 gone.txt",
+      " create mode 100644 keep.txt",
+    ]);
+    fs = first.fs;
+
+    // Replace one line, drop another, add a file, delete a file.
+    fs = fs.writeFile("/home/player/keep.txt", "one\nTWO\n").fs!;
+    fs = fs.writeFile("/home/player/new.txt", "hi\n").fs!;
+    fs = fs.removeNode("/home/player/gone.txt").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", [], true).fs;
+    const second = gitCommit(fs, "/home/player", "second", AUTHOR, false, false, TEST_TS);
+    expect(second.output.split("\n").slice(1)).toEqual([
+      " 3 files changed, 2 insertions(+), 3 deletions(-)",
+      " delete mode 100644 gone.txt",
+      " create mode 100644 new.txt",
+    ]);
+  });
+
+  it("counts an emptied file's lines without inventing a phantom one", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "").fs!;
+    const first = gitCommit(gitAdd(fs, "/home/player", "/home/player", ["."], false).fs,
+      "/home/player", "first", AUTHOR, false, false, TEST_TS);
+    expect(first.output).toContain(" 1 file changed");
+    expect(first.output).not.toContain("insertion");
+    fs = first.fs;
+
+    fs = fs.writeFile("/home/player/a.txt", "now has content\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const second = gitCommit(fs, "/home/player", "second", AUTHOR, false, false, TEST_TS);
+    expect(second.output).toContain(" 1 file changed, 1 insertion(+)");
+  });
+
+  it("measures --amend against the parent, not the commit it replaces", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "one\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "base");
+    fs = fs.writeFile("/home/player/a.txt", "one\ntwo\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "typo");
+    fs = fs.writeFile("/home/player/a.txt", "one\ntwo\nthree\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const amended = gitCommit(fs, "/home/player", "fixed", AUTHOR, true, false, TEST_TS);
+    // Two lines added since `base`, not one since `typo`.
+    expect(amended.output).toContain(" 1 file changed, 2 insertions(+)");
   });
 
   it("reports nothing to commit when clean", () => {
@@ -540,7 +594,7 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/a.txt", "line1\nline2\n").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
     fs = fs.writeFile("/home/player/a.txt", "line1\nmodified\n").fs!;
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("a.txt");
   });
@@ -551,7 +605,7 @@ describe("git diff", () => {
     fs = addAndCommit(fs, "/home/player", "first");
     fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
   });
 
@@ -559,7 +613,7 @@ describe("git diff", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
   });
 
   it("hides a staged change from unstaged diff (working tree vs index, not HEAD)", () => {
@@ -569,8 +623,8 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
 
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
-    expect(gitDiffFiles(fs, "/home/player", true)).toHaveLength(1);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player", { staged: true })).toHaveLength(1);
   });
 
   it("shows index→working diff when a staged file is edited again", () => {
@@ -581,7 +635,7 @@ describe("git diff", () => {
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
     fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("a.txt");
     expect(diffs[0].oldContent).toBe("v2");
@@ -593,7 +647,7 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/new.txt", "hello").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
 
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
   });
 
   it("shows only post-stage edits for a newly staged file", () => {
@@ -602,28 +656,45 @@ describe("git diff", () => {
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
     fs = fs.writeFile("/home/player/new.txt", "hello world").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("new.txt");
     expect(diffs[0].oldContent).toBe("hello");
     expect(diffs[0].newContent).toBe("hello world");
   });
 
-  it("treats a staged-deleted file still on disk as an unstaged addition", () => {
+  it("ignores a staged-deleted file still on disk (it is untracked now)", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
-    // Simulate `git rm --cached a.txt`: index marks it deleted, file stays on disk.
-    fs = fs.writeFile(
-      "/home/player/.git/index.json",
-      JSON.stringify({ staged: {}, deleted: ["a.txt"] }),
-    ).fs!;
+    fs = gitRm(fs, "/home/player", ["a.txt"], false, true).fs;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].path).toBe("a.txt");
-    expect(diffs[0].oldContent).toBe("");
-    expect(diffs[0].newContent).toBe("v1");
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("never reports untracked files", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/tracked.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/scratch.txt", "brand new").fs!;
+
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("labels adds, modifications and deletions", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/keep.txt", "v1\n").fs!;
+    fs = fs.writeFile("/home/player/gone.txt", "bye\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/keep.txt", "v2\n").fs!;
+    fs = fs.writeFile("/home/player/added.txt", "hi\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["keep.txt", "added.txt"], false).fs;
+    fs = gitRm(fs, "/home/player", ["gone.txt"], false).fs;
+
+    const byPath = Object.fromEntries(
+      gitDiffFiles(fs, "/home/player", { staged: true }).map((d) => [d.path, d.status]),
+    );
+    expect(byPath).toEqual({ "keep.txt": "modified", "added.txt": "added", "gone.txt": "deleted" });
   });
 });
 
@@ -637,6 +708,41 @@ describe("git rm", () => {
     const result = gitRm(fs, "/home/player", ["a.txt"], false);
     expect(result.error).toBeUndefined();
     expect(result.fs.getNode("/home/player/a.txt")).toBeNull();
+  });
+
+  it("--cached untracks the file but leaves it on disk", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.env", "SECRET=1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+
+    const result = gitRm(fs, "/home/player", [".env"], false, true);
+    expect(result.error).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.env")).not.toBeNull();
+    expect(result.fs.readFile("/home/player/.env").content).toBe("SECRET=1");
+
+    const status = gitStatus(result.fs, "/home/player");
+    expect(status.staged).toContainEqual({ path: ".env", status: "deleted" });
+    expect(status.untracked).toContain(".env");
+  });
+
+  it("--cached on a staged-but-never-committed file just unstages it", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/new.txt", "hi").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
+
+    const status = gitStatus(gitRm(fs, "/home/player", ["new.txt"], false, true).fs, "/home/player");
+    expect(status.staged).toHaveLength(0); // no bogus `deleted:` for a path HEAD never had
+    expect(status.untracked).toContain("new.txt");
+  });
+
+  it("--cached still requires -r for a directory", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.makeDirectory("/home/player/dir").fs!;
+    fs = fs.writeFile("/home/player/dir/file.txt", "content").fs!;
+    const result = gitRm(fs, "/home/player", ["dir"], false, true);
+    expect(result.error).toContain("without -r");
   });
 
   it("errors on nonexistent file", () => {
@@ -696,6 +802,93 @@ describe("git stash", () => {
     const list = gitStashList(fs, "/home/player");
     expect(list).toContain("stash@{0}");
     expect(list).toContain("WIP on main");
+  });
+
+  it("apply restores the changes and keeps the entry", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+
+    const result = gitStashApply(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v2");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("drop removes the entry without restoring", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+
+    const result = gitStashDrop(fs, "/home/player");
+    expect(result.output).toContain("Dropped refs/stash@{0} (WIP on main");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v1");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("errors on apply/drop with empty stash", () => {
+    const fs = initRepo(makeFs());
+    expect(gitStashApply(fs, "/home/player").error).toContain("No stash entries found");
+    expect(gitStashDrop(fs, "/home/player").error).toContain("No stash entries found");
+  });
+
+  /** main@v1 stashing v2, then switching to a branch whose commit made the file v3. */
+  function seedCrossBranchStash(): VirtualFS {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = gitCheckout(fs, "/home/player", "hotfix", true).fs;
+    fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
+    fs = addAndCommit(fs, "/home/player", "hotfix");
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+    return gitCheckout(fs, "/home/player", "hotfix", false).fs;
+  }
+
+  it("refuses to pop onto a branch whose content differs, keeping stash and tree", () => {
+    const fs = seedCrossBranchStash();
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toContain("would be overwritten by merge");
+    expect(result.error).toContain("a.txt");
+    expect(result.error).toContain("The stash entry is kept");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v3");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("apply refuses on the same cross-branch conflict", () => {
+    const fs = seedCrossBranchStash();
+    const result = gitStashApply(fs, "/home/player");
+    expect(result.error).toContain("would be overwritten by merge");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("pop still succeeds after returning to the original branch", () => {
+    let fs = seedCrossBranchStash();
+    expect(gitStashPop(fs, "/home/player").error).toBeDefined();
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v2");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("pop restores untracked files stashed with -u", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/scratch.txt", "notes").fs!;
+    fs = gitStashSave(fs, "/home/player", true).fs;
+    expect(fs.getNode("/home/player/scratch.txt")).toBeNull();
+
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/scratch.txt").content).toBe("notes");
   });
 });
 
@@ -813,9 +1006,9 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
   it("a second --ff-only pull after catching up is a no-op, not an error", () => {
     let fs = seedBehindByTwo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
-    const first = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const first = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(first.output).toContain("Fast-forward");
-    const second = gitPull(first.fs, "/home/player", undefined, undefined, {}, true);
+    const second = gitPull(first.fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(second.error).toBeUndefined();
     expect(second.output).toBe("Already up to date.");
   });
@@ -823,7 +1016,7 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
   it("--ff-only still fast-forwards when strictly behind", () => {
     let fs = seedBehindByTwo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
-    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(pull.error).toBeUndefined();
     expect(pull.output).toContain("Fast-forward");
   });
@@ -836,11 +1029,71 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
     fs = addAndCommit(fs, "/home/player", "local work");
     const localTip = resolveHead(fs, "/home/player")!;
 
-    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(pull.error).toBe("fatal: Not possible to fast-forward, aborting.");
     // Refs and working tree untouched.
     expect(pull.fs.readFile("/home/player/.git/refs/heads/main").content!.trim()).toBe(localTip);
     expect(pull.fs.getNode("/home/player/b.txt")).toBeNull();
+  });
+
+  it("reports real diff counts in the --stat block, not net line deltas", () => {
+    // A same-line-count rewrite used to be faked as a flat 1 insertion / 1 deletion.
+    const TEST_URL = "__test__/pull-stat-counts";
+    REMOTE_REPOS[TEST_URL] = buildSimpleRemote(
+      { "notes.txt": "alpha\nbeta\ngamma\ndelta\n" },
+      { author: AUTHOR, defaultBranch: "main", commitMessage: "initial" },
+    );
+    REMOTE_REPOS[TEST_URL].getUpdates = (_flags, headHash) => {
+      const tree = { "notes.txt": "alpha\nBETA\nGAMMA\ndelta\n", "todo.txt": "one\n" };
+      return [{
+        hash: shortHash("stat-update" + (headHash ?? "")),
+        parent: headHash, message: "remote update", author: AUTHOR, timestamp: 1, tree,
+      }];
+    };
+
+    try {
+      let fs = makeFs();
+      fs = gitClone(fs, "/home/player", TEST_URL, AUTHOR).fs;
+      const pull = gitPull(fs, "/home/player/pull-stat-counts", undefined, undefined, {});
+      expect(pull.error).toBeUndefined();
+      expect(pull.output.split("\n").slice(3)).toEqual([
+        " notes.txt |   4 ++--",
+        " todo.txt  |   1 +",
+        " 2 files changed, 3 insertions(+), 2 deletions(-)",
+      ]);
+    } finally {
+      delete REMOTE_REPOS[TEST_URL];
+    }
+  });
+
+  it("--rebase fast-forwards when strictly behind", () => {
+    let fs = seedBehindByTwo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
+    const upTip = fs.readFile("/home/player/.git/refs/remotes/origin/main").content!.trim();
+
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { rebase: true });
+    expect(pull.error).toBeUndefined();
+    expect(pull.output).toContain("Fast-forward");
+    expect(pull.fs.readFile("/home/player/.git/refs/heads/main").content!.trim()).toBe(upTip);
+  });
+
+  it("--rebase replays local commits on top of the tracking tip when diverged", () => {
+    let fs = seedBehindByTwo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
+    const upTip = fs.readFile("/home/player/.git/refs/remotes/origin/main").content!.trim();
+    fs = fs.writeFile("/home/player/local.txt", "mine").fs!;
+    fs = addAndCommit(fs, "/home/player", "local work");
+
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { rebase: true });
+    expect(pull.error).toBeUndefined();
+    fs = pull.fs;
+    // Linear history: the local commit now sits on top of the two upstream ones.
+    expect(getCommitLog(fs, "/home/player").map((c) => c.message)).toEqual(["local work", "u2", "u1", "first"]);
+    const tip = fs.readFile("/home/player/.git/refs/heads/main").content!.trim();
+    expect(tip).not.toBe(upTip);
+    expect(readCommit(fs, "/home/player", tip)!.parent).toBe(upTip);
+    expect(gitStatus(fs, "/home/player").tracking).toEqual({ remoteRef: "origin/main", ahead: 1, behind: 0 });
+    expect(pull.triggerEvents).toEqual([{ type: "command_executed", detail: "git_pull_origin_main" }]);
   });
 
   it("without --ff-only a diverged branch falls through unchanged", () => {
@@ -875,6 +1128,41 @@ describe("git push", () => {
     expect(result.triggerEvents).toBeDefined();
   });
 
+  it("pushes the named branch, not whatever HEAD points at", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    // Commit on `feature`, then go back to main and commit again there.
+    fs = gitCheckout(fs, "/home/player", "feature", true).fs;
+    fs = fs.writeFile("/home/player/b.txt", "feature work").fs!;
+    fs = addAndCommit(fs, "/home/player", "feature commit");
+    const featureTip = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+    fs = fs.writeFile("/home/player/c.txt", "main work").fs!;
+    fs = addAndCommit(fs, "/home/player", "main commit");
+    const mainTip = resolveHead(fs, "/home/player")!;
+    expect(featureTip).not.toBe(mainTip);
+
+    const result = gitPush(fs, "/home/player", "origin", "feature", false, false);
+    expect(result.error).toBeUndefined();
+    const pushed = result.fs.readFile("/home/player/.git/refs/remotes/origin/feature").content!.trim();
+    expect(pushed).toBe(featureTip);
+    expect(pushed).not.toBe(mainTip);
+    expect(result.output).toContain("[new branch]      feature -> feature");
+  });
+
+  it("rejects a branch that does not exist locally", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    const result = gitPush(fs, "/home/player", "origin", "nosuch", false, false);
+    expect(result.error).toContain("error: src refspec nosuch does not match any");
+    expect(result.triggerEvents).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/nosuch")).toBeNull();
+  });
+
   it("sets upstream with -u flag", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
@@ -887,6 +1175,117 @@ describe("git push", () => {
     expect(config).toContain('[branch "main"]');
     expect(config).toContain("remote = origin");
     expect(config).toContain("merge = refs/heads/main");
+  });
+
+  it("refuses a bare push when the branch has no upstream", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    // Even `-u` needs a destination to record.
+    const result = gitPush(fs, "/home/player", undefined, undefined, true, false);
+    expect(result.error).toBe(
+      "fatal: The current branch main has no upstream branch.\n" +
+      "To push the current branch and set the remote as upstream, use\n\n" +
+      "    git push --set-upstream origin main\n",
+    );
+    expect(result.triggerEvents).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/main")).toBeNull();
+  });
+
+  it("prints [new branch] on the first push and old..new afterwards", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    const firstTip = resolveHead(fs, "/home/player")!;
+
+    const first = gitPush(fs, "/home/player", "origin", "main", true, false);
+    expect(first.output).toContain(" * [new branch]      main -> main");
+    expect(first.output).not.toContain("0000000");
+    fs = first.fs;
+
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = addAndCommit(fs, "/home/player", "second");
+    const secondTip = resolveHead(fs, "/home/player")!;
+    const second = gitPush(fs, "/home/player", undefined, undefined, false, false);
+    expect(second.output).toContain(`${firstTip.slice(0, 7)}..${secondTip.slice(0, 7)}  main -> main`);
+  });
+
+  it("re-emits push events on a no-op re-push", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = gitPush(fs, "/home/player", "origin", "main", true, false).fs;
+
+    const again = gitPush(fs, "/home/player", undefined, undefined, false, false);
+    expect(again.output).toBe("Everything up-to-date");
+    expect(again.triggerEvents).toEqual([
+      { type: "command_executed", detail: "git_push_origin_main" },
+      { type: "command_executed", detail: "git_push" },
+    ]);
+  });
+});
+
+// ── git restore ──────────────────────────────────────────────────────
+
+describe("git restore", () => {
+  /** Repo with a.txt committed as "v1\n" and sub/b.txt as "sub\n". */
+  function restoreRepo(): VirtualFS {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1\n").fs!;
+    fs = fs.makeDirectory("/home/player/sub").fs!;
+    fs = fs.writeFile("/home/player/sub/b.txt", "sub\n").fs!;
+    return addAndCommit(fs, "/home/player", "first");
+  }
+
+  it("restores a modified file from HEAD, silently", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "dirty\n").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], false);
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v1\n");
+  });
+
+  it("recreates a deleted tracked file", () => {
+    let fs = restoreRepo();
+    fs = fs.removeNode("/home/player/sub/b.txt").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["sub/b.txt"], false);
+    expect(result.fs.readFile("/home/player/sub/b.txt").content).toBe("sub\n");
+  });
+
+  it("prefers the index over HEAD when the file is staged", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "staged\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    fs = fs.writeFile("/home/player/a.txt", "then this\n").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], false);
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("staged\n");
+  });
+
+  it("takes a directory pathspec and resolves it against cwd", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/sub/b.txt", "dirty\n").fs!;
+    // From inside sub/, `git restore .` restores that subtree only.
+    const result = gitRestore(fs, "/home/player", "/home/player/sub", ["."], false);
+    expect(result.fs.readFile("/home/player/sub/b.txt").content).toBe("sub\n");
+  });
+
+  it("--staged unstages but leaves the working tree alone", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "dirty\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], true);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, "/home/player").staged).toEqual({});
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("dirty\n");
+  });
+
+  it("errors on a pathspec git knows nothing about", () => {
+    const result = gitRestore(restoreRepo(), "/home/player", "/home/player", ["ghost.txt"], false);
+    expect(result.error).toBe("error: pathspec 'ghost.txt' did not match any file(s) known to git");
   });
 });
 
@@ -1375,7 +1774,7 @@ describe("git diff --staged (focused)", () => {
     fs = fs.writeFile("/home/player/new.txt", "line1\nline2\n").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
 
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("new.txt");
     expect(diffs[0].oldContent).toBe("");
@@ -1394,7 +1793,7 @@ describe("git diff --staged (focused)", () => {
     // Make an additional unstaged change to a.txt
     fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
     // Should show v1→v2 (staged), NOT v1→v3 (working tree)
     expect(diffs[0].oldContent).toBe("v1");
@@ -1496,6 +1895,84 @@ describe("git reset", () => {
     expect(result.error).toContain("did not match any files");
   });
 
+  it("unstages everything for '.' at the repo root", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = fs.removeNode(`${root}/b.txt`).fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitReset(fs, root, root, ["."], null);
+    expect(result.error).toBeUndefined();
+    const index = readIndex(result.fs, root);
+    expect(index.staged).toEqual({});
+    expect(index.deleted).toEqual([]);
+    // Working tree untouched
+    expect(result.fs.readFile(`${root}/a.txt`).content).toBe("v3");
+  });
+
+  it("'git restore --staged .' at the repo root unstages everything", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitRestore(fs, root, root, ["."], true);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged).toEqual({});
+    expect(result.fs.readFile(`${root}/a.txt`).content).toBe("v3");
+  });
+
+  it("'.' from a subdirectory only unstages that subtree", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitReset(fs, root, `${root}/sub`, ["."], null);
+    expect(result.error).toBeUndefined();
+    const index = readIndex(result.fs, root);
+    expect(index.staged["sub/c.txt"]).toBeUndefined();
+    expect(index.staged["a.txt"]).toBe("v3");
+  });
+
+  it("'.' at the repo root succeeds silently with an empty index", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["."], null);
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("");
+  });
+
+  it("treats '--' as the rev/pathspec separator", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/.env`, "SECRET=1").fs!;
+    fs = gitAdd(fs, root, root, [".env"], false).fs;
+    const result = gitReset(fs, root, root, ["--", ".env"], null);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged[".env"]).toBeUndefined();
+  });
+
+  it("accepts an explicit revision before '--'", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/.env`, "SECRET=1").fs!;
+    fs = gitAdd(fs, root, root, [".env"], false).fs;
+    const result = gitReset(fs, root, root, ["HEAD", "--", ".env"], null);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged[".env"]).toBeUndefined();
+  });
+
+  it("errors on an unknown revision before '--'", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["nope", "--", "a.txt"], null);
+    expect(result.error).toContain("ambiguous argument 'nope'");
+  });
+
+  it("rejects a mode flag combined with pathspecs after '--'", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["--", "a.txt"], "hard");
+    expect(result.error).toBe("fatal: Cannot do hard reset with paths.");
+  });
+
   it("--soft moves the branch but keeps index and working tree", () => {
     const two = twoCommits();
     const { first } = two;
@@ -1577,5 +2054,246 @@ describe("git reset", () => {
     })).fs!;
     const result = gitReset(fs, root, root, [], "hard");
     expect(result.error).toContain("rebase");
+  });
+});
+
+// ── revision syntax: ^ / ~N chains, prefixes, remote refs ───────────
+
+describe("resolveRef — parent selectors and abbreviations", () => {
+  const root = "/home/player";
+
+  /** main: c1 → c2 → merge(c2, feature@c3). Gives both a linear chain and a merge commit. */
+  function repoWithMerge() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const c1 = resolveHead(fs, root)!;
+    fs = createBranch(fs, root, "feature").fs;
+    fs = fs.writeFile(`${root}/a.txt`, "v2").fs!;
+    fs = addAndCommit(fs, root, "second");
+    const c2 = resolveHead(fs, root)!;
+
+    fs = gitCheckout(fs, root, "feature", false).fs;
+    fs = fs.writeFile(`${root}/b.txt`, "feature").fs!;
+    fs = addAndCommit(fs, root, "feature work");
+    const c3 = resolveHead(fs, root)!;
+    fs = gitCheckout(fs, root, "main", false).fs;
+    const res = gitMerge(fs, root, "feature", AUTHOR, TEST_TS);
+    fs = res.fs;
+    return { fs, c1, c2, c3, mergeHash: resolveHead(fs, root)! };
+  }
+
+  it("walks ^ / ^1 as the first parent and ^2 as the merged side", () => {
+    const { fs, c2, c3, mergeHash } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD")).toBe(mergeHash);
+    expect(resolveRef(fs, root, "HEAD^")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD^1")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD^2")).toBe(c3);
+    expect(resolveRef(fs, root, "HEAD^0")).toBe(mergeHash);
+  });
+
+  it("chains steps left to right", () => {
+    const { fs, c1, c2, c3 } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD~1")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD~2")).toBe(c1);
+    expect(resolveRef(fs, root, "HEAD^^")).toBe(c1);
+    expect(resolveRef(fs, root, "HEAD^1~1")).toBe(c1);
+    // c3's first parent is c1 (feature branched before "second").
+    expect(resolveRef(fs, root, "HEAD^2~1")).toBe(c1);
+    expect(resolveRef(fs, root, `${c3}~1`)).toBe(c1);
+    expect(resolveRef(fs, root, "main~1^")).toBe(c1);
+  });
+
+  it("returns null past the root commit, for ^2 on a plain commit, and for ^N beyond the parents", () => {
+    const { fs, c1 } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD~3")).toBeNull();
+    expect(resolveRef(fs, root, "HEAD~2^")).toBeNull();
+    expect(resolveRef(fs, root, `${c1}^`)).toBeNull();
+    expect(resolveRef(fs, root, "HEAD^^2")).toBeNull();
+    expect(resolveRef(fs, root, "HEAD^3")).toBeNull();
+    expect(resolveRef(fs, root, "nope^2")).toBeNull();
+  });
+
+  it("resolves a unique abbreviated hash but not an ambiguous or too-short one", () => {
+    const { fs, mergeHash } = repoWithMerge();
+    expect(resolveRef(fs, root, mergeHash.slice(0, 5))).toBe(mergeHash);
+    expect(resolveRef(fs, root, mergeHash.slice(0, 5), { allowPrefix: false })).toBeNull();
+    // 3 chars is below git's 4-char minimum, so it is not even attempted.
+    expect(resolveRef(fs, root, mergeHash.slice(0, 3))).toBeNull();
+    // Two objects share this prefix, so it is ambiguous rather than a pick.
+    const ambiguous = fs.writeFile(`${root}/.git/objects/${mergeHash.slice(0, 4)}dead.json`, "{}").fs!;
+    expect(resolveRef(ambiguous, root, mergeHash.slice(0, 4))).toBeNull();
+  });
+
+  it("resolves remote-tracking refs by their slashed name", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const first = resolveHead(fs, root)!;
+    fs = fs.writeFile(`${root}/.git/refs/remotes/origin/main`, first).fs!;
+    expect(resolveRef(fs, root, "origin/main")).toBe(first);
+    expect(resolveRef(fs, root, "origin/nope")).toBeNull();
+  });
+});
+
+// ── log / diff / reset pick up the new syntax ───────────────────────
+
+describe("revision syntax through log, diff, and reset", () => {
+  const root = "/home/player";
+
+  function threeCommits() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1\n").fs!;
+    fs = addAndCommit(fs, root, "first");
+    fs = fs.writeFile(`${root}/a.txt`, "v2\n").fs!;
+    fs = addAndCommit(fs, root, "second");
+    fs = fs.writeFile(`${root}/a.txt`, "v3\n").fs!;
+    fs = addAndCommit(fs, root, "third");
+    return fs;
+  }
+
+  it("git log <rev> accepts ^ and ~N", () => {
+    const fs = threeCommits();
+    const at = (rev: string) =>
+      getCommitLog(fs, root, splitRevsAndPaths(fs, root, root, [rev]).revs[0]!.from).map((c) => c.message);
+    expect(at("HEAD^")).toEqual(["second", "first"]);
+    expect(at("HEAD~2")).toEqual(["first"]);
+  });
+
+  it("git diff HEAD~2..HEAD spans the range", () => {
+    const fs = threeCommits();
+    const split = splitRevsAndPaths(fs, root, root, ["HEAD~2..HEAD"]);
+    expect(split.error).toBeUndefined();
+    const diffs = gitDiffFiles(fs, root, { from: split.revs[0].from, to: split.revs[0].to });
+    expect(diffs).toEqual([{ path: "a.txt", oldContent: "v1\n", newContent: "v3\n", status: "modified" }]);
+  });
+
+  it("git reset --hard HEAD^ rewinds one commit", () => {
+    let fs = threeCommits();
+    const res = gitReset(fs, root, root, ["HEAD^"], "hard");
+    fs = res.fs;
+    expect(res.error).toBeUndefined();
+    expect(res.output).toContain("second");
+    expect(getCommitLog(fs, root).map((c) => c.message)).toEqual(["second", "first"]);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v2\n");
+  });
+
+  it("prefers a file over an abbreviated hash that happens to match it", () => {
+    let fs = threeCommits();
+    const prefix = resolveHead(fs, root)!.slice(0, 4);
+    // A tracked file whose *name* is a valid abbreviation of a real commit.
+    fs = fs.writeFile(`${root}/${prefix}`, "not a revision\n").fs!;
+    fs = addAndCommit(fs, root, "add lookalike");
+    const split = splitRevsAndPaths(fs, root, root, [prefix]);
+    expect(split.error).toBeUndefined();
+    expect(split.revs).toEqual([]);
+    expect(split.paths).toEqual([prefix]);
+  });
+});
+
+// ── detached HEAD ───────────────────────────────────────────────────
+
+describe("git checkout <commit> (detached HEAD)", () => {
+  const root = "/home/player";
+
+  function twoCommits() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1\n").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const first = resolveHead(fs, root)!;
+    fs = fs.writeFile(`${root}/a.txt`, "v2\n").fs!;
+    fs = addAndCommit(fs, root, "second");
+    return { fs, first, second: resolveHead(fs, root)! };
+  }
+
+  it("detaches onto a full hash, restoring that tree", () => {
+    const { fs: start, first, second } = twoCommits();
+    const res = gitCheckout(start, root, first, false);
+    const fs = res.fs;
+    expect(res.error).toBeUndefined();
+    expect(res.output).toBe(`Note: switching to '${first}'.\n\nHEAD is now at ${first.slice(0, 7)} first`);
+    expect(res.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_detached" }]);
+    expect(fs.readFile(`${root}/.git/HEAD`).content).toBe(first);
+    expect(resolveHead(fs, root)).toBe(first);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v1\n");
+    // main is untouched.
+    expect(fs.readFile(`${root}/.git/refs/heads/main`).content!.trim()).toBe(second);
+  });
+
+  it("treats `git checkout HEAD` as a no-op instead of detaching", () => {
+    const { fs, second } = twoCommits();
+    const res = gitCheckout(fs, root, "HEAD", false);
+    expect(res.error).toBeUndefined();
+    expect(res.fs.readFile(`${root}/.git/HEAD`).content).toBe("ref: refs/heads/main");
+    expect(gitStatus(res.fs, root).detachedAt).toBeUndefined();
+    expect(resolveHead(res.fs, root)).toBe(second);
+  });
+
+  it("detaches onto an abbreviated hash and onto a rev expression", () => {
+    const { fs, first } = twoCommits();
+    expect(resolveHead(gitCheckout(fs, root, first.slice(0, 5), false).fs, root)).toBe(first);
+    expect(resolveHead(gitCheckout(fs, root, "HEAD~1", false).fs, root)).toBe(first);
+  });
+
+  it("reports the detached commit in status", () => {
+    const { fs, first } = twoCommits();
+    const detached = gitCheckout(fs, root, first, false).fs;
+    const status = gitStatus(detached, root);
+    expect(status.branch).toBeNull();
+    expect(status.detachedAt).toBe(first);
+    expect(formatStatus(status, false, true)).toContain(`HEAD detached at ${first.slice(0, 7)}`);
+  });
+
+  it("commits onto the raw HEAD, leaving the branch behind", () => {
+    const { fs: start, first, second } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    fs = fs.writeFile(`${root}/c.txt`, "detached work\n").fs!;
+    fs = gitAdd(fs, root, root, ["c.txt"], false).fs;
+    const res = gitCommit(fs, root, "work while detached", AUTHOR, false, false, TEST_TS);
+    fs = res.fs;
+
+    const newHash = resolveHead(fs, root)!;
+    expect(res.output.split("\n")[0]).toBe(`[detached HEAD ${newHash}] work while detached`);
+    expect(fs.readFile(`${root}/.git/HEAD`).content).toBe(newHash);
+    expect(newHash).not.toBe(first);
+    expect(fs.readFile(`${root}/.git/refs/heads/main`).content!.trim()).toBe(second);
+    expect(getCommitLog(fs, root).map((c) => c.message)).toEqual(["work while detached", "first"]);
+  });
+
+  it("re-attaches by checking out a branch again", () => {
+    const { fs: start, first, second } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    const res = gitCheckout(fs, root, "main", false);
+    fs = res.fs;
+    expect(res.output).toBe("Switched to branch 'main'");
+    expect(gitStatus(fs, root).branch).toBe("main");
+    expect(gitStatus(fs, root).detachedAt).toBeUndefined();
+    expect(resolveHead(fs, root)).toBe(second);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v2\n");
+  });
+
+  it("branches off a detached HEAD with -b", () => {
+    const { fs: start, first } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    const res = gitCheckout(fs, root, "salvage", true);
+    fs = res.fs;
+    expect(res.output).toBe("Switched to a new branch 'salvage'");
+    expect(res.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+    expect(fs.readFile(`${root}/.git/refs/heads/salvage`).content!.trim()).toBe(first);
+    expect(gitStatus(fs, root).branch).toBe("salvage");
+  });
+
+  it("still refuses a target that is neither a branch nor a revision", () => {
+    const { fs } = twoCommits();
+    expect(gitCheckout(fs, root, "nope", false).error)
+      .toBe("error: pathspec 'nope' did not match any file(s) known to git");
+  });
+
+  it("refuses to detach without an explicit opt-in (git switch)", () => {
+    const { fs, first } = twoCommits();
+    expect(gitCheckout(fs, root, first, false, false).error)
+      .toBe(`fatal: a branch is expected, got commit '${first}'`);
+    // A branch name is still fine with detaching disallowed.
+    expect(gitCheckout(fs, root, "main", false, false).error).toBeUndefined();
   });
 });

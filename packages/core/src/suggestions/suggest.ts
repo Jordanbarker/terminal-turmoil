@@ -1,7 +1,7 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory } from "@tt/core/filesystem/types";
 import { resolvePath } from "@tt/core/lib/pathUtils";
-import { splitOnChainOperators } from "@tt/core/commands/parser";
+import { scanQuoted, splitOnChainOperators } from "@tt/core/commands/parser";
 
 const HISTORY_SCAN_DEPTH = 100;
 
@@ -25,19 +25,56 @@ export const PATH_COMMANDS = [
 /** Path commands that complete directories only (not files) */
 export const DIRECTORY_ONLY_COMMANDS = ["cd", "mkdir"];
 
-/** Subcommand lists keyed by parent command */
+/**
+ * Subcommand lists keyed by parent command, for core's own commands only.
+ * A game that registers its own builtins registers their subcommands through
+ * `addSubcommandCompletions` — otherwise TAB/ghost-text offers words that
+ * resolve to "command not found" in any app that lacks the command.
+ */
 export const SUBCOMMAND_MAP: Record<string, string[]> = {
   dbt: ["run", "test", "build", "ls", "list", "debug", "compile", "show", "--version"],
   snow: ["sql"],
-  sudo: ["apt"],
-  apt: ["install"],
   bash: ["-c"],
   sh: ["-c"],
-  git: ["init", "clone", "add", "rm", "commit", "status", "log", "branch", "checkout", "switch", "rebase", "reset", "diff", "stash", "push", "pull", "help"],
+  git: ["init", "clone", "add", "rm", "commit", "status", "log", "branch", "checkout", "restore", "switch", "merge", "rebase", "reset", "diff", "stash", "push", "pull", "fetch", "help"],
 };
 
+/** App-registered subcommand lists, merged on top of SUBCOMMAND_MAP. */
+let extraSubcommands: Record<string, string[]> = {};
+
 /**
- * List entries in a directory matching a prefix.
+ * Register subcommand completions for app-owned commands (termoil does this
+ * from its builtins index for `apt`, and for the `apt` it adds under `sudo`).
+ * Additions merge with core's entries rather than replacing them, so an app can
+ * extend a core command's list; repeated values are ignored.
+ */
+export function addSubcommandCompletions(additions: Record<string, string[]>): void {
+  for (const [command, subs] of Object.entries(additions)) {
+    const existing = extraSubcommands[command] ?? [];
+    extraSubcommands = {
+      ...extraSubcommands,
+      [command]: [...existing, ...subs.filter((s) => !existing.includes(s))],
+    };
+  }
+}
+
+/** Drop all app-registered subcommands (used by tests for isolation). */
+export function resetSubcommandCompletions(): void {
+  extraSubcommands = {};
+}
+
+/** Every subcommand offered for `command`, core's plus the app's. Undefined = none. */
+export function getSubcommandCompletions(command: string): string[] | undefined {
+  const base = SUBCOMMAND_MAP[command];
+  const extra = extraSubcommands[command];
+  if (!base) return extra;
+  if (!extra) return base;
+  return [...base, ...extra.filter((s) => !base.includes(s))];
+}
+
+/**
+ * List entries in a directory matching a prefix (case-insensitively, as zsh's
+ * completion does by default).
  * Returns matching entries with their display names (name + "/" for dirs).
  */
 export function listMatchingEntries(
@@ -45,7 +82,6 @@ export function listMatchingEntries(
   prefix: string,
   ctx: SuggestionContext,
   directoriesOnly: boolean,
-  caseInsensitive: boolean,
 ): { name: string; displayName: string }[] {
   const { entries } = ctx.fs.listDirectory(parentDir);
   if (!entries.length) return [];
@@ -55,12 +91,11 @@ export function listMatchingEntries(
 
   for (const entry of sorted) {
     if (directoriesOnly && !isDirectory(entry)) continue;
+    // zsh (and ls) only surface dotfiles once the prefix asks for them; an
+    // empty or plain prefix must not leak hidden entries into completion.
+    if (entry.hidden && !prefix.startsWith(".")) continue;
 
-    const matches = caseInsensitive
-      ? entry.name.toLowerCase().startsWith(prefix.toLowerCase())
-      : entry.name.startsWith(prefix);
-
-    if (!matches) continue;
+    if (!entry.name.toLowerCase().startsWith(prefix.toLowerCase())) continue;
 
     const displayName = entry.name + (isDirectory(entry) ? "/" : "");
     results.push({ name: entry.name, displayName });
@@ -94,23 +129,15 @@ export function splitPartialPath(
  * Returns the index, or -1 if none found.
  */
 export function findLastUnquotedPipe(input: string): number {
-  let inSingle = false;
-  let inDouble = false;
   let lastPipe = -1;
 
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-    } else if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-    } else if (char === "|" && !inSingle && !inDouble) {
-      // Check it's not part of ||
-      if (input[i - 1] !== "|" && input[i + 1] !== "|") {
-        lastPipe = i;
-      }
+  scanQuoted(input, (char, i, state, isQuote) => {
+    if (isQuote || state.inSingle || state.inDouble) return;
+    // Check it's not part of ||
+    if (char === "|" && input[i - 1] !== "|" && input[i + 1] !== "|") {
+      lastPipe = i;
     }
-  }
+  });
 
   return lastPipe;
 }
@@ -119,21 +146,13 @@ export function findLastUnquotedPipe(input: string): number {
  * Check if input contains an unquoted redirect operator (> or >>).
  */
 export function hasUnquotedRedirect(input: string): boolean {
-  let inSingle = false;
-  let inDouble = false;
+  let found = false;
 
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-    } else if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-    } else if (char === ">" && !inSingle && !inDouble) {
-      return true;
-    }
-  }
+  scanQuoted(input, (char, _i, state, isQuote) => {
+    if (!isQuote && char === ">" && !state.inSingle && !state.inDouble) found = true;
+  });
 
-  return false;
+  return found;
 }
 
 /**
@@ -221,7 +240,7 @@ export function getSuggestion(
     }
 
     // Strategy 3b: Subcommand completion
-    const subs = SUBCOMMAND_MAP[resolvedCmd];
+    const subs = getSubcommandCompletions(resolvedCmd);
     if (subs) {
       const partial = input.slice(spaceIdx + 1);
       const match = subs.find((s) => s.toLowerCase().startsWith(partial.toLowerCase()) && s.length > partial.length);
@@ -247,7 +266,7 @@ function completePath(
   const { parentDir, prefix, pathPrefix } = splitPartialPath(partial, ctx);
   if (!prefix) return null;
 
-  const matches = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly, true);
+  const matches = listMatchingEntries(parentDir, prefix, ctx, directoriesOnly);
   if (matches.length === 0) return null;
 
   // Return first match (for ghost text, just show the top suggestion)

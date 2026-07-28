@@ -5,6 +5,8 @@ import { getMarcusDebrief } from "../marcusDebrief";
 import { parentPath } from "@tt/core/lib/pathUtils";
 
 interface TerminationContext {
+  /** The SecurityViolation kind these detail flags describe. */
+  reason: string;
   command: string;
   path: string;
   destPath: string;
@@ -17,11 +19,23 @@ function readTerminationContext(storyFlags?: StoryFlags): TerminationContext {
   const countRaw = flags["termination_descendant_count"];
   const descendantCount = typeof countRaw === "string" ? parseInt(countRaw, 10) || 0 : 0;
   return {
+    reason: str("termination_reason"),
     command: str("termination_command"),
     path: str("termination_path"),
     destPath: str("termination_dest_path"),
     descendantCount,
   };
+}
+
+/**
+ * All three termination emails are built from the same flag bag, but only one
+ * is ever delivered. `termination_reason` says which violation the detail flags
+ * actually describe, so a variant only names a real command/path when the flags
+ * belong to it. Legacy saves (no reason recorded) fall back to the generic
+ * parenthetical.
+ */
+function namesIncident(ctx: TerminationContext, detail: TerminationVariant["detail"]): boolean {
+  return ctx.reason === detail && !!ctx.command;
 }
 
 function relatedFilesLine(ctx: TerminationContext): string {
@@ -49,7 +63,7 @@ function buildTerminationEmail(username: string, v: TerminationVariant): EmailDe
   return {
     email: {
       id: v.id,
-      from: "NexaCorp HR <hr@nexacorp.io>",
+      from: "NexaCorp HR <hr@nexacorp.com>",
       to: `${username}@email.com`,
       date: "Tue, 24 Feb 2026 14:32:00",
       subject: "Termination of Employment — Effective Immediately",
@@ -86,7 +100,6 @@ export const HOME_EMAIL_IDS = [
   "termination_leadership_destruction",
   "termination_exfiltration",
 ] as const;
-export type HomeEmailId = (typeof HOME_EMAIL_IDS)[number];
 
 const nexacorpOfferReplyOptions: ReplyOption[] = [
   {
@@ -205,7 +218,7 @@ Time:   Sat 2026-02-21 02:00:14 PST
 
 -- journalctl --user -u backup.service --
 Feb 21 02:00:12 maniac-iv backup.sh[4821]: [Sat Feb 21 02:00:12 PST 2026] Starting backup...
-Feb 21 02:00:14 maniac-iv backup.sh[4821]: /home/${username}/scripts/backup.sh: line 19: BAKCUP_DIR: unbound variable
+Feb 21 02:00:14 maniac-iv backup.sh[4821]: /home/${username}/scripts/backup.sh: line 21: BAKCUP_DIR: unbound variable
 Feb 21 02:00:14 maniac-iv systemd[1842]: backup.service: Main process exited, code=exited, status=1/FAILURE
 Feb 21 02:00:14 maniac-iv systemd[1842]: backup.service: Failed with result 'exit-code'.
 `,
@@ -396,7 +409,7 @@ anything.
     {
       email: {
         id: "marcus_board_debrief",
-        from: "Marcus Reyes <marcus.reyes@nexacorp.io>",
+        from: "Marcus Reyes <marcus@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Tue, 24 Feb 2026 21:14:00",
         subject: "tonight's meeting",
@@ -417,7 +430,7 @@ anything.
     {
       email: {
         id: "hr_security_freeze",
-        from: "NexaCorp IT Security <security@nexacorp.io>",
+        from: "NexaCorp IT Security <security@nexacorp.com>",
         to: `${username}@email.com`,
         date: "Tue, 24 Feb 2026 21:18:00",
         subject: "Unusual activity on your workstation: access frozen",
@@ -458,7 +471,7 @@ If you believe this was triggered in error, reply to this thread.
       incidentLead: `File integrity monitoring on workstation
 nexacorp-ws01 recorded unauthorized modification of system audit logs
 earlier today:`,
-      detailBlock: term.command
+      detailBlock: namesIncident(term, "log_tampering")
         ? `
   ${term.command}
   flagged: ${term.path}
@@ -482,7 +495,7 @@ via ACH within five business days.`,
       detail: "leadership_destruction",
       incidentLead: `Earlier today, NexaCorp recorded destruction
 of confidential corporate records from your workstation session:`,
-      detailBlock: term.command
+      detailBlock: namesIncident(term, "leadership_destruction")
         ? `
   ${term.command}
   flagged: ${term.path}
@@ -507,7 +520,7 @@ will be processed via ACH within five business days.`,
       incidentLead: `NexaCorp's data loss prevention controls
 recorded the transfer of confidential material from your workstation
 to personal storage:`,
-      detailBlock: term.command
+      detailBlock: namesIncident(term, "exfiltration")
         ? `
   ${term.command}
   source:      ${term.path}

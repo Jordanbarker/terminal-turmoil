@@ -1,9 +1,10 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { resolveSshTarget } from "@tt/core/ssh/sshConfig";
 import { resolvePath } from "@tt/core/lib/pathUtils";
 import { ComputerId } from "../../../state/types";
-import { HELP_TEXTS } from "@tt/core/commands/builtins/helpTexts";
+import { HELP_TEXTS } from "./helpTexts";
 
 interface SshRoute {
   /** Resolved hostname after alias lookup. */
@@ -124,3 +125,4 @@ const ssh: CommandHandler = (args, _flags, ctx) => {
 };
 
 register("ssh", ssh, "Connect to a remote host via SSH", HELP_TEXTS.ssh);
+setKnownFlags("ssh", {});

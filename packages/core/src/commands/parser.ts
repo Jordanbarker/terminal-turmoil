@@ -1,6 +1,6 @@
 import { ParsedCommand, ChainOperator, ChainSegment } from "@tt/core/commands/types";
 
-interface QuoteState {
+export interface QuoteState {
   inSingle: boolean;
   inDouble: boolean;
 }
@@ -10,12 +10,14 @@ interface QuoteState {
  * is active; no backslash escaping). Calls `visit` for every character with the
  * state as of BEFORE the character; `isQuote` marks a toggling quote char.
  * `visit` may return a count of extra characters to consume (lookahead, e.g.
- * the second `&` of `&&`). Returns the final quote state.
+ * the second `&` of `&&`, or a whole redirect target). Skipped characters are
+ * NOT visited, so they never toggle quote state. Returns the final quote state.
  *
- * All quote-aware scanning in this module goes through here — don't hand-roll
- * another quote loop.
+ * All quote-aware scanning in the engine goes through here: the tokenizer,
+ * pipe/chain splitting, alias expansion, continuation detection, redirection
+ * extraction, and the suggestion scanners. Don't hand-roll another quote loop.
  */
-function scanQuoted(
+export function scanQuoted(
   input: string,
   visit?: (char: string, i: number, state: QuoteState, isQuote: boolean) => number | void
 ): QuoteState {
@@ -50,11 +52,24 @@ export function parseInput(raw: string): ParsedCommand {
   }
   const command = tokens[0] || "";
   const rawArgs = tokens.slice(1);
+
+  return { command, ...splitArgsAndFlags(rawArgs), raw: trimmed, rawArgs };
+}
+
+/**
+ * Classify an argv tail (everything after the command name) into positional
+ * args and flags: `--flag` → `{flag:true}`, `-xyz` → three short flags, and
+ * anything else (including a bare `-`, which is coreutils' stdin operand) is a
+ * positional.
+ *
+ * Exported because `sudo` re-dispatches a command line it did not parse and
+ * has to classify the tail exactly as the shell would.
+ */
+export function splitArgsAndFlags(tokens: string[]): { args: string[]; flags: Record<string, boolean> } {
   const args: string[] = [];
   const flags: Record<string, boolean> = {};
 
-  for (let i = 1; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (const token of tokens) {
     if (token.startsWith("--")) {
       flags[token.slice(2)] = true;
     } else if (token.startsWith("-") && token.length > 1) {
@@ -67,33 +82,46 @@ export function parseInput(raw: string): ParsedCommand {
     }
   }
 
-  return { command, args, flags, raw: trimmed, rawArgs };
+  return { args, flags };
 }
 
 /**
  * Split raw input on unquoted `|` characters and parse each segment.
  * Returns an array of ParsedCommands representing the pipeline.
+ *
+ * An empty segment (`| ls`, `ls || ` already consumed upstream, `a | | b`) is a
+ * syntax error, not a silently-dropped stage — same treatment the chain
+ * operators get in `parseChainedPipeline`.
  */
-export function parsePipeline(raw: string): ParsedCommand[] {
+export function parsePipeline(raw: string, shell: "zsh" | "bash" = "zsh"): ParsedCommand[] {
   const trimmed = raw.trim();
   if (!trimmed) {
     return [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [] }];
   }
 
   const segments = splitOnPipe(trimmed);
+  if (segments.some((seg) => seg === "")) {
+    const error = shell === "bash"
+      ? "bash: syntax error near unexpected token `|'"
+      : "zsh: parse error near `|'";
+    return [{ command: "", args: [], flags: {}, raw: trimmed, rawArgs: [], error }];
+  }
   return segments.map((seg) => parseInput(seg));
 }
 
 /**
  * Split input on unquoted `|` characters, respecting single/double quotes.
- * Also handles `>` and `>>` redirection operators as separate segments.
+ * Empty segments are preserved (never silently dropped) so callers can reject
+ * `| ls` / `ls |` as syntax errors; the only empty result is empty input.
  */
 export function splitOnPipe(input: string): string[] {
   const segments: string[] = [];
   let current = "";
+  let sawPipe = false;
 
   scanQuoted(input, (char, _i, state, isQuote) => {
     if (!isQuote && char === "|" && !state.inSingle && !state.inDouble) {
+      sawPipe = true;
       segments.push(current.trim());
       current = "";
     } else {
@@ -101,8 +129,9 @@ export function splitOnPipe(input: string): string[] {
     }
   });
 
-  if (current.trim()) {
-    segments.push(current.trim());
+  const tail = current.trim();
+  if (tail || sawPipe) {
+    segments.push(tail);
   }
 
   return segments;
@@ -189,7 +218,7 @@ export function parseChainedPipeline(raw: string, shell: "zsh" | "bash" = "zsh")
   }
 
   return segments.map((seg) => ({
-    pipeline: parsePipeline(seg.text),
+    pipeline: parsePipeline(seg.text, shell),
     operator: seg.operator,
   }));
 }
@@ -292,28 +321,84 @@ export function analyzeIncompleteInput(input: string): { kind: ContinuationKind;
   return null;
 }
 
+/** How a run of characters inside a word was quoted. */
+export type QuoteKind = "none" | "single" | "double";
+
+/** A contiguous run of a word's characters that share one quoting mode. */
+export interface WordSegment {
+  text: string;
+  quote: QuoteKind;
+}
+
+/**
+ * One shell word, split into runs by quoting mode. `abc"d e"'$f'` is a single
+ * word with three segments.
+ *
+ * This is how "which characters were quoted" survives tokenization: `tokenize`
+ * (and therefore `ParsedCommand.args`) throws the information away, but `$VAR`
+ * and glob expansion both need it — `'*.log'` and `"$HOME"` must behave
+ * differently from their bare forms. `commands/expansion.ts` is the only
+ * consumer; everything else keeps using the flat token strings.
+ */
+export type QuotedWord = WordSegment[];
+
+/**
+ * Tokenize into quoting-aware words (see `QuotedWord`). Quote characters are
+ * dropped, exactly as `tokenize` drops them. Returns `null` for an unterminated
+ * quote, and never emits an empty word (`echo ""` yields one word, `echo`),
+ * which is what keeps `tokenize` below behaviourally identical to its
+ * hand-rolled predecessor.
+ */
+export function tokenizeWords(input: string): QuotedWord[] | null {
+  const words: QuotedWord[] = [];
+  let current: QuotedWord = [];
+
+  const { inSingle, inDouble } = scanQuoted(input, (char, _i, state, isQuote) => {
+    if (isQuote) return;
+    const quote: QuoteKind = state.inSingle ? "single" : state.inDouble ? "double" : "none";
+    if (char === " " && quote === "none") {
+      if (current.length > 0) {
+        words.push(current);
+        current = [];
+      }
+      return;
+    }
+    const last = current[current.length - 1];
+    if (last && last.quote === quote) last.text += char;
+    else current.push({ text: char, quote });
+  });
+
+  if (inSingle || inDouble) return null;
+
+  if (current.length > 0) words.push(current);
+  return words;
+}
+
+/** Flatten a `QuotedWord` back to the plain token string the tokenizer used to produce. */
+export function wordText(word: QuotedWord): string {
+  return word.map((seg) => seg.text).join("");
+}
+
+/**
+ * Build a `ParsedCommand` from an already-tokenized argv. Used by the expansion
+ * pass in `runPipeline`, which cannot go back through `parseInput`: a globbed
+ * filename may contain a space, and re-joining the tokens into a string would
+ * split it again.
+ *
+ * `raw` stays the pre-expansion text on purpose — it is the *typed* line, which
+ * is what redirection extraction and the alias/history machinery reason about.
+ */
+export function parsedFromTokens(tokens: string[], raw: string): ParsedCommand {
+  const command = tokens[0] || "";
+  const rawArgs = tokens.slice(1);
+  return { command, ...splitArgsAndFlags(rawArgs), raw, rawArgs };
+}
+
 /**
  * Split input into tokens, respecting single and double quotes.
  * Quote chars themselves are dropped from the tokens.
  */
 function tokenize(input: string): string[] | null {
-  const tokens: string[] = [];
-  let current = "";
-
-  const { inSingle, inDouble } = scanQuoted(input, (char, _i, state, isQuote) => {
-    if (isQuote) return;
-    if (char === " " && !state.inSingle && !state.inDouble) {
-      if (current) {
-        tokens.push(current);
-        current = "";
-      }
-    } else {
-      current += char;
-    }
-  });
-
-  if (inSingle || inDouble) return null;
-
-  if (current) tokens.push(current);
-  return tokens;
+  const words = tokenizeWords(input);
+  return words === null ? null : words.map(wordText);
 }

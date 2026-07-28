@@ -1,3 +1,4 @@
+import { compareValues } from "../evaluator";
 import { ScalarFn } from "./registry";
 
 export const numericFunctions: Record<string, ScalarFn> = {
@@ -68,13 +69,16 @@ export const numericFunctions: Record<string, ScalarFn> = {
     return lo + Math.random() * (hi - lo);
   },
 
+  // Return the winning argument itself, not a coerced number: GREATEST over
+  // dates must stay a date (and over strings must not be NaN). compareValues
+  // is the same ordering MIN/MAX and ORDER BY use.
   GREATEST: (args) => {
-    const vals = args.filter((a) => a !== null).map(Number);
-    return vals.length === 0 ? null : Math.max(...vals);
+    const vals = args.filter((a) => a !== null);
+    return vals.length === 0 ? null : vals.reduce((max, v) => (compareValues(v, max) > 0 ? v : max));
   },
   LEAST: (args) => {
-    const vals = args.filter((a) => a !== null).map(Number);
-    return vals.length === 0 ? null : Math.min(...vals);
+    const vals = args.filter((a) => a !== null);
+    return vals.length === 0 ? null : vals.reduce((min, v) => (compareValues(v, min) < 0 ? v : min));
   },
 
   DIV0: ([a, b]) => {

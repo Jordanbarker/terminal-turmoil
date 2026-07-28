@@ -42,7 +42,7 @@ import { formatElapsed } from "@tt/core/lib/format";
 import { runLine } from "../src/hooks/useTerminal";
 import { useGameStore, isGradeGateUp, type GameState } from "../src/state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES, registryIndex } from "../src/challenges/categories";
-import type { Grade } from "../src/challenges/scheduler";
+import { gradeForKey, type Grade } from "../src/challenges/scheduler";
 import { levelFor, progressInLevel } from "../src/challenges/mastery";
 import { HOME_DIR } from "../src/lib/machine";
 
@@ -73,13 +73,6 @@ export interface CommandOutput {
   /** Set when the command opened an editor/pager — the harness can't drive it. */
   startSession?: SessionToStart;
 }
-
-export const GRADE_BY_KEY: Record<string, Grade> = {
-  "1": "again",
-  "2": "hard",
-  "3": "good",
-  "4": "easy",
-};
 
 // ── Runner ──────────────────────────────────────────────────────────
 
@@ -169,7 +162,9 @@ export class CrunchRunner {
    */
   grade(grade: Grade | 1 | 2 | 3 | 4 = "good"): boolean {
     if (!isGradeGateUp(this.store)) return false;
-    const g = typeof grade === "number" ? GRADE_BY_KEY[String(grade)] : grade;
+    // Same 1-4 → Grade map TabManager's gate keys use, so the harness can't
+    // drift from what the browser actually schedules.
+    const g = typeof grade === "number" ? gradeForKey(String(grade))! : grade;
     // MP echoes come from the award-echo store subscription (completion MP
     // lands before this in checkCompletion; grading only adds deck-cleared).
     this.store.continueToNext(g);
@@ -374,7 +369,7 @@ async function main() {
           console.log((await runner.track(trimmed.slice(7).trim())).output.trimEnd());
         } else if (trimmed.startsWith(":grade")) {
           const key = trimmed.slice(6).trim() || "3";
-          const grade = GRADE_BY_KEY[key];
+          const grade = gradeForKey(key);
           if (!grade) console.log("Usage: :grade 1|2|3|4");
           else if (!runner.grade(grade)) console.log("No completion gate is up.");
           else console.log(runner.status());

@@ -9,7 +9,6 @@ export interface ChallengeSnapshot {
   activeWindow: WindowState;
   windows: WindowState[];
   fs: VirtualFS;
-  cwd: string;
   /** tmux session lifecycle: attached session name (null = detached bare shell)
    * and the detached snapshots living on the server. */
   tmux: {
@@ -83,6 +82,11 @@ export interface Challenge {
   initialEnv?: Record<string, string>;
   /** Filesystem challenges: the directory the panel readout renders as a tree. */
   fsWatchPath?: string;
+  /**
+   * Absolute path inside `fsWatchPath` that the tree readout flags as the
+   * deletion target (danger style). Omitted = no node is flagged.
+   */
+  fsDangerPath?: string;
   /**
    * Commands the player may use in this challenge (primary names; aliases resolve
    * automatically). Omitted = every registered command is available. `help` and

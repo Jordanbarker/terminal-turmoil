@@ -343,4 +343,67 @@ describe("source updates env", () => {
     // Original vars preserved
     expect(captured!.USER).toBe("ren");
   });
+
+  // The "Set CHIP_API_KEY" objective hangs off the assignment, not off the act
+  // of sourcing: `source ~/.zshrc` on the stock file used to tick it while the
+  // environment stayed empty, so a player could complete the step and still
+  // have a `chip` that refused to start.
+  it("emits no story event for a .zshrc that sets nothing the story watches", () => {
+    const fs = createMinimalFS("export EDITOR=nano\nalias ll='ls -la'\n");
+    const result = execute("source", [".zshrc"], {}, {
+      ...makeCtx(), fs, activeComputer: "nexacorp",
+      envVars: getDefaultEnv("nexacorp", "ren"), setEnvVars: () => {},
+    });
+    expect(result.triggerEvents).toEqual([{ type: "file_read", detail: "/home/ren/.zshrc" }]);
+  });
+
+  it("emits exported_chip_api_key when the sourced file really exports the key", () => {
+    const fs = createMinimalFS("export EDITOR=nano\nexport CHIP_API_KEY=nxa_live_7f3k9m2x\n");
+    const result = execute("source", [".zshrc"], {}, {
+      ...makeCtx(), fs, activeComputer: "nexacorp",
+      envVars: getDefaultEnv("nexacorp", "ren"), setEnvVars: () => {},
+    });
+    expect(result.triggerEvents).toContainEqual({
+      type: "command_executed", detail: "exported_chip_api_key",
+    });
+  });
+
+  it("emits nothing for a .zshrc that exports the wrong key", () => {
+    const fs = createMinimalFS("export CHIP_API_KEY=nxa_live_wrong\n");
+    const result = execute("source", [".zshrc"], {}, {
+      ...makeCtx(), fs, activeComputer: "nexacorp",
+      envVars: getDefaultEnv("nexacorp", "ren"), setEnvVars: () => {},
+    });
+    expect(result.triggerEvents).toEqual([{ type: "file_read", detail: "/home/ren/.zshrc" }]);
+  });
+});
+
+describe("chip API key validation", () => {
+  const chipCtx = (key?: string): CommandContext => ({
+    ...makeCtx(),
+    activeComputer: "nexacorp",
+    envVars: key === undefined ? {} : { CHIP_API_KEY: key },
+  });
+
+  it("refuses to start with no key", () => {
+    const result = execute("chip", [], {}, chipCtx());
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("CHIP_API_KEY not set");
+    expect(result.chipSession).toBeUndefined();
+  });
+
+  // A `chip` that accepts any string and an objective that accepts one literal
+  // key can disagree; they must fail and succeed on exactly the same input.
+  it("rejects a key the export trigger would not credit", () => {
+    const result = execute("chip", [], {}, chipCtx("nxa_live_wrong"));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("invalid API key");
+    expect(result.chipSession).toBeUndefined();
+  });
+
+  it("starts a session for the real key", () => {
+    const result = execute("chip", [], {}, chipCtx("nxa_live_7f3k9m2x"));
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.chipSession).toBeDefined();
+  });
 });

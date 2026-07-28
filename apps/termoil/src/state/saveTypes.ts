@@ -1,11 +1,11 @@
 import { SerializedFS } from "@tt/core/filesystem/serialization";
 import { Mounts } from "@tt/core/filesystem/mounts";
-import { GamePhase, ComputerId, StoryFlags } from "./types";
+import { ComputerId, StoryFlags } from "./types";
 import { SavedWindowState } from "@tt/core/terminal/paneTypes";
 import { TmuxSessionSnapshot } from "@tt/core/terminal/tmuxSessions";
 import { SerializedSnowflake } from "@tt/core/snowflake/serialization";
 
-export const SAVE_FORMAT_VERSION = 19;
+export const SAVE_FORMAT_VERSION = 21;
 
 export type SaveSlotId = "slot-1" | "slot-2" | "slot-3";
 
@@ -16,7 +16,10 @@ export type SaveSlotId = "slot-1" | "slot-2" | "slot-3";
 export interface SavePayload {
   version: number;
   username: string;
-  gamePhase: GamePhase;
+  // NOTE: gamePhase is deliberately NOT persisted. "booting"/"transitioning"
+  // are transient animation phases owned by a running timer; a reload during
+  // one would restore a phase nothing will ever advance, leaving the terminal
+  // permanently input-disabled. restoreGameState always returns "playing".
   currentChapter: string;
   completedObjectives: string[];
   deliveredEmailIds: string[];
@@ -34,6 +37,13 @@ export interface SavePayload {
   tmuxAttachedSession: { name: string; createdAt: number } | null;
   tmuxDetachedSessions: TmuxSessionSnapshot[];
   notifiedChipTopicIds: string[];
+  // Deferred "You have new messages on Piper" notice: set when a Piper message
+  // lands while the player is off nexacorp, flushed by the next arrival there.
+  // Persisted so a reload doesn't swallow the notice — and so a load/cheat
+  // always overwrites it, rather than letting the pre-load session's value leak
+  // into the restored game (unlike `pendingMuxNotice`, which is a one-shot
+  // banner for a terminal that no longer exists and is always restored null).
+  pendingPiperNotification: boolean;
   serializedSnowflake: SerializedSnowflake;
   // UI preference: hide the copy-mode key-hint overlay.
   copyModeHelpHidden: boolean;

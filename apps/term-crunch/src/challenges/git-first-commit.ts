@@ -2,6 +2,7 @@ import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { gitInit } from "@tt/core/git/repo";
 import { GIT_AUTHOR } from "../lib/machine";
 import { readGitState } from "../lib/gitState";
+import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
 const PROJECT_DIR = "/home/player/project";
@@ -12,13 +13,8 @@ const PROJECT_DIR = "/home/player/project";
  * genuine action.
  */
 function setup(base: VirtualFS): VirtualFS {
-  const mk = base.makeDirectory(PROJECT_DIR);
-  if (!mk.fs) throw new Error(mk.error ?? "git-first-commit: mkdir failed");
-
-  const wr = mk.fs.writeFile(`${PROJECT_DIR}/README.md`, "# Project\n");
-  if (!wr.fs) throw new Error(wr.error ?? "git-first-commit: write README failed");
-
-  return gitInit(wr.fs, PROJECT_DIR, GIT_AUTHOR).fs;
+  const fs = writeOrThrow(base, `${PROJECT_DIR}/README.md`, "# Project\n");
+  return gitInit(fs, PROJECT_DIR, GIT_AUTHOR).fs;
 }
 
 export const gitFirstCommit: Challenge = {
@@ -42,7 +38,9 @@ export const gitFirstCommit: Challenge = {
       command: 'git commit -m "init"',
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
-        return g.commitCount === 1 && g.latestMessage === "init" && g.clean;
+        // >= so an extra commit made along the way can't strand the player; the
+        // message + clean-tree checks still pin the intended end state.
+        return g.commitCount >= 1 && g.latestMessage === "init" && g.clean;
       },
     },
   ],

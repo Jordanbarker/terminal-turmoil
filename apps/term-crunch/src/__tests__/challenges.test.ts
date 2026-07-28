@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import "@tt/core/commands/builtins"; // register builtins so the registry is populated
 import {
   setAvailabilityPolicy,
@@ -21,14 +21,17 @@ import {
   setSplitRatio,
   collapsePane,
   allLeaves,
+  findSplit,
   resetPaneIdCounters,
+  MAX_NUDGE_RATIO,
+  type PaneNode,
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
-import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitPull } from "@tt/core/git/repo";
+import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitStashApply, readStash, gitPull } from "@tt/core/git/repo";
 import { buildBaseFs } from "../lib/seed";
 import { readGitState } from "../lib/gitState";
 import { structKey, paneTreeMatches, paneTreeMatchesWithRatio } from "../lib/paneCompare";
-import { CRUNCH_MACHINE, HOME_DIR, GIT_AUTHOR } from "../lib/machine";
+import { CRUNCH_MACHINE, HOME_DIR, GIT_AUTHOR, MAX_WINDOWS, MAX_PANES_PER_WINDOW } from "../lib/machine";
 import { panesSplit } from "../challenges/panes-split";
 import { panesGrid } from "../challenges/panes-grid";
 import { panesCleanup } from "../challenges/panes-cleanup";
@@ -49,6 +52,7 @@ import { aliasShortcut } from "../challenges/alias-shortcut";
 import { copyModeYank } from "../challenges/copy-mode-yank";
 import { sessionsDetachAttach } from "../challenges/sessions-detach-attach";
 import { sessionsJuggle } from "../challenges/sessions-juggle";
+import { sessionsRename } from "../challenges/sessions-rename";
 import { vimFirstEdit } from "../challenges/vim-first-edit";
 import { vimDeleteLines } from "../challenges/vim-delete-lines";
 import { vimFixWord } from "../challenges/vim-fix-word";
@@ -60,10 +64,9 @@ import type { ChallengeSnapshot } from "../challenges/types";
 function snap(
   activeWindow: WindowState,
   fs = buildBaseFs(),
-  cwd = HOME_DIR,
   tmux: ChallengeSnapshot["tmux"] = { attachedSession: "0", detachedSessions: [] },
 ): ChallengeSnapshot {
-  return { activeWindow, windows: [activeWindow], fs, cwd, tmux, envVars: {}, aliases: {} };
+  return { activeWindow, windows: [activeWindow], fs, tmux, envVars: {}, aliases: {} };
 }
 
 describe("paneCompare", () => {
@@ -353,7 +356,7 @@ describe("git-first-commit challenge", () => {
 
     expect(findRepoRoot(fs, repo)).toBe(repo);
 
-    const at = (f: typeof fs) => snap(win, f, repo);
+    const at = (f: typeof fs) => snap(win, f);
 
     // nothing staged, no commits
     expect(gitFirstCommit.steps[0].isComplete(at(fs))).toBe(false);
@@ -376,7 +379,7 @@ describe("git-unstage challenge", () => {
   const ENV_CONTENT = "API_KEY=sk-live-4f2a9c81d7e3\nDB_PASSWORD=hunter2\n";
   const [step1, step2] = gitUnstage.steps;
   const win = makeWindow(CRUNCH_MACHINE, repo);
-  const at = (f: ReturnType<typeof gitUnstage.setup>) => snap(win, f, repo);
+  const at = (f: ReturnType<typeof gitUnstage.setup>) => snap(win, f);
 
   it("seeds one commit with app.js AND the secret .env both staged", () => {
     const fs = gitUnstage.setup(buildBaseFs());
@@ -412,6 +415,12 @@ describe("git-unstage challenge", () => {
     expect(step1.isComplete(at(fs))).toBe(true);
   });
 
+  it("also accepts the modern `git restore --staged .env` spelling", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitRestore(fs, repo, repo, [".env"], true).fs;
+    expect(step1.isComplete(at(fs))).toBe(true);
+  });
+
   it("a bare `git reset` empties the whole index → step 1 stays incomplete until app.js is re-added", () => {
     let fs = gitUnstage.setup(buildBaseFs());
     fs = gitReset(fs, repo, repo, [], null).fs;
@@ -421,6 +430,30 @@ describe("git-unstage challenge", () => {
     // state checkpoint, not an event script: re-staging app.js reaches the target state
     fs = gitAdd(fs, repo, repo, ["app.js"], false).fs;
     expect(step1.isComplete(at(fs))).toBe(true);
+  });
+
+  it("completes via bare `git reset` then `git commit -am` — the change landed, .env stayed out", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitReset(fs, repo, repo, [], null).fs;
+    // `commit -am` re-stages the tracked app.js edit and commits it atomically,
+    // so "app.js staged" is never observable between commands.
+    fs = gitCommit(fs, repo, "update", GIT_AUTHOR, false, true, 1_700_000_002_000).fs;
+    const g = readGitState(fs, repo);
+    expect(g.commitCount).toBe(2);
+    expect(g.untracked).toContain(".env");
+    expect(fs.readFile(ENV).content).toBe(ENV_CONTENT);
+    // both steps true on the same snapshot: the store's forward-only cascade
+    // consumes step 1 then step 2 and the challenge completes.
+    expect(step1.isComplete(at(fs))).toBe(true);
+    expect(step2.isComplete(at(fs))).toBe(true);
+  });
+
+  it("does NOT complete when `git commit -am` runs without unstaging .env first", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitCommit(fs, repo, "update", GIT_AUTHOR, false, true, 1_700_000_002_000).fs;
+    expect(readGitState(fs, repo).untracked).not.toContain(".env"); // secrets committed
+    expect(step1.isComplete(at(fs))).toBe(false);
+    expect(step2.isComplete(at(fs))).toBe(false);
   });
 
   it("does NOT complete via `git reset --hard` — it deletes the staged-new .env", () => {
@@ -454,14 +487,14 @@ describe("git-rebase challenge", () => {
     expect(findRepoRoot(fs, repo)).toBe(repo);
     const win = makeWindow(CRUNCH_MACHINE, repo);
     // freshly seeded: nothing done yet
-    expect(step1.isComplete(snap(win, fs, repo))).toBe(false);
-    expect(step4.isComplete(snap(win, fs, repo))).toBe(false);
+    expect(step1.isComplete(snap(win, fs))).toBe(false);
+    expect(step4.isComplete(snap(win, fs))).toBe(false);
   });
 
   it("walks the full rebase → resolve → continue flow", () => {
     let fs = gitRebaseChallenge.setup(buildBaseFs());
     const win = makeWindow(CRUNCH_MACHINE, repo);
-    const at = (f: typeof fs) => snap(win, f, repo);
+    const at = (f: typeof fs) => snap(win, f);
 
     // git rebase main → conflict
     fs = gitRebase(fs, repo, "main").fs;
@@ -486,7 +519,7 @@ describe("git-rebase challenge", () => {
   it("accepts resolving in favor of one side (content equals a parent version)", () => {
     let fs = gitRebaseChallenge.setup(buildBaseFs());
     const win = makeWindow(CRUNCH_MACHINE, repo);
-    const at = (f: typeof fs) => snap(win, f, repo);
+    const at = (f: typeof fs) => snap(win, f);
 
     fs = gitRebase(fs, repo, "main").fs;
     // resolve to exactly main's version — equal to HEAD-side content, no markers
@@ -505,8 +538,8 @@ describe("git-rebase challenge", () => {
     fs = gitRebase(fs, repo, "main").fs;
     // stage the still-conflicted file (markers intact)
     fs = gitAdd(fs, repo, repo, ["config.txt"], false).fs;
-    expect(step2.isComplete(snap(win, fs, repo))).toBe(false); // markers not removed
-    expect(step3.isComplete(snap(win, fs, repo))).toBe(false); // so staging step stays blocked
+    expect(step2.isComplete(snap(win, fs))).toBe(false); // markers not removed
+    expect(step3.isComplete(snap(win, fs))).toBe(false); // so staging step stays blocked
   });
 });
 
@@ -516,7 +549,7 @@ describe("git-stash challenge", () => {
   const WIP_APP = "const VERSION = 1;\nstart(); // WIP: refactor in progress\n";
   const [step1, step2, step3, step4] = gitStashChallenge.steps;
   const win = makeWindow(CRUNCH_MACHINE, repo);
-  const at = (f: ReturnType<typeof gitStashChallenge.setup>) => snap(win, f, repo);
+  const at = (f: ReturnType<typeof gitStashChallenge.setup>) => snap(win, f);
 
   it("seeds a staged WIP on main with the hotfix branch present", () => {
     const fs = gitStashChallenge.setup(buildBaseFs());
@@ -555,6 +588,33 @@ describe("git-stash challenge", () => {
     expect(step4.isComplete(at(fs))).toBe(true);
     expect(fs.readFile(APP).content).toBe(WIP_APP);
   });
+
+  it("completes the restore step via apply, which keeps the stash entry", () => {
+    let fs = gitStashChallenge.setup(buildBaseFs());
+    fs = gitStashSave(fs, repo).fs;
+    fs = gitCheckout(fs, repo, "hotfix", false).fs;
+    fs = gitCheckout(fs, repo, "main", false).fs;
+
+    fs = gitStashApply(fs, repo).fs;
+    expect(readStash(fs, repo)).toHaveLength(1);
+    expect(step4.isComplete(at(fs))).toBe(true);
+  });
+
+  it("popping on the wrong branch refuses instead of dead-ending the challenge", () => {
+    let fs = gitStashChallenge.setup(buildBaseFs());
+    fs = gitStashSave(fs, repo).fs;
+    fs = gitCheckout(fs, repo, "hotfix", false).fs;
+
+    const popped = gitStashPop(fs, repo);
+    expect(popped.error).toContain("would be overwritten");
+    fs = popped.fs;
+    expect(readStash(fs, repo)).toHaveLength(1); // stash survives, so step 3 is still reachable
+
+    fs = gitCheckout(fs, repo, "main", false).fs;
+    expect(step3.isComplete(at(fs))).toBe(true);
+    fs = gitStashPop(fs, repo).fs;
+    expect(step4.isComplete(at(fs))).toBe(true);
+  });
 });
 
 describe("git-pull-ff challenge", () => {
@@ -565,7 +625,7 @@ describe("git-pull-ff challenge", () => {
     "def load():\n    rows = read_source()\n    rows = dedupe(rows)  # WIP: drop duplicate cards\n    write_warehouse(rows)\n";
   const [step1, step2, step3] = gitPullFf.steps;
   const win = makeWindow(CRUNCH_MACHINE, repo);
-  const at = (f: ReturnType<typeof gitPullFf.setup>) => snap(win, f, repo);
+  const at = (f: ReturnType<typeof gitPullFf.setup>) => snap(win, f);
 
   it("seeds a branch 2 commits behind origin with a dirty tree", () => {
     const fs = gitPullFf.setup(buildBaseFs());
@@ -647,6 +707,48 @@ describe("git-pull-ff dispatch (flags accepted through the git command)", () => 
     expect(r.exitCode ?? 0).not.toBe(129);
     expect(r.output).toContain("Fast-forward");
     expect(readGitState(r.newFs ?? fs, repo).behind).toBe(0);
+  });
+
+  // The step predicates are effect-based, so every no-merge-commit route the brief
+  // invites has to reach the same end state, not just the canonical `git pull --ff-only`.
+  describe("alternate no-merge-commit routes", () => {
+    const step2 = gitPullFf.steps[1];
+    const at = (f: ReturnType<typeof gitPullFf.setup>) => snap(makeWindow(CRUNCH_MACHINE, repo), f);
+
+    function stashed() {
+      resetAvailabilityPolicy();
+      return gitStashSave(gitPullFf.setup(buildBaseFs()), repo, true).fs;
+    }
+
+    function run(fs: ReturnType<typeof gitPullFf.setup>, rawArgs: string[]) {
+      const r = execute("git", [rawArgs[0]], {}, ctx(fs, rawArgs));
+      expect(r.stderr ?? "").toBe("");
+      expect(r.exitCode ?? 0).toBe(0);
+      return r.newFs ?? fs;
+    }
+
+    it("git fetch + git merge --ff-only origin/feat/add-sql", () => {
+      let fs = stashed();
+      fs = run(fs, ["fetch"]);
+      fs = run(fs, ["merge", "--ff-only", `origin/feat/add-sql`]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
+
+    it("git pull --rebase", () => {
+      let fs = stashed();
+      fs = run(fs, ["pull", "--rebase"]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
+
+    it("git fetch + git rebase origin/feat/add-sql", () => {
+      let fs = stashed();
+      fs = run(fs, ["fetch"]);
+      fs = run(fs, ["rebase", `origin/feat/add-sql`]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
   });
 });
 
@@ -956,7 +1058,7 @@ describe("vim challenges (validated on the SAVED buffer)", () => {
   // lives under this scratch dir, which each challenge's setup creates.
   const WORK = "/home/player/work";
   const fsSnap = (fs: ReturnType<typeof buildBaseFs>): ChallengeSnapshot =>
-    snap(makeWindow(CRUNCH_MACHINE, WORK), fs, WORK);
+    snap(makeWindow(CRUNCH_MACHINE, WORK), fs);
   // Simulate a vim :w of `content` into `path` on top of the seeded fs.
   const save = (c: typeof vimFirstEdit, path: string, content: string) =>
     c.setup(buildBaseFs()).writeFile(path, content).fs!;
@@ -1041,17 +1143,55 @@ describe("vim challenges (validated on the SAVED buffer)", () => {
 });
 
 describe("challenges are objective-first with progressive hints", () => {
-  // The command belongs in `command` (revealed on request), never in the objective
-  // text — that's the whole point of the rework, so guard it. The pane challenges
-  // (panes-split/windows-create) are keyboard-driven and intentionally excluded.
-  const objectiveFirst = [gitFirstCommit, gitUnstage, gitStashChallenge, gitPullFf, gitRebaseChallenge, rmBomb, chmodPerms, mvOrganize, envExport, aliasShortcut, copyModeYank, sessionsDetachAttach, sessionsJuggle, vimFirstEdit, vimDeleteLines, vimFixWord, vimYankPaste, vimSearchFix, vimReorder];
+  // The command belongs in `command` (revealed on request), never in the
+  // objective text. Derived from the REGISTRY, not a hand-kept list, so a new
+  // challenge is covered the moment it's registered and can only escape by
+  // being named here with a reason.
+  const HINT_EXEMPT: Record<string, string> = {
+    // Onboarding exemption: the very first challenge has no prior context to
+    // hint from, so its instruction names the two chords outright.
+    "panes-split": "first challenge; the instruction teaches the chords",
+  };
+  const objectiveFirst = CHALLENGES.filter((c) => !(c.id in HINT_EXEMPT));
 
-  it("each has a brief and every step has a hint + command", () => {
+  it("every step has a hint + command", () => {
     for (const c of objectiveFirst) {
-      expect(c.brief, `${c.id} missing brief`).toBeTruthy();
       for (const step of c.steps) {
         expect(step.hint, `${c.id} step missing hint`).toBeTruthy();
         expect(step.command, `${c.id} step missing command`).toBeTruthy();
+      }
+    }
+  });
+
+  // A brief is required unless the panel's TARGET readout already states the
+  // goal: pane/window challenges must not restate their own schematic.
+  it("every challenge has a brief unless a TARGET schematic states the goal", () => {
+    for (const c of CHALLENGES) {
+      if (c.targetWindow || c.targetWindows) continue;
+      expect(c.brief, `${c.id} missing brief`).toBeTruthy();
+    }
+  });
+
+  it("no instruction spells out the step's own command", () => {
+    // Normalize both sides so filler can't hide a leak: lowercase, strip
+    // punctuation and connective words ("then", "and"), collapse whitespace.
+    // The pre-fix windows-create text "Open a second window:  prefix then c"
+    // contained its command "prefix c" only after this normalization, which is
+    // why a raw substring check was vacuous.
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .split(" ")
+        .filter((w) => w && w !== "then" && w !== "and")
+        .join(" ");
+    for (const c of objectiveFirst) {
+      for (const step of c.steps) {
+        if (!step.instruction || !step.command) continue;
+        expect(
+          normalize(step.instruction).includes(normalize(step.command)),
+          `${c.id} instruction leaks its command`
+        ).toBe(false);
       }
     }
   });
@@ -1173,11 +1313,11 @@ describe("out-of-order step completion (cascade)", () => {
   // Pin that here: if a future edit makes step 0 vacuously true too, these
   // challenges would self-complete on load.
   describe("challenges whose final step is vacuously true at load", () => {
-    for (const challenge of [gitStashChallenge, gitPullFf, aliasShortcut]) {
+    for (const challenge of [gitStashChallenge, gitPullFf, aliasShortcut, sessionsDetachAttach, sessionsJuggle]) {
       it(`${challenge.id}: last step true at load, first step gates it`, () => {
         const fs = challenge.setup(buildBaseFs());
         const cwd = challenge.startCwd ?? HOME_DIR;
-        const s = snap(makeWindow(CRUNCH_MACHINE, cwd), fs, cwd);
+        const s = snap(makeWindow(CRUNCH_MACHINE, cwd), fs);
         const steps = challenge.steps;
         expect(steps[steps.length - 1].isComplete(s)).toBe(true);
         expect(steps[0].isComplete(s)).toBe(false);
@@ -1284,7 +1424,7 @@ describe("per-challenge command allowlist", () => {
 
 describe("sessions-detach-attach predicates", () => {
   const win = makeWindow(CRUNCH_MACHINE, HOME_DIR);
-  const at = (tmux: ChallengeSnapshot["tmux"]) => snap(win, buildBaseFs(), HOME_DIR, tmux);
+  const at = (tmux: ChallengeSnapshot["tmux"]) => snap(win, buildBaseFs(), tmux);
   const [detach, reattach] = sessionsDetachAttach.steps;
 
   it("step 0: detached with session 0 on the server", () => {
@@ -1294,16 +1434,61 @@ describe("sessions-detach-attach predicates", () => {
     expect(detach.isComplete(at({ attachedSession: null, detachedSessions: [] }))).toBe(false);
   });
 
-  it("step 1: reattached to 0 with nothing left detached", () => {
+  it("step 1: reattached to 0, name-scoped so other sessions can't strand it", () => {
     expect(reattach.isComplete(at({ attachedSession: null, detachedSessions: [{ name: "0", windowCount: 1 }] }))).toBe(false);
     expect(reattach.isComplete(at({ attachedSession: "0", detachedSessions: [] }))).toBe(true);
+    // An explorer who spun up and detached a second session before reattaching
+    // still passes: the checkpoint is "back on 0", not "nothing else exists".
+    expect(reattach.isComplete(at({ attachedSession: "0", detachedSessions: [{ name: "scratch", windowCount: 1 }] }))).toBe(true);
+    // Attached to the WRONG session is still not the checkpoint.
+    expect(reattach.isComplete(at({ attachedSession: "scratch", detachedSessions: [{ name: "0", windowCount: 1 }] }))).toBe(false);
+  });
+});
+
+describe("sessions-rename predicates", () => {
+  const win = makeWindow(CRUNCH_MACHINE, HOME_DIR);
+  const at = (attachedSession: string | null, detachedNames: string[]) =>
+    snap(win, buildBaseFs(), {
+      attachedSession,
+      detachedSessions: detachedNames.map((name) => ({ name, windowCount: 1 })),
+    });
+  const [detach, rename, fresh] = sessionsRename.steps;
+
+  it("step 0: detached with session 0 still on the server", () => {
+    expect(detach.isComplete(at("0", []))).toBe(false); // load state
+    expect(detach.isComplete(at(null, ["0"]))).toBe(true);
+    // kill-server leaves nothing to rename, so it is not a detach.
+    expect(detach.isComplete(at(null, []))).toBe(false);
+  });
+
+  it("step 1: keys off the NAME, not the rename event", () => {
+    expect(rename.isComplete(at(null, ["0"]))).toBe(false); // not renamed yet
+    expect(rename.isComplete(at(null, ["old"]))).toBe(true);
+    // Renaming the attached session instead leaves 0 gone but nothing parked.
+    expect(rename.isComplete(at("old", []))).toBe(false);
+    // A stray session named 0 (a re-created one) means the rename didn't stick.
+    expect(rename.isComplete(at(null, ["old", "0"]))).toBe(false);
+  });
+
+  it("step 2: attached to new while old stays parked", () => {
+    expect(fresh.isComplete(at(null, ["old"]))).toBe(false);
+    expect(fresh.isComplete(at("new", ["old"]))).toBe(true);
+    // Killing old instead of leaving it detached does not satisfy the step.
+    expect(fresh.isComplete(at("new", []))).toBe(false);
+  });
+
+  it("the load state satisfies no step (nothing pre-fires on the cascade)", () => {
+    const load = at("0", []);
+    for (const [i, step] of sessionsRename.steps.entries()) {
+      expect(step.isComplete(load), `step ${i} true at load`).toBe(false);
+    }
   });
 });
 
 describe("sessions-juggle predicates", () => {
   const win = makeWindow(CRUNCH_MACHINE, HOME_DIR);
   const at = (attachedSession: string | null, detachedNames: string[]) =>
-    snap(win, buildBaseFs(), HOME_DIR, {
+    snap(win, buildBaseFs(), {
       attachedSession,
       detachedSessions: detachedNames.map((name) => ({ name, windowCount: 1 })),
     });
@@ -1315,7 +1500,10 @@ describe("sessions-juggle predicates", () => {
     // step 0, which the load state never satisfies.
     const sequence: Array<[ReturnType<typeof at>, number[]]> = [
       [at("0", []), [3, 4]], // load state (and post-kill final state)
-      [at(null, ["0"]), [0]],
+      // also satisfies step 2, whose predicate no longer requires scratch to
+      // exist — safe because the cascade can only reach 2 from step 1
+      // (attached to scratch), which this state never satisfies.
+      [at(null, ["0"]), [0, 2]],
       [at("scratch", ["0"]), [1]],
       // the second detach also re-satisfies step 0 (already consumed by then)
       [at(null, ["0", "scratch"]), [0, 2]],
@@ -1385,6 +1573,21 @@ describe("tmux lifecycle win-detection (store)", () => {
     expect(state().awaitingContinue || state().completed).toBe(true);
   });
 
+  it("out-of-order: kill scratch from inside it, then attach, cascades to done", () => {
+    const state = useGameStore.getState;
+    select("sessions-juggle");
+    state().applyTmuxAction({ type: "detach" });
+    state().applyTmuxAction({ type: "new-session", name: "scratch" });
+    expect(state().stepIndex).toBe(2);
+    // Killing the attached session drops to a bare shell without snapshotting
+    // scratch, so step 2 must not require it to exist.
+    state().applyTmuxAction({ type: "kill-session", name: "scratch" });
+    expect(state().tmuxAttachedSession).toBe(null);
+    expect(state().stepIndex).toBe(3);
+    state().applyTmuxAction({ type: "attach", name: "0" });
+    expect(state().awaitingContinue || state().completed).toBe(true);
+  });
+
   it("detach, rename, new completes sessions-rename", () => {
     const state = useGameStore.getState;
     select("sessions-rename");
@@ -1426,5 +1629,98 @@ describe("tmux lifecycle win-detection (store)", () => {
     expect(state().stepIndex).toBe(0);
     state().applyTmuxAction({ type: "attach", name: "0" });
     expect(state().stepIndex).toBe(0);
+  });
+});
+
+describe("tmux window/pane verbs (store)", () => {
+  // A non-tmux challenge, so pane/window mutations can't satisfy a predicate
+  // and freeze the store mid-test behind the completion gate.
+  const state = useGameStore.getState;
+  const win = () => state().windows.find((w) => w.id === state().activeWindowId)!;
+  const activePane = () => win().activePaneId;
+  const rootSplit = () => win().root as Extract<PaneNode, { kind: "split" }>;
+
+  beforeAll(() => useGameStore.setState({ activeCategory: "all" }));
+  afterAll(() => {
+    useGameStore.setState({ activeCategory: "all" });
+    useGameStore.getState().loadChallenge(0);
+  });
+  beforeEach(() => state().loadChallenge(CHALLENGES.findIndex((c) => c.id === "rm-bomb")));
+
+  it("new-window appends a window, and is a silent no-op at MAX_WINDOWS", () => {
+    expect(state().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(state().windows).toHaveLength(2);
+    for (let i = state().windows.length; i < MAX_WINDOWS; i++) state().newWindow();
+    expect(state().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(state().windows).toHaveLength(MAX_WINDOWS);
+  });
+
+  it("rename-window renames the targeted window", () => {
+    const id = state().activeWindowId;
+    expect(state().applyTmuxAction({ type: "rename-window", windowId: id, name: "logs" })).toBe(false);
+    expect(state().windows.find((w) => w.id === id)!.name).toBe("logs");
+  });
+
+  it("kill-window returns true only for the window holding the active pane", () => {
+    const first = state().activeWindowId;
+    state().newWindow();
+    const second = state().activeWindowId;
+    expect(state().applyTmuxAction({ type: "kill-window", windowId: first })).toBe(false);
+    expect(state().windows).toHaveLength(1);
+    expect(state().applyTmuxAction({ type: "kill-window", windowId: second })).toBe(true);
+    // Last window: tmux kills the session and drops to the bare shell.
+    expect(state().tmuxAttachedSession).toBeNull();
+    expect(state().pendingMuxNotice).toBe("[exited]");
+  });
+
+  it("select-window switches windows without swapping the client view", () => {
+    const first = state().activeWindowId;
+    state().newWindow();
+    expect(state().applyTmuxAction({ type: "select-window", windowId: first })).toBe(false);
+    expect(state().activeWindowId).toBe(first);
+  });
+
+  it("split-window splits the active pane, and is a no-op at the pane cap", () => {
+    const original = activePane();
+    expect(state().applyTmuxAction({ type: "split-window", direction: "h" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(2);
+    expect(rootSplit().direction).toBe("h");
+    expect(activePane()).not.toBe(original);
+    while (allLeaves(win().root).length < MAX_PANES_PER_WINDOW) state().splitPane(activePane(), "v");
+    expect(state().applyTmuxAction({ type: "split-window", direction: "v" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(MAX_PANES_PER_WINDOW);
+  });
+
+  it("kill-pane closes the active pane and suppresses the prompt", () => {
+    const first = activePane();
+    state().splitPane(first, "h");
+    expect(state().applyTmuxAction({ type: "kill-pane" })).toBe(true);
+    expect(allLeaves(win().root)).toHaveLength(1);
+    expect(activePane()).toBe(first);
+  });
+
+  it("select-pane moves the focus in the given direction", () => {
+    const left = activePane();
+    const right = state().splitPane(left, "h")!;
+    expect(state().applyTmuxAction({ type: "select-pane", dir: "L" })).toBe(false);
+    expect(activePane()).toBe(left);
+    state().applyTmuxAction({ type: "select-pane", dir: "R" });
+    expect(activePane()).toBe(right);
+  });
+
+  it("resize-pane nudges the nearest split on the axis, capped at one chord press", () => {
+    state().splitPane(activePane(), "h");
+    const splitId = rootSplit().id;
+    state().applyTmuxAction({ type: "resize-pane", dir: "R", cells: 2 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52);
+    state().applyTmuxAction({ type: "resize-pane", dir: "L", cells: 100 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52 - MAX_NUDGE_RATIO);
+  });
+
+  it("resize-pane is a no-op when no split exists on that axis", () => {
+    state().splitPane(activePane(), "h");
+    const before = win().root;
+    state().applyTmuxAction({ type: "resize-pane", dir: "U", cells: 5 });
+    expect(win().root).toBe(before);
   });
 });
