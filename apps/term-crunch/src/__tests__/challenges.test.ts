@@ -681,6 +681,48 @@ describe("git-pull-ff dispatch (flags accepted through the git command)", () => 
     expect(r.output).toContain("Fast-forward");
     expect(readGitState(r.newFs ?? fs, repo).behind).toBe(0);
   });
+
+  // The step predicates are effect-based, so every no-merge-commit route the brief
+  // invites has to reach the same end state, not just the canonical `git pull --ff-only`.
+  describe("alternate no-merge-commit routes", () => {
+    const step2 = gitPullFf.steps[1];
+    const at = (f: ReturnType<typeof gitPullFf.setup>) => snap(makeWindow(CRUNCH_MACHINE, repo), f);
+
+    function stashed() {
+      resetAvailabilityPolicy();
+      return gitStashSave(gitPullFf.setup(buildBaseFs()), repo, true).fs;
+    }
+
+    function run(fs: ReturnType<typeof gitPullFf.setup>, rawArgs: string[]) {
+      const r = execute("git", [rawArgs[0]], {}, ctx(fs, rawArgs));
+      expect(r.stderr ?? "").toBe("");
+      expect(r.exitCode ?? 0).toBe(0);
+      return r.newFs ?? fs;
+    }
+
+    it("git fetch + git merge --ff-only origin/feat/add-sql", () => {
+      let fs = stashed();
+      fs = run(fs, ["fetch"]);
+      fs = run(fs, ["merge", "--ff-only", `origin/feat/add-sql`]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
+
+    it("git pull --rebase", () => {
+      let fs = stashed();
+      fs = run(fs, ["pull", "--rebase"]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
+
+    it("git fetch + git rebase origin/feat/add-sql", () => {
+      let fs = stashed();
+      fs = run(fs, ["fetch"]);
+      fs = run(fs, ["rebase", `origin/feat/add-sql`]);
+      expect(readGitState(fs, repo).behind).toBe(0);
+      expect(step2.isComplete(at(fs))).toBe(true);
+    });
+  });
 });
 
 describe("rm-bomb challenge", () => {

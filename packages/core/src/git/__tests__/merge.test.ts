@@ -153,6 +153,57 @@ describe("git merge — fast-forward", () => {
   });
 });
 
+describe("git merge --ff-only", () => {
+  it("fast-forwards a strictly-behind branch", () => {
+    let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;
+    fs = commitFile(fs, "a.txt", "v1\n", "base");
+    fs = createBranch(fs, ROOT, "feature").fs;
+    fs = checkout(fs, "feature");
+    fs = commitFile(fs, "a.txt", "v2\n", "advance");
+    const featureHash = head(fs);
+    fs = checkout(fs, "main");
+
+    const res = gitMerge(fs, ROOT, "feature", AUTHOR, TS, { ffOnly: true });
+    expect(res.error).toBeUndefined();
+    expect(res.output).toContain("Fast-forward");
+    expect(branchTip(res.fs, "main")).toBe(featureHash);
+  });
+
+  it("fast-forwards onto a remote-tracking ref", () => {
+    let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;
+    fs = commitFile(fs, "a.txt", "v1\n", "base");
+    fs = createBranch(fs, ROOT, "feature").fs;
+    fs = checkout(fs, "feature");
+    fs = commitFile(fs, "a.txt", "v2\n", "advance");
+    const featureHash = head(fs);
+    fs = checkout(fs, "main");
+    fs = fs.writeFile(`${ROOT}/.git/refs/remotes/origin/main`, featureHash).fs!;
+
+    const res = gitMerge(fs, ROOT, "origin/main", AUTHOR, TS, { ffOnly: true });
+    expect(res.error).toBeUndefined();
+    expect(res.output).toContain("Fast-forward");
+    expect(branchTip(res.fs, "main")).toBe(featureHash);
+  });
+
+  it("is a no-op when already up to date", () => {
+    let fs = gitInit(makeFs(), ROOT, AUTHOR).fs;
+    fs = commitFile(fs, "a.txt", "v1\n", "base");
+    fs = createBranch(fs, ROOT, "feature").fs;
+    const res = gitMerge(fs, ROOT, "feature", AUTHOR, TS, { ffOnly: true });
+    expect(res.error).toBeUndefined();
+    expect(res.output).toBe("Already up to date.");
+  });
+
+  it("refuses to make a merge commit when the branches have diverged", () => {
+    const fs = setupDiverged();
+    const mainHash = head(fs);
+    const res = gitMerge(fs, ROOT, "feature", AUTHOR, TS, { ffOnly: true });
+    expect(res.error).toBe("fatal: Not possible to fast-forward, aborting.");
+    expect(branchTip(res.fs, "main")).toBe(mainHash);
+    expect(res.fs.getNode(`${ROOT}/feature.txt`)).toBeNull();
+  });
+});
+
 describe("git merge — clean true merge", () => {
   it("creates a merge commit with both parents", () => {
     let fs = setupDiverged();

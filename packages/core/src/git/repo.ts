@@ -1692,7 +1692,8 @@ function formatDiffStat(oldTree: Record<string, string>, newTree: Record<string,
 // ── git pull ─────────────────────────────────────────────────────────
 
 export function gitPull(
-  fs: VirtualFS, root: string, remote: string | undefined, branch: string | undefined, storyFlags: Record<string, string | boolean>, ffOnly = false
+  fs: VirtualFS, root: string, remote: string | undefined, branch: string | undefined,
+  storyFlags: Record<string, string | boolean>, opts: { ffOnly?: boolean; rebase?: boolean } = {},
 ): { fs: VirtualFS; output: string; error?: string; triggerEvents?: { type: "command_executed"; detail: string }[] } {
   if (readMergeState(fs, root)) {
     return { fs, output: "", error: MERGE_IN_PROGRESS };
@@ -1717,10 +1718,22 @@ export function gitPull(
   const trackingTip = fs.readFile(`${root}/.git/refs/remotes/origin/${targetBranch}`).content?.trim();
   const localBehindTracking =
     !!localTip && !!trackingTip && trackingTip !== localTip && ancestorSet(fs, root, trackingTip).has(localTip);
-  if (ffOnly && localTip && trackingTip && trackingTip !== localTip && !localBehindTracking
-      && !ancestorSet(fs, root, localTip).has(trackingTip)) {
-    // Diverged: neither tip is an ancestor of the other.
-    return { fs, output: "", error: "fatal: Not possible to fast-forward, aborting." };
+  // Diverged: neither tip is an ancestor of the other.
+  const divergedFromTracking =
+    !!localTip && !!trackingTip && trackingTip !== localTip && !localBehindTracking
+    && !ancestorSet(fs, root, localTip).has(trackingTip);
+  if (divergedFromTracking && opts.ffOnly) {
+    return { fs, output: "", error: NOT_FAST_FORWARD };
+  }
+  if (divergedFromTracking && opts.rebase) {
+    // `pull --rebase` is fetch + rebase onto the tracking ref; the refs are already seeded.
+    const rebased = gitRebase(fs, root, `origin/${targetBranch}`);
+    if (rebased.error) return { fs, output: "", error: rebased.error };
+    return {
+      fs: rebased.fs,
+      output: rebased.output,
+      triggerEvents: [{ type: "command_executed", detail: `git_pull_origin_${targetBranch}` }],
+    };
   }
   if (localBehindTracking) {
     const newTree = readCommit(fs, root, trackingTip)?.tree ?? {};
@@ -1781,8 +1794,8 @@ export function gitPull(
     if (newCommits.length === 0) {
       return { fs, output: "Already up to date." };
     }
-    if (ffOnly && newCommits[0].parent !== headHash) {
-      return { fs, output: "", error: "fatal: Not possible to fast-forward, aborting." };
+    if (opts.ffOnly && newCommits[0].parent !== headHash) {
+      return { fs, output: "", error: NOT_FAST_FORWARD };
     }
 
     // Write new commit objects
@@ -2082,7 +2095,8 @@ export function gitRebase(fs: VirtualFS, root: string, upstream: string | undefi
   if (!branch) {
     return { fs, output: "", error: "fatal: It looks like 'git rebase' is being run with a detached HEAD." };
   }
-  const upstreamTip = fs.readFile(`${root}/.git/refs/heads/${upstream}`).content?.trim();
+  // resolveRef so `origin/<branch>` and raw hashes work as upstreams, not just local branches.
+  const upstreamTip = resolveRef(fs, root, upstream);
   if (!upstreamTip) {
     return { fs, output: "", error: `fatal: invalid upstream '${upstream}'` };
   }
@@ -2174,6 +2188,8 @@ export function gitRebaseAbort(fs: VirtualFS, root: string): { fs: VirtualFS; ou
  * spells it MERGE_HEAD; the sim's equivalent is `.git/merge-state.json`.
  */
 export const MERGE_IN_PROGRESS = "fatal: You have not concluded your merge (MERGE_HEAD exists).";
+/** What `--ff-only` prints (from `git merge` and `git pull` alike) when the merge isn't a fast-forward. */
+export const NOT_FAST_FORWARD = "fatal: Not possible to fast-forward, aborting.";
 
 function writeMergeState(fs: VirtualFS, root: string, state: GitMergeState): VirtualFS {
   return writeOrFail(fs, `${root}/.git/merge-state.json`, JSON.stringify(state));
@@ -2284,6 +2300,7 @@ export interface GitMergeResult {
  */
 export function gitMerge(
   fs: VirtualFS, root: string, target: string | undefined, author: string, timestamp: number,
+  opts: { ffOnly?: boolean } = {},
 ): GitMergeResult {
   if (readRebaseState(fs, root)) {
     return { fs, output: "", error: 'fatal: It seems that there is already a rebase in progress.\nUse "git rebase (--continue | --abort)".' };
@@ -2332,6 +2349,11 @@ export function gitMerge(
       ].join("\n"),
       triggerEvents: mergeEvents(target),
     };
+  }
+
+  // Past the fast-forward path, a real merge commit is the only way forward.
+  if (opts.ffOnly) {
+    return { fs, output: "", error: NOT_FAST_FORWARD };
   }
 
   const base = mergeBase(fs, root, headHash, targetHash);

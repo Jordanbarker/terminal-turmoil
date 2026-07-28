@@ -383,3 +383,40 @@ describe("git restore / checkout <file>", () => {
     expect(git(setupHistory(), ["restore", "--bogus", "a.txt"]).exitCode).toBe(129);
   });
 });
+
+describe("git fetch / pull / merge remote-route flags", () => {
+  function withRemote(ctx: CommandContext): CommandContext {
+    const fs = ctx.fs.writeFile(`${HOME}/.git/config`, '[remote "origin"]\n  url = test-remote').fs!;
+    return { ...ctx, fs };
+  }
+
+  it("fetch is a silent no-op when a remote is configured", () => {
+    const result = git(withRemote(setupCommittedRepo()), ["fetch"]);
+    expect(result.stderr).toBeUndefined();
+    expect(result.output).toBe("");
+    expect(result.exitCode).toBeUndefined();
+  });
+
+  it("fetch errors when the repo has no remote", () => {
+    const result = git(setupCommittedRepo(), ["fetch"]);
+    expect(result.stderr).toBe("fatal: 'origin' does not appear to be a git repository");
+    expect(result.exitCode).toBe(128);
+  });
+
+  it("accepts merge --ff-only and pull --rebase, but rejects --ff-only --rebase together", () => {
+    const ctx = withRemote(setupCommittedRepo());
+    // Flags pass the whitelist: these reach the engine and fail (if at all) on repo state, not parsing.
+    expect(git(ctx, ["merge", "--ff-only", "main"]).exitCode).not.toBe(129);
+    expect(git(ctx, ["pull", "--rebase"]).exitCode).not.toBe(129);
+    const both = git(ctx, ["pull", "--ff-only", "--rebase"]);
+    expect(both.stderr).toBe("fatal: options '--ff-only' and '--rebase' cannot be used together");
+    expect(both.exitCode).toBe(128);
+  });
+
+  it("still rejects unknown fetch/merge/pull flags", () => {
+    const ctx = withRemote(setupCommittedRepo());
+    expect(git(ctx, ["fetch", "--all"]).exitCode).toBe(129);
+    expect(git(ctx, ["merge", "--bogus"]).exitCode).toBe(129);
+    expect(git(ctx, ["pull", "--bogus"]).exitCode).toBe(129);
+  });
+});

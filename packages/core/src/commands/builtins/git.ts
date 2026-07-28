@@ -12,7 +12,7 @@ import {
   gitClone, gitPush, gitPull, gitReset,
   gitRebase, gitRebaseContinue, gitRebaseAbort,
   gitMerge, gitMergeContinue, gitMergeAbort,
-  resolveRef, splitRevsAndPaths, filterCommitsByPaths,
+  resolveRef, splitRevsAndPaths, filterCommitsByPaths, readRemoteUrl,
   type BranchListMode, type GitResetMode,
 } from "@tt/core/git/repo";
 import { formatStatus, formatLog, formatDiff, formatBranches } from "@tt/core/git/output";
@@ -90,12 +90,13 @@ const GIT_SUBCOMMAND_FLAGS: Record<string, KnownFlags> = {
   restore: { long: ["staged"] },
   switch: { short: ["c", "d"], long: ["detach"] },
   rebase: { long: ["continue", "abort"] },
-  merge: { long: ["continue", "abort"] },
+  merge: { long: ["continue", "abort", "ff-only"] },
   reset: { long: ["soft", "mixed", "hard"] },
   diff: { long: ["staged", "cached"] },
   stash: { short: ["u"], long: ["include-untracked"] },
   push: { short: ["u", "f"] },
-  pull: { long: ["ff-only"] },
+  pull: { long: ["ff-only", "rebase"] },
+  fetch: {},
   help: {},
 };
 
@@ -344,7 +345,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
         if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
         return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
       }
-      const result = gitMerge(ctx.fs, root, subArgs[0], author, timestamp);
+      const result = gitMerge(ctx.fs, root, subArgs[0], author, timestamp, { ffOnly: !!flags["ff-only"] });
       if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
       // Conflicts are reported on stdout with exit 1, as real git does.
       return {
@@ -412,9 +413,24 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "pull": {
       const remote = subArgs[0];
       const branch = subArgs[1];
-      const result = gitPull(ctx.fs, root, remote, branch, ctx.storyFlags ?? {}, !!flags["ff-only"]);
+      if (flags["ff-only"] && flags["rebase"]) {
+        return errorResult("fatal: options '--ff-only' and '--rebase' cannot be used together", 128);
+      }
+      const result = gitPull(ctx.fs, root, remote, branch, ctx.storyFlags ?? {}, {
+        ffOnly: !!flags["ff-only"],
+        rebase: !!flags["rebase"],
+      });
       if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
+    }
+
+    case "fetch": {
+      if (!readRemoteUrl(ctx.fs, root)) {
+        return errorResult("fatal: 'origin' does not appear to be a git repository", 128);
+      }
+      // Remote-tracking refs are seeded statically rather than fetched, so there is
+      // never anything new to download — real git is silent when already up to date.
+      return { output: "" };
     }
 
     case "help":

@@ -7,7 +7,7 @@ import {
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashList,
   gitRm, gitClone, gitPush, gitPull, gitReset, gitMerge, resolveRef,
-  resolveHead, readIndex, splitRevsAndPaths,
+  resolveHead, readIndex, readCommit, splitRevsAndPaths,
 } from "../repo";
 import { formatStatus, formatLog } from "../output";
 import { buildSimpleRemote, REMOTE_REPOS } from "../remotes";
@@ -888,9 +888,9 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
   it("a second --ff-only pull after catching up is a no-op, not an error", () => {
     let fs = seedBehindByTwo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
-    const first = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const first = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(first.output).toContain("Fast-forward");
-    const second = gitPull(first.fs, "/home/player", undefined, undefined, {}, true);
+    const second = gitPull(first.fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(second.error).toBeUndefined();
     expect(second.output).toBe("Already up to date.");
   });
@@ -898,7 +898,7 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
   it("--ff-only still fast-forwards when strictly behind", () => {
     let fs = seedBehindByTwo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
-    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(pull.error).toBeUndefined();
     expect(pull.output).toContain("Fast-forward");
   });
@@ -911,7 +911,7 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
     fs = addAndCommit(fs, "/home/player", "local work");
     const localTip = resolveHead(fs, "/home/player")!;
 
-    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, true);
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { ffOnly: true });
     expect(pull.error).toBe("fatal: Not possible to fast-forward, aborting.");
     // Refs and working tree untouched.
     expect(pull.fs.readFile("/home/player/.git/refs/heads/main").content!.trim()).toBe(localTip);
@@ -946,6 +946,36 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
     } finally {
       delete REMOTE_REPOS[TEST_URL];
     }
+  });
+
+  it("--rebase fast-forwards when strictly behind", () => {
+    let fs = seedBehindByTwo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
+    const upTip = fs.readFile("/home/player/.git/refs/remotes/origin/main").content!.trim();
+
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { rebase: true });
+    expect(pull.error).toBeUndefined();
+    expect(pull.output).toContain("Fast-forward");
+    expect(pull.fs.readFile("/home/player/.git/refs/heads/main").content!.trim()).toBe(upTip);
+  });
+
+  it("--rebase replays local commits on top of the tracking tip when diverged", () => {
+    let fs = seedBehindByTwo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;
+    const upTip = fs.readFile("/home/player/.git/refs/remotes/origin/main").content!.trim();
+    fs = fs.writeFile("/home/player/local.txt", "mine").fs!;
+    fs = addAndCommit(fs, "/home/player", "local work");
+
+    const pull = gitPull(fs, "/home/player", undefined, undefined, {}, { rebase: true });
+    expect(pull.error).toBeUndefined();
+    fs = pull.fs;
+    // Linear history: the local commit now sits on top of the two upstream ones.
+    expect(getCommitLog(fs, "/home/player").map((c) => c.message)).toEqual(["local work", "u2", "u1", "first"]);
+    const tip = fs.readFile("/home/player/.git/refs/heads/main").content!.trim();
+    expect(tip).not.toBe(upTip);
+    expect(readCommit(fs, "/home/player", tip)!.parent).toBe(upTip);
+    expect(gitStatus(fs, "/home/player").tracking).toEqual({ remoteRef: "origin/main", ahead: 1, behind: 0 });
+    expect(pull.triggerEvents).toEqual([{ type: "command_executed", detail: "git_pull_origin_main" }]);
   });
 
   it("without --ff-only a diverged branch falls through unchanged", () => {
