@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import "@tt/core/commands/builtins"; // register builtins so the registry is populated
 import {
   setAvailabilityPolicy,
@@ -21,14 +21,17 @@ import {
   setSplitRatio,
   collapsePane,
   allLeaves,
+  findSplit,
   resetPaneIdCounters,
+  MAX_NUDGE_RATIO,
+  type PaneNode,
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
 import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitPull } from "@tt/core/git/repo";
 import { buildBaseFs } from "../lib/seed";
 import { readGitState } from "../lib/gitState";
 import { structKey, paneTreeMatches, paneTreeMatchesWithRatio } from "../lib/paneCompare";
-import { CRUNCH_MACHINE, HOME_DIR, GIT_AUTHOR } from "../lib/machine";
+import { CRUNCH_MACHINE, HOME_DIR, GIT_AUTHOR, MAX_WINDOWS, MAX_PANES_PER_WINDOW } from "../lib/machine";
 import { panesSplit } from "../challenges/panes-split";
 import { panesGrid } from "../challenges/panes-grid";
 import { panesCleanup } from "../challenges/panes-cleanup";
@@ -1539,5 +1542,98 @@ describe("tmux lifecycle win-detection (store)", () => {
     expect(state().stepIndex).toBe(0);
     state().applyTmuxAction({ type: "attach", name: "0" });
     expect(state().stepIndex).toBe(0);
+  });
+});
+
+describe("tmux window/pane verbs (store)", () => {
+  // A non-tmux challenge, so pane/window mutations can't satisfy a predicate
+  // and freeze the store mid-test behind the completion gate.
+  const state = useGameStore.getState;
+  const win = () => state().windows.find((w) => w.id === state().activeWindowId)!;
+  const activePane = () => win().activePaneId;
+  const rootSplit = () => win().root as Extract<PaneNode, { kind: "split" }>;
+
+  beforeAll(() => useGameStore.setState({ activeCategory: "all" }));
+  afterAll(() => {
+    useGameStore.setState({ activeCategory: "all" });
+    useGameStore.getState().loadChallenge(0);
+  });
+  beforeEach(() => state().loadChallenge(CHALLENGES.findIndex((c) => c.id === "rm-bomb")));
+
+  it("new-window appends a window, and is a silent no-op at MAX_WINDOWS", () => {
+    expect(state().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(state().windows).toHaveLength(2);
+    for (let i = state().windows.length; i < MAX_WINDOWS; i++) state().newWindow();
+    expect(state().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(state().windows).toHaveLength(MAX_WINDOWS);
+  });
+
+  it("rename-window renames the targeted window", () => {
+    const id = state().activeWindowId;
+    expect(state().applyTmuxAction({ type: "rename-window", windowId: id, name: "logs" })).toBe(false);
+    expect(state().windows.find((w) => w.id === id)!.name).toBe("logs");
+  });
+
+  it("kill-window returns true only for the window holding the active pane", () => {
+    const first = state().activeWindowId;
+    state().newWindow();
+    const second = state().activeWindowId;
+    expect(state().applyTmuxAction({ type: "kill-window", windowId: first })).toBe(false);
+    expect(state().windows).toHaveLength(1);
+    expect(state().applyTmuxAction({ type: "kill-window", windowId: second })).toBe(true);
+    // Last window: tmux kills the session and drops to the bare shell.
+    expect(state().tmuxAttachedSession).toBeNull();
+    expect(state().pendingMuxNotice).toBe("[exited]");
+  });
+
+  it("select-window switches windows without swapping the client view", () => {
+    const first = state().activeWindowId;
+    state().newWindow();
+    expect(state().applyTmuxAction({ type: "select-window", windowId: first })).toBe(false);
+    expect(state().activeWindowId).toBe(first);
+  });
+
+  it("split-window splits the active pane, and is a no-op at the pane cap", () => {
+    const original = activePane();
+    expect(state().applyTmuxAction({ type: "split-window", direction: "h" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(2);
+    expect(rootSplit().direction).toBe("h");
+    expect(activePane()).not.toBe(original);
+    while (allLeaves(win().root).length < MAX_PANES_PER_WINDOW) state().splitPane(activePane(), "v");
+    expect(state().applyTmuxAction({ type: "split-window", direction: "v" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(MAX_PANES_PER_WINDOW);
+  });
+
+  it("kill-pane closes the active pane and suppresses the prompt", () => {
+    const first = activePane();
+    state().splitPane(first, "h");
+    expect(state().applyTmuxAction({ type: "kill-pane" })).toBe(true);
+    expect(allLeaves(win().root)).toHaveLength(1);
+    expect(activePane()).toBe(first);
+  });
+
+  it("select-pane moves the focus in the given direction", () => {
+    const left = activePane();
+    const right = state().splitPane(left, "h")!;
+    expect(state().applyTmuxAction({ type: "select-pane", dir: "L" })).toBe(false);
+    expect(activePane()).toBe(left);
+    state().applyTmuxAction({ type: "select-pane", dir: "R" });
+    expect(activePane()).toBe(right);
+  });
+
+  it("resize-pane nudges the nearest split on the axis, capped at one chord press", () => {
+    state().splitPane(activePane(), "h");
+    const splitId = rootSplit().id;
+    state().applyTmuxAction({ type: "resize-pane", dir: "R", cells: 2 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52);
+    state().applyTmuxAction({ type: "resize-pane", dir: "L", cells: 100 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52 - MAX_NUDGE_RATIO);
+  });
+
+  it("resize-pane is a no-op when no split exists on that axis", () => {
+    state().splitPane(activePane(), "h");
+    const before = win().root;
+    state().applyTmuxAction({ type: "resize-pane", dir: "U", cells: 5 });
+    expect(win().root).toBe(before);
   });
 });

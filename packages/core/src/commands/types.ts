@@ -102,7 +102,19 @@ export type TmuxAction =
   | { type: "kill-session"; name: string }
   /** `target` is the session to rename (already known to exist), `name` the new one. */
   | { type: "rename-session"; target: string; name: string }
-  | { type: "kill-server" };
+  | { type: "kill-server" }
+  // Window/pane verbs. `windowId` is resolved against `TmuxContext.windows` by
+  // the builtin; pane verbs carry no id because a command can only be submitted
+  // from the active pane, which the store resolves when it applies the action.
+  | { type: "new-window" }
+  | { type: "rename-window"; windowId: string; name: string }
+  | { type: "kill-window"; windowId: string }
+  | { type: "select-window"; windowId: string }
+  /** tmux: `-h` splits side-by-side, no flag (or `-v`) stacks. */
+  | { type: "split-window"; direction: "h" | "v" }
+  | { type: "kill-pane" }
+  | { type: "select-pane"; dir: "L" | "R" | "U" | "D" }
+  | { type: "resize-pane"; dir: "L" | "R" | "U" | "D"; cells: number };
 
 /** Read-only tmux server snapshot injected by the app for the `tmux` builtin. */
 export interface TmuxContext {
@@ -113,6 +125,11 @@ export interface TmuxContext {
    * (most recent last) — bare `attach`/`kill-session` target the last one.
    */
   sessions: Array<{ name: string; windowCount: number; createdAt: number; attached: boolean }>;
+  /**
+   * Windows of the attached session, in status-line order, for resolving the
+   * window verbs' `-t` target. Absent => nothing resolves, including "current".
+   */
+  windows?: Array<{ id: string; index: number; name: string | null; active: boolean }>;
 }
 
 export type GameAction =

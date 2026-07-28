@@ -138,6 +138,13 @@ function buildCommandContext(
           attached: false,
         })),
       ],
+      // Window strip of the attached session, for `-t` targeting by name/index.
+      windows: store.windows.map((w, i) => ({
+        id: w.id,
+        index: i + 1,
+        name: w.name ?? null,
+        active: w.id === store.activeWindowId,
+      })),
     },
   };
 }

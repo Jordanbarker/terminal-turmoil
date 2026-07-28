@@ -16,6 +16,8 @@ import {
   nextLeafId,
   setSplitRatio,
   nudgeSplitRatio,
+  nearestResizableSplit,
+  cliResizeDelta,
   mapLeaf,
 } from "@tt/core/terminal/paneTypes";
 import { parseEnvAssignments, parseAliases } from "@tt/core/terminal/envParse";
@@ -741,6 +743,52 @@ export const useGameStore = create<GameState>()(
         }
         set({ tmuxDetachedSessions: [] });
         get().checkCompletion();
+        return false;
+      }
+      // Window/pane verbs. These delegate to the same actions the prefix chords
+      // use (each of which already runs checkCompletion), so they inherit the
+      // window/pane caps and the last-window kill rule; only an action that
+      // destroys or swaps the issuing pane's view returns true.
+      case "new-window": {
+        get().newWindow();
+        return false;
+      }
+      case "rename-window": {
+        get().renameWindow(action.windowId, action.name);
+        return false;
+      }
+      case "kill-window": {
+        const activePaneWindow = state.activeWindowId;
+        get().closeWindow(action.windowId);
+        return action.windowId === activePaneWindow;
+      }
+      case "select-window": {
+        get().selectWindow(action.windowId);
+        get().checkCompletion();
+        return false;
+      }
+      case "split-window": {
+        const paneId = state.windows.find((w) => w.id === state.activeWindowId)?.activePaneId;
+        if (paneId) get().splitPane(paneId, action.direction);
+        return false;
+      }
+      case "kill-pane": {
+        const paneId = state.windows.find((w) => w.id === state.activeWindowId)?.activePaneId;
+        if (!paneId) return false;
+        get().closePane(paneId);
+        return true;
+      }
+      case "select-pane": {
+        get().focusDirection(action.dir);
+        get().checkCompletion();
+        return false;
+      }
+      case "resize-pane": {
+        const win = state.windows.find((w) => w.id === state.activeWindowId);
+        if (!win) return false;
+        const orientation = action.dir === "L" || action.dir === "R" ? "h" : "v";
+        const splitId = nearestResizableSplit(win.root, win.activePaneId, orientation);
+        if (splitId) get().nudgePaneRatio(splitId, cliResizeDelta(action.dir, action.cells));
         return false;
       }
     }

@@ -32,6 +32,8 @@ import {
   nudgeSplitRatio,
   focusDirectionTarget,
   nextLeafId,
+  nearestResizableSplit,
+  cliResizeDelta,
   resetPaneIdCounters,
 } from "@tt/core/terminal/paneTypes";
 import { TmuxSessionSnapshot, snapshotSession, restoreSession } from "@tt/core/terminal/tmuxSessions";
@@ -580,6 +582,51 @@ export const useGameStore = create<GameStore>()(
               return true;
             }
             set({ tmuxDetachedSessions: [] });
+            return false;
+          }
+          // Window/pane verbs. These mirror the prefix chords exactly, so they
+          // inherit the chord paths' caps and the last-window kill rule; only
+          // an action that destroys or swaps the issuing pane's view returns
+          // true (the prompt is then suppressed).
+          case "new-window": {
+            const leaf = getActiveLeaf(state);
+            get().addWindow((leaf?.computerId ?? "home") as ComputerId, leaf?.cwd ?? state.computerState.home?.fs.homeDir ?? "/");
+            return false;
+          }
+          case "rename-window": {
+            get().renameWindow(action.windowId, action.name);
+            return false;
+          }
+          case "kill-window": {
+            const activePaneWindow = getActiveWindow(state)?.id;
+            get().removeWindow(action.windowId);
+            return action.windowId === activePaneWindow;
+          }
+          case "select-window": {
+            get().setActiveWindow(action.windowId);
+            return false;
+          }
+          case "split-window": {
+            const paneId = getActivePaneId(state);
+            if (paneId) get().splitPane(paneId, action.direction);
+            return false;
+          }
+          case "kill-pane": {
+            const paneId = getActivePaneId(state);
+            if (!paneId) return false;
+            get().closePane(paneId);
+            return true;
+          }
+          case "select-pane": {
+            get().focusDirection(action.dir);
+            return false;
+          }
+          case "resize-pane": {
+            const win = getActiveWindow(state);
+            if (!win) return false;
+            const orientation = action.dir === "L" || action.dir === "R" ? "h" : "v";
+            const splitId = nearestResizableSplit(win.root, win.activePaneId, orientation);
+            if (splitId) get().nudgeSplitRatio(splitId, cliResizeDelta(action.dir, action.cells));
             return false;
           }
         }

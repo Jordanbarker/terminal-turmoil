@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useGameStore, getActiveLeaf, getActivePaneId, getActiveWindow } from "../gameStore";
+import { useGameStore, getActiveLeaf, getActivePaneId, getActiveWindow, MAX_WINDOWS } from "../gameStore";
 import { allLeaves, findSplit, MAX_NUDGE_RATIO, PaneNode } from "@tt/core/terminal/paneTypes";
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { DirectoryNode } from "@tt/core/filesystem/types";
@@ -310,6 +310,103 @@ describe("pane actions", () => {
     expect(findSplit(getActiveWindow(useGameStore.getState())!.root, splitId)!.ratio).toBeCloseTo(0.47);
     useGameStore.getState().nudgeSplitRatio(splitId, -1); // huge delta → one capped step
     expect(findSplit(getActiveWindow(useGameStore.getState())!.root, splitId)!.ratio).toBeCloseTo(0.47 - MAX_NUDGE_RATIO);
+  });
+});
+
+describe("tmux window/pane verbs (applyTmuxAction)", () => {
+  const store = () => useGameStore.getState();
+  const win = () => getActiveWindow(store())!;
+
+  it("new-window appends a window on the active pane's computer/cwd", () => {
+    store().setActivePaneCwd("/tmp");
+    expect(store().applyTmuxAction({ type: "new-window" })).toBe(false);
+    const s = store();
+    expect(s.windows).toHaveLength(2);
+    expect(s.activeWindowId).toBe(s.windows[1].id);
+    expect(getActiveLeaf(s)!.cwd).toBe("/tmp");
+    expect(getActiveLeaf(s)!.computerId).toBe("home");
+  });
+
+  it("new-window is a silent no-op at MAX_WINDOWS", () => {
+    for (let i = 1; i < MAX_WINDOWS; i++) store().addWindow("home", "/tmp");
+    expect(store().windows).toHaveLength(MAX_WINDOWS);
+    expect(store().applyTmuxAction({ type: "new-window" })).toBe(false);
+    expect(store().windows).toHaveLength(MAX_WINDOWS);
+  });
+
+  it("rename-window renames the targeted window", () => {
+    const id = store().addWindow("home", "/tmp");
+    expect(store().applyTmuxAction({ type: "rename-window", windowId: id, name: "logs" })).toBe(false);
+    expect(store().windows.find((w) => w.id === id)!.name).toBe("logs");
+  });
+
+  it("kill-window returns true only for the window holding the active pane", () => {
+    const first = store().activeWindowId;
+    const second = store().addWindow("home", "/tmp"); // becomes active
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: first })).toBe(false);
+    expect(store().windows).toHaveLength(1);
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: second })).toBe(true);
+  });
+
+  it("kill-window on the last window kills the session (real tmux)", () => {
+    expect(store().applyTmuxAction({ type: "kill-window", windowId: store().activeWindowId })).toBe(true);
+    expect(store().tmuxAttachedSession).toBeNull();
+    expect(store().pendingMuxNotice).toBe("[exited]");
+  });
+
+  it("select-window switches windows without swapping the client view", () => {
+    const first = store().activeWindowId;
+    store().addWindow("home", "/tmp");
+    expect(store().applyTmuxAction({ type: "select-window", windowId: first })).toBe(false);
+    expect(store().activeWindowId).toBe(first);
+  });
+
+  it("split-window splits the active pane and focuses the new one", () => {
+    const original = getActivePaneId(store())!;
+    expect(store().applyTmuxAction({ type: "split-window", direction: "h" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(2);
+    expect((win().root as Extract<PaneNode, { kind: "split" }>).direction).toBe("h");
+    expect(getActivePaneId(store())).not.toBe(original);
+  });
+
+  it("split-window is a silent no-op at the pane cap", () => {
+    for (let i = 0; i < 5; i++) store().splitPane(getActivePaneId(store())!, "v");
+    expect(allLeaves(win().root)).toHaveLength(6); // MAX_PANES_PER_WINDOW
+    expect(store().applyTmuxAction({ type: "split-window", direction: "v" })).toBe(false);
+    expect(allLeaves(win().root)).toHaveLength(6);
+  });
+
+  it("kill-pane closes the active pane and suppresses the prompt", () => {
+    const first = getActivePaneId(store())!;
+    store().splitPane(first, "h");
+    expect(store().applyTmuxAction({ type: "kill-pane" })).toBe(true);
+    expect(allLeaves(win().root)).toHaveLength(1);
+    expect(getActivePaneId(store())).toBe(first);
+  });
+
+  it("select-pane moves the focus in the given direction", () => {
+    const left = getActivePaneId(store())!;
+    const right = store().splitPane(left, "h")!;
+    expect(store().applyTmuxAction({ type: "select-pane", dir: "L" })).toBe(false);
+    expect(getActivePaneId(store())).toBe(left);
+    store().applyTmuxAction({ type: "select-pane", dir: "R" });
+    expect(getActivePaneId(store())).toBe(right);
+  });
+
+  it("resize-pane nudges the nearest split on the axis, capped at one chord press", () => {
+    store().splitPane(getActivePaneId(store())!, "h");
+    const splitId = (win().root as Extract<PaneNode, { kind: "split" }>).id;
+    store().applyTmuxAction({ type: "resize-pane", dir: "R", cells: 2 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52);
+    store().applyTmuxAction({ type: "resize-pane", dir: "L", cells: 100 });
+    expect(findSplit(win().root, splitId)!.ratio).toBeCloseTo(0.52 - MAX_NUDGE_RATIO);
+  });
+
+  it("resize-pane is a no-op when no split exists on that axis", () => {
+    store().splitPane(getActivePaneId(store())!, "h");
+    const before = win().root;
+    store().applyTmuxAction({ type: "resize-pane", dir: "U", cells: 5 });
+    expect(win().root).toBe(before);
   });
 });
 

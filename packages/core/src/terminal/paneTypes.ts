@@ -256,6 +256,18 @@ export function nearestResizableSplit(
   return found;
 }
 
+/**
+ * Ratio delta for a CLI `tmux resize-pane -<dir> <cells>`. The chord path
+ * (`useTabManager.applyResize`) converts cells to a ratio using the pane's real
+ * pixel geometry, but a store applying a command has no wrapper to measure, so
+ * approximate one cell as 1% and cap it at a single chord press's worth.
+ * Sign follows the chord path: R/D grow child `a`, L/U shrink it.
+ */
+export function cliResizeDelta(dir: "L" | "R" | "U" | "D", cells: number): number {
+  const magnitude = Math.min(cells * 0.01, MAX_NUDGE_RATIO);
+  return dir === "R" || dir === "D" ? magnitude : -magnitude;
+}
+
 // --- geometry ------------------------------------------------------------
 
 /** A rectangle without a node id (any units). */

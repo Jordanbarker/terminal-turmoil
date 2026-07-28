@@ -189,6 +189,128 @@ describe("tmux kill-session / kill-server", () => {
   });
 });
 
+describe("window verbs", () => {
+  // Three windows, the second one active and custom-named.
+  const WINDOWED: TmuxContext = {
+    attachedSession: "0",
+    sessions: [session("0", true, 3)],
+    windows: [
+      { id: "w1", index: 1, name: null, active: false },
+      { id: "w2", index: 2, name: "logs", active: true },
+      { id: "w3", index: 3, name: null, active: false },
+    ],
+  };
+
+  it("all window verbs need an attached client", () => {
+    for (const argv of [["new-window"], ["rename-window", "x"], ["kill-window"], ["select-window", "-t", "1"]]) {
+      expect(run(argv, BARE_WITH_DETACHED)).toMatchObject({ stderr: "no current client", exitCode: 1 });
+    }
+  });
+
+  it("new-window takes no target", () => {
+    expect(run(["new-window"], WINDOWED).tmuxAction).toEqual({ type: "new-window" });
+    expect(run(["neww"], WINDOWED).tmuxAction).toEqual({ type: "new-window" });
+  });
+
+  it("rename-window defaults to the current window", () => {
+    expect(run(["rename-window", "build"], WINDOWED).tmuxAction).toEqual({
+      type: "rename-window",
+      windowId: "w2",
+      name: "build",
+    });
+    expect(run(["renamew", "build"], WINDOWED).tmuxAction).toMatchObject({ windowId: "w2" });
+  });
+
+  it("rename-window resolves -t by name then by 1-based index", () => {
+    expect(run(["rename-window", "-t", "logs", "build"], WINDOWED).tmuxAction).toMatchObject({ windowId: "w2" });
+    expect(run(["rename-window", "-t", "3", "build"], WINDOWED).tmuxAction).toMatchObject({ windowId: "w3" });
+  });
+
+  it("rename-window rejects a missing name and bad targets", () => {
+    expect(run(["rename-window"], WINDOWED).stderr).toBe("usage: rename-window [-t target-window] new-name");
+    expect(run(["rename-window", "-t", "nope", "x"], WINDOWED).stderr).toBe("can't find window: nope");
+    expect(run(["rename-window", "-t", "9", "x"], WINDOWED).stderr).toBe("can't find window: 9");
+    // No session:window.pane grammar.
+    expect(run(["rename-window", "-t", "0:2", "x"], WINDOWED).stderr).toBe("can't find window: 0:2");
+  });
+
+  it("kill-window defaults to the current window", () => {
+    expect(run(["kill-window"], WINDOWED).tmuxAction).toEqual({ type: "kill-window", windowId: "w2" });
+    expect(run(["killw", "-t", "1"], WINDOWED).tmuxAction).toEqual({ type: "kill-window", windowId: "w1" });
+    expect(run(["kill-window", "-t", "nope"], WINDOWED).stderr).toBe("can't find window: nope");
+  });
+
+  it("select-window requires -t", () => {
+    expect(run(["select-window", "-t", "logs"], WINDOWED).tmuxAction).toEqual({
+      type: "select-window",
+      windowId: "w2",
+    });
+    expect(run(["selectw", "-t", "3"], WINDOWED).tmuxAction).toEqual({ type: "select-window", windowId: "w3" });
+    expect(run(["select-window"], WINDOWED).stderr).toBe("usage: select-window -t target-window");
+  });
+
+  it("window verbs can't resolve a target without a windows snapshot", () => {
+    expect(run(["kill-window"], ATTACHED_0).stderr).toBe("can't find window: ");
+    // ...but new-window needs no target, so it still works.
+    expect(run(["new-window"], ATTACHED_0).tmuxAction).toEqual({ type: "new-window" });
+  });
+});
+
+describe("pane verbs", () => {
+  it("all pane verbs need an attached client", () => {
+    for (const argv of [["split-window"], ["kill-pane"], ["select-pane", "-L"], ["resize-pane", "-D"]]) {
+      expect(run(argv, BARE_WITH_DETACHED)).toMatchObject({ stderr: "no current client", exitCode: 1 });
+    }
+  });
+
+  it("split-window stacks by default and splits side-by-side with -h", () => {
+    expect(run(["split-window"], ATTACHED_0).tmuxAction).toEqual({ type: "split-window", direction: "v" });
+    expect(run(["split-window", "-v"], ATTACHED_0).tmuxAction).toEqual({ type: "split-window", direction: "v" });
+    expect(run(["split-window", "-h"], ATTACHED_0).tmuxAction).toEqual({ type: "split-window", direction: "h" });
+    expect(run(["splitw", "-h"], ATTACHED_0).tmuxAction).toEqual({ type: "split-window", direction: "h" });
+  });
+
+  it("kill-pane targets the current pane only", () => {
+    expect(run(["kill-pane"], ATTACHED_0).tmuxAction).toEqual({ type: "kill-pane" });
+    expect(run(["killp"], ATTACHED_0).tmuxAction).toEqual({ type: "kill-pane" });
+    expect(run(["kill-pane", "-t", "1"], ATTACHED_0).stderr).toBe("can't find pane: 1");
+  });
+
+  it("select-pane needs a direction", () => {
+    expect(run(["select-pane", "-R"], ATTACHED_0).tmuxAction).toEqual({ type: "select-pane", dir: "R" });
+    expect(run(["selectp", "-U"], ATTACHED_0).tmuxAction).toEqual({ type: "select-pane", dir: "U" });
+    expect(run(["select-pane"], ATTACHED_0).stderr).toBe("usage: select-pane [-LRUD]");
+    expect(run(["select-pane", "-t", "2"], ATTACHED_0).stderr).toBe("can't find pane: 2");
+  });
+
+  it("resize-pane parses the direction and optional cell count", () => {
+    expect(run(["resize-pane", "-D"], ATTACHED_0).tmuxAction).toEqual({
+      type: "resize-pane",
+      dir: "D",
+      cells: 5, // DEFAULT_RESIZE_CELLS
+    });
+    expect(run(["resize-pane", "-L", "12"], ATTACHED_0).tmuxAction).toEqual({
+      type: "resize-pane",
+      dir: "L",
+      cells: 12,
+    });
+    expect(run(["resizep", "-U", "3"], ATTACHED_0).tmuxAction).toEqual({
+      type: "resize-pane",
+      dir: "U",
+      cells: 3,
+    });
+  });
+
+  it("resize-pane rejects a missing direction and a non-numeric adjustment", () => {
+    const usage = "usage: resize-pane [-LRUD] [adjustment]";
+    expect(run(["resize-pane"], ATTACHED_0).stderr).toBe(usage);
+    expect(run(["resize-pane", "5"], ATTACHED_0).stderr).toBe(usage);
+    expect(run(["resize-pane", "-D", "lots"], ATTACHED_0).stderr).toBe(usage);
+    expect(run(["resize-pane", "-D", "0"], ATTACHED_0).stderr).toBe(usage);
+    expect(run(["resize-pane", "-D", "-t", "1"], ATTACHED_0).stderr).toBe("can't find pane: 1");
+  });
+});
+
 describe("edge cases", () => {
   it("rejects unknown subcommands", () => {
     expect(run(["frobnicate"], ATTACHED_0)).toMatchObject({ stderr: "unknown command: frobnicate", exitCode: 1 });

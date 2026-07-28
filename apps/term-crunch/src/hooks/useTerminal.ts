@@ -161,6 +161,13 @@ export async function runLine(
                 attached: false,
               })),
             ],
+            // Window strip, for `-t` targeting by name/index.
+            windows: s.windows.map((w, i) => ({
+              id: w.id,
+              index: i + 1,
+              name: w.name ?? null,
+              active: w.id === s.activeWindowId,
+            })),
           };
         })(),
       }),
