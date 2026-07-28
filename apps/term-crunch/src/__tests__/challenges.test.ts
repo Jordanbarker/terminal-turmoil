@@ -1431,7 +1431,10 @@ describe("sessions-juggle predicates", () => {
     // step 0, which the load state never satisfies.
     const sequence: Array<[ReturnType<typeof at>, number[]]> = [
       [at("0", []), [3, 4]], // load state (and post-kill final state)
-      [at(null, ["0"]), [0]],
+      // also satisfies step 2, whose predicate no longer requires scratch to
+      // exist — safe because the cascade can only reach 2 from step 1
+      // (attached to scratch), which this state never satisfies.
+      [at(null, ["0"]), [0, 2]],
       [at("scratch", ["0"]), [1]],
       // the second detach also re-satisfies step 0 (already consumed by then)
       [at(null, ["0", "scratch"]), [0, 2]],
@@ -1497,6 +1500,21 @@ describe("tmux lifecycle win-detection (store)", () => {
     expect(state().stepIndex).toBe(3);
     state().applyTmuxAction({ type: "kill-session", name: "scratch" });
     expect(state().stepIndex).toBe(3); // detached, step 3 not yet satisfied
+    state().applyTmuxAction({ type: "attach", name: "0" });
+    expect(state().awaitingContinue || state().completed).toBe(true);
+  });
+
+  it("out-of-order: kill scratch from inside it, then attach, cascades to done", () => {
+    const state = useGameStore.getState;
+    select("sessions-juggle");
+    state().applyTmuxAction({ type: "detach" });
+    state().applyTmuxAction({ type: "new-session", name: "scratch" });
+    expect(state().stepIndex).toBe(2);
+    // Killing the attached session drops to a bare shell without snapshotting
+    // scratch, so step 2 must not require it to exist.
+    state().applyTmuxAction({ type: "kill-session", name: "scratch" });
+    expect(state().tmuxAttachedSession).toBe(null);
+    expect(state().stepIndex).toBe(3);
     state().applyTmuxAction({ type: "attach", name: "0" });
     expect(state().awaitingContinue || state().completed).toBe(true);
   });
