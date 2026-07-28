@@ -33,6 +33,8 @@ Rooted at `apps/termoil/`; `scripts/` (play-testing harness + `generate_data/`) 
 
 ## Story Docs
 
-- `docs/storyboard/chapter-{1,2,3}.md` — per-chapter narrative beats, dialogue, key player actions.
-- `docs/characters.md` — read before writing character dialogue: personality, motivations, relationships, mystery angle.
-- `docs/timeline.md` — master timeline of story events.
+- `apps/termoil/docs/storyboard/chapter-{1,2,3}.md` — per-chapter narrative beats, dialogue, key player actions.
+- `apps/termoil/docs/characters.md` — read before writing character dialogue: personality, motivations, relationships, mystery angle.
+- `apps/termoil/docs/timeline.md` — master timeline of story events.
+- `apps/termoil/docs/mystery.md` — the clue chain, act by act.
+- `apps/termoil/docs/notes.md` — unstructured scratch (quest ideas, log inventory, cheatsheets); not authoritative.

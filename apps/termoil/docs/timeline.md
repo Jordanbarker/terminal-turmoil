@@ -297,4 +297,4 @@ Attendees: Jessica (CEO), Marcus (COO), Tom (CMO), Edward (CTO). Key actions/dat
 
 ## Keeping This Current
 
-When adding dated content, update both the source file *and* this doc. The auto-memory at `feedback_update_skills.md` already nags about `.claude/skills/` — treat `docs/timeline.md` the same way. Cross-link skills: `narrative` (story flags / triggers), `email` (Maildir, delivery), `piper` (segment clock), `snowflake` (seed data), `dbt` (manifest), `git` (commit chain).
+When adding dated content, update both the source file *and* this doc. The auto-memory at `feedback_update_skills.md` already nags about `.claude/skills/` — treat `apps/termoil/docs/timeline.md` the same way. Cross-link skills: `narrative` (story flags / triggers), `email` (Maildir, delivery), `piper` (segment clock), `snowflake` (seed data), `dbt` (manifest), `git` (commit chain).

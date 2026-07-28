@@ -42,7 +42,7 @@ When a prompt session exits with `triggerEvents`, `useSessionRouter.routeInput()
 
 ## Character voice
 
-Read `docs/characters.md` before writing email content — match each character's tone (Sarah casual/direct, Maya warm, Marcus bulleted/terse). Follow the em-dash rule (see narrative skill).
+Read `apps/termoil/docs/characters.md` before writing email content — match each character's tone (Sarah casual/direct, Maya warm, Marcus bulleted/terse). Follow the em-dash rule (see narrative skill).
 
 ## Adding a new email
 
