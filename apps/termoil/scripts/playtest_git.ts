@@ -329,6 +329,23 @@ async function main() {
   r = runner.run("git diff nosuchref");
   check("diff rejects an unknown revision", /ambiguous argument 'nosuchref'/.test(r.output));
 
+  // A staged file inside filterdir/ plus an untracked one at the root: a pathspec
+  // must keep the first and drop the second. (sub/ is gone by now — git rm'd above.)
+  runner.run(`mkdir -p ${HOME}/myproj/filterdir`);
+  runner.writeFile(`${HOME}/myproj/filterdir/inside.txt`, "inside\n");
+  runner.writeFile(`${HOME}/myproj/filtertest.txt`, "at root\n");
+  runner.run("git add filterdir/inside.txt");
+  r = runner.run("git status -s filterdir");
+  show("git status -s filterdir", r.output);
+  check("pathspec narrows status",
+    /filterdir\/inside\.txt/.test(r.output) && !/filtertest\.txt/.test(r.output));
+  r = runner.run("git status nosuchdir");
+  check("an unmatched status pathspec is not fatal",
+    r.exitCode === 0 && /nothing to commit, working tree clean/.test(r.output));
+  runner.run("git restore --staged filterdir/inside.txt");
+  runner.run("rm -r filterdir");
+  runner.run("rm filtertest.txt");
+
   runner.writeFile(`${HOME}/myproj/untracked.txt`, "not staged, not tracked\n");
   r = runner.run("git diff");
   check("untracked files never appear in diff", r.output.trim() === "" && r.exitCode === 0);

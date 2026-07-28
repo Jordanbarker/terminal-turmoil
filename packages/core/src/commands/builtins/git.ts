@@ -187,7 +187,10 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     }
 
     case "status": {
-      const status = gitStatus(ctx.fs, root);
+      // `status` takes no revisions, so pathspecs need no rev/path split — just
+      // drop the optional `--` separator that parseGitArgs leaves in positional.
+      const pathspecs = subArgs.filter((a) => a !== "--");
+      const status = gitStatus(ctx.fs, root, ctx.cwd, pathspecs);
       const short = !!flags["s"];
       return { output: formatStatus(status, short, plain) };
     }

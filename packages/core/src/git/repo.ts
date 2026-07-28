@@ -466,7 +466,14 @@ export interface StatusResult {
   tracking?: { remoteRef: string; ahead: number; behind: number };
 }
 
-export function gitStatus(fs: VirtualFS, root: string): StatusResult {
+/**
+ * `paths` are pathspecs resolved against `cwd`; they narrow the change lists only
+ * (branch/tracking info is unaffected). Unlike diff/log, a pathspec that matches
+ * nothing is not fatal in real git — the sections just come back empty.
+ */
+export function gitStatus(
+  fs: VirtualFS, root: string, cwd?: string, paths?: string[]
+): StatusResult {
   const repo = readRepo(fs, root);
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
@@ -475,6 +482,10 @@ export function gitStatus(fs: VirtualFS, root: string): StatusResult {
   const staged: StatusResult["staged"] = [];
   const unstaged: StatusResult["unstaged"] = [];
   const untracked: string[] = [];
+
+  const matches = paths && paths.length > 0
+    ? pathMatcher(paths.map((p) => toRepoRelative(root, cwd ?? root, p)))
+    : null;
 
   // Staged changes (index vs HEAD)
   for (const [path, content] of Object.entries(repo.index.staged)) {
@@ -515,6 +526,10 @@ export function gitStatus(fs: VirtualFS, root: string): StatusResult {
 
   const tracking = computeTracking(fs, root, repo.currentBranch, headHash);
 
+  const keptStaged = matches ? staged.filter((s) => matches(s.path)) : staged;
+  const keptUnstaged = matches ? unstaged.filter((u) => matches(u.path)) : unstaged;
+  const keptUntracked = matches ? untracked.filter(matches) : untracked;
+
   // During a rebase, unresolved conflict files show as "both modified" under Unmerged
   // paths until `git add`ed; pull them out of the plain unstaged list.
   const rebaseState = readRebaseState(fs, root);
@@ -523,15 +538,25 @@ export function gitStatus(fs: VirtualFS, root: string): StatusResult {
     const unmergedSet = new Set(unmerged);
     return {
       branch: repo.currentBranch,
-      staged,
-      unstaged: unstaged.filter((u) => !unmergedSet.has(u.path)),
-      untracked,
-      rebase: { onto: rebaseState.onto, branch: rebaseState.originalBranch, unmerged },
+      staged: keptStaged,
+      unstaged: keptUnstaged.filter((u) => !unmergedSet.has(u.path)),
+      untracked: keptUntracked,
+      rebase: {
+        onto: rebaseState.onto,
+        branch: rebaseState.originalBranch,
+        unmerged: matches ? unmerged.filter(matches) : unmerged,
+      },
       tracking,
     };
   }
 
-  return { branch: repo.currentBranch, staged, unstaged, untracked, tracking };
+  return {
+    branch: repo.currentBranch,
+    staged: keptStaged,
+    unstaged: keptUnstaged,
+    untracked: keptUntracked,
+    tracking,
+  };
 }
 
 /**

@@ -200,6 +200,69 @@ describe("git log revisions and pathspecs", () => {
   });
 });
 
+/** Committed repo with a staged edit under src/, an unstaged one at root, and two untracked files. */
+function setupStatusTree(): CommandContext {
+  const root = dir("/", {
+    home: dir("home", {
+      player: dir("player", { "root.txt": file("root.txt", "at root\n") }),
+    }),
+  });
+  let ctx = createContext(new VirtualFS(root, HOME, HOME));
+  ctx = { ...ctx, fs: ctx.fs.makeDirectory(`${HOME}/src`).fs! };
+  ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/src/tracked.txt`, "one\n").fs! };
+  ({ ctx } = runAll(ctx, [["init"], ["add", "."], ["commit", "-m", "init"]]));
+  ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/src/tracked.txt`, "one\ntwo\n").fs! };
+  ({ ctx } = runAll(ctx, [["add", "src/tracked.txt"]]));
+  ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/root.txt`, "at root, edited\n").fs! };
+  ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/src/fresh.txt`, "new\n").fs! };
+  ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/loose.txt`, "new\n").fs! };
+  return ctx;
+}
+
+describe("git status pathspecs", () => {
+  it("shows every change with no pathspec", () => {
+    const out = git(setupStatusTree(), ["status", "-s"]).output;
+    expect(out.split("\n").sort()).toEqual(
+      ["M  src/tracked.txt", " M root.txt", "?? loose.txt", "?? src/fresh.txt"].sort(),
+    );
+  });
+
+  it("narrows to a directory pathspec", () => {
+    const out = git(setupStatusTree(), ["status", "-s", "src"]).output;
+    expect(out).toContain("M  src/tracked.txt");
+    expect(out).toContain("?? src/fresh.txt");
+    expect(out).not.toContain("root.txt");
+    expect(out).not.toContain("loose.txt");
+  });
+
+  it("narrows to a single file after the -- separator", () => {
+    const out = git(setupStatusTree(), ["status", "-s", "--", "root.txt"]).output;
+    expect(out).toBe(" M root.txt");
+  });
+
+  it("resolves a relative pathspec against the cwd", () => {
+    const ctx = setupStatusTree();
+    const out = git({ ...ctx, cwd: `${HOME}/src` }, ["status", "-s", "tracked.txt"]).output;
+    expect(out).toBe("M  src/tracked.txt");
+  });
+
+  it("reports a clean tree, not an error, for an unmatched pathspec", () => {
+    const result = git(setupStatusTree(), ["status", "nosuchdir"]);
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stderr).toBeUndefined();
+    expect(result.output).toContain("On branch");
+    expect(result.output).toContain("nothing to commit, working tree clean");
+  });
+
+  it("keeps branch info while filtering the change sections", () => {
+    const out = git(setupStatusTree(), ["status", "src"]).output;
+    expect(out).toContain("On branch main");
+    expect(out).toContain("Changes to be committed:");
+    expect(out).toContain("Untracked files:");
+    expect(out).not.toContain("Changes not staged for commit:");
+  });
+});
+
 describe("git diff revisions and pathspecs", () => {
   it("diffs a commit against the working tree", () => {
     const ctx = setupHistory();
