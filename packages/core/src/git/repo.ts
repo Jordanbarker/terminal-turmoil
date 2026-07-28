@@ -1379,7 +1379,13 @@ export function gitStashSave(
   const repo = readRepo(fs, root);
   const branch = repo.currentBranch ?? "detached HEAD";
   const message = `WIP on ${branch}: ${headHash?.slice(0, 7) ?? "no commits"}`;
-  stash.unshift({ tree: modified, message });
+  // Snapshot what HEAD said about each stashed path, so apply/pop can tell "the tree
+  // is still where I left it" from "someone else changed this file since".
+  const base: Record<string, string> = {};
+  for (const path of Object.keys(modified)) {
+    if (path in headTree) base[path] = headTree[path];
+  }
+  stash.unshift({ tree: modified, message, base });
 
   fs = writeOrFail(fs, `${root}/.git/stash.json`, JSON.stringify(stash));
 
@@ -1400,27 +1406,79 @@ export function gitStashSave(
   return { fs, output: `Saved working directory and index state ${message}` };
 }
 
-export function gitStashPop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
-  const stash = readStash(fs, root);
-  if (stash.length === 0) {
-    return { fs, output: "", error: "error: No stash entries found." };
+const STASH_EMPTY = "error: No stash entries found.";
+
+/**
+ * Paths whose current working-tree content would be lost by restoring `entry`.
+ * A path conflicts when it exists on disk with content matching neither the stash's
+ * recorded HEAD base nor the stashed content itself. Entries saved before `base`
+ * existed skip the check entirely (restore stays unconditional, as it always was).
+ */
+function stashConflicts(fs: VirtualFS, root: string, entry: GitStashEntry): string[] {
+  if (!entry.base) return [];
+  const conflicts: string[] = [];
+  for (const [relPath, stashed] of Object.entries(entry.tree)) {
+    const node = fs.getNode(`${root}/${relPath}`);
+    if (!node) continue; // nothing to overwrite (covers the untracked `-u` case)
+    const current = fs.readFile(`${root}/${relPath}`).content ?? "";
+    if (current !== entry.base[relPath] && current !== stashed) {
+      conflicts.push(relPath);
+    }
   }
+  return conflicts;
+}
+
+function restoreStashTree(fs: VirtualFS, root: string, entry: GitStashEntry): VirtualFS {
+  for (const [relPath, content] of Object.entries(entry.tree)) {
+    const parts = relPath.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      fs = mkdirOrFail(fs, `${root}/${parts.slice(0, i).join("/")}`);
+    }
+    fs = writeOrFail(fs, `${root}/${relPath}`, content);
+  }
+  return fs;
+}
+
+function conflictError(paths: string[]): string {
+  return [
+    "error: Your local changes to the following files would be overwritten by merge:",
+    ...paths.map((p) => `        ${p}`),
+    "The stash entry is kept in case you need it again.",
+  ].join("\n");
+}
+
+/** Restore the newest stash entry into the working tree, keeping it in the list. */
+export function gitStashApply(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const stash = readStash(fs, root);
+  if (stash.length === 0) return { fs, output: "", error: STASH_EMPTY };
+
+  const conflicts = stashConflicts(fs, root, stash[0]);
+  if (conflicts.length > 0) return { fs, output: "", error: conflictError(conflicts) };
+
+  fs = restoreStashTree(fs, root, stash[0]);
+  return { fs, output: `On branch ${getCurrentBranch(readHead(fs, root)) ?? "HEAD"}, changes restored` };
+}
+
+/** Discard the newest stash entry without touching the working tree. */
+export function gitStashDrop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const stash = readStash(fs, root);
+  if (stash.length === 0) return { fs, output: "", error: STASH_EMPTY };
 
   const entry = stash.shift()!;
   fs = writeOrFail(fs, `${root}/.git/stash.json`, JSON.stringify(stash));
+  return { fs, output: `Dropped refs/stash@{0} (${entry.message})` };
+}
 
-  // Restore stashed files
-  for (const [relPath, content] of Object.entries(entry.tree)) {
-    const absPath = `${root}/${relPath}`;
-    const parts = relPath.split("/");
-    for (let i = 1; i < parts.length; i++) {
-      const dirPath = `${root}/${parts.slice(0, i).join("/")}`;
-      fs = mkdirOrFail(fs, dirPath);
-    }
-    fs = writeOrFail(fs, absPath, content);
-  }
-
-  return { fs, output: `On branch ${getCurrentBranch(readHead(fs, root)) ?? "HEAD"}, changes restored` };
+/**
+ * Apply then drop. The drop happens only on success, so a pop that would clobber
+ * a different branch's version of a stashed file refuses and keeps the entry.
+ */
+export function gitStashPop(fs: VirtualFS, root: string): { fs: VirtualFS; output: string; error?: string } {
+  const applied = gitStashApply(fs, root);
+  if (applied.error) return applied;
+  const dropped = gitStashDrop(applied.fs, root);
+  if (dropped.error) return dropped;
+  return { fs: dropped.fs, output: applied.output };
 }
 
 export function gitStashList(fs: VirtualFS, root: string): string {

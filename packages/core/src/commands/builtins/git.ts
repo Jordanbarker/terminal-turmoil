@@ -8,7 +8,7 @@ import {
   findRepoRoot,
   gitInit, gitAdd, gitRm, gitCommit, gitStatus, getCommitLog,
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
-  gitStashSave, gitStashPop, gitStashList,
+  gitStashSave, gitStashPop, gitStashApply, gitStashDrop, gitStashList,
   gitClone, gitPush, gitPull, gitReset,
   gitRebase, gitRebaseContinue, gitRebaseAbort,
   gitMerge, gitMergeContinue, gitMergeAbort,
@@ -389,8 +389,9 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
         if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }
-      if (stashSub === "pop") {
-        const result = gitStashPop(ctx.fs, root);
+      if (stashSub === "pop" || stashSub === "apply" || stashSub === "drop") {
+        const run = stashSub === "pop" ? gitStashPop : stashSub === "apply" ? gitStashApply : gitStashDrop;
+        const result = run(ctx.fs, root);
         if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }

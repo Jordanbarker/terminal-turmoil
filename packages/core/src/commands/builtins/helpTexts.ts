@@ -426,7 +426,9 @@ export const HELP_TEXTS: Record<string, string> = {
     "      --ff-only: fail rather than merge    --rebase: replay your commits on top",
     "  git rm [-r] <file>              Remove files from tracking (-r: recurse into dirs)",
     "  git stash [push] [-u]           Set changes aside (-u: include untracked files)",
-    "  git stash pop                   Re-apply the most recent stash",
+    "  git stash pop                   Re-apply the most recent stash and drop it",
+    "  git stash apply                 Re-apply the most recent stash, keeping it",
+    "  git stash drop                  Discard the most recent stash",
     "  git stash list                  List stashes",
   ].join("\n"),
 

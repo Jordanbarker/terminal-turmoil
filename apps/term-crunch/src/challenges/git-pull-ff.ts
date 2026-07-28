@@ -110,12 +110,11 @@ export const gitPullFf: Challenge = {
     },
     {
       instruction: "Restore your stashed work on top of the new commits.",
-      hint: "Reapply the most recent stash and drop it from the list.",
+      hint: "Reapply the most recent stash; pop also drops it from the list.",
       command: "git stash pop",
+      // Content-only (no `stash.length === 0`) so `git stash apply` also counts.
       isComplete: (s) =>
-        readStash(s.fs, PROJECT_DIR).length === 0 &&
-        (s.fs.readFile(LOAD).content ?? "") === LOAD_WIP &&
-        s.fs.getNode(SCRATCH) !== null,
+        (s.fs.readFile(LOAD).content ?? "") === LOAD_WIP && s.fs.getNode(SCRATCH) !== null,
     },
   ],
 };

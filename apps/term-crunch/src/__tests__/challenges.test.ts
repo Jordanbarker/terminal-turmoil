@@ -27,7 +27,7 @@ import {
   type PaneNode,
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
-import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitPull } from "@tt/core/git/repo";
+import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitStashApply, readStash, gitPull } from "@tt/core/git/repo";
 import { buildBaseFs } from "../lib/seed";
 import { readGitState } from "../lib/gitState";
 import { structKey, paneTreeMatches, paneTreeMatchesWithRatio } from "../lib/paneCompare";
@@ -587,6 +587,33 @@ describe("git-stash challenge", () => {
     fs = gitStashPop(fs, repo).fs;
     expect(step4.isComplete(at(fs))).toBe(true);
     expect(fs.readFile(APP).content).toBe(WIP_APP);
+  });
+
+  it("completes the restore step via apply, which keeps the stash entry", () => {
+    let fs = gitStashChallenge.setup(buildBaseFs());
+    fs = gitStashSave(fs, repo).fs;
+    fs = gitCheckout(fs, repo, "hotfix", false).fs;
+    fs = gitCheckout(fs, repo, "main", false).fs;
+
+    fs = gitStashApply(fs, repo).fs;
+    expect(readStash(fs, repo)).toHaveLength(1);
+    expect(step4.isComplete(at(fs))).toBe(true);
+  });
+
+  it("popping on the wrong branch refuses instead of dead-ending the challenge", () => {
+    let fs = gitStashChallenge.setup(buildBaseFs());
+    fs = gitStashSave(fs, repo).fs;
+    fs = gitCheckout(fs, repo, "hotfix", false).fs;
+
+    const popped = gitStashPop(fs, repo);
+    expect(popped.error).toContain("would be overwritten");
+    fs = popped.fs;
+    expect(readStash(fs, repo)).toHaveLength(1); // stash survives, so step 3 is still reachable
+
+    fs = gitCheckout(fs, repo, "main", false).fs;
+    expect(step3.isComplete(at(fs))).toBe(true);
+    fs = gitStashPop(fs, repo).fs;
+    expect(step4.isComplete(at(fs))).toBe(true);
   });
 });
 

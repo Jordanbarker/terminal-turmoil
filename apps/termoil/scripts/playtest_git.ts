@@ -508,6 +508,30 @@ async function main() {
   r = runner.run("git stash pop");
   check("pop on empty stash errors", /No stash entries/.test(r.output));
 
+  r = runner.run("git stash apply");
+  check("apply on empty stash errors", /No stash entries/.test(r.output));
+  r = runner.run("git stash drop");
+  check("drop on empty stash errors", /No stash entries/.test(r.output));
+
+  // apply keeps the entry; drop then clears it without touching the working tree
+  runner.writeFile(`${HOME}/myproj/b.txt`, "apply test\n");
+  runner.run("git stash");
+  r = runner.run("git stash apply");
+  show("git stash apply", r.output);
+  check("apply succeeds", /changes restored/.test(r.output));
+  r = runner.run(`cat ${HOME}/myproj/b.txt`);
+  check("file restored by apply", /apply test/.test(r.output));
+  r = runner.run("git stash list");
+  check("apply keeps the stash entry", /stash@\{0\}/.test(r.output));
+
+  r = runner.run("git stash drop");
+  show("git stash drop", r.output);
+  check("drop reports the dropped ref", /Dropped refs\/stash@\{0\}/.test(r.output));
+  r = runner.run("git stash list");
+  check("stash list empty after drop", r.output.trim() === "");
+  r = runner.run(`cat ${HOME}/myproj/b.txt`);
+  check("drop leaves the working tree alone", /apply test/.test(r.output));
+
   // Discard the stash test changes
   runner.writeFile(`${HOME}/myproj/b.txt`, "beta MODIFIED AGAIN\n");
 

@@ -118,6 +118,21 @@ describe("git value-flag and exit-code fidelity", () => {
     expect(git(ctx, ["checkout"]).exitCode).toBe(1);
     expect(git(ctx, ["stash", "bogus"]).exitCode).toBe(129);
   });
+
+  it("dispatches stash apply and drop", () => {
+    let ctx = setupCommittedRepo();
+    ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/notes.txt`, "beta\n").fs! };
+    ctx = { ...ctx, fs: git(ctx, ["stash"]).newFs! };
+
+    const applied = git(ctx, ["stash", "apply"]);
+    expect(applied.exitCode).toBeUndefined();
+    expect(applied.newFs!.readFile(`${HOME}/notes.txt`).content).toBe("beta\n");
+    expect(git({ ...ctx, fs: applied.newFs! }, ["stash", "list"]).output).toContain("stash@{0}");
+
+    const dropped = git({ ...ctx, fs: applied.newFs! }, ["stash", "drop"]);
+    expect(dropped.output).toContain("Dropped refs/stash@{0}");
+    expect(git({ ...ctx, fs: dropped.newFs! }, ["stash", "list"]).output).toBe("");
+  });
 });
 
 describe("git commit happy path", () => {

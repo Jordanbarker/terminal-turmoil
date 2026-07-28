@@ -84,10 +84,12 @@ export const gitStashChallenge: Challenge = {
     },
     {
       instruction: "Restore your stashed work.",
-      hint: "Reapply the most recent stash and drop it from the list in one move.",
+      hint: "Reapply the most recent stash; pop also drops it from the list.",
       command: "git stash pop",
-      isComplete: (s) =>
-        readStash(s.fs, PROJECT_DIR).length === 0 && (s.fs.readFile(APP).content ?? "") === WIP_APP,
+      // Content-only so `git stash apply` (which keeps the entry) also satisfies the
+      // step. Vacuously true at load — app.js already holds the WIP — but the step
+      // cascade means it is only ever evaluated after steps 1-3 stashed and returned.
+      isComplete: (s) => (s.fs.readFile(APP).content ?? "") === WIP_APP,
     },
   ],
 };

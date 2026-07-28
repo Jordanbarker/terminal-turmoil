@@ -26,6 +26,13 @@ export interface GitIndex {
 export interface GitStashEntry {
   tree: Record<string, string>;
   message: string;
+  /**
+   * HEAD content of each stashed path at save time (path absent = the file did not
+   * exist in HEAD). Used by apply/pop to detect that the working tree has moved on
+   * since the stash was taken. Optional so entries persisted before this field
+   * existed still parse; a missing base simply skips the conflict check.
+   */
+  base?: Record<string, string>;
 }
 
 /**

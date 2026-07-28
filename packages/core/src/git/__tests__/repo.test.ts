@@ -5,7 +5,7 @@ import {
   findRepoRoot, shortHash, collectFiles,
   gitInit, gitAdd, gitCommit, gitStatus, getCommitLog,
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
-  gitStashSave, gitStashPop, gitStashList,
+  gitStashSave, gitStashPop, gitStashApply, gitStashDrop, gitStashList, readStash,
   gitRm, gitClone, gitPush, gitPull, gitReset, gitMerge, resolveRef,
   resolveHead, readIndex, readCommit, splitRevsAndPaths,
 } from "../repo";
@@ -771,6 +771,93 @@ describe("git stash", () => {
     const list = gitStashList(fs, "/home/player");
     expect(list).toContain("stash@{0}");
     expect(list).toContain("WIP on main");
+  });
+
+  it("apply restores the changes and keeps the entry", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+
+    const result = gitStashApply(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v2");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("drop removes the entry without restoring", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+
+    const result = gitStashDrop(fs, "/home/player");
+    expect(result.output).toContain("Dropped refs/stash@{0} (WIP on main");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v1");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("errors on apply/drop with empty stash", () => {
+    const fs = initRepo(makeFs());
+    expect(gitStashApply(fs, "/home/player").error).toContain("No stash entries found");
+    expect(gitStashDrop(fs, "/home/player").error).toContain("No stash entries found");
+  });
+
+  /** main@v1 stashing v2, then switching to a branch whose commit made the file v3. */
+  function seedCrossBranchStash(): VirtualFS {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = gitCheckout(fs, "/home/player", "hotfix", true).fs;
+    fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
+    fs = addAndCommit(fs, "/home/player", "hotfix");
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = gitStashSave(fs, "/home/player").fs;
+    return gitCheckout(fs, "/home/player", "hotfix", false).fs;
+  }
+
+  it("refuses to pop onto a branch whose content differs, keeping stash and tree", () => {
+    const fs = seedCrossBranchStash();
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toContain("would be overwritten by merge");
+    expect(result.error).toContain("a.txt");
+    expect(result.error).toContain("The stash entry is kept");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v3");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("apply refuses on the same cross-branch conflict", () => {
+    const fs = seedCrossBranchStash();
+    const result = gitStashApply(fs, "/home/player");
+    expect(result.error).toContain("would be overwritten by merge");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(1);
+  });
+
+  it("pop still succeeds after returning to the original branch", () => {
+    let fs = seedCrossBranchStash();
+    expect(gitStashPop(fs, "/home/player").error).toBeDefined();
+    fs = gitCheckout(fs, "/home/player", "main", false).fs;
+
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v2");
+    expect(readStash(result.fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("pop restores untracked files stashed with -u", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/scratch.txt", "notes").fs!;
+    fs = gitStashSave(fs, "/home/player", true).fs;
+    expect(fs.getNode("/home/player/scratch.txt")).toBeNull();
+
+    const result = gitStashPop(fs, "/home/player");
+    expect(result.error).toBeUndefined();
+    expect(result.fs.readFile("/home/player/scratch.txt").content).toBe("notes");
   });
 });
 
