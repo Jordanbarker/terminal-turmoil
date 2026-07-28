@@ -918,6 +918,36 @@ describe("git pull (fast-forward to remote-tracking ref)", () => {
     expect(pull.fs.getNode("/home/player/b.txt")).toBeNull();
   });
 
+  it("reports real diff counts in the --stat block, not net line deltas", () => {
+    // A same-line-count rewrite used to be faked as a flat 1 insertion / 1 deletion.
+    const TEST_URL = "__test__/pull-stat-counts";
+    REMOTE_REPOS[TEST_URL] = buildSimpleRemote(
+      { "notes.txt": "alpha\nbeta\ngamma\ndelta\n" },
+      { author: AUTHOR, defaultBranch: "main", commitMessage: "initial" },
+    );
+    REMOTE_REPOS[TEST_URL].getUpdates = (_flags, headHash) => {
+      const tree = { "notes.txt": "alpha\nBETA\nGAMMA\ndelta\n", "todo.txt": "one\n" };
+      return [{
+        hash: shortHash("stat-update" + (headHash ?? "")),
+        parent: headHash, message: "remote update", author: AUTHOR, timestamp: 1, tree,
+      }];
+    };
+
+    try {
+      let fs = makeFs();
+      fs = gitClone(fs, "/home/player", TEST_URL, AUTHOR).fs;
+      const pull = gitPull(fs, "/home/player/pull-stat-counts", undefined, undefined, {});
+      expect(pull.error).toBeUndefined();
+      expect(pull.output.split("\n").slice(3)).toEqual([
+        " notes.txt |   4 ++--",
+        " todo.txt  |   1 +",
+        " 2 files changed, 3 insertions(+), 2 deletions(-)",
+      ]);
+    } finally {
+      delete REMOTE_REPOS[TEST_URL];
+    }
+  });
+
   it("without --ff-only a diverged branch falls through unchanged", () => {
     let fs = seedBehindByTwo(makeFs());
     fs = fs.writeFile("/home/player/.git/config", CONFIG).fs!;

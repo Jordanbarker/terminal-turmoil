@@ -1456,24 +1456,10 @@ function diffTrees(
   oldTree: Record<string, string>,
   newTree: Record<string, string>
 ): { path: string; insertions: number; deletions: number }[] {
-  const allPaths = new Set([...Object.keys(oldTree), ...Object.keys(newTree)]);
-  const changes: { path: string; insertions: number; deletions: number }[] = [];
-  for (const path of allPaths) {
-    const oldContent = oldTree[path];
-    const newContent = newTree[path];
-    if (oldContent === newContent) continue;
-    const oldLines = oldContent ? oldContent.split("\n").length : 0;
-    const newLines = newContent ? newContent.split("\n").length : 0;
-    const ins = Math.max(0, newLines - oldLines);
-    const del = Math.max(0, oldLines - newLines);
-    // Ensure both show non-zero for modified files (content differs but same line count)
-    if (oldContent && newContent && ins === 0 && del === 0) {
-      changes.push({ path, insertions: 1, deletions: 1 });
-    } else {
-      changes.push({ path, insertions: ins, deletions: del });
-    }
-  }
-  return changes.sort((a, b) => a.path.localeCompare(b.path));
+  return [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])]
+    .filter((p) => oldTree[p] !== newTree[p])
+    .sort()
+    .map((p) => ({ path: p, ...countLineChanges(oldTree[p] ?? "", newTree[p] ?? "") }));
 }
 
 // ── git pull ─────────────────────────────────────────────────────────

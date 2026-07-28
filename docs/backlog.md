@@ -52,7 +52,6 @@ depending on it. Otherwise leave it.
 
 ## Git
 
-- `git pull`'s `--stat` block still uses the approximate `diffTrees` line math rather than `countLineChanges`.
 - No `merge`, no `^` / `~N~M` revision chains, no detached-HEAD checkout of a commit.
 - Diffs have no rename detection and no `\ No newline at end of file` marker.
 
