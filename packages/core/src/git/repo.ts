@@ -325,8 +325,24 @@ export function gitAdd(fs: VirtualFS, root: string, cwd: string, paths: string[]
 
 // ── git rm ───────────────────────────────────────────────────────────
 
-export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: boolean): { fs: VirtualFS; output: string; error?: string } {
+/**
+ * `cached` is `git rm --cached`: untrack the path (stage a deletion) but leave the
+ * working-tree file alone, so `git status` then lists it under untracked. The engine
+ * models no .gitignore, which is real git's behavior here anyway.
+ */
+export function gitRm(
+  fs: VirtualFS, root: string, paths: string[], recursive: boolean, cached = false
+): { fs: VirtualFS; output: string; error?: string } {
   const index = readIndex(fs, root);
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+
+  // A path only becomes a staged `deleted:` if HEAD actually tracks it; for a file
+  // that was staged but never committed, dropping it from the index IS the removal.
+  const untrack = (relPath: string) => {
+    delete index.staged[relPath];
+    if (relPath in headTree && !index.deleted.includes(relPath)) index.deleted.push(relPath);
+  };
 
   for (const p of paths) {
     const absPath = p.startsWith("/") ? p : normalizePath(`${root}/${p}`);
@@ -340,16 +356,11 @@ export function gitRm(fs: VirtualFS, root: string, paths: string[], recursive: b
     const relPath = absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : p;
     if (isDirectory(node)) {
       // Collect all files in directory and mark them deleted
-      const dirFiles = collectFiles(fs, absPath, root);
-      for (const filePath of Object.keys(dirFiles)) {
-        if (!index.deleted.includes(filePath)) index.deleted.push(filePath);
-        delete index.staged[filePath];
-      }
+      for (const filePath of Object.keys(collectFiles(fs, absPath, root))) untrack(filePath);
     } else {
-      if (!index.deleted.includes(relPath)) index.deleted.push(relPath);
-      delete index.staged[relPath];
+      untrack(relPath);
     }
-    fs = removeOrFail(fs, absPath);
+    if (!cached) fs = removeOrFail(fs, absPath);
   }
 
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(index));

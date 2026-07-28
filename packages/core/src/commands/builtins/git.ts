@@ -81,7 +81,7 @@ const GIT_SUBCOMMAND_FLAGS: Record<string, KnownFlags> = {
   init: {},
   clone: { short: ["b"], long: ["depth"] },
   add: { short: ["A"], long: ["all"] },
-  rm: { short: ["r"] },
+  rm: { short: ["r"], long: ["cached"] },
   commit: { short: ["m", "a"], long: ["amend"] },
   status: { short: ["s"] },
   log: { short: ["n"], long: ["oneline", "graph"] },
@@ -163,7 +163,8 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "rm": {
       if (subArgs.length === 0) return errorResult("usage: git rm [<options>] [--] <file>...", 129);
       const recursive = !!flags["r"];
-      const result = gitRm(ctx.fs, root, subArgs, recursive);
+      const cached = !!flags["cached"];
+      const result = gitRm(ctx.fs, root, subArgs, recursive, cached);
       if (result.error) return errorResult(result.error, 128);
       return { output: result.output, newFs: result.fs };
     }

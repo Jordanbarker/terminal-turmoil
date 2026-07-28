@@ -667,11 +667,7 @@ describe("git diff", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
-    // Simulate `git rm --cached a.txt`: index marks it deleted, file stays on disk.
-    fs = fs.writeFile(
-      "/home/player/.git/index.json",
-      JSON.stringify({ staged: {}, deleted: ["a.txt"] }),
-    ).fs!;
+    fs = gitRm(fs, "/home/player", ["a.txt"], false, true).fs;
 
     expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
   });
@@ -712,6 +708,41 @@ describe("git rm", () => {
     const result = gitRm(fs, "/home/player", ["a.txt"], false);
     expect(result.error).toBeUndefined();
     expect(result.fs.getNode("/home/player/a.txt")).toBeNull();
+  });
+
+  it("--cached untracks the file but leaves it on disk", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.env", "SECRET=1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+
+    const result = gitRm(fs, "/home/player", [".env"], false, true);
+    expect(result.error).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.env")).not.toBeNull();
+    expect(result.fs.readFile("/home/player/.env").content).toBe("SECRET=1");
+
+    const status = gitStatus(result.fs, "/home/player");
+    expect(status.staged).toContainEqual({ path: ".env", status: "deleted" });
+    expect(status.untracked).toContain(".env");
+  });
+
+  it("--cached on a staged-but-never-committed file just unstages it", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/new.txt", "hi").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
+
+    const status = gitStatus(gitRm(fs, "/home/player", ["new.txt"], false, true).fs, "/home/player");
+    expect(status.staged).toHaveLength(0); // no bogus `deleted:` for a path HEAD never had
+    expect(status.untracked).toContain("new.txt");
+  });
+
+  it("--cached still requires -r for a directory", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.makeDirectory("/home/player/dir").fs!;
+    fs = fs.writeFile("/home/player/dir/file.txt", "content").fs!;
+    const result = gitRm(fs, "/home/player", ["dir"], false, true);
+    expect(result.error).toContain("without -r");
   });
 
   it("errors on nonexistent file", () => {

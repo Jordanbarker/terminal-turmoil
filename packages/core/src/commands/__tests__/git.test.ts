@@ -119,6 +119,14 @@ describe("git value-flag and exit-code fidelity", () => {
     expect(git(ctx, ["stash", "bogus"]).exitCode).toBe(129);
   });
 
+  it("accepts git rm --cached and keeps the file on disk", () => {
+    const ctx = setupCommittedRepo();
+    const result = git(ctx, ["rm", "--cached", "notes.txt"]);
+    expect(result.exitCode).toBeUndefined();
+    expect(result.newFs!.getNode(`${HOME}/notes.txt`)).not.toBeNull();
+    expect(git({ ...ctx, fs: result.newFs! }, ["status"]).output).toContain("deleted:");
+  });
+
   it("dispatches stash apply and drop", () => {
     let ctx = setupCommittedRepo();
     ctx = { ...ctx, fs: ctx.fs.writeFile(`${HOME}/notes.txt`, "beta\n").fs! };

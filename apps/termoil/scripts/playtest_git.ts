@@ -255,6 +255,24 @@ async function main() {
 
   runner.run("git commit -m \"remove a and sub\"");
 
+  // --cached on an already-committed file, undone with a plain `git reset`: no new
+  // commits and no fs changes, so the later sections' history/file-set assumptions hold.
+  r = runner.run("git rm --cached b.txt");
+  show("git rm --cached b.txt", r.output);
+  check("--cached is accepted", !/unknown option/.test(r.output));
+
+  r = runner.run("git status");
+  show("git status (after rm --cached)", r.output);
+  check("b.txt staged as deleted", /deleted:.*b\.txt/.test(r.output));
+  check("b.txt now shows as untracked", /Untracked files:[\s\S]*b\.txt/.test(r.output));
+
+  r = runner.run("cat b.txt");
+  check("--cached left the file on disk", /beta/.test(r.output));
+
+  runner.run("git reset");
+  r = runner.run("git status");
+  check("reset re-tracks b.txt", /clean|nothing to commit/.test(r.output));
+
   // ─────────────────────────────────────────────────────────────────────
   section("git commit -am (auto-stage)");
   // ─────────────────────────────────────────────────────────────────────
