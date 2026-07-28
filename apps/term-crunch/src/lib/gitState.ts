@@ -1,5 +1,5 @@
 import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
-import { findRepoRoot, getCommitLog, gitStatus, listBranches, readRebaseState } from "@tt/core/git/repo";
+import { findRepoRoot, getCommitLog, gitStatus, listBranches, readMergeState, readRebaseState } from "@tt/core/git/repo";
 
 /**
  * Flattened, validator-friendly view of a git repo's state, read straight from
@@ -19,7 +19,9 @@ export interface GitReadout {
   clean: boolean;
   /** True while a `git rebase` is in progress. */
   rebaseInProgress: boolean;
-  /** Files still carrying unresolved conflict markers during a rebase. */
+  /** True while a conflicted `git merge` is waiting to be concluded or aborted. */
+  mergeInProgress: boolean;
+  /** Files still carrying unresolved conflict markers during a rebase or merge. */
   conflictFiles: string[];
   /** Commits the local branch is ahead of `origin/<branch>` (0 when no upstream). */
   ahead: number;
@@ -38,6 +40,7 @@ const EMPTY: GitReadout = {
   untracked: [],
   clean: true,
   rebaseInProgress: false,
+  mergeInProgress: false,
   conflictFiles: [],
   ahead: 0,
   behind: 0,
@@ -56,10 +59,13 @@ export function readGitState(fs: VirtualFS, atPath: string): GitReadout {
   const status = gitStatus(fs, root);
   const { current } = listBranches(fs, root);
   const rebase = readRebaseState(fs, root);
+  const merge = readMergeState(fs, root);
   const staged = status.staged.map((s) => s.path);
   const unstaged = status.unstaged.map((s) => s.path);
   const untracked = status.untracked;
-  const conflictFiles = status.rebase?.unmerged ?? [];
+  // Unmerged paths are held out of `unstaged`, so an in-progress rebase/merge would
+  // otherwise read as a clean tree.
+  const conflictFiles = status.rebase?.unmerged ?? status.merge?.unmerged ?? [];
 
   return {
     hasRepo: true,
@@ -70,8 +76,9 @@ export function readGitState(fs: VirtualFS, atPath: string): GitReadout {
     staged,
     unstaged,
     untracked,
-    clean: !rebase && staged.length === 0 && unstaged.length === 0 && untracked.length === 0,
+    clean: !rebase && !merge && staged.length === 0 && unstaged.length === 0 && untracked.length === 0,
     rebaseInProgress: !!rebase,
+    mergeInProgress: !!merge,
     conflictFiles,
     ahead: status.tracking?.ahead ?? 0,
     behind: status.tracking?.behind ?? 0,

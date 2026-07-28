@@ -15,7 +15,13 @@ export function formatStatus(status: StatusResult, short: boolean, plain: boolea
     lines.push('  (fix conflicts and then run "git rebase --continue")');
     lines.push('  (use "git rebase --abort" to check out the original branch)');
   } else {
-    lines.push(`On branch ${status.branch ?? "(detached HEAD)"}`);
+    if (status.branch) {
+      lines.push(`On branch ${status.branch}`);
+    } else if (status.detachedAt) {
+      lines.push(`HEAD detached at ${status.detachedAt.slice(0, 7)}`);
+    } else {
+      lines.push("On branch (detached HEAD)");
+    }
     const t = status.tracking;
     if (t) {
       const n = (count: number) => `${count} commit${count !== 1 ? "s" : ""}`;
@@ -35,11 +41,26 @@ export function formatStatus(status: StatusResult, short: boolean, plain: boolea
     }
   }
 
-  if (status.rebase && status.rebase.unmerged.length > 0) {
+  // A merge in progress is reported *after* the branch/tracking header, not instead of
+  // it — real git only replaces the header for a rebase.
+  if (status.merge) {
+    lines.push("");
+    if (status.merge.unmerged.length > 0) {
+      lines.push("You have unmerged paths.");
+      lines.push('  (fix conflicts and run "git commit")');
+    } else {
+      lines.push("All conflicts fixed but you are still merging.");
+      lines.push('  (use "git commit" to conclude merge)');
+    }
+    lines.push('  (use "git merge --abort" to abort the merge)');
+  }
+
+  const unmergedPaths = status.rebase?.unmerged ?? status.merge?.unmerged ?? [];
+  if (unmergedPaths.length > 0) {
     lines.push("");
     lines.push("Unmerged paths:");
     lines.push('  (use "git add <file>..." to mark resolution)');
-    for (const f of status.rebase.unmerged) {
+    for (const f of unmergedPaths) {
       const label = `\tboth modified:   ${f}`;
       lines.push(plain ? label : colorize(label, ansi.red));
     }
@@ -76,7 +97,7 @@ export function formatStatus(status: StatusResult, short: boolean, plain: boolea
     }
   }
 
-  if (!status.rebase && status.staged.length === 0 && status.unstaged.length === 0 && status.untracked.length === 0) {
+  if (!status.rebase && !status.merge && status.staged.length === 0 && status.unstaged.length === 0 && status.untracked.length === 0) {
     lines.push("nothing to commit, working tree clean");
   }
 
@@ -85,7 +106,7 @@ export function formatStatus(status: StatusResult, short: boolean, plain: boolea
 
 function formatStatusShort(status: StatusResult): string {
   const lines: string[] = [];
-  for (const f of status.rebase?.unmerged ?? []) {
+  for (const f of status.rebase?.unmerged ?? status.merge?.unmerged ?? []) {
     lines.push(`UU ${f}`);
   }
   for (const s of status.staged) {

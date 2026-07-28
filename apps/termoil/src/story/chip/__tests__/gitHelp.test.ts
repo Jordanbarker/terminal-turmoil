@@ -105,11 +105,11 @@ describe("chip git tips are runnable in this engine", () => {
     expect(`${result.output}${result.stderr ?? ""}`).not.toMatch(NONEXISTENT);
   });
 
-  it("never advertises `git merge` (the engine has no such subcommand)", () => {
-    const gitHelp = ALL_ITEMS.find((i) => i.id === "git_help")!.response as string;
-    expect(gitHelp).not.toContain("git merge");
-    const merge = run(makeRepo(), "git merge main");
-    expect(`${merge.output}${merge.stderr ?? ""}`).toMatch(NONEXISTENT);
+  it("the failure regex catches a missing subcommand, not just a missing flag", () => {
+    // The other half of guarding the guard. `cherry-pick` is a real git command the
+    // engine does not implement, so it exercises the "is not a git command" branch.
+    const bogus = run(makeRepo(), "git cherry-pick HEAD");
+    expect(`${bogus.output}${bogus.stderr ?? ""}`).toMatch(NONEXISTENT);
   });
 
   it("separates every labelled section with a blank line", () => {

@@ -1,8 +1,7 @@
 # Deferred Backlog
 
 Known gaps and accepted inaccuracies, recorded so they are decisions rather than
-surprises. Everything here was **verified against HEAD** during the QA sweep and
-deliberately left alone: none of it soft-locks the game or fails a playtest.
+surprises. None of it soft-locks the game or fails a playtest.
 
 **Source of truth = source files.** This list is derived and can drift. Re-verify
 before acting on a line. Items are one-liners on purpose; where the reasoning is

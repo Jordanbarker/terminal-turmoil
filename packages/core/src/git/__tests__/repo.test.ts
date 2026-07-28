@@ -6,8 +6,8 @@ import {
   gitInit, gitAdd, gitCommit, gitStatus, getCommitLog,
   listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashList,
-  gitRm, gitClone, gitPush, gitPull, gitReset, resolveRef,
-  resolveHead, readIndex,
+  gitRm, gitClone, gitPush, gitPull, gitReset, gitMerge, resolveRef,
+  resolveHead, readIndex, splitRevsAndPaths,
 } from "../repo";
 import { formatStatus, formatLog } from "../output";
 import { buildSimpleRemote, REMOTE_REPOS } from "../remotes";
@@ -1828,5 +1828,246 @@ describe("git reset", () => {
     })).fs!;
     const result = gitReset(fs, root, root, [], "hard");
     expect(result.error).toContain("rebase");
+  });
+});
+
+// ── revision syntax: ^ / ~N chains, prefixes, remote refs ───────────
+
+describe("resolveRef — parent selectors and abbreviations", () => {
+  const root = "/home/player";
+
+  /** main: c1 → c2 → merge(c2, feature@c3). Gives both a linear chain and a merge commit. */
+  function repoWithMerge() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const c1 = resolveHead(fs, root)!;
+    fs = createBranch(fs, root, "feature").fs;
+    fs = fs.writeFile(`${root}/a.txt`, "v2").fs!;
+    fs = addAndCommit(fs, root, "second");
+    const c2 = resolveHead(fs, root)!;
+
+    fs = gitCheckout(fs, root, "feature", false).fs;
+    fs = fs.writeFile(`${root}/b.txt`, "feature").fs!;
+    fs = addAndCommit(fs, root, "feature work");
+    const c3 = resolveHead(fs, root)!;
+    fs = gitCheckout(fs, root, "main", false).fs;
+    const res = gitMerge(fs, root, "feature", AUTHOR, TEST_TS);
+    fs = res.fs;
+    return { fs, c1, c2, c3, mergeHash: resolveHead(fs, root)! };
+  }
+
+  it("walks ^ / ^1 as the first parent and ^2 as the merged side", () => {
+    const { fs, c2, c3, mergeHash } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD")).toBe(mergeHash);
+    expect(resolveRef(fs, root, "HEAD^")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD^1")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD^2")).toBe(c3);
+    expect(resolveRef(fs, root, "HEAD^0")).toBe(mergeHash);
+  });
+
+  it("chains steps left to right", () => {
+    const { fs, c1, c2, c3 } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD~1")).toBe(c2);
+    expect(resolveRef(fs, root, "HEAD~2")).toBe(c1);
+    expect(resolveRef(fs, root, "HEAD^^")).toBe(c1);
+    expect(resolveRef(fs, root, "HEAD^1~1")).toBe(c1);
+    // c3's first parent is c1 (feature branched before "second").
+    expect(resolveRef(fs, root, "HEAD^2~1")).toBe(c1);
+    expect(resolveRef(fs, root, `${c3}~1`)).toBe(c1);
+    expect(resolveRef(fs, root, "main~1^")).toBe(c1);
+  });
+
+  it("returns null past the root commit, for ^2 on a plain commit, and for ^N beyond the parents", () => {
+    const { fs, c1 } = repoWithMerge();
+    expect(resolveRef(fs, root, "HEAD~3")).toBeNull();
+    expect(resolveRef(fs, root, "HEAD~2^")).toBeNull();
+    expect(resolveRef(fs, root, `${c1}^`)).toBeNull();
+    expect(resolveRef(fs, root, "HEAD^^2")).toBeNull();
+    expect(resolveRef(fs, root, "HEAD^3")).toBeNull();
+    expect(resolveRef(fs, root, "nope^2")).toBeNull();
+  });
+
+  it("resolves a unique abbreviated hash but not an ambiguous or too-short one", () => {
+    const { fs, mergeHash } = repoWithMerge();
+    expect(resolveRef(fs, root, mergeHash.slice(0, 5))).toBe(mergeHash);
+    expect(resolveRef(fs, root, mergeHash.slice(0, 5), { allowPrefix: false })).toBeNull();
+    // 3 chars is below git's 4-char minimum, so it is not even attempted.
+    expect(resolveRef(fs, root, mergeHash.slice(0, 3))).toBeNull();
+    // Two objects share this prefix, so it is ambiguous rather than a pick.
+    const ambiguous = fs.writeFile(`${root}/.git/objects/${mergeHash.slice(0, 4)}dead.json`, "{}").fs!;
+    expect(resolveRef(ambiguous, root, mergeHash.slice(0, 4))).toBeNull();
+  });
+
+  it("resolves remote-tracking refs by their slashed name", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const first = resolveHead(fs, root)!;
+    fs = fs.writeFile(`${root}/.git/refs/remotes/origin/main`, first).fs!;
+    expect(resolveRef(fs, root, "origin/main")).toBe(first);
+    expect(resolveRef(fs, root, "origin/nope")).toBeNull();
+  });
+});
+
+// ── log / diff / reset pick up the new syntax ───────────────────────
+
+describe("revision syntax through log, diff, and reset", () => {
+  const root = "/home/player";
+
+  function threeCommits() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1\n").fs!;
+    fs = addAndCommit(fs, root, "first");
+    fs = fs.writeFile(`${root}/a.txt`, "v2\n").fs!;
+    fs = addAndCommit(fs, root, "second");
+    fs = fs.writeFile(`${root}/a.txt`, "v3\n").fs!;
+    fs = addAndCommit(fs, root, "third");
+    return fs;
+  }
+
+  it("git log <rev> accepts ^ and ~N", () => {
+    const fs = threeCommits();
+    const at = (rev: string) =>
+      getCommitLog(fs, root, splitRevsAndPaths(fs, root, root, [rev]).revs[0]!.from).map((c) => c.message);
+    expect(at("HEAD^")).toEqual(["second", "first"]);
+    expect(at("HEAD~2")).toEqual(["first"]);
+  });
+
+  it("git diff HEAD~2..HEAD spans the range", () => {
+    const fs = threeCommits();
+    const split = splitRevsAndPaths(fs, root, root, ["HEAD~2..HEAD"]);
+    expect(split.error).toBeUndefined();
+    const diffs = gitDiffFiles(fs, root, { from: split.revs[0].from, to: split.revs[0].to });
+    expect(diffs).toEqual([{ path: "a.txt", oldContent: "v1\n", newContent: "v3\n", status: "modified" }]);
+  });
+
+  it("git reset --hard HEAD^ rewinds one commit", () => {
+    let fs = threeCommits();
+    const res = gitReset(fs, root, root, ["HEAD^"], "hard");
+    fs = res.fs;
+    expect(res.error).toBeUndefined();
+    expect(res.output).toContain("second");
+    expect(getCommitLog(fs, root).map((c) => c.message)).toEqual(["second", "first"]);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v2\n");
+  });
+
+  it("prefers a file over an abbreviated hash that happens to match it", () => {
+    let fs = threeCommits();
+    const prefix = resolveHead(fs, root)!.slice(0, 4);
+    // A tracked file whose *name* is a valid abbreviation of a real commit.
+    fs = fs.writeFile(`${root}/${prefix}`, "not a revision\n").fs!;
+    fs = addAndCommit(fs, root, "add lookalike");
+    const split = splitRevsAndPaths(fs, root, root, [prefix]);
+    expect(split.error).toBeUndefined();
+    expect(split.revs).toEqual([]);
+    expect(split.paths).toEqual([prefix]);
+  });
+});
+
+// ── detached HEAD ───────────────────────────────────────────────────
+
+describe("git checkout <commit> (detached HEAD)", () => {
+  const root = "/home/player";
+
+  function twoCommits() {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile(`${root}/a.txt`, "v1\n").fs!;
+    fs = addAndCommit(fs, root, "first");
+    const first = resolveHead(fs, root)!;
+    fs = fs.writeFile(`${root}/a.txt`, "v2\n").fs!;
+    fs = addAndCommit(fs, root, "second");
+    return { fs, first, second: resolveHead(fs, root)! };
+  }
+
+  it("detaches onto a full hash, restoring that tree", () => {
+    const { fs: start, first, second } = twoCommits();
+    const res = gitCheckout(start, root, first, false);
+    const fs = res.fs;
+    expect(res.error).toBeUndefined();
+    expect(res.output).toBe(`Note: switching to '${first}'.\n\nHEAD is now at ${first.slice(0, 7)} first`);
+    expect(res.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_detached" }]);
+    expect(fs.readFile(`${root}/.git/HEAD`).content).toBe(first);
+    expect(resolveHead(fs, root)).toBe(first);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v1\n");
+    // main is untouched.
+    expect(fs.readFile(`${root}/.git/refs/heads/main`).content!.trim()).toBe(second);
+  });
+
+  it("treats `git checkout HEAD` as a no-op instead of detaching", () => {
+    const { fs, second } = twoCommits();
+    const res = gitCheckout(fs, root, "HEAD", false);
+    expect(res.error).toBeUndefined();
+    expect(res.fs.readFile(`${root}/.git/HEAD`).content).toBe("ref: refs/heads/main");
+    expect(gitStatus(res.fs, root).detachedAt).toBeUndefined();
+    expect(resolveHead(res.fs, root)).toBe(second);
+  });
+
+  it("detaches onto an abbreviated hash and onto a rev expression", () => {
+    const { fs, first } = twoCommits();
+    expect(resolveHead(gitCheckout(fs, root, first.slice(0, 5), false).fs, root)).toBe(first);
+    expect(resolveHead(gitCheckout(fs, root, "HEAD~1", false).fs, root)).toBe(first);
+  });
+
+  it("reports the detached commit in status", () => {
+    const { fs, first } = twoCommits();
+    const detached = gitCheckout(fs, root, first, false).fs;
+    const status = gitStatus(detached, root);
+    expect(status.branch).toBeNull();
+    expect(status.detachedAt).toBe(first);
+    expect(formatStatus(status, false, true)).toContain(`HEAD detached at ${first.slice(0, 7)}`);
+  });
+
+  it("commits onto the raw HEAD, leaving the branch behind", () => {
+    const { fs: start, first, second } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    fs = fs.writeFile(`${root}/c.txt`, "detached work\n").fs!;
+    fs = gitAdd(fs, root, root, ["c.txt"], false).fs;
+    const res = gitCommit(fs, root, "work while detached", AUTHOR, false, false, TEST_TS);
+    fs = res.fs;
+
+    const newHash = resolveHead(fs, root)!;
+    expect(res.output.split("\n")[0]).toBe(`[detached HEAD ${newHash}] work while detached`);
+    expect(fs.readFile(`${root}/.git/HEAD`).content).toBe(newHash);
+    expect(newHash).not.toBe(first);
+    expect(fs.readFile(`${root}/.git/refs/heads/main`).content!.trim()).toBe(second);
+    expect(getCommitLog(fs, root).map((c) => c.message)).toEqual(["work while detached", "first"]);
+  });
+
+  it("re-attaches by checking out a branch again", () => {
+    const { fs: start, first, second } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    const res = gitCheckout(fs, root, "main", false);
+    fs = res.fs;
+    expect(res.output).toBe("Switched to branch 'main'");
+    expect(gitStatus(fs, root).branch).toBe("main");
+    expect(gitStatus(fs, root).detachedAt).toBeUndefined();
+    expect(resolveHead(fs, root)).toBe(second);
+    expect(fs.readFile(`${root}/a.txt`).content).toBe("v2\n");
+  });
+
+  it("branches off a detached HEAD with -b", () => {
+    const { fs: start, first } = twoCommits();
+    let fs = gitCheckout(start, root, first, false).fs;
+    const res = gitCheckout(fs, root, "salvage", true);
+    fs = res.fs;
+    expect(res.output).toBe("Switched to a new branch 'salvage'");
+    expect(res.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_b" }]);
+    expect(fs.readFile(`${root}/.git/refs/heads/salvage`).content!.trim()).toBe(first);
+    expect(gitStatus(fs, root).branch).toBe("salvage");
+  });
+
+  it("still refuses a target that is neither a branch nor a revision", () => {
+    const { fs } = twoCommits();
+    expect(gitCheckout(fs, root, "nope", false).error)
+      .toBe("error: pathspec 'nope' did not match any file(s) known to git");
+  });
+
+  it("refuses to detach without an explicit opt-in (git switch)", () => {
+    const { fs, first } = twoCommits();
+    expect(gitCheckout(fs, root, first, false, false).error)
+      .toBe(`fatal: a branch is expected, got commit '${first}'`);
+    // A branch name is still fine with detaching disallowed.
+    expect(gitCheckout(fs, root, "main", false, false).error).toBeUndefined();
   });
 });

@@ -11,7 +11,8 @@ import {
   gitStashSave, gitStashPop, gitStashList,
   gitClone, gitPush, gitPull, gitReset,
   gitRebase, gitRebaseContinue, gitRebaseAbort,
-  splitRevsAndPaths, filterCommitsByPaths,
+  gitMerge, gitMergeContinue, gitMergeAbort,
+  resolveRef, splitRevsAndPaths, filterCommitsByPaths,
   type BranchListMode, type GitResetMode,
 } from "@tt/core/git/repo";
 import { formatStatus, formatLog, formatDiff, formatBranches } from "@tt/core/git/output";
@@ -87,8 +88,9 @@ const GIT_SUBCOMMAND_FLAGS: Record<string, KnownFlags> = {
   branch: { short: ["d", "D", "a", "r"] },
   checkout: { short: ["b"] },
   restore: { long: ["staged"] },
-  switch: { short: ["c"] },
+  switch: { short: ["c", "d"], long: ["detach"] },
   rebase: { long: ["continue", "abort"] },
+  merge: { long: ["continue", "abort"] },
   reset: { long: ["soft", "mixed", "hard"] },
   diff: { long: ["staged", "cached"] },
   stash: { short: ["u"], long: ["include-untracked"] },
@@ -183,7 +185,7 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       const timestamp = (ctx.clock ?? realWallClock()).now().getTime();
       const result = gitCommit(ctx.fs, root, message ?? "", author, amend, autoStage, timestamp);
       if (result.error) return errorResult(result.error, 1);
-      return { output: result.output, newFs: result.fs };
+      return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
     }
 
     case "status": {
@@ -268,8 +270,13 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       const target = create ? (flags["b"] as string) : subArgs[0];
       if (!target) return errorResult("error: you must specify a branch to checkout", 1);
       // A branch of that name wins over a file of that name, as in real git
-      // (which only warns about the ambiguity).
-      if (!create && !ctx.fs.readFile(`${root}/.git/refs/heads/${target}`).content) {
+      // (which only warns about the ambiguity). A revision wins too, or
+      // `git checkout <sha>` would be swallowed as a pathspec instead of
+      // detaching HEAD. Abbreviated hashes are excluded from that test so a file
+      // literally named e.g. `cafe` still restores; gitCheckout accepts them.
+      if (!create
+          && !ctx.fs.readFile(`${root}/.git/refs/heads/${target}`).content
+          && resolveRef(ctx.fs, root, target, { allowPrefix: false }) === null) {
         const restored = gitRestore(ctx.fs, root, ctx.cwd, [target], false);
         if (!restored.error) return { output: restored.output, newFs: restored.fs };
       }
@@ -297,7 +304,9 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       }
       const target = create ? (flags["c"] as string) : subArgs[0];
       if (!target) return errorResult("fatal: missing branch or commit argument", 128);
-      const result = gitCheckout(ctx.fs, root, target, create);
+      // `git switch` refuses a commit unless the detach is explicit.
+      const allowDetach = !!flags["d"] || !!flags["detach"];
+      const result = gitCheckout(ctx.fs, root, target, create, allowDetach);
       if (result.error) {
         const msg = result.error.startsWith("error: pathspec")
           ? `fatal: invalid reference: ${target}`
@@ -321,6 +330,29 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       const result = gitRebase(ctx.fs, root, subArgs[0]);
       if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
       return { output: result.output, newFs: result.fs };
+    }
+
+    case "merge": {
+      if (flags["abort"]) {
+        const result = gitMergeAbort(ctx.fs, root);
+        if (result.error) return errorResult(result.error, 128);
+        return { output: result.output, newFs: result.fs };
+      }
+      const timestamp = (ctx.clock ?? realWallClock()).now().getTime();
+      if (flags["continue"]) {
+        const result = gitMergeContinue(ctx.fs, root, author, timestamp);
+        if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
+        return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
+      }
+      const result = gitMerge(ctx.fs, root, subArgs[0], author, timestamp);
+      if (result.error) return errorResult(result.error, result.error.startsWith("fatal:") ? 128 : 1);
+      // Conflicts are reported on stdout with exit 1, as real git does.
+      return {
+        output: result.output,
+        newFs: result.fs,
+        exitCode: result.conflict ? 1 : 0,
+        triggerEvents: result.triggerEvents,
+      };
     }
 
     case "reset": {

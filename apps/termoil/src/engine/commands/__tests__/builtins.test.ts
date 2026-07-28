@@ -1118,6 +1118,93 @@ describe("invalid flag rejection", () => {
   });
 });
 
+describe("git merge / detached checkout (dispatcher)", () => {
+  const devCtx = (f: VirtualFS) => ({ ...ctx(f), activeComputer: "devcontainer" as const });
+  const git = (fs: VirtualFS, ...rawArgs: string[]) =>
+    execute("git", [], {}, { ...devCtx(fs), rawArgs });
+  const run = (fs: VirtualFS, ...rawArgs: string[]) => git(fs, ...rawArgs).newFs ?? fs;
+
+  /** One commit on main, plus a `feature` branch one commit ahead (fast-forwardable). */
+  function repoWithFeature(): VirtualFS {
+    let fs = createTestFS();
+    fs = run(fs, "init");
+    fs = run(fs, "add", "-A");
+    fs = run(fs, "commit", "-m", "initial");
+    fs = run(fs, "switch", "-c", "feature");
+    fs = fs.writeFile("/home/player/notes.txt", "feature edit").fs!;
+    fs = run(fs, "commit", "-am", "feature edit");
+    fs = run(fs, "switch", "main");
+    return fs;
+  }
+
+  it("git merge <branch> fast-forwards", () => {
+    const result = git(repoWithFeature(), "merge", "feature");
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(stripAnsi(result.output)).toContain("Fast-forward");
+    expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_merge_feature" }]);
+  });
+
+  it("git merge reports conflicts on stdout with exit 1", () => {
+    // Diverge main from feature so the same file conflicts.
+    let fs = repoWithFeature();
+    fs = fs.writeFile("/home/player/notes.txt", "main edit").fs!;
+    fs = run(fs, "commit", "-am", "main edit");
+
+    const result = git(fs, "merge", "feature");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr ?? "").toBe("");
+    expect(stripAnsi(result.output)).toContain("CONFLICT (content): Merge conflict in notes.txt");
+    expect(result.triggerEvents).toBeUndefined();
+
+    // The concluding commit carries the merge event.
+    fs = result.newFs!;
+    fs = fs.writeFile("/home/player/notes.txt", "resolved").fs!;
+    fs = run(fs, "add", "notes.txt");
+    const concluded = git(fs, "commit", "-m", "resolve merge");
+    expect(concluded.triggerEvents).toEqual([{ type: "command_executed", detail: "git_merge_feature" }]);
+  });
+
+  it("accepts merge's --abort/--continue and rejects an unknown merge flag", () => {
+    const fs = repoWithFeature();
+    expect(git(fs, "merge", "--abort").exitCode).not.toBe(129);
+    expect(git(fs, "merge", "--continue").exitCode).not.toBe(129);
+    const bogus = git(fs, "merge", "--bogus");
+    expect(bogus.exitCode).toBe(129);
+    expect(stripAnsi(bogus.stderr ?? "")).toBe("error: unknown option `bogus'");
+  });
+
+  it("git checkout <sha> detaches instead of being read as a pathspec", () => {
+    let fs = repoWithFeature();
+    const sha = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    const result = git(fs, "checkout", sha);
+    expect(stripAnsi(result.output)).toContain(`HEAD is now at ${sha.slice(0, 7)}`);
+    expect(result.triggerEvents).toEqual([{ type: "command_executed", detail: "git_checkout_detached" }]);
+    fs = result.newFs!;
+    expect(fs.readFile("/home/player/.git/HEAD").content).toBe(sha);
+  });
+
+  it("git checkout <file> still restores the file", () => {
+    let fs = repoWithFeature();
+    fs = fs.writeFile("/home/player/notes.txt", "scribble").fs!;
+    fs = run(fs, "checkout", "notes.txt");
+    expect(fs.readFile("/home/player/notes.txt").content).toBe("hello world");
+  });
+
+  it("git switch <sha> refuses without --detach", () => {
+    const fs = repoWithFeature();
+    const sha = fs.readFile("/home/player/.git/refs/heads/feature").content!.trim();
+    const refused = git(fs, "switch", sha);
+    expect(refused.exitCode).toBe(128);
+    expect(stripAnsi(refused.stderr ?? "")).toBe(`fatal: a branch is expected, got commit '${sha}'`);
+
+    for (const flag of ["--detach", "-d"]) {
+      const ok = git(fs, "switch", flag, sha);
+      expect(ok.exitCode ?? 0).toBe(0);
+      expect(stripAnsi(ok.output)).toContain("HEAD is now at");
+    }
+  });
+});
+
 describe("git invalid flag rejection", () => {
   // git/snow live in the dev container (DEVCONTAINER_ONLY in commandGates).
   const devCtx = (): CommandContext => ({ ...ctx(), activeComputer: "devcontainer" });
