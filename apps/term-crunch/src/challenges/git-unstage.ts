@@ -63,7 +63,13 @@ export const gitUnstage: Challenge = {
       // this same state and legitimately passes — steps are state checkpoints).
       isComplete: (s) => {
         const g = readGitState(s.fs, PROJECT_DIR);
-        return !g.staged.includes(".env") && g.untracked.includes(".env") && g.staged.includes("app.js") && envIntact(s.fs);
+        if (g.staged.includes(".env") || !g.untracked.includes(".env") || !envIntact(s.fs)) return false;
+        // `commit -am` stages app.js and clears the index inside one atomic
+        // command, so "app.js staged" is never observable on that route —
+        // accept the change having already landed in a commit as the same
+        // checkpoint, or the player is stranded here forever.
+        const committed = g.commitCount >= 2 && !g.staged.includes("app.js") && !g.unstaged.includes("app.js");
+        return g.staged.includes("app.js") || committed;
       },
     },
     {

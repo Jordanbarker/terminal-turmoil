@@ -429,6 +429,30 @@ describe("git-unstage challenge", () => {
     expect(step1.isComplete(at(fs))).toBe(true);
   });
 
+  it("completes via bare `git reset` then `git commit -am` — the change landed, .env stayed out", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitReset(fs, repo, repo, [], null).fs;
+    // `commit -am` re-stages the tracked app.js edit and commits it atomically,
+    // so "app.js staged" is never observable between commands.
+    fs = gitCommit(fs, repo, "update", GIT_AUTHOR, false, true, 1_700_000_002_000).fs;
+    const g = readGitState(fs, repo);
+    expect(g.commitCount).toBe(2);
+    expect(g.untracked).toContain(".env");
+    expect(fs.readFile(ENV).content).toBe(ENV_CONTENT);
+    // both steps true on the same snapshot: the store's forward-only cascade
+    // consumes step 1 then step 2 and the challenge completes.
+    expect(step1.isComplete(at(fs))).toBe(true);
+    expect(step2.isComplete(at(fs))).toBe(true);
+  });
+
+  it("does NOT complete when `git commit -am` runs without unstaging .env first", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitCommit(fs, repo, "update", GIT_AUTHOR, false, true, 1_700_000_002_000).fs;
+    expect(readGitState(fs, repo).untracked).not.toContain(".env"); // secrets committed
+    expect(step1.isComplete(at(fs))).toBe(false);
+    expect(step2.isComplete(at(fs))).toBe(false);
+  });
+
   it("does NOT complete via `git reset --hard` — it deletes the staged-new .env", () => {
     let fs = gitUnstage.setup(buildBaseFs());
     fs = gitReset(fs, repo, repo, [], "hard").fs;

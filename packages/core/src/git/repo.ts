@@ -969,8 +969,12 @@ function unstagePaths(
 ): { index: GitIndex; error?: string } {
   for (const p of paths) {
     const absPath = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
-    const rel = absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : absPath;
-    const matches = (key: string) => key === rel || key.startsWith(rel + "/");
+    // A pathspec resolving to the repo root (`.` at root) matches everything;
+    // index keys are repo-relative, so its `rel` is "" rather than a prefix.
+    const rel = absPath === root
+      ? ""
+      : absPath.startsWith(root + "/") ? absPath.slice(root.length + 1) : absPath;
+    const matches = (key: string) => rel === "" || key === rel || key.startsWith(rel + "/");
     const hadEntry = Object.keys(index.staged).some(matches) || index.deleted.some(matches);
     if (!hadEntry && !fs.getNode(absPath) && !(rel in headTree)) {
       return { index, error: `fatal: pathspec '${p}' did not match any files` };
@@ -996,30 +1000,49 @@ export function gitReset(
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
 
-  // Split args into an optional leading revision and trailing pathspecs.
-  // With an explicit mode flag, the sole arg is always a revision. Without
-  // one, a lone arg that resolves as a revision is one; anything else (or
-  // args after a revision, e.g. `git reset HEAD file`) are pathspecs.
-  let target = "HEAD";
+  // Split args into an optional leading revision and trailing pathspecs. A
+  // literal `--` is authoritative (as in `splitRevsAndPaths`). Without one:
+  // with an explicit mode flag the sole arg is always a revision; otherwise a
+  // lone arg that resolves as a revision is one, and anything else (or args
+  // after a revision, e.g. `git reset HEAD file`) are pathspecs.
+  let explicitTarget: string | null = null;
   let paths: string[] = [];
-  if (mode !== null) {
-    if (args.length > 1) {
-      return { fs, output: "", error: `fatal: Cannot do ${mode} reset with paths.` };
+  const sep = args.indexOf("--");
+  if (sep !== -1) {
+    const revs = args.slice(0, sep);
+    if (revs.length > 1) {
+      return { fs, output: "", error: `fatal: ambiguous argument '${revs[1]}': unknown revision or path not in the working tree.` };
     }
-    target = args[0] ?? "HEAD";
+    explicitTarget = revs[0] ?? null;
+    paths = args.slice(sep + 1);
+  } else if (mode !== null) {
+    explicitTarget = args[0] ?? null;
+    paths = args.slice(1);
   } else if (args.length > 0) {
     if (resolveRef(fs, root, args[0]) !== null) {
-      target = args[0];
+      explicitTarget = args[0];
       paths = args.slice(1);
     } else {
       paths = args;
     }
   }
+  if (mode !== null && paths.length > 0) {
+    return { fs, output: "", error: `fatal: Cannot do ${mode} reset with paths.` };
+  }
+  const target = explicitTarget ?? "HEAD";
 
-  // Path form: reset index entries only.
+  // Path form: reset index entries only, relative to the target commit's tree.
   if (paths.length > 0) {
+    let pathTree = headTree;
+    if (explicitTarget !== null) {
+      const hash = resolveRef(fs, root, explicitTarget);
+      if (!hash) {
+        return { fs, output: "", error: `fatal: ambiguous argument '${explicitTarget}': unknown revision or path not in the working tree.` };
+      }
+      pathTree = readCommit(fs, root, hash)?.tree ?? {};
+    }
     const index = readIndex(fs, root);
-    const result = unstagePaths(fs, root, cwd, index, headTree, paths);
+    const result = unstagePaths(fs, root, cwd, index, pathTree, paths);
     if (result.error) return { fs, output: "", error: result.error };
     fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(result.index));
     return { fs, output: "" };

@@ -1747,6 +1747,84 @@ describe("git reset", () => {
     expect(result.error).toContain("did not match any files");
   });
 
+  it("unstages everything for '.' at the repo root", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = fs.removeNode(`${root}/b.txt`).fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitReset(fs, root, root, ["."], null);
+    expect(result.error).toBeUndefined();
+    const index = readIndex(result.fs, root);
+    expect(index.staged).toEqual({});
+    expect(index.deleted).toEqual([]);
+    // Working tree untouched
+    expect(result.fs.readFile(`${root}/a.txt`).content).toBe("v3");
+  });
+
+  it("'git restore --staged .' at the repo root unstages everything", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitRestore(fs, root, root, ["."], true);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged).toEqual({});
+    expect(result.fs.readFile(`${root}/a.txt`).content).toBe("v3");
+  });
+
+  it("'.' from a subdirectory only unstages that subtree", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/a.txt`, "v3").fs!;
+    fs = fs.makeDirectory(`${root}/sub`).fs!;
+    fs = fs.writeFile(`${root}/sub/c.txt`, "deep").fs!;
+    fs = gitAdd(fs, root, root, ["."], false).fs;
+    const result = gitReset(fs, root, `${root}/sub`, ["."], null);
+    expect(result.error).toBeUndefined();
+    const index = readIndex(result.fs, root);
+    expect(index.staged["sub/c.txt"]).toBeUndefined();
+    expect(index.staged["a.txt"]).toBe("v3");
+  });
+
+  it("'.' at the repo root succeeds silently with an empty index", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["."], null);
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("");
+  });
+
+  it("treats '--' as the rev/pathspec separator", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/.env`, "SECRET=1").fs!;
+    fs = gitAdd(fs, root, root, [".env"], false).fs;
+    const result = gitReset(fs, root, root, ["--", ".env"], null);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged[".env"]).toBeUndefined();
+  });
+
+  it("accepts an explicit revision before '--'", () => {
+    let { fs } = twoCommits();
+    fs = fs.writeFile(`${root}/.env`, "SECRET=1").fs!;
+    fs = gitAdd(fs, root, root, [".env"], false).fs;
+    const result = gitReset(fs, root, root, ["HEAD", "--", ".env"], null);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, root).staged[".env"]).toBeUndefined();
+  });
+
+  it("errors on an unknown revision before '--'", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["nope", "--", "a.txt"], null);
+    expect(result.error).toContain("ambiguous argument 'nope'");
+  });
+
+  it("rejects a mode flag combined with pathspecs after '--'", () => {
+    const { fs } = twoCommits();
+    const result = gitReset(fs, root, root, ["--", "a.txt"], "hard");
+    expect(result.error).toBe("fatal: Cannot do hard reset with paths.");
+  });
+
   it("--soft moves the branch but keeps index and working tree", () => {
     const two = twoCommits();
     const { first } = two;
