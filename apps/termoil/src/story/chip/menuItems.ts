@@ -24,6 +24,8 @@ export const ALL_ITEMS: ChipMenuItem[] = [
       "Stage changes" +
       "\n  git add app.py         # stage one file" +
       "\n  git add .              # stage everything" +
+      "\n  git restore --staged app.py   # unstage, keeping your edits" +
+      "\n  git restore app.py     # throw away your edits (no undo)" +
       "\n\n" +
 
       "Commit changes" +

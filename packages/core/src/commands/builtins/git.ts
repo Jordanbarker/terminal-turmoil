@@ -7,10 +7,11 @@ import { realWallClock } from "@tt/core/commands/clock";
 import {
   findRepoRoot,
   gitInit, gitAdd, gitRm, gitCommit, gitStatus, getCommitLog,
-  listBranches, createBranch, deleteBranch, gitCheckout, gitDiffFiles,
+  listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashList,
   gitClone, gitPush, gitPull, gitReset,
   gitRebase, gitRebaseContinue, gitRebaseAbort,
+  splitRevsAndPaths, filterCommitsByPaths,
   type BranchListMode, type GitResetMode,
 } from "@tt/core/git/repo";
 import { formatStatus, formatLog, formatDiff, formatBranches } from "@tt/core/git/output";
@@ -21,12 +22,22 @@ const NOT_A_REPO = "fatal: not a git repository (or any of the parent directorie
 function parseGitArgs(rawArgs: string[]): { positional: string[]; flags: Record<string, string | boolean> } {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
-  const valueFlags = new Set(["m", "b", "c", "C"]);
+  const valueFlags = new Set(["m", "b", "c", "C", "n"]);
 
   let i = 0;
   while (i < rawArgs.length) {
     const arg = rawArgs[i];
-    if (arg.startsWith("--")) {
+    if (arg === "--") {
+      // End of options. Keep the separator itself in `positional` so pathspec
+      // parsing can see it, and take everything after it verbatim — a file may
+      // legitimately be named `-x`.
+      positional.push(...rawArgs.slice(i));
+      break;
+    } else if (/^-\d+$/.test(arg)) {
+      // `git log -5` is shorthand for `-n 5`.
+      flags["n"] = arg.slice(1);
+      i++;
+    } else if (arg.startsWith("--")) {
       const key = arg.slice(2);
       // --depth 1, etc.
       if (["depth"].includes(key) && i + 1 < rawArgs.length) {
@@ -72,9 +83,10 @@ const GIT_SUBCOMMAND_FLAGS: Record<string, KnownFlags> = {
   rm: { short: ["r"] },
   commit: { short: ["m", "a"], long: ["amend"] },
   status: { short: ["s"] },
-  log: { long: ["oneline", "graph"] },
+  log: { short: ["n"], long: ["oneline", "graph"] },
   branch: { short: ["d", "D", "a", "r"] },
   checkout: { short: ["b"] },
+  restore: { long: ["staged"] },
   switch: { short: ["c"] },
   rebase: { long: ["continue", "abort"] },
   reset: { long: ["soft", "mixed", "hard"] },
@@ -181,7 +193,24 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     }
 
     case "log": {
-      const commits = getCommitLog(ctx.fs, root);
+      let limit: number | undefined;
+      if (flags["n"] !== undefined) {
+        if (flags["n"] === true) return errorResult("error: switch `n' requires a value", 129);
+        if (!/^\d+$/.test(flags["n"] as string)) {
+          return errorResult(`fatal: -n '${flags["n"]}': expects a numerical value`, 128);
+        }
+        limit = parseInt(flags["n"] as string, 10);
+      }
+      const split = splitRevsAndPaths(ctx.fs, root, ctx.cwd, subArgs);
+      if (split.error) return errorResult(split.error, 128);
+      if (split.revs.length > 1 || split.revs[0]?.to) {
+        return errorResult("fatal: git log accepts at most one revision", 128);
+      }
+      let commits = getCommitLog(ctx.fs, root, split.revs[0]?.from);
+      if (split.paths.length > 0) {
+        commits = filterCommitsByPaths(ctx.fs, root, commits, split.paths);
+      }
+      if (limit !== undefined) commits = commits.slice(0, limit);
       const oneline = !!flags["oneline"];
       const graph = !!flags["graph"];
       return { output: formatLog(commits, oneline, graph, plain) };
@@ -216,13 +245,43 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
       if (flags["b"] === "") {
         return errorResult("fatal: '' is not a valid branch name", 128);
       }
+      // `git checkout -- <paths>` is the legacy spelling of `git restore <paths>`.
+      const sep = subArgs.indexOf("--");
+      if (!create && sep !== -1) {
+        // `git checkout <rev> -- <paths>` would restore from <rev>, which this
+        // engine doesn't model — refuse rather than silently restore from
+        // index/HEAD with the wrong content.
+        if (sep > 0) {
+          return errorResult(`fatal: git checkout <rev> -- <paths> is not supported (use git restore)`, 128);
+        }
+        const paths = subArgs.slice(sep + 1);
+        if (paths.length === 0) return errorResult("fatal: you must specify path(s) to restore", 128);
+        const restored = gitRestore(ctx.fs, root, ctx.cwd, paths, false);
+        if (restored.error) return errorResult(restored.error, 1);
+        return { output: restored.output, newFs: restored.fs };
+      }
       // With -b the new branch name is the flag's value; any positional is a
       // start-point, which the sim doesn't model.
       const target = create ? (flags["b"] as string) : subArgs[0];
       if (!target) return errorResult("error: you must specify a branch to checkout", 1);
+      // A branch of that name wins over a file of that name, as in real git
+      // (which only warns about the ambiguity).
+      if (!create && !ctx.fs.readFile(`${root}/.git/refs/heads/${target}`).content) {
+        const restored = gitRestore(ctx.fs, root, ctx.cwd, [target], false);
+        if (!restored.error) return { output: restored.output, newFs: restored.fs };
+      }
       const result = gitCheckout(ctx.fs, root, target, create);
       if (result.error) return errorResult(result.error, 1);
       return { output: result.output, newFs: result.fs, triggerEvents: result.triggerEvents };
+    }
+
+    case "restore": {
+      const sep = subArgs.indexOf("--");
+      const paths = sep === -1 ? subArgs : subArgs.slice(sep + 1);
+      if (paths.length === 0) return errorResult("fatal: you must specify path(s) to restore", 128);
+      const result = gitRestore(ctx.fs, root, ctx.cwd, paths, !!flags["staged"]);
+      if (result.error) return errorResult(result.error, 1);
+      return { output: result.output, newFs: result.fs };
     }
 
     case "switch": {
@@ -274,7 +333,15 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
 
     case "diff": {
       const staged = !!flags["staged"] || !!flags["cached"];
-      const diffs = gitDiffFiles(ctx.fs, root, staged);
+      const split = splitRevsAndPaths(ctx.fs, root, ctx.cwd, subArgs);
+      if (split.error) return errorResult(split.error, 128);
+      if (split.revs.length > 2 || (split.revs.length === 2 && split.revs[0].to)) {
+        return errorResult("fatal: git diff accepts at most two revisions", 128);
+      }
+      // `git diff <a> <b>` is the two-positional spelling of `git diff <a>..<b>`.
+      const from = split.revs[0]?.from;
+      const to = split.revs[0]?.to ?? split.revs[1]?.from;
+      const diffs = gitDiffFiles(ctx.fs, root, { staged, from, to, paths: split.paths });
       return { output: formatDiff(diffs, plain), exitCode: diffs.length > 0 ? 1 : 0 };
     }
 

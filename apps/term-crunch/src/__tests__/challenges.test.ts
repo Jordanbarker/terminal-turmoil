@@ -24,7 +24,7 @@ import {
   resetPaneIdCounters,
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
-import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitPull } from "@tt/core/git/repo";
+import { findRepoRoot, gitAdd, gitCommit, gitReset, gitRestore, gitRebase, gitRebaseContinue, gitCheckout, gitStashSave, gitStashPop, gitPull } from "@tt/core/git/repo";
 import { buildBaseFs } from "../lib/seed";
 import { readGitState } from "../lib/gitState";
 import { structKey, paneTreeMatches, paneTreeMatchesWithRatio } from "../lib/paneCompare";
@@ -409,6 +409,12 @@ describe("git-unstage challenge", () => {
   it("also accepts the `git reset HEAD .env` spelling", () => {
     let fs = gitUnstage.setup(buildBaseFs());
     fs = gitReset(fs, repo, repo, ["HEAD", ".env"], null).fs;
+    expect(step1.isComplete(at(fs))).toBe(true);
+  });
+
+  it("also accepts the modern `git restore --staged .env` spelling", () => {
+    let fs = gitUnstage.setup(buildBaseFs());
+    fs = gitRestore(fs, repo, repo, [".env"], true).fs;
     expect(step1.isComplete(at(fs))).toBe(true);
   });
 

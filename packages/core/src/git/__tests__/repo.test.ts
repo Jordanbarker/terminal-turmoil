@@ -4,7 +4,7 @@ import { DirectoryNode } from "@tt/core/filesystem/types";
 import {
   findRepoRoot, shortHash, collectFiles,
   gitInit, gitAdd, gitCommit, gitStatus, getCommitLog,
-  listBranches, createBranch, deleteBranch, gitCheckout, gitDiffFiles,
+  listBranches, createBranch, deleteBranch, gitCheckout, gitRestore, gitDiffFiles,
   gitStashSave, gitStashPop, gitStashList,
   gitRm, gitClone, gitPush, gitPull, gitReset, resolveRef,
   resolveHead, readIndex,
@@ -118,6 +118,60 @@ describe("git add and commit", () => {
     expect(result.error).toBeUndefined();
     expect(result.output).toContain("first commit");
     expect(result.output).toContain("1 file changed");
+  });
+
+  it("reports exact insertion/deletion counts and mode lines", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/keep.txt", "one\ntwo\nthree\n").fs!;
+    fs = fs.writeFile("/home/player/gone.txt", "bye\n").fs!;
+    const first = gitCommit(gitAdd(fs, "/home/player", "/home/player", ["."], false).fs,
+      "/home/player", "first", AUTHOR, false, false, TEST_TS);
+    expect(first.output.split("\n").slice(1)).toEqual([
+      " 2 files changed, 4 insertions(+)",
+      " create mode 100644 gone.txt",
+      " create mode 100644 keep.txt",
+    ]);
+    fs = first.fs;
+
+    // Replace one line, drop another, add a file, delete a file.
+    fs = fs.writeFile("/home/player/keep.txt", "one\nTWO\n").fs!;
+    fs = fs.writeFile("/home/player/new.txt", "hi\n").fs!;
+    fs = fs.removeNode("/home/player/gone.txt").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", [], true).fs;
+    const second = gitCommit(fs, "/home/player", "second", AUTHOR, false, false, TEST_TS);
+    expect(second.output.split("\n").slice(1)).toEqual([
+      " 3 files changed, 2 insertions(+), 3 deletions(-)",
+      " delete mode 100644 gone.txt",
+      " create mode 100644 new.txt",
+    ]);
+  });
+
+  it("counts an emptied file's lines without inventing a phantom one", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "").fs!;
+    const first = gitCommit(gitAdd(fs, "/home/player", "/home/player", ["."], false).fs,
+      "/home/player", "first", AUTHOR, false, false, TEST_TS);
+    expect(first.output).toContain(" 1 file changed");
+    expect(first.output).not.toContain("insertion");
+    fs = first.fs;
+
+    fs = fs.writeFile("/home/player/a.txt", "now has content\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const second = gitCommit(fs, "/home/player", "second", AUTHOR, false, false, TEST_TS);
+    expect(second.output).toContain(" 1 file changed, 1 insertion(+)");
+  });
+
+  it("measures --amend against the parent, not the commit it replaces", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "one\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "base");
+    fs = fs.writeFile("/home/player/a.txt", "one\ntwo\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "typo");
+    fs = fs.writeFile("/home/player/a.txt", "one\ntwo\nthree\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const amended = gitCommit(fs, "/home/player", "fixed", AUTHOR, true, false, TEST_TS);
+    // Two lines added since `base`, not one since `typo`.
+    expect(amended.output).toContain(" 1 file changed, 2 insertions(+)");
   });
 
   it("reports nothing to commit when clean", () => {
@@ -540,7 +594,7 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/a.txt", "line1\nline2\n").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
     fs = fs.writeFile("/home/player/a.txt", "line1\nmodified\n").fs!;
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("a.txt");
   });
@@ -551,7 +605,7 @@ describe("git diff", () => {
     fs = addAndCommit(fs, "/home/player", "first");
     fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
   });
 
@@ -559,7 +613,7 @@ describe("git diff", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
   });
 
   it("hides a staged change from unstaged diff (working tree vs index, not HEAD)", () => {
@@ -569,8 +623,8 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
 
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
-    expect(gitDiffFiles(fs, "/home/player", true)).toHaveLength(1);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player", { staged: true })).toHaveLength(1);
   });
 
   it("shows index→working diff when a staged file is edited again", () => {
@@ -581,7 +635,7 @@ describe("git diff", () => {
     fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
     fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("a.txt");
     expect(diffs[0].oldContent).toBe("v2");
@@ -593,7 +647,7 @@ describe("git diff", () => {
     fs = fs.writeFile("/home/player/new.txt", "hello").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
 
-    expect(gitDiffFiles(fs, "/home/player", false)).toHaveLength(0);
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
   });
 
   it("shows only post-stage edits for a newly staged file", () => {
@@ -602,14 +656,14 @@ describe("git diff", () => {
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
     fs = fs.writeFile("/home/player/new.txt", "hello world").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
+    const diffs = gitDiffFiles(fs, "/home/player");
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("new.txt");
     expect(diffs[0].oldContent).toBe("hello");
     expect(diffs[0].newContent).toBe("hello world");
   });
 
-  it("treats a staged-deleted file still on disk as an unstaged addition", () => {
+  it("ignores a staged-deleted file still on disk (it is untracked now)", () => {
     let fs = initRepo(makeFs());
     fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
     fs = addAndCommit(fs, "/home/player", "first");
@@ -619,11 +673,32 @@ describe("git diff", () => {
       JSON.stringify({ staged: {}, deleted: ["a.txt"] }),
     ).fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", false);
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].path).toBe("a.txt");
-    expect(diffs[0].oldContent).toBe("");
-    expect(diffs[0].newContent).toBe("v1");
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("never reports untracked files", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/tracked.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/scratch.txt", "brand new").fs!;
+
+    expect(gitDiffFiles(fs, "/home/player")).toHaveLength(0);
+  });
+
+  it("labels adds, modifications and deletions", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/keep.txt", "v1\n").fs!;
+    fs = fs.writeFile("/home/player/gone.txt", "bye\n").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = fs.writeFile("/home/player/keep.txt", "v2\n").fs!;
+    fs = fs.writeFile("/home/player/added.txt", "hi\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["keep.txt", "added.txt"], false).fs;
+    fs = gitRm(fs, "/home/player", ["gone.txt"], false).fs;
+
+    const byPath = Object.fromEntries(
+      gitDiffFiles(fs, "/home/player", { staged: true }).map((d) => [d.path, d.status]),
+    );
+    expect(byPath).toEqual({ "keep.txt": "modified", "added.txt": "added", "gone.txt": "deleted" });
   });
 });
 
@@ -896,7 +971,7 @@ describe("git push", () => {
     const pushed = result.fs.readFile("/home/player/.git/refs/remotes/origin/feature").content!.trim();
     expect(pushed).toBe(featureTip);
     expect(pushed).not.toBe(mainTip);
-    expect(result.output).toContain(featureTip.slice(0, 7));
+    expect(result.output).toContain("[new branch]      feature -> feature");
   });
 
   it("rejects a branch that does not exist locally", () => {
@@ -922,6 +997,117 @@ describe("git push", () => {
     expect(config).toContain('[branch "main"]');
     expect(config).toContain("remote = origin");
     expect(config).toContain("merge = refs/heads/main");
+  });
+
+  it("refuses a bare push when the branch has no upstream", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    // Even `-u` needs a destination to record.
+    const result = gitPush(fs, "/home/player", undefined, undefined, true, false);
+    expect(result.error).toBe(
+      "fatal: The current branch main has no upstream branch.\n" +
+      "To push the current branch and set the remote as upstream, use\n\n" +
+      "    git push --set-upstream origin main\n",
+    );
+    expect(result.triggerEvents).toBeUndefined();
+    expect(result.fs.getNode("/home/player/.git/refs/remotes/origin/main")).toBeNull();
+  });
+
+  it("prints [new branch] on the first push and old..new afterwards", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    const firstTip = resolveHead(fs, "/home/player")!;
+
+    const first = gitPush(fs, "/home/player", "origin", "main", true, false);
+    expect(first.output).toContain(" * [new branch]      main -> main");
+    expect(first.output).not.toContain("0000000");
+    fs = first.fs;
+
+    fs = fs.writeFile("/home/player/a.txt", "v2").fs!;
+    fs = addAndCommit(fs, "/home/player", "second");
+    const secondTip = resolveHead(fs, "/home/player")!;
+    const second = gitPush(fs, "/home/player", undefined, undefined, false, false);
+    expect(second.output).toContain(`${firstTip.slice(0, 7)}..${secondTip.slice(0, 7)}  main -> main`);
+  });
+
+  it("re-emits push events on a no-op re-push", () => {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/.git/config", '[remote "origin"]\n  url = test-remote').fs!;
+    fs = fs.writeFile("/home/player/a.txt", "v1").fs!;
+    fs = addAndCommit(fs, "/home/player", "first");
+    fs = gitPush(fs, "/home/player", "origin", "main", true, false).fs;
+
+    const again = gitPush(fs, "/home/player", undefined, undefined, false, false);
+    expect(again.output).toBe("Everything up-to-date");
+    expect(again.triggerEvents).toEqual([
+      { type: "command_executed", detail: "git_push_origin_main" },
+      { type: "command_executed", detail: "git_push" },
+    ]);
+  });
+});
+
+// ── git restore ──────────────────────────────────────────────────────
+
+describe("git restore", () => {
+  /** Repo with a.txt committed as "v1\n" and sub/b.txt as "sub\n". */
+  function restoreRepo(): VirtualFS {
+    let fs = initRepo(makeFs());
+    fs = fs.writeFile("/home/player/a.txt", "v1\n").fs!;
+    fs = fs.makeDirectory("/home/player/sub").fs!;
+    fs = fs.writeFile("/home/player/sub/b.txt", "sub\n").fs!;
+    return addAndCommit(fs, "/home/player", "first");
+  }
+
+  it("restores a modified file from HEAD, silently", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "dirty\n").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], false);
+    expect(result.error).toBeUndefined();
+    expect(result.output).toBe("");
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("v1\n");
+  });
+
+  it("recreates a deleted tracked file", () => {
+    let fs = restoreRepo();
+    fs = fs.removeNode("/home/player/sub/b.txt").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["sub/b.txt"], false);
+    expect(result.fs.readFile("/home/player/sub/b.txt").content).toBe("sub\n");
+  });
+
+  it("prefers the index over HEAD when the file is staged", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "staged\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    fs = fs.writeFile("/home/player/a.txt", "then this\n").fs!;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], false);
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("staged\n");
+  });
+
+  it("takes a directory pathspec and resolves it against cwd", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/sub/b.txt", "dirty\n").fs!;
+    // From inside sub/, `git restore .` restores that subtree only.
+    const result = gitRestore(fs, "/home/player", "/home/player/sub", ["."], false);
+    expect(result.fs.readFile("/home/player/sub/b.txt").content).toBe("sub\n");
+  });
+
+  it("--staged unstages but leaves the working tree alone", () => {
+    let fs = restoreRepo();
+    fs = fs.writeFile("/home/player/a.txt", "dirty\n").fs!;
+    fs = gitAdd(fs, "/home/player", "/home/player", ["a.txt"], false).fs;
+    const result = gitRestore(fs, "/home/player", "/home/player", ["a.txt"], true);
+    expect(result.error).toBeUndefined();
+    expect(readIndex(result.fs, "/home/player").staged).toEqual({});
+    expect(result.fs.readFile("/home/player/a.txt").content).toBe("dirty\n");
+  });
+
+  it("errors on a pathspec git knows nothing about", () => {
+    const result = gitRestore(restoreRepo(), "/home/player", "/home/player", ["ghost.txt"], false);
+    expect(result.error).toBe("error: pathspec 'ghost.txt' did not match any file(s) known to git");
   });
 });
 
@@ -1410,7 +1596,7 @@ describe("git diff --staged (focused)", () => {
     fs = fs.writeFile("/home/player/new.txt", "line1\nline2\n").fs!;
     fs = gitAdd(fs, "/home/player", "/home/player", ["new.txt"], false).fs;
 
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
     expect(diffs[0].path).toBe("new.txt");
     expect(diffs[0].oldContent).toBe("");
@@ -1429,7 +1615,7 @@ describe("git diff --staged (focused)", () => {
     // Make an additional unstaged change to a.txt
     fs = fs.writeFile("/home/player/a.txt", "v3").fs!;
 
-    const diffs = gitDiffFiles(fs, "/home/player", true);
+    const diffs = gitDiffFiles(fs, "/home/player", { staged: true });
     expect(diffs).toHaveLength(1);
     // Should show v1→v2 (staged), NOT v1→v3 (working tree)
     expect(diffs[0].oldContent).toBe("v1");

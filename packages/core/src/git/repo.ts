@@ -1,6 +1,7 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isDirectory, isFile } from "@tt/core/filesystem/types";
 import { normalizePath } from "@tt/core/lib/pathUtils";
+import { computeDiff } from "@tt/core/lib/diff";
 import { GitCommit, GitIndex, GitRepo, GitStashEntry, GitRebaseState } from "./types";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -32,6 +33,27 @@ export function shortHash(input: string): string {
     h2 = Math.imul(h2, 0x01000193);
   }
   return ((h >>> 0).toString(16).padStart(8, "0") + (h2 >>> 0).toString(16).padStart(8, "0")).slice(0, 7);
+}
+
+/**
+ * Split file content into diffable lines. Empty content is zero lines (not one
+ * empty one), and a single trailing newline is the line terminator rather than
+ * an extra blank line — both so line counts match real git's.
+ */
+export function contentLines(content: string): string[] {
+  if (content === "") return [];
+  return content.replace(/\n$/, "").split("\n");
+}
+
+/** Exact insertion/deletion counts between two file contents (real-git `--stat` math). */
+export function countLineChanges(oldContent: string, newContent: string): { insertions: number; deletions: number } {
+  let insertions = 0;
+  let deletions = 0;
+  for (const entry of computeDiff(contentLines(oldContent), contentLines(newContent))) {
+    if (entry.type === "added") insertions++;
+    else if (entry.type === "removed") deletions++;
+  }
+  return { insertions, deletions };
 }
 
 /** Recursively collect all files under dirPath, skipping .git/, returning paths relative to relativeTo */
@@ -388,13 +410,44 @@ export function gitCommit(
   // Clear index
   fs = writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify({ staged: {}, deleted: [] }));
 
-  const fileCount = Object.keys(index.staged).length + index.deleted.length;
   const branchStr = branch ?? hash.slice(0, 7);
   const rootStr = parent ? "" : " (root-commit)";
+  // Amend replaces HEAD, so its stat is measured against the *parent*, not HEAD.
+  const baseTree = parent ? (readCommit(fs, root, parent)?.tree ?? {}) : {};
   return {
     fs,
-    output: `[${branchStr}${rootStr} ${hash}] ${message}\n ${fileCount} file${fileCount !== 1 ? "s" : ""} changed`,
+    output: [`[${branchStr}${rootStr} ${hash}] ${message}`, ...formatCommitStat(baseTree, newTree)].join("\n"),
   };
+}
+
+/**
+ * Real-git commit summary: the `N files changed, X insertions(+), Y deletions(-)`
+ * line followed by create/delete mode lines. Zero-valued clauses are omitted, as
+ * in git. Mode is always 100644 — the VFS has no executable bit.
+ */
+function formatCommitStat(oldTree: Record<string, string>, newTree: Record<string, string>): string[] {
+  const paths = [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])]
+    .filter((p) => oldTree[p] !== newTree[p])
+    .sort();
+
+  let insertions = 0;
+  let deletions = 0;
+  for (const p of paths) {
+    const counts = countLineChanges(oldTree[p] ?? "", newTree[p] ?? "");
+    insertions += counts.insertions;
+    deletions += counts.deletions;
+  }
+
+  const parts = [`${paths.length} file${paths.length !== 1 ? "s" : ""} changed`];
+  if (insertions > 0) parts.push(`${insertions} insertion${insertions !== 1 ? "s" : ""}(+)`);
+  if (deletions > 0) parts.push(`${deletions} deletion${deletions !== 1 ? "s" : ""}(-)`);
+
+  const modeLines = paths.flatMap((p) => {
+    if (!(p in oldTree)) return [` create mode 100644 ${p}`];
+    if (!(p in newTree)) return [` delete mode 100644 ${p}`];
+    return [];
+  });
+  return [` ${parts.join(", ")}`, ...modeLines];
 }
 
 // ── git status ───────────────────────────────────────────────────────
@@ -504,12 +557,10 @@ function computeTracking(
 
 // ── git log ──────────────────────────────────────────────────────────
 
-export function getCommitLog(fs: VirtualFS, root: string): GitCommit[] {
-  const headHash = resolveHead(fs, root);
-  if (!headHash) return [];
-
+/** First-parent walk from `startHash` (default HEAD), newest first. */
+export function getCommitLog(fs: VirtualFS, root: string, startHash?: string): GitCommit[] {
   const commits: GitCommit[] = [];
-  let current: string | null = headHash;
+  let current: string | null = startHash ?? resolveHead(fs, root);
   while (current) {
     const commit = readCommit(fs, root, current);
     if (!commit) break;
@@ -517,6 +568,21 @@ export function getCommitLog(fs: VirtualFS, root: string): GitCommit[] {
     current = commit.parent;
   }
   return commits;
+}
+
+/** Keep only commits that changed at least one path under `relPaths` (`git log -- <path>`). */
+export function filterCommitsByPaths(
+  fs: VirtualFS, root: string, commits: GitCommit[], relPaths: string[]
+): GitCommit[] {
+  const matches = pathMatcher(relPaths);
+  return commits.filter((commit) => {
+    const parentTree = commit.parent ? (readCommit(fs, root, commit.parent)?.tree ?? {}) : {};
+    const keys = new Set([...Object.keys(commit.tree), ...Object.keys(parentTree)]);
+    for (const key of keys) {
+      if (matches(key) && commit.tree[key] !== parentTree[key]) return true;
+    }
+    return false;
+  });
 }
 
 // ── git branch ───────────────────────────────────────────────────────
@@ -822,60 +888,234 @@ export function gitReset(
   return { fs, output: `Unstaged changes after reset:\n${unstagedLines.sort().join("\n")}` };
 }
 
+// ── git restore ──────────────────────────────────────────────────────
+
+/**
+ * `git restore [--staged] <paths>`. `--staged` drops the paths from the index
+ * (same machinery as `git reset <paths>`); the working-tree form rewrites each
+ * file from the index if it's staged there, else from HEAD. Both are silent on
+ * success, as real git is.
+ */
+export function gitRestore(
+  fs: VirtualFS, root: string, cwd: string, paths: string[], staged: boolean
+): { fs: VirtualFS; output: string; error?: string } {
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+
+  if (staged) {
+    const result = unstagePaths(fs, root, cwd, readIndex(fs, root), headTree, paths);
+    if (result.error) return { fs, output: "", error: result.error };
+    return { fs: writeOrFail(fs, `${root}/.git/index.json`, JSON.stringify(result.index)), output: "" };
+  }
+
+  const index = readIndex(fs, root);
+  const source: Record<string, string> = { ...headTree, ...index.staged };
+  for (const p of paths) {
+    const rel = toRepoRelative(root, cwd, p);
+    const matches = Object.keys(source).filter((key) => rel === "" || key === rel || key.startsWith(rel + "/"));
+    if (matches.length === 0) {
+      return { fs, output: "", error: `error: pathspec '${p}' did not match any file(s) known to git` };
+    }
+    for (const key of matches) {
+      fs = writeFileWithDirs(fs, root, key, source[key]);
+    }
+  }
+  return { fs, output: "" };
+}
+
 // ── git diff ─────────────────────────────────────────────────────────
 
 export interface DiffFile {
   path: string;
   oldContent: string;
   newContent: string;
+  /** Drives the `new file mode` / `deleted file mode` headers; "" content alone can't tell them apart. */
+  status: "added" | "modified" | "deleted";
 }
 
-export function gitDiffFiles(fs: VirtualFS, root: string, staged: boolean): DiffFile[] {
+export interface DiffOptions {
+  /** Compare the index rather than the working tree (`--staged`/`--cached`). */
+  staged?: boolean;
+  /** Commit hash for the "a" side; without it the comparison is index/worktree based. */
+  from?: string;
+  /** Commit hash for the "b" side; with `from` but no `to`, "b" is the working tree. */
+  to?: string;
+  /** Repo-relative pathspecs (file or directory prefix); `""` means the whole repo. */
+  paths?: string[];
+}
+
+/** Effective tracked tree: HEAD overlaid with the index. */
+function trackedTreeOf(fs: VirtualFS, root: string, headTree: Record<string, string>): Record<string, string> {
+  const index = readIndex(fs, root);
+  const tracked: Record<string, string> = { ...headTree, ...index.staged };
+  for (const path of index.deleted) delete tracked[path];
+  return tracked;
+}
+
+function diffTreePair(oldTree: Record<string, string>, newTree: Record<string, string>): DiffFile[] {
+  const diffs: DiffFile[] = [];
+  for (const path of [...new Set([...Object.keys(oldTree), ...Object.keys(newTree)])].sort()) {
+    const oldContent = oldTree[path];
+    const newContent = newTree[path];
+    if (oldContent === newContent) continue;
+    diffs.push({
+      path,
+      oldContent: oldContent ?? "",
+      newContent: newContent ?? "",
+      status: oldContent === undefined ? "added" : newContent === undefined ? "deleted" : "modified",
+    });
+  }
+  return diffs;
+}
+
+export function gitDiffFiles(fs: VirtualFS, root: string, opts: DiffOptions = {}): DiffFile[] {
   const headHash = resolveHead(fs, root);
   const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
-  const diffs: DiffFile[] = [];
+  let diffs: DiffFile[];
 
-  if (staged) {
+  if (opts.from) {
+    const oldTree = readCommit(fs, root, opts.from)?.tree ?? {};
+    let newTree: Record<string, string>;
+    if (opts.to) {
+      newTree = readCommit(fs, root, opts.to)?.tree ?? {};
+    } else if (opts.staged) {
+      // `git diff --cached <rev>` compares the index against <rev>.
+      newTree = trackedTreeOf(fs, root, headTree);
+    } else {
+      // Working-tree side, restricted to paths git knows about — untracked files
+      // stay out of `git diff <rev>` just as they do out of plain `git diff`.
+      const workingTree = collectFiles(fs, root, root);
+      const known = new Set([...Object.keys(oldTree), ...Object.keys(trackedTreeOf(fs, root, headTree))]);
+      newTree = {};
+      for (const path of known) {
+        if (path in workingTree) newTree[path] = workingTree[path];
+      }
+    }
+    diffs = diffTreePair(oldTree, newTree);
+  } else if (opts.staged) {
     const index = readIndex(fs, root);
+    diffs = [];
     for (const [path, content] of Object.entries(index.staged)) {
       const oldContent = headTree[path] ?? "";
       if (oldContent !== content) {
-        diffs.push({ path, oldContent, newContent: content });
+        diffs.push({ path, oldContent, newContent: content, status: path in headTree ? "modified" : "added" });
       }
     }
     for (const path of index.deleted) {
       if (path in headTree) {
-        diffs.push({ path, oldContent: headTree[path], newContent: "" });
+        diffs.push({ path, oldContent: headTree[path], newContent: "", status: "deleted" });
       }
     }
   } else {
-    const index = readIndex(fs, root);
-    const trackedTree: Record<string, string> = { ...headTree };
-    for (const [path, content] of Object.entries(index.staged)) {
-      trackedTree[path] = content;
-    }
-    for (const path of index.deleted) {
-      delete trackedTree[path];
-    }
-
+    const trackedTree = trackedTreeOf(fs, root, headTree);
     const workingTree = collectFiles(fs, root, root);
+    diffs = [];
     for (const [path, content] of Object.entries(trackedTree)) {
       if (path in workingTree) {
         if (workingTree[path] !== content) {
-          diffs.push({ path, oldContent: content, newContent: workingTree[path] });
+          diffs.push({ path, oldContent: content, newContent: workingTree[path], status: "modified" });
         }
       } else {
-        diffs.push({ path, oldContent: content, newContent: "" });
+        diffs.push({ path, oldContent: content, newContent: "", status: "deleted" });
       }
     }
-    for (const [path, content] of Object.entries(workingTree)) {
-      if (!(path in trackedTree)) {
-        diffs.push({ path, oldContent: "", newContent: content });
-      }
-    }
+    // Untracked files are deliberately absent: real `git diff` only reports
+    // changes to tracked paths.
   }
 
+  if (opts.paths && opts.paths.length > 0) {
+    const matches = pathMatcher(opts.paths);
+    diffs = diffs.filter((d) => matches(d.path));
+  }
   return diffs;
+}
+
+// ── pathspec / revision arguments ────────────────────────────────────
+
+/** Match repo-relative keys against pathspecs (exact file, or directory prefix; `""` = everything). */
+function pathMatcher(relPaths: string[]): (key: string) => boolean {
+  if (relPaths.some((p) => p === "")) return () => true;
+  return (key) => relPaths.some((p) => key === p || key.startsWith(p + "/"));
+}
+
+/** Normalize a user-supplied pathspec to a repo-relative key; the repo root becomes `""`. */
+export function toRepoRelative(root: string, cwd: string, p: string): string {
+  const abs = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
+  if (abs === root) return "";
+  return abs.startsWith(root + "/") ? abs.slice(root.length + 1) : abs;
+}
+
+/** A single revision, or a `<rev1>..<rev2>` range — the two forms `git diff` accepts. */
+export interface ParsedRev {
+  from: string;
+  to?: string;
+}
+
+/**
+ * Split `git diff` / `git log` arguments into revisions and repo-relative pathspecs.
+ *
+ * A literal `--` is authoritative: everything before it is a revision, everything
+ * after a path (unvalidated, as in real git). Without one, each argument that
+ * resolves as a revision is one and the rest are paths — but a path that names
+ * nothing git knows about is the classic `ambiguous argument` fatal, not a
+ * silently-empty result.
+ */
+export function splitRevsAndPaths(
+  fs: VirtualFS, root: string, cwd: string, args: string[]
+): { revs: ParsedRev[]; paths: string[]; error?: string } {
+  const sep = args.indexOf("--");
+  const rel = (p: string) => toRepoRelative(root, cwd, p);
+  if (sep !== -1) {
+    const revs: ParsedRev[] = [];
+    for (const token of args.slice(0, sep)) {
+      const parsed = parseRevToken(fs, root, token);
+      if (!parsed) return { revs: [], paths: [], error: ambiguousArg(token) };
+      revs.push(parsed);
+    }
+    return { revs, paths: args.slice(sep + 1).map(rel) };
+  }
+
+  const revs: ParsedRev[] = [];
+  const paths: string[] = [];
+  for (const token of args) {
+    // Once a path has been seen, later args can't go back to being revisions.
+    const parsed = paths.length === 0 ? parseRevToken(fs, root, token) : null;
+    if (parsed) {
+      revs.push(parsed);
+    } else if (pathIsKnown(fs, root, cwd, token)) {
+      paths.push(rel(token));
+    } else {
+      return { revs: [], paths: [], error: ambiguousArg(token) };
+    }
+  }
+  return { revs, paths };
+}
+
+function ambiguousArg(token: string): string {
+  return `fatal: ambiguous argument '${token}': unknown revision or path not in the working tree.`;
+}
+
+function parseRevToken(fs: VirtualFS, root: string, token: string): ParsedRev | null {
+  const range = token.split("..");
+  if (range.length === 2 && range[0] && range[1]) {
+    const from = resolveRef(fs, root, range[0]);
+    const to = resolveRef(fs, root, range[1]);
+    return from && to ? { from, to } : null;
+  }
+  const hash = resolveRef(fs, root, token);
+  return hash ? { from: hash } : null;
+}
+
+/** True when a pathspec names something on disk or tracked by HEAD/the index. */
+function pathIsKnown(fs: VirtualFS, root: string, cwd: string, p: string): boolean {
+  const abs = p.startsWith("/") ? normalizePath(p) : normalizePath(`${cwd}/${p}`);
+  if (fs.getNode(abs)) return true;
+  const relPath = toRepoRelative(root, cwd, p);
+  if (relPath === "") return true;
+  const headHash = resolveHead(fs, root);
+  const headTree = headHash ? (readCommit(fs, root, headHash)?.tree ?? {}) : {};
+  const matches = pathMatcher([relPath]);
+  return Object.keys(trackedTreeOf(fs, root, headTree)).some(matches);
 }
 
 // ── git stash ────────────────────────────────────────────────────────
@@ -1077,6 +1317,21 @@ export function gitPush(
     return { fs, output: "", error: "fatal: No configured push destination" };
   }
 
+  // A remote exists but bare `git push` has nothing to aim at: real git refuses
+  // rather than guessing origin/<current>. `-u` alone doesn't help — it needs a
+  // destination to record, which is why the hint spells out the full command. A
+  // positional remote (`git push origin`) suffices, as with push.default=simple.
+  if (!remote && !branch && !repo.upstream) {
+    return {
+      fs,
+      output: "",
+      error:
+        `fatal: The current branch ${targetBranch} has no upstream branch.\n` +
+        `To push the current branch and set the remote as upstream, use\n\n` +
+        `    git push --set-upstream origin ${targetBranch}\n`,
+    };
+  }
+
   // Push the *named* ref, not HEAD. `git push origin other` from main used to
   // send main's tip under the name `other`, silently publishing the wrong
   // commits; a branch that doesn't exist locally is a refspec error, not a
@@ -1094,9 +1349,16 @@ export function gitPush(
   const remoteRefFile = fs.readFile(`${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`);
   const remoteHash = remoteRefFile.content?.trim();
 
-  // Already up to date
+  // Already up to date. Still emit the push events: a player re-running the
+  // command has performed the push, and story flags are set-to-true, so
+  // re-crediting is idempotent. Without this a flag missed on the first push
+  // (e.g. its gate wasn't satisfied yet) could never be earned.
   if (remoteHash === localHash) {
-    return { fs, output: "Everything up-to-date" };
+    return {
+      fs,
+      output: "Everything up-to-date",
+      triggerEvents: pushEvents(targetBranch),
+    };
   }
 
   if (remoteHash && remoteHash !== localHash && !force) {
@@ -1115,7 +1377,7 @@ export function gitPush(
 
   // Update remote ref (writeRefOrFail mkdir-p's the parent chain, including
   // the remote dir itself and any nested branch path like feature/x).
-  const oldHash = remoteHash ?? "0000000";
+  const isNewBranch = remoteHash === undefined;
   fs = writeRefOrFail(fs, `${root}/.git/refs/remotes/${targetRemote}/${targetBranch}`, localHash);
 
   // Set upstream if requested — write a per-branch section so each branch
@@ -1140,19 +1402,27 @@ export function gitPush(
   }
 
   const forceStr = force ? "+ " : "";
+  const refLine = isNewBranch
+    ? ` * [new branch]      ${targetBranch} -> ${targetBranch}`
+    : `   ${forceStr}${remoteHash!.slice(0, 7)}..${localHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`;
   const output = [
     `To ${remoteUrl ?? targetRemote}`,
-    `   ${forceStr}${oldHash.slice(0, 7)}..${localHash.slice(0, 7)}  ${targetBranch} -> ${targetBranch}${force ? " (forced update)" : ""}`,
+    refLine,
     ...(setUpstream ? [`branch '${targetBranch}' set up to track '${targetRemote}/${targetBranch}'.`] : []),
   ].join("\n");
 
-  return {
-    fs, output,
-    triggerEvents: [
-      { type: "command_executed", detail: `git_push_origin_${targetBranch}` },
-      { type: "command_executed", detail: "git_push" },
-    ],
-  };
+  return { fs, output, triggerEvents: pushEvents(targetBranch) };
+}
+
+/**
+ * Story contract: every successful push emits both the per-branch detail and
+ * the generic one, including no-op re-pushes. See the git skill's event table.
+ */
+function pushEvents(targetBranch: string): { type: "command_executed"; detail: string }[] {
+  return [
+    { type: "command_executed", detail: `git_push_origin_${targetBranch}` },
+    { type: "command_executed", detail: "git_push" },
+  ];
 }
 
 // ── tree diff helper ────────────────────────────────────────────────

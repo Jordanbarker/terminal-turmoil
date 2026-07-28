@@ -52,13 +52,10 @@ depending on it. Otherwise leave it.
 
 ## Git
 
-- `git diff` reports untracked files.
-- `diff`/`log`/`status` ignore pathspec and revision arguments.
-- `git checkout <file>` and `git restore` are unimplemented; the status hint points at `git reset HEAD`.
-- `git push` with no upstream silently defaults to `origin`/current branch instead of erroring, and a first push prints `0000000..<sha>` rather than `* [new branch]`.
-- `git log -n` is unsupported.
-- `commit` omits insertion/deletion stats; `diff` omits index lines and `@@` hunk headers.
-- A re-push prints "Everything up-to-date" and emits no events, so a flag is never re-credited (intentional, but it means push events are not idempotent-safe by construction).
+- `git status` ignores pathspec arguments (`diff` and `log` honor them).
+- `git pull`'s `--stat` block still uses the approximate `diffTrees` line math rather than `countLineChanges`.
+- No `merge`, no `^` / `~N~M` revision chains, no detached-HEAD checkout of a commit.
+- Diffs have no rename detection and no `\ No newline at end of file` marker.
 
 ## dbt
 

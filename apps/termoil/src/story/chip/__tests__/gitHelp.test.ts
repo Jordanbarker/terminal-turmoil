@@ -105,11 +105,11 @@ describe("chip git tips are runnable in this engine", () => {
     expect(`${result.output}${result.stderr ?? ""}`).not.toMatch(NONEXISTENT);
   });
 
-  it("never advertises `git restore` (the engine has no such subcommand)", () => {
+  it("never advertises `git merge` (the engine has no such subcommand)", () => {
     const gitHelp = ALL_ITEMS.find((i) => i.id === "git_help")!.response as string;
-    expect(gitHelp).not.toContain("git restore");
-    const restore = run(makeRepo(), "git restore app.py");
-    expect(`${restore.output}${restore.stderr ?? ""}`).toMatch(NONEXISTENT);
+    expect(gitHelp).not.toContain("git merge");
+    const merge = run(makeRepo(), "git merge main");
+    expect(`${merge.output}${merge.stderr ?? ""}`).toMatch(NONEXISTENT);
   });
 
   it("separates every labelled section with a blank line", () => {

@@ -55,8 +55,8 @@ export const gitUnstage: Challenge = {
     {
       instruction: "Unstage .env without deleting it or changing its contents.",
       hint:
-        "git reset with a path only touches the index: the file leaves staging, " +
-        "your working tree stays as is.",
+        "git reset <path> and git restore --staged <path> both touch only the index: " +
+        "the file leaves staging, your working tree stays as is.",
       command: "git reset .env",
       // app.js must still be staged: a bare `git reset` empties the whole index,
       // which isn't the targeted fix (though re-adding app.js afterward reaches
