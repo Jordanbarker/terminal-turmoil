@@ -47,6 +47,14 @@ describe("shutdown", () => {
     expect(result.incrementalLines?.some((l) => l.text.includes("1 minute"))).toBe(false);
   });
 
+  it("help lists shutdown before day1_shutdown and hides it after", () => {
+    const before = execute("help", [], {}, ctx());
+    expect(before.output).toContain("shutdown");
+
+    const after = execute("help", [], {}, ctx({ storyFlags: { day1_shutdown: true } }));
+    expect(after.output).not.toContain("shutdown");
+  });
+
   it("early game: home shutdown before returned_home_day1 is a cosmetic reboot", () => {
     const result = execute("shutdown", ["now"], { h: true }, ctx());
     expect(result.gameAction).toEqual({ type: "reboot" });

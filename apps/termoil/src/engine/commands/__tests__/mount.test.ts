@@ -84,6 +84,7 @@ const SDB1: BlockDevice = {
     "hello.txt": file("hello.txt", "hi from the device\n"),
     "folder": dir("folder", { "inner.txt": file("inner.txt", "nested\n") }),
   }),
+  mountTrigger: { mountpath: "/mnt/usb", event: { type: "command_executed", detail: "mounted_usb_drive" } },
 };
 
 describe("mount", () => {

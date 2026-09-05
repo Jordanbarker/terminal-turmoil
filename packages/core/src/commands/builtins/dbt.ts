@@ -74,5 +74,5 @@ const dbt: CommandHandler = (args, flags, ctx) => {
   }
 };
 
-register("dbt", dbt, "dbt — data build tool for NexaCorp analytics", HELP_TEXTS.dbt);
+register("dbt", dbt, "dbt — data build tool for analytics", HELP_TEXTS.dbt);
 setKnownFlags("dbt", { short: ["s"], long: ["select", "resource-type", "version"] });

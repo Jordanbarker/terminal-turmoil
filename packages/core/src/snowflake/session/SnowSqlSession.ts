@@ -9,6 +9,7 @@ import { findPrevWordBoundary, findNextWordBoundary } from "@tt/core/terminal/wo
 import { ISession, SessionResult } from "@tt/core/session/types";
 import { GameEvent } from "@tt/core";
 import { matchSqlQueryTriggers } from "../queryTriggers";
+import { getWarehouseIdentity } from "../identity";
 
 /**
  * Interactive Snowflake CLI SQL REPL session.
@@ -449,8 +450,8 @@ export class SnowSqlSession implements ISession {
       `  SHOW SCHEMAS;`,
       `  SHOW TABLES;                       -- current schema`,
       `  SHOW TABLES IN ACCOUNT;            -- every table you can read`,
-      `  SHOW TABLES IN SCHEMA RAW_NEXACORP;`,
-      `  USE SCHEMA RAW_NEXACORP;`,
+      `  SHOW TABLES IN SCHEMA ${getWarehouseIdentity().rawSchema};`,
+      `  USE SCHEMA ${getWarehouseIdentity().rawSchema};`,
       `  SELECT * FROM employees LIMIT 10;`,
     ];
     this.terminal.write(lines.join("\r\n") + "\r\n");

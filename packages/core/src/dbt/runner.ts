@@ -22,6 +22,7 @@ import { DBT_DEFAULT_LINE_DELAY_MS, jitterDelay } from "@tt/core/lib/timing";
 import { parseSourceMap, parseMacros, compileSql, extractRefs } from "./compiler";
 import { executeModel, executeTest, queryModel, getModelRowCount } from "./executor";
 import { createDefaultContext } from "@tt/core/snowflake/session/context";
+import { getWarehouseIdentity } from "@tt/core/snowflake/identity";
 import { execute as executeSql } from "@tt/core/snowflake/executor/executor";
 import { isFile, isDirectory } from "@tt/core/filesystem/types";
 import { SnowflakeState } from "@tt/core/snowflake/state";
@@ -396,7 +397,8 @@ function runGenericTest(
   const { modelName, columnName } = parseGenericTestName(rest, state);
   if (!modelName || !columnName) return { status: "error" };
 
-  const fqTable = `NEXACORP_PROD.ANALYTICS.${modelName.toUpperCase()}`;
+  const { database, analyticsSchema } = getWarehouseIdentity();
+  const fqTable = `${database}.${analyticsSchema}.${modelName.toUpperCase()}`;
 
   let sql: string;
   if (testType === "unique") {
@@ -424,8 +426,9 @@ function parseGenericTestName(
     const candidateColumn = parts.slice(i).join("_");
     const upper = candidateModel.toUpperCase();
     // Check if this model exists as a table or view
-    if (state.getTable("NEXACORP_PROD", "ANALYTICS", upper) ||
-        state.getView("NEXACORP_PROD", "ANALYTICS", upper)) {
+    const { database, analyticsSchema } = getWarehouseIdentity();
+    if (state.getTable(database, analyticsSchema, upper) ||
+        state.getView(database, analyticsSchema, upper)) {
       return { modelName: candidateModel, columnName: candidateColumn };
     }
   }
@@ -514,15 +517,16 @@ export function debugProject(ctx: CommandContext): CommandResult {
   const project = loadProject(ctx);
   if ("error" in project) return { output: "", stderr: project.error };
 
+  const identity = getWarehouseIdentity();
   const info: DbtDebugInfo = {
-    account: "nexacorp.us-east-1",
-    user: "chip_service_account",
-    database: "NEXACORP_PROD",
-    warehouse: "NEXACORP_WH",
-    role: "TRANSFORMER",
-    schema: "ANALYTICS",
+    account: identity.account,
+    user: identity.dbtUser,
+    database: identity.database,
+    warehouse: identity.warehouse,
+    role: identity.dbtRole,
+    schema: identity.analyticsSchema,
     dbtVersion: "1.7.4",
-    profileName: "nexacorp",
+    profileName: identity.dbtProfileName,
     target: "prod",
   };
 

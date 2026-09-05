@@ -432,7 +432,14 @@ export function useSessionRouter(deps: SessionRouterDeps) {
           session.info.host,
           session.info.username,
           currentFs.homeDir,
-          session.info.targetComputer
+          session.info.targetComputer,
+          // Only the home → nexacorp route fires `ssh_connect` (drives the
+          // `first_ssh_connect` story flag). Other routes (e.g. chipinfra →
+          // erik-pc) set their narrative flag on arrival in the transition
+          // handler instead.
+          session.info.targetComputer === "nexacorp"
+            ? [{ type: "objective_completed", detail: "ssh_connect" }]
+            : []
         );
         sessionMapRef.current.set(targetPaneId, { session: sshSession, type: "ssh" });
         const enterResult = sshSession.enter();

@@ -1,3 +1,5 @@
+import { getWarehouseIdentity } from "@tt/core/snowflake/identity";
+
 export interface SessionContext {
   currentDatabase: string;
   currentSchema: string;
@@ -9,11 +11,12 @@ export interface SessionContext {
 }
 
 export function createDefaultContext(username?: string, gameNow?: Date): SessionContext {
+  const identity = getWarehouseIdentity();
   return {
-    currentDatabase: "NEXACORP_PROD",
-    currentSchema: "ANALYTICS",
-    currentWarehouse: "NEXACORP_WH",
-    currentRole: "ANALYST",
+    currentDatabase: identity.database,
+    currentSchema: identity.analyticsSchema,
+    currentWarehouse: identity.warehouse,
+    currentRole: identity.defaultRole,
     currentUser: (username ?? "PLAYER").toUpperCase(),
     gameNow,
   };

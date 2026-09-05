@@ -8,6 +8,7 @@ import { seedImmediatePiper, deliverPiperAndCascade } from "../engine/piper/deli
 import { syncToVirtualFS } from "@tt/core/snowflake/bridge/fs_bridge";
 import { createInitialSnowflakeState } from "@/story/data/snowflake/initial_data";
 import { colorize, ansi } from "@tt/core/lib/ansi";
+import { isCommandAvailable } from "@tt/core/commands/availability";
 import { nexacorpLogo, getSshConnectionSequence, getBootSequence, getHomeBootSequence, getCoderConnectionSequence, getCoderBanner, getHomeWelcome, UNLOCK_BOX, getUpdateNotification, getEndgameCreditsBlock } from "@/lib/ascii";
 import {
   BOOT_LINE_INTERVAL_MS,
@@ -379,15 +380,13 @@ export function useComputerTransitions(deps: TransitionDeps) {
     term.writeln(colorize(`\r\nDisconnected from ${sourceHostname}.`, ansi.dim));
 
     // The deferred flush exists for machines where `piper` is unavailable
-    // (devcontainer/chipinfra/erik-pc). Home and nexacorp both surface notices
-    // inline; the flush is gated to nexacorp because that is where those
-    // machines exit back to.
-    if (target === "nexacorp") {
-      const latest = useGameStore.getState();
-      if (latest.pendingPiperNotification) {
-        term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
-        latest.setPendingPiperNotification(false);
-      }
+    // (devcontainer/chipinfra/erik-pc). Flush wherever piper can surface
+    // notices — same gate as the live notification sites (useTerminal,
+    // useSessionRouter): nexacorp always, home once piper_unlocked carries over.
+    const latest = useGameStore.getState();
+    if (isCommandAvailable("piper", target, latest.storyFlags) && latest.pendingPiperNotification) {
+      term.write(`\r\n${colorize("You have new messages on Piper", ansi.yellow, ansi.bold)}`);
+      latest.setPendingPiperNotification(false);
     }
 
     writePrompt(term);

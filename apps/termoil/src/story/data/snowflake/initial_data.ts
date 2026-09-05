@@ -1,6 +1,9 @@
 import { SnowflakeState, SnowflakeData } from "@tt/core/snowflake/state";
 import { Database, Schema, Column, Row, createSchema } from "@tt/core/snowflake/types";
 import { LogOptions } from "../../filesystem/logs";
+// The seed data is written against NexaCorp's warehouse identity; loading it
+// injects that identity into core's dbt/snowflake engines (side effect).
+import "../../warehouseIdentity";
 
 import nexacorpProdJson from "./nexacorp_prod.json";
 

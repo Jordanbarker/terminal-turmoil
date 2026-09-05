@@ -73,6 +73,7 @@ export const BLOCK_DEVICES: Partial<Record<ComputerId, BlockDevice[]>> = {
       getContents: () => ({
         "note.txt": file("note.txt", USB_NOTE_BODY),
       }),
+      mountTrigger: { mountpath: "/mnt/usb", event: { type: "command_executed", detail: "mounted_usb_drive" } },
     },
   ],
   nexacorp: systemDisk("sda", 8, "1T"),

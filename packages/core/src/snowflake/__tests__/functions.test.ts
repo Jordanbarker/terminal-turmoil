@@ -668,9 +668,9 @@ describe("SQL Functions", () => {
       expect(singleValue(result)).toBe("SYSADMIN");
     });
 
-    it("CURRENT_WAREHOUSE returns NEXACORP_WH", () => {
+    it("CURRENT_WAREHOUSE returns the default identity warehouse", () => {
       const result = run("SELECT CURRENT_WAREHOUSE() AS val", state);
-      expect(singleValue(result)).toBe("NEXACORP_WH");
+      expect(singleValue(result)).toBe("WH");
     });
 
     it("CURRENT_DATABASE returns current database", () => {

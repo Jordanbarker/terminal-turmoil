@@ -59,17 +59,15 @@ const mount: CommandHandler = (args, _flags, ctx) => {
   const newMount: Mount = { device: device.devicePath, mountpath, fstype: device.fstype };
   const newMounts = { ...mounts, [mountpath]: newMount };
 
-  // Story trigger: only the anonymous USB drive at /dev/sdb1 → /mnt/usb
-  // credits it. Other mounts don't.
-  const isUsbMount = device.devicePath === "/dev/sdb1" && mountpath === "/mnt/usb";
+  // App-defined story trigger: a device may credit being mounted at a
+  // specific path (see BlockDevice.mountTrigger). Other mounts don't.
+  const trig = device.mountTrigger;
 
   return {
     output: "",
     newFs: insertResult.fs,
     newMounts,
-    triggerEvents: isUsbMount
-      ? [{ type: "command_executed", detail: "mounted_usb_drive" }]
-      : undefined,
+    triggerEvents: trig && trig.mountpath === mountpath ? [trig.event] : undefined,
   };
 };
 

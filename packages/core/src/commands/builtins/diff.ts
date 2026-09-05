@@ -5,7 +5,7 @@ import { resolvePath } from "@tt/core/lib/pathUtils";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { computeDiff, DiffEntry } from "@tt/core/lib/diff";
 import { isDirectory, FSNode } from "@tt/core/filesystem/types";
-import { GameEvent } from "@tt/core";
+import { getDiffTriggerEvents } from "../diffTriggers";
 import { HELP_TEXTS } from "./helpTexts";
 import { errorResult, readFileForCommand } from "../fsErrors";
 
@@ -259,12 +259,9 @@ const diff: CommandHandler = (args, flags, ctx) => {
     ? errorResult(r.output, r.exitCode)
     : { output: r.output, exitCode: r.exitCode };
 
-  // Story trigger: discovered_log_tampering when comparing .bak and current log
-  const hasBak = args.some((a) => a.includes(".bak"));
-  const hasLog = args.some((a) => a.includes("system.log") && !a.includes(".bak"));
-  if (hasBak && hasLog) {
-    const events: GameEvent[] = [{ type: "file_read", detail: "discovered_log_tampering" }];
-    result.triggerEvents = events;
+  const triggerEvents = getDiffTriggerEvents(args);
+  if (triggerEvents.length > 0) {
+    result.triggerEvents = triggerEvents;
   }
 
   return result;

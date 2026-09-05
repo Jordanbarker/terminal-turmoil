@@ -8,6 +8,7 @@
  * root device path).
  */
 import { FSNode } from "@tt/core/filesystem/types";
+import type { GameEvent } from "@tt/core";
 
 export interface BlockDevice {
   name: string;
@@ -25,6 +26,8 @@ export interface BlockDevice {
   /** Game flag that must be set for this device to be visible (app-defined). */
   visibleFlag?: string;
   getContents?: () => Record<string, FSNode>;
+  /** Event emitted when this device is mounted at `mountpath` (app-defined). */
+  mountTrigger?: { mountpath: string; event: GameEvent };
 }
 
 /** Machine-scoped device accessor injected via CommandContext.devices. */

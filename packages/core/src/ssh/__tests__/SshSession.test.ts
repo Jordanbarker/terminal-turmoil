@@ -74,9 +74,11 @@ describe("SshSession", () => {
       );
     });
 
-    it("typing 'yes' adds host to known_hosts and triggers ssh_connect", () => {
+    it("typing 'yes' adds host to known_hosts and emits the injected connect events", () => {
       const fs = createTestFS();
-      const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren", "nexacorp");
+      const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren", "nexacorp", [
+        { type: "objective_completed", detail: "ssh_connect" },
+      ]);
       session.enter();
 
       const result = session.handleInput("yes\r");
@@ -91,6 +93,16 @@ describe("SshSession", () => {
       // Verify known_hosts was updated
       const knownHosts = result!.newFs!.readFile("/home/ren/.ssh/known_hosts");
       expect(knownHosts.content).toContain("nexacorp-ws01.nexacorp.internal");
+    });
+
+    it("emits no connect events by default", () => {
+      const fs = createTestFS();
+      const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren", "nexacorp");
+      session.enter();
+
+      const result = session.handleInput("yes\r");
+      expect(result!.type).toBe("exit");
+      expect(result!.triggerEvents ?? []).toEqual([]);
     });
 
     it("typing 'no' exits with error message", () => {
@@ -135,7 +147,9 @@ describe("SshSession", () => {
   describe("known host skipping", () => {
     it("skips verification when host is already in known_hosts", () => {
       const fs = createTestFS("nexacorp-ws01.nexacorp.internal ssh-ed25519 AAAAC3");
-      const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren", "nexacorp");
+      const session = new SshSession(term, fs, "nexacorp-ws01.nexacorp.internal", "ren", "/home/ren", "nexacorp", [
+        { type: "objective_completed", detail: "ssh_connect" },
+      ]);
       const result = session.enter();
 
       // enter() should not write the fingerprint prompt

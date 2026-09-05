@@ -4,13 +4,11 @@ import { execute } from "@tt/core/snowflake/executor/executor";
 import { SessionContext } from "@tt/core/snowflake/session/context";
 import { ResultSet } from "@tt/core/snowflake/formatter/result_types";
 
-const TARGET_DB = "NEXACORP_PROD";
-const TARGET_SCHEMA = "ANALYTICS";
-const DBT_ROLE = "TRANSFORMER";
+import { getWarehouseIdentity } from "@tt/core/snowflake/identity";
 
 /** Override session role to the dbt service role (matches dbt profile config). */
 function dbtCtx(ctx: SessionContext): SessionContext {
-  return { ...ctx, currentRole: DBT_ROLE };
+  return { ...ctx, currentRole: getWarehouseIdentity().dbtRole };
 }
 
 export interface ModelExecutionResult {
@@ -54,6 +52,7 @@ function executeTableModel(
   state: SnowflakeState,
   sessionCtx: SessionContext,
 ): ModelExecutionResult {
+  const { database: TARGET_DB, analyticsSchema: TARGET_SCHEMA } = getWarehouseIdentity();
   const { results, state: execState } = execute(compiledSql, state, dbtCtx(sessionCtx));
 
   // Find the resultset
@@ -108,6 +107,7 @@ function executeViewModel(
   }
 
   // Store the view definition directly (bypass SQL CREATE VIEW)
+  const { database: TARGET_DB, analyticsSchema: TARGET_SCHEMA } = getWarehouseIdentity();
   const viewDef = { name: tableName, columns: [], query: compiledSql };
   let s = state.dropView(TARGET_DB, TARGET_SCHEMA, tableName);
   s = s.createView(TARGET_DB, TARGET_SCHEMA, viewDef);
@@ -153,6 +153,7 @@ export function queryModel(
   limit: number = 5,
 ): ResultSet | null {
   const tableName = modelName.toUpperCase();
+  const { database: TARGET_DB, analyticsSchema: TARGET_SCHEMA } = getWarehouseIdentity();
   const sql = `SELECT * FROM ${TARGET_DB}.${TARGET_SCHEMA}.${tableName} LIMIT ${limit}`;
 
   const { results } = execute(sql, state, dbtCtx(sessionCtx));
@@ -170,6 +171,7 @@ export function getModelRowCount(
   sessionCtx: SessionContext,
 ): number | null {
   const tableName = modelName.toUpperCase();
+  const { database: TARGET_DB, analyticsSchema: TARGET_SCHEMA } = getWarehouseIdentity();
   const sql = `SELECT COUNT(*) AS CNT FROM ${TARGET_DB}.${TARGET_SCHEMA}.${tableName}`;
 
   const { results } = execute(sql, state, dbtCtx(sessionCtx));

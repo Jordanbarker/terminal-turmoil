@@ -36,7 +36,6 @@ describe("checkEmailDeliveries", () => {
     const { newDeliveries } = checkEmailDeliveries(fs, event, []);
     expect(newDeliveries).not.toContain("welcome_edward");
     expect(newDeliveries).not.toContain("it_provisioned");
-    expect(newDeliveries).not.toContain("chip_intro");
   });
 
   it("skips already-delivered emails", () => {

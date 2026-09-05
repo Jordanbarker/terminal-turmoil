@@ -1,6 +1,7 @@
 import { ScalarFn } from "./registry";
 import { EvalContext } from "../evaluator";
 import { AVAILABLE_ROLES } from "../../session/permissions";
+import { getWarehouseIdentity } from "../../identity";
 
 export const systemFunctions: Record<string, ScalarFn> = {
   CURRENT_USER: (_args, ctx: EvalContext) => ctx.currentUser,
@@ -9,8 +10,8 @@ export const systemFunctions: Record<string, ScalarFn> = {
   CURRENT_DATABASE: (_args, ctx: EvalContext) => ctx.currentDatabase,
   CURRENT_SCHEMA: (_args, ctx: EvalContext) => ctx.currentSchema,
   CURRENT_SESSION: () => "session_001",
-  CURRENT_ACCOUNT: () => "nexacorp",
-  CURRENT_REGION: () => "us-east-1",
+  CURRENT_ACCOUNT: () => getWarehouseIdentity().account.split(".")[0],
+  CURRENT_REGION: () => getWarehouseIdentity().account.split(".").slice(1).join("."),
   CURRENT_VERSION: () => "8.0.0",
   CURRENT_CLIENT: () => "Snowflake CLI 3.4.0",
   CURRENT_AVAILABLE_ROLES: () => AVAILABLE_ROLES.join(","),

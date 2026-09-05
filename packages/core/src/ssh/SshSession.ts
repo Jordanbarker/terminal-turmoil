@@ -15,6 +15,7 @@ export class SshSession implements ISession {
   private username: string;
   private homeDir: string;
   private targetComputer: MachineId;
+  private connectEvents: GameEvent[];
   private inputBuffer = "";
 
   constructor(
@@ -23,7 +24,10 @@ export class SshSession implements ISession {
     host: string,
     username: string,
     homeDir: string,
-    targetComputer: MachineId
+    targetComputer: MachineId,
+    // Trigger events emitted on a successful connect. The app decides which
+    // routes fire events (core treats machine ids opaquely); default: none.
+    connectEvents: GameEvent[] = []
   ) {
     this.terminal = terminal;
     this.fs = fs;
@@ -31,20 +35,11 @@ export class SshSession implements ISession {
     this.username = username;
     this.homeDir = homeDir;
     this.targetComputer = targetComputer;
+    this.connectEvents = connectEvents;
   }
 
-  /**
-   * Trigger events emitted on a successful connect. Only the home → nexacorp
-   * route fires `ssh_connect` (which drives the `first_ssh_connect` story flag
-   * named for that connection). Other routes (e.g. chipinfra → erik-pc) emit
-   * no objective_completed event — their narrative flag is set on arrival in
-   * the transition handler instead.
-   */
   private connectTriggerEvents(): GameEvent[] {
-    if (this.targetComputer === "nexacorp") {
-      return [{ type: "objective_completed", detail: "ssh_connect" }];
-    }
-    return [];
+    return this.connectEvents;
   }
 
   enter(): SessionResult | void {

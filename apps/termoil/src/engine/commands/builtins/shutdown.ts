@@ -1,5 +1,6 @@
 import { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
+import { setHelpVisibilityFilter } from "@tt/core/commands/builtins/help";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { getShutdownIncrementalLines, getRemoteShutdownIncrementalLines } from "@/lib/ascii";
 import { COMPUTERS, CONNECTION_PARENT, ComputerId } from "../../../state/types";
@@ -62,3 +63,7 @@ const shutdown: CommandHandler = (args, flags, ctx) => {
 
 register("shutdown", shutdown, "Power off the system", HELP_TEXTS.shutdown);
 setKnownFlags("shutdown", { short: ["h"] });
+
+// Once the scripted Day-1 shutdown has happened, `help` stops advertising
+// shutdown (it stays runnable — it's just no longer part of the quest surface).
+setHelpVisibilityFilter((name, flags) => !(name === "shutdown" && flags?.day1_shutdown));

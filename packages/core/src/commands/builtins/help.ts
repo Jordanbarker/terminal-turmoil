@@ -3,6 +3,7 @@ import { register, getAvailableCommands } from "../registry";
 import { setKnownFlags } from "../flagValidation";
 import { colorize, ansi } from "@tt/core/lib/ansi";
 import { HELP_TEXTS } from "./helpTexts";
+import type { StoryFlags } from "@tt/core";
 
 const META_COMMANDS = new Set(["save", "load", "newgame", "cheat", "shortcuts"]);
 
@@ -17,6 +18,23 @@ export function registerMetaCommands(...names: string[]): void {
 }
 const HIDDEN_COMMANDS = new Set(["help", "true", "false"]);
 
+type HelpVisibilityFilter = (name: string, storyFlags?: StoryFlags) => boolean;
+
+let visibilityFilter: HelpVisibilityFilter | null = null;
+
+/**
+ * App-injected visibility filter: return false to hide a command from help
+ * output under app-specific conditions (e.g. termoil hides `shutdown` once
+ * its story flag is set). Absent => every available command is listed.
+ */
+export function setHelpVisibilityFilter(fn: HelpVisibilityFilter | null): void {
+  visibilityFilter = fn;
+}
+
+export function resetHelpVisibilityFilter(): void {
+  visibilityFilter = null;
+}
+
 const help: CommandHandler = (_args, _flags, ctx) => {
   const commands = getAvailableCommands(ctx.activeComputer, ctx.storyFlags);
   const gameCommands = commands
@@ -24,7 +42,7 @@ const help: CommandHandler = (_args, _flags, ctx) => {
       (c) =>
         !META_COMMANDS.has(c.name) &&
         !HIDDEN_COMMANDS.has(c.name) &&
-        !(c.name === "shutdown" && ctx.storyFlags?.day1_shutdown)
+        (visibilityFilter?.(c.name, ctx.storyFlags) ?? true)
     )
     .sort((a, b) => a.name.localeCompare(b.name));
   const metaCommands = commands.filter((c) => META_COMMANDS.has(c.name));

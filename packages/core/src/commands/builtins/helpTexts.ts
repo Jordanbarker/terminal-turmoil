@@ -84,7 +84,7 @@ export const HELP_TEXTS: Record<string, string> = {
   snow: [
     "Usage: snow COMMAND [OPTIONS]",
     "",
-    "Snowflake CLI: query the NexaCorp data warehouse.",
+    "Snowflake CLI: query the data warehouse.",
     "",
     "Commands:",
     "  sql    Execute SQL queries",
@@ -377,7 +377,7 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "Examples:",
     "  lsblk                      list block devices to find the partition",
-    "  mount /dev/sdb1 /mnt/usb   mount the USB partition at /mnt/usb",
+    "  mount /dev/sdc1 /mnt/data  mount a partition at an empty directory",
     "  mount                      list what is currently mounted",
   ].join("\n"),
 

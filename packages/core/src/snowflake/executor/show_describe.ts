@@ -4,6 +4,7 @@ import { QueryResult, ResultSet } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
 import { resolveThreePart, tableNotFoundError } from "./resolve";
 import { isValidRole, canReadSchema, AVAILABLE_ROLES, getRoleDef } from "../session/permissions";
+import { getWarehouseIdentity } from "../identity";
 
 export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx: SessionContext): QueryResult {
   switch (stmt.objectType) {
@@ -152,7 +153,7 @@ export function executeShow(stmt: AST.ShowStatement, state: SnowflakeState, ctx:
           type: "resultset",
           data: {
             columns,
-            rows: [["ALL PRIVILEGES", "ACCOUNT", "NEXACORP", "ROLE", def.name, "Y"]],
+            rows: [["ALL PRIVILEGES", "ACCOUNT", getWarehouseIdentity().accountName, "ROLE", def.name, "Y"]],
             rowCount: 1,
           },
         };

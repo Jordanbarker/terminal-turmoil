@@ -1,5 +1,6 @@
 import { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { isFile, isDirectory } from "@tt/core/filesystem/types";
+import { getWarehouseIdentity } from "@tt/core/snowflake/identity";
 
 export type SourceMap = Map<string, string>; // source('schema', 'table') → fully qualified
 export type MacroDef = { args: string[]; body: string };
@@ -24,8 +25,9 @@ export function parseSourceMap(fs: VirtualFS, projectRoot: string): SourceMap {
 
   if (!sourceNameMatch) return map;
   const sourceName = sourceNameMatch[1];
-  const db = dbMatch?.[1] ?? "NEXACORP_PROD";
-  const schema = schemaMatch?.[1] ?? "RAW_NEXACORP";
+  const identity = getWarehouseIdentity();
+  const db = dbMatch?.[1] ?? identity.database;
+  const schema = schemaMatch?.[1] ?? identity.rawSchema;
 
   // Extract table names under "tables:"
   const tablesSection = content.split("tables:")[1];
@@ -117,13 +119,15 @@ export function compileSql(
       ephemeralCtes.push(`${cteName} AS (\n${ephemeralSqlMap.get(modelName)!}\n)`);
       return cteName;
     }
-    return `NEXACORP_PROD.ANALYTICS.${modelName.toUpperCase()}`;
+    const { database, analyticsSchema } = getWarehouseIdentity();
+    return `${database}.${analyticsSchema}.${modelName.toUpperCase()}`;
   });
 
   // Replace {{ source('source_name', 'table_name') }}
   sql = sql.replace(/\{\{\s*source\s*\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)\s*\}\}/g, (_match, sourceName: string, tableName: string) => {
     const key = `${sourceName}||${tableName}`;
-    return sourceMap.get(key) ?? `NEXACORP_PROD.RAW_NEXACORP.${tableName.toUpperCase()}`;
+    const { database, rawSchema } = getWarehouseIdentity();
+    return sourceMap.get(key) ?? `${database}.${rawSchema}.${tableName.toUpperCase()}`;
   });
 
   // Replace {{ macro_name(args) }} — custom macros

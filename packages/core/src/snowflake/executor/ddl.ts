@@ -5,11 +5,12 @@ import { QueryResult } from "../formatter/result_types";
 import { SessionContext } from "../session/context";
 import { resolveThreePart, tableNotFoundError } from "./resolve";
 import { checkPermission, getRoleDef } from "../session/permissions";
+import { getWarehouseIdentity } from "../identity";
 
 function requireAdmin(ctx: SessionContext): void {
   const def = getRoleDef(ctx.currentRole);
   if (!def?.isAdmin) {
-    throw new Error("SQL access control error:\nInsufficient privileges to operate on account 'NEXACORP'");
+    throw new Error(`SQL access control error:\nInsufficient privileges to operate on account '${getWarehouseIdentity().accountName}'`);
   }
 }
 

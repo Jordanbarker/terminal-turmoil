@@ -1,3 +1,5 @@
+import { getWarehouseIdentity, WarehouseIdentity } from "@tt/core/snowflake/identity";
+
 export type PermissionLevel = "READ" | "WRITE";
 
 export interface RoleDef {
@@ -8,17 +10,36 @@ export interface RoleDef {
   createdOn: string;
 }
 
-const ANALYTICS_READ: Record<string, PermissionLevel> = {
-  "NEXACORP_PROD.ANALYTICS": "READ",
-  "NEXACORP_PROD.RAW_NEXACORP": "READ",
-};
+// Grant keys derive from the app-injected warehouse identity, so the role
+// table is rebuilt (memoized per identity object) rather than a module constant.
+let rolesFor: WarehouseIdentity | null = null;
+let rolesCache: Record<string, RoleDef> | null = null;
 
-const ANALYTICS_WRITE: Record<string, PermissionLevel> = {
-  "NEXACORP_PROD.ANALYTICS": "WRITE",
-  "NEXACORP_PROD.RAW_NEXACORP": "READ",
-};
+function getRoles(): Record<string, RoleDef> {
+  const identity = getWarehouseIdentity();
+  if (rolesCache && rolesFor === identity) return rolesCache;
 
-export const ROLES: Record<string, RoleDef> = {
+  const analyticsKey = `${identity.database}.${identity.analyticsSchema}`;
+  const rawKey = `${identity.database}.${identity.rawSchema}`;
+  const ANALYTICS_READ: Record<string, PermissionLevel> = {
+    [analyticsKey]: "READ",
+    [rawKey]: "READ",
+  };
+  const ANALYTICS_WRITE: Record<string, PermissionLevel> = {
+    [analyticsKey]: "WRITE",
+    [rawKey]: "READ",
+  };
+
+  rolesFor = identity;
+  rolesCache = buildRoles(ANALYTICS_READ, ANALYTICS_WRITE);
+  return rolesCache;
+}
+
+function buildRoles(
+  ANALYTICS_READ: Record<string, PermissionLevel>,
+  ANALYTICS_WRITE: Record<string, PermissionLevel>,
+): Record<string, RoleDef> {
+  return {
   PUBLIC: {
     name: "PUBLIC",
     comment: "Default role granted to all users",
@@ -61,16 +82,17 @@ export const ROLES: Record<string, RoleDef> = {
     isAdmin: true,
     createdOn: "2025-03-10 11:32:00.000",
   },
-};
+  };
+}
 
 export const AVAILABLE_ROLES = ["PUBLIC", "ANALYST", "TRANSFORMER", "ENGINEER", "SYSADMIN", "ACCOUNTADMIN"];
 
 export function isValidRole(role: string): boolean {
-  return role.toUpperCase() in ROLES;
+  return role.toUpperCase() in getRoles();
 }
 
 export function getRoleDef(role: string): RoleDef | undefined {
-  return ROLES[role.toUpperCase()];
+  return getRoles()[role.toUpperCase()];
 }
 
 export function canReadSchema(role: string, database: string, schema: string): boolean {

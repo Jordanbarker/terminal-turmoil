@@ -94,7 +94,7 @@ register(
       snowSqlSession: { startInteractive: true },
     };
   },
-  "Snowflake CLI — query the NexaCorp data warehouse",
+  "Snowflake CLI — query the data warehouse",
   HELP_TEXTS.snow
 );
 // Validates flags inside the handler with a "snow sql" prefix.
