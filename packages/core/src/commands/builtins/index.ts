@@ -49,7 +49,6 @@ import "./umount";
 import "./tmux";
 // Version control
 import "./git";
-// System
 // Shell scripting
 import "./bash";
 import "./source";

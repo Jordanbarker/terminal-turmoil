@@ -11,7 +11,7 @@ import type { SuggestionContext } from "@tt/core/suggestions/suggest";
 import "@tt/core/commands/builtins";
 // Side-effect import: registers the per-challenge command-allowlist policy.
 import "../lib/availabilityPolicy";
-// Registers the challenge-navigation builtins (challenges/goto/next/prev/track)
+// Registers the challenge-navigation builtins (challenges/goto/next/prev/track/review)
 // and exposes the pending navigation they queue for post-commit application.
 import { consumePendingNavigation } from "../engine/commands/navigation";
 

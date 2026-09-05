@@ -9,7 +9,7 @@
  * which is the default and the case for any non-story game on this engine.
  *
  * The termoil app registers its interceptor from
- * src/engine/commands/scriptInterceptor.ts.
+ * apps/termoil/src/engine/commands/scriptInterceptor.ts.
  */
 import type { CommandContext, CommandResult } from "./types";
 

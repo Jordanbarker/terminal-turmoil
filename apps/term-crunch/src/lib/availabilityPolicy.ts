@@ -23,7 +23,8 @@ import { useGameStore } from "../state/gameStore";
  * off-list commands. `ls`, `pwd`, and `cd` are also always allowed as harmless
  * read-only orientation: players reflexively reach for them (especially in the
  * keyboard-only tmux challenges), they can never satisfy a challenge predicate, and
- * every non-tmux challenge already lists them anyway.
+ * most non-tmux challenges list them anyway; the vim challenges (vim/cat/ls only)
+ * and shell challenges (no pwd) rely on this fallback.
  *
  * Mirrors termoil's src/story/availabilityPolicy.ts seam usage; the
  * current challenge is read lazily from the store so import order doesn't matter.

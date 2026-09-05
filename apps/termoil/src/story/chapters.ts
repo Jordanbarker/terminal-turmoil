@@ -828,8 +828,9 @@ export const CHAPTERS: ChapterDefinition[] = [
 
       // Quest: Marcus's Accusation (Chapter 3 endgame). Opens once the
       // required plugin quest closes. The four `accused_*` carrier flags
-      // persist into Chapter 4 so the board-meeting scene can branch on
-      // the player's pick.
+      // survive past `chapter_3_complete`: `getMarcusDebrief`
+      // (story/marcusDebrief.ts) branches the board-meeting email on the
+      // player's pick.
       {
         id: "marcus_endgame_quest",
         description: "Before the Board Meeting",

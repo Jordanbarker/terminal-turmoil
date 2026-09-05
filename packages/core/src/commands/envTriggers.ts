@@ -8,7 +8,7 @@
  * connect(2) would — and the app supplies the table of what to watch for.
  * Absent => `export` emits no events, which is the default.
  *
- * The termoil app supplies its table from src/story/envTriggers.ts.
+ * The termoil app supplies its table from apps/termoil/src/story/envTriggers.ts.
  */
 import type { GameEvent } from "@tt/core";
 import { resolvePath } from "@tt/core/lib/pathUtils";

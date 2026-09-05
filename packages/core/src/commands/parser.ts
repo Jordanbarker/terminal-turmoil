@@ -16,6 +16,8 @@ export interface QuoteState {
  * All quote-aware scanning in the engine goes through here: the tokenizer,
  * pipe/chain splitting, alias expansion, continuation detection, redirection
  * extraction, and the suggestion scanners. Don't hand-roll another quote loop.
+ * `builtins/bash.ts` is the deliberate exception: it keeps its own loops over
+ * raw script text.
  */
 export function scanQuoted(
   input: string,

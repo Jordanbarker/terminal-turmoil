@@ -12,9 +12,8 @@ import "../builtins";
 /**
  * The stdout/stderr split. A diagnostic must never reach `CommandResult.output`:
  * that is the channel a pipe feeds downstream and a `>` redirect writes into a
- * file. Before the split, `lss x > /var/mail/.../003_job_offer` wrote
- * "zsh: command not found: lss" INTO the job-offer email and printed nothing —
- * an unrecoverable Chapter 1 soft-lock.
+ * file. Before the split, `lss x > some_file` wrote "zsh: command not found: lss"
+ * INTO the target file and printed nothing.
  */
 
 const HOME = "/home/player";

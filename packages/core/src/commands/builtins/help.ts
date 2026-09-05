@@ -8,7 +8,8 @@ const META_COMMANDS = new Set(["save", "load", "newgame", "cheat", "shortcuts"])
 
 /**
  * Mark app-registered builtins as game-control "meta" commands: help lists them
- * after the in-world commands, in cyan. Core pre-seeds termoil's save-system set;
+ * after the in-world commands, in cyan. Core pre-seeds `shortcuts` plus termoil's
+ * save-system names (save/load/newgame/cheat);
  * other apps add theirs at registration time (e.g. term-crunch's challenge nav).
  */
 export function registerMetaCommands(...names: string[]): void {

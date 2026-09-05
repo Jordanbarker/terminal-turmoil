@@ -44,7 +44,7 @@ let extraSubcommands: Record<string, string[]> = {};
 
 /**
  * Register subcommand completions for app-owned commands (termoil does this
- * from its builtins index for `apt`, and for the `apt` it adds under `sudo`).
+ * from its `apt` builtin, for `apt` itself and for the `apt` it adds under `sudo`).
  * Additions merge with core's entries rather than replacing them, so an app can
  * extend a core command's list; repeated values are ignored.
  */

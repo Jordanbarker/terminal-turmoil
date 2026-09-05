@@ -6,8 +6,9 @@ import { ANSI_COLORS } from "../terminal/ansiPalette";
 
 const PREFIX_BLUE = ANSI_COLORS.blue;
 
-/** The status-bar colors this component reads. `TabBarTheme` is a superset, so
- *  it is structurally assignable here; term-crunch supplies a static palette. */
+/** The status-bar colors this component reads. `TabBarTheme` (tmuxConfig) is a
+ *  superset, so it is structurally assignable here. Both apps derive it from
+ *  ~/.tmux.conf via useTabManager. */
 export interface StatusBarTheme {
   /** The bar background. */
   statusBg: string;
@@ -34,7 +35,7 @@ export interface TmuxStatusBarProps {
   prefixActive: boolean;
   /** Modal takeover text (rename-window / confirm-before-kill); hides tabs when set. */
   modalText?: string | null;
-  /** Bar colors, parsed from `~/.tmux.conf` or a static palette. */
+  /** Bar colors, parsed from `~/.tmux.conf`. */
   theme: StatusBarTheme;
   /** App-specific new-window control rendered after the tabs (a `+` or a dropdown). */
   trailing?: ReactNode;

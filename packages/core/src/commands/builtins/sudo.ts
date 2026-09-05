@@ -47,7 +47,7 @@ const sudo: CommandHandler = (args, flags, ctx) => {
   const [name, ...tail] = commandLine;
   const sub = splitArgsAndFlags(tail);
   // The sub-command's `rawArgs` has to be its own tail as well: the
-  // rawArgs-driven builtins (find, head, tail, tree, tmux) re-parse it, and
+  // rawArgs-driven builtins (find, head, tail, tree, tmux, git, alias) re-parse it, and
   // would otherwise re-read sudo's argv, command name and all.
   return execute(name, sub.args, sub.flags, { ...ctx, elevated: true, rawArgs: tail });
 };

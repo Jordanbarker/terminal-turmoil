@@ -145,7 +145,7 @@ export class CrunchRunner {
     return this.run(`goto ${n}`);
   }
 
-  /** Switch track (the `track` command): all/tmux/git/fs/vim. */
+  /** Switch track (the `track` command): all/tmux/git/fs/shell/vim. */
   track(id: string): Promise<CommandOutput> {
     return this.run(`track ${id}`);
   }

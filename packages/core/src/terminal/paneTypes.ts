@@ -3,7 +3,8 @@
  *
  * A "window" is what the status bar shows as a tab. Each window owns a binary
  * tree of panes: a `PaneSplit` divides its box between two children, a
- * `PaneLeaf` is an actual shell (one xterm + cwd + computerId + session).
+ * `PaneLeaf` is an actual shell (one xterm, identified by `id`, with its own
+ * cwd + computerId; sessions live outside the tree).
  *
  * Every helper here is a pure function over the tree, so it's unit-testable
  * without a browser. Tree edits return NEW nodes (immutable, matching the
@@ -57,9 +58,10 @@ export interface PaneRect {
 export const MIN_PANE_RATIO = 0.1;
 
 // --- id generation -------------------------------------------------------
-// Module-scope counters mirror the store's old `tabCounter`. resetPaneIdCounters()
-// is called from resetGame/merge (before a TabManager mounts) so ids stay
-// deterministic per session. Never reset while a TabManager is mounted:
+// Module-scope id counters. resetPaneIdCounters() runs from termoil's
+// createInitialState (store construction and resetGame, before a TabManager
+// mounts) so ids stay deterministic per session; term-crunch never resets them
+// outside tests. Never reset while a TabManager is mounted:
 // useTabManager tells restored panes from new ones by id freshness
 // (knownPaneIdsRef), and a mid-session reset makes new panes collide with
 // already-seen ids.

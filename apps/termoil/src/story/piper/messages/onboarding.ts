@@ -67,7 +67,7 @@ export function getOnboardingDeliveries(_username: string): PiperDelivery[] {
       trigger: { type: "immediate" },
     },
 
-    // === #engineering — Sarah's welcome (after reading chip_intro email) ===
+    // === #engineering — Sarah's welcome (after chip_unlocked) ===
     {
       id: "eng_sarah_welcome",
       channelId: "engineering",

@@ -37,7 +37,7 @@ import { Mounts } from "@tt/core/filesystem/mounts";
 // ---------------------------------------------------------------------------
 
 // Per-computer command queue: serializes FS mutations to prevent TOCTOU races
-// between tabs on the same computer.
+// between panes on the same computer.
 const computerQueues: Partial<Record<ComputerId, Promise<void>>> = {};
 
 /**
@@ -230,7 +230,7 @@ export function useTerminal() {
     pendingNotificationsRef,
   });
 
-  // Refresh piper session when switching back to its tab (picks up state changes from other tabs)
+  // Refresh piper session when switching back to its pane (picks up state changes from other panes)
   const { refreshPiperSession } = sessionRouter;
   useEffect(() => {
     let prevPaneId = getActivePaneId(useGameStore.getState());
@@ -310,10 +310,10 @@ export function useTerminal() {
       }
 
       /**
-       * Close sibling tabs when a machine goes down (coder stop, remote
+       * Close sibling panes when a machine goes down (coder stop, remote
        * shutdown). Expands to the connection closure: a session chained
        * through the dead box (e.g. erik-pc via chipinfra) dies with it.
-       * The active tab is excluded; transitionTo handles it.
+       * The active pane is excluded; transitionTo handles it.
        */
       function closeTabsForDownedComputer() {
         if (!effects.closeTabsForComputer) return;
@@ -510,7 +510,7 @@ export function useTerminal() {
         return;
       }
 
-      // Capture tab ID at submission time (before async enqueue)
+      // Capture pane ID at submission time (before async enqueue)
       const submittingPaneId = getActivePaneId(useGameStore.getState());
 
       // Gate input while command is queued/executing

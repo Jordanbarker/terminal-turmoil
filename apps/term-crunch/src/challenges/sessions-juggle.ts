@@ -44,8 +44,8 @@ export const sessionsJuggle: Challenge = {
       command: "tmux detach",
       // Deliberately does NOT require scratch to still be alive: killing
       // scratch from inside it lands the player detached with only 0 — the
-      // same never-again predicate trap step 3's comment describes. The
-      // looser check is cascade-safe: step 1 (attached to scratch) gates
+      // same never-again predicate trap step 4's comment describes. The
+      // looser check is cascade-safe: step 2 (attached to scratch) gates
       // entry to this step, and no state on the way there satisfies it.
       isComplete: (s) =>
         s.tmux.attachedSession === null &&
@@ -57,7 +57,7 @@ export const sessionsJuggle: Challenge = {
       command: "tmux attach -t 0",
       // Deliberately does NOT require scratch to still exist: a player who
       // kills scratch while detached must not be stranded on a predicate that
-      // can never be true again — the cascade then consumes 3 and 4 together.
+      // can never be true again — the cascade then consumes steps 4 and 5 together.
       isComplete: (s) => s.tmux.attachedSession === "0",
     },
     {

@@ -1503,7 +1503,7 @@ export function gitStashList(fs: VirtualFS, root: string): string {
 import { REMOTE_REPOS } from "./remotes";
 
 function repoNameFromUrl(url: string): string {
-  // Extract repo name from URL like github.com/nexacorp/analytics-pipeline
+  // Extract repo name from a URL like host/owner/repo(.git)
   const parts = url.replace(/\.git$/, "").split("/");
   return parts[parts.length - 1] || "repo";
 }
@@ -1821,7 +1821,7 @@ export function gitPull(
 
   // Fast-forward to a pre-seeded remote-tracking ref (refs/remotes/origin/<branch>),
   // independent of REMOTE_REPOS. Fires ONLY when local is a STRICT ancestor of the
-  // tracking tip, so it never triggers for a diverged/ahead branch, nor for termoil's
+  // tracking tip, so it never triggers for a diverged/ahead branch, nor for a remote's
   // getUpdates flow (where the tracking ref equals local at pull time → handled below).
   const localTip = resolveHead(fs, root);
   const trackingTip = fs.readFile(`${root}/.git/refs/remotes/origin/${targetBranch}`).content?.trim();

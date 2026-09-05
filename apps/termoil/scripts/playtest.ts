@@ -155,8 +155,6 @@ async function playtest() {
   // The olive_linux_basics message is immediate — we need to reply to it
   // But the GameRunner doesn't have a piper reply mechanism...
   // In the actual game, piper sessions handle this.
-  // Let's simulate by triggering the objective_completed event manually
-  // Actually, let me check if piper command returns a session
   if (r.output.includes("piper")) {
     ok("Piper session would start — headless runner can't interact with piper sessions");
     warn("Cannot test Piper reply flow in headless mode (piper sessions not simulated)");

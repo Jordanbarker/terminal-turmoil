@@ -2,7 +2,7 @@ import { PiperDelivery } from "../../../engine/piper/types";
 
 export function getCassieDeliveries(_username: string): PiperDelivery[] {
   return [
-    // === DM Cassie: Product spec concern (after chip_intro email) ===
+    // === DM Cassie: Product spec concern (after chip_unlocked, set by Edward's edward_chip_intro DM) ===
     {
       id: "cassie_dm_product",
       channelId: "dm_cassie",

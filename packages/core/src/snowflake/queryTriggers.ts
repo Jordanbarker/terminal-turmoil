@@ -14,7 +14,7 @@
  * Patterns must not carry the `g` flag — `RegExp.test` is stateful with it, so
  * a global pattern would match every other call.
  *
- * The termoil app supplies its table from src/story/queryTriggers.ts.
+ * The termoil app supplies its table from apps/termoil/src/story/queryTriggers.ts.
  */
 export interface SqlQueryTrigger {
   /** Tested against the submitted SQL text. */

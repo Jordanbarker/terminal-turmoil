@@ -194,7 +194,7 @@ export function getHomeDeliveries(username: string): PiperDelivery[] {
       ],
     },
 
-    // === dm_olive — linux basics (after replying to alex_checkin) ===
+    // === dm_olive — linux basics (immediate, seeded at game start) ===
     {
       id: "olive_linux_basics",
       channelId: "dm_olive",
@@ -278,7 +278,7 @@ that last one is your best friend. if you forget how something works, just man i
       ],
     },
 
-    // === dm_olive — challenges intro (after replying to olive_tree_tip) ===
+    // === dm_olive — challenges intro (after apt_unlocked, set when olive_tree_tip is delivered) ===
     {
       id: "olive_challenges_intro",
       channelId: "dm_olive",

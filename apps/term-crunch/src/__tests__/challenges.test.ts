@@ -1427,8 +1427,9 @@ describe("out-of-order step completion (cascade)", () => {
     expect(state().awaitingContinue).toBe(true);
   });
 
-  // Three challenges undo something in their last step (pop the stash, remove the
-  // alias), so that step's predicate is already true on a freshly seeded board.
+  // Five challenges have a last step that is already true on a freshly seeded
+  // board (pop the stash, remove the alias, or a session-lifecycle predicate that
+  // holds at load).
   // They are only safe because the cascade starts at the CURRENT stepIndex and an
   // earlier step is false at load, so it can never reach the last one for free.
   // Pin that here: if a future edit makes step 0 vacuously true too, these

@@ -202,8 +202,8 @@ export interface CommandResult {
   tmuxAction?: TmuxAction;
 }
 
-// IncrementalLine now lives in @tt/core. Re-exported so existing call sites that
-// import it from this module stay valid; rewire to @tt/core opportunistically.
+// Canonical definition is ../incrementalLine (re-exported from the package
+// index); re-exported here too for call sites that import it from this module.
 export type { IncrementalLine } from "@tt/core";
 import type { IncrementalLine } from "@tt/core";
 

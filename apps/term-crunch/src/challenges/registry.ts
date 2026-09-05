@@ -31,8 +31,9 @@ import type { Challenge } from "./types";
 /**
  * Ordered, linear progression. The player advances one challenge at a time.
  * Tracks are contiguous (tmux, git, fs, shell, vim) so the "all" track never
- * doubles back, and the three resize challenges are spaced out with other
- * skills between them rather than played back to back.
+ * doubles back. `panes-resize` is separated from the other two resize
+ * challenges by cleanup/windows; `panes-resize-rows` and `panes-resize-corner`
+ * run back to back since the corner one builds directly on the row resize.
  */
 export const CHALLENGES: Challenge[] = [
   // tmux

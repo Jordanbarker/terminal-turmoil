@@ -6,7 +6,6 @@ import type { Challenge } from "./types";
 const LOG_PATH = "/home/player/passphrase.log";
 const TOKEN = "moonlit-cipher-7f3c91a0e5";
 const TARGET_DIR = `/home/player/${TOKEN}`;
-// alt idea: https://en.wikisource.org/wiki/Frankenstein,_or_the_Modern_Prometheus_(First_Edition,_1818)/Volume_2/Chapter_9
 const LOG_BODY = `
 FREEZING
 FREEZING

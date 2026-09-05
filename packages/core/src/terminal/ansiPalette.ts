@@ -1,6 +1,6 @@
 /**
  * The terminal's 16 named ANSI colors (Ayu-ish theme). Single source of truth
- * shared by xterm's theme (`XTERM_THEME` in TabManager) and the `~/.tmux.conf`
+ * shared by xterm's theme (`XTERM_THEME` in xtermDefaults) and the `~/.tmux.conf`
  * color parser (`resolveTmuxColor` in tmuxConfig), so named colors used in the
  * tmux status bar (`bg=green`, `fg=black`, ...) match the terminal palette and
  * the two never drift apart.

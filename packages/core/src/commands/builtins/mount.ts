@@ -59,8 +59,8 @@ const mount: CommandHandler = (args, _flags, ctx) => {
   const newMount: Mount = { device: device.devicePath, mountpath, fstype: device.fstype };
   const newMounts = { ...mounts, [mountpath]: newMount };
 
-  // Story trigger: the anonymous USB drive at /dev/sdb1 → /mnt/usb is the
-  // beat that introduces the loose-thread arc. Other mounts don't credit it.
+  // Story trigger: only the anonymous USB drive at /dev/sdb1 → /mnt/usb
+  // credits it. Other mounts don't.
   const isUsbMount = device.devicePath === "/dev/sdb1" && mountpath === "/mnt/usb";
 
   return {

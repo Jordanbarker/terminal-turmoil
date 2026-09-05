@@ -2,7 +2,7 @@ import { PiperDelivery } from "../../../engine/piper/types";
 
 export function getSarahDeliveries(_username: string): PiperDelivery[] {
   return [
-    // === DM Sarah: Mystery drop (after finding backup files) ===
+    // === DM Sarah: Mystery drop (after oscar_access_completed: the player reports back to Oscar) ===
     {
       id: "sarah_dm_mystery",
       channelId: "dm_sarah",

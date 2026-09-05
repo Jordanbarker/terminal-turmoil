@@ -96,8 +96,10 @@ export interface Challenge {
   fsDangerPath?: string;
   /**
    * Commands the player may use in this challenge (primary names; aliases resolve
-   * automatically). Omitted = every registered command is available. `help` and
-   * `clear` are always available regardless of this list.
+   * automatically). Omitted = every registered command is available. A small
+   * always-available set bypasses this list (help/clear/man/shortcuts/tmux,
+   * ls/pwd/cd, and the navigation builtins); see `ALWAYS_AVAILABLE` in
+   * lib/availabilityPolicy.ts.
    */
   commands?: string[];
   /**

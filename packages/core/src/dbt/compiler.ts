@@ -7,7 +7,7 @@ export type MaterializationMap = Map<string, "view" | "table" | "ephemeral">;
 
 /**
  * Parse _staging__sources.yml to build a source → fully qualified table mapping.
- * e.g., source('raw_nexacorp', 'EMPLOYEES') → NEXACORP_PROD.RAW_NEXACORP.EMPLOYEES
+ * e.g., source('<src>', 'EMPLOYEES') → <DATABASE>.<SCHEMA>.EMPLOYEES
  */
 export function parseSourceMap(fs: VirtualFS, projectRoot: string): SourceMap {
   const map: SourceMap = new Map();

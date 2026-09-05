@@ -200,7 +200,8 @@ describe("Day 2 Quest: Fix the Broken Pipeline", () => {
 describe("SnowflakeState seed: CAMPAIGN_METRICS NULL-clicks invariant", () => {
   // Auri's `auri_test_failure_details` Piper message tells the player to query
   // CAMPAIGN_METRICS for `CLICKS IS NULL`. Those rows only exist when the seed
-  // is built with `includeDay2: true` (initial_data.ts:161-166). The flag is
+  // is built with `includeDay2: true` (see the `includeDay2` branch in
+  // story/data/snowflake/initial_data.ts). The flag is
   // wired in useComputerTransitions.ts to `day1_shutdown`, which is a strict
   // prerequisite of every flag that gates Auri's message. These tests pin the
   // seed-data invariant so a future change to the seed or to `includeDay2`'s

@@ -13,7 +13,7 @@
  * nothing. The predicate runs on the last-saved buffer, so the app decides what
  * "fixed" means without core knowing a thing about the file.
  *
- * The termoil app supplies its table from src/story/editorTriggers.ts.
+ * The termoil app supplies its table from apps/termoil/src/story/editorTriggers.ts.
  */
 import type { GameEvent } from "@tt/core";
 

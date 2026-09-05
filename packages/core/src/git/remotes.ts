@@ -33,6 +33,6 @@ export function buildSimpleRemote(
 /**
  * Registry of clonable remote repositories, keyed by the URL passed to
  * `git clone`. Empty in core; the app's story layer populates it at startup
- * (see src/story/git/remotes.ts). Tests populate it directly with fixtures.
+ * (see apps/termoil/src/story/git/remotes.ts). Tests populate it directly with fixtures.
  */
 export const REMOTE_REPOS: Record<string, RemoteRepoDef> = {};

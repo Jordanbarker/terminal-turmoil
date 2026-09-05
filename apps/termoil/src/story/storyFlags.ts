@@ -163,8 +163,9 @@ export const STORY_FLAG_NAMES = [
   "read_usb_note",
   "loose_thread_quest_started",
 
-  // Chapter 3 endgame: Marcus's accusation DM. Carrier flags persist into
-  // Chapter 4 so the board-meeting scene can branch on the player's pick.
+  // Chapter 3 endgame: Marcus's accusation DM. Carrier flags survive past
+  // `chapter_3_complete`: `getMarcusDebrief` (story/marcusDebrief.ts) branches
+  // the board-meeting email on the player's pick.
   "accused_edward",
   "accused_sarah",
   "accused_erik",
@@ -320,9 +321,10 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "file_read", path: p.accessLog, flag: "oscar_read_access_log", value: true },
     { event: "objective_completed", detail: "chip_reviewed_access_log", flag: "chip_reviewed_access_log", value: true },
     { event: "objective_completed", detail: "auri_dbt_reported", flag: "auri_dbt_reported", value: true },
-    // Reading pipeline_runs.csv with any tool (cat, head, tail, wc, less, nano, …) credits all
-    // three "audit the file" objectives. The auto-emitter in applyResult.ts emits file_read for
-    // cat/head/tail/grep/wc/sort/uniq/file/pdftotext, so any reader counts.
+    // Reading pipeline_runs.csv with any file-reading command credits all three "audit the
+    // file" objectives: applyResult.ts emits file_read for every command registered with
+    // `readsFiles` (see `commandReadsFiles` in core's registry). Editors (nano/vim) do NOT
+    // count; they only fire EDITOR_OPEN_TRIGGERS.
     { event: "file_read", path: p.pipelineRuns, flag: "auri_used_head", value: true },
     { event: "file_read", path: p.pipelineRuns, flag: "auri_used_tail", value: true },
     { event: "file_read", path: p.pipelineRuns, flag: "auri_used_wc", value: true },
@@ -362,8 +364,9 @@ export function getNexacorpStoryFlagTriggers(_username: string): StoryFlagTrigge
     { event: "objective_completed", detail: "reported_plugin_to_edward", flag: "reported_plugin_to_edward", value: true },
 
     // Chapter 3 endgame: Marcus's accusation DM. Each reply fires a unique
-    // objective_completed event; the per-suspect flag carries into Chapter 4,
-    // and accusation_made gates the closing reply.
+    // objective_completed event; the per-suspect flag survives past
+    // `chapter_3_complete` (`getMarcusDebrief` in story/marcusDebrief.ts branches
+    // the board-meeting email on it), and accusation_made gates the closing reply.
     { event: "objective_completed", detail: "accused_edward", flag: "accused_edward", value: true },
     { event: "objective_completed", detail: "accused_edward", flag: "accusation_made", value: true },
     { event: "objective_completed", detail: "accused_sarah",  flag: "accused_sarah",  value: true },

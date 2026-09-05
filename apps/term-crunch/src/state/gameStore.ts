@@ -45,7 +45,7 @@ import { CHALLENGES } from "../challenges/registry";
 /** Monotonic toast id source; toasts are transient so it never needs persisting. */
 let toastId = 0;
 
-/** cwd of the focused pane (single window in v1, but written defensively). */
+/** cwd of the focused pane in the active window (falls back to windows[0] if activeWindowId is stale). */
 function activeCwd(windows: WindowState[], activeWindowId: string): string {
   const win = windows.find((w) => w.id === activeWindowId) ?? windows[0];
   if (!win) return HOME_DIR;
@@ -187,7 +187,8 @@ export interface GameState {
   renameWindow: (windowId: string, name: string) => void;
 
   // tmux lifecycle: apply a resolved TmuxAction. Returns whether the client
-  // view swapped (caller suppresses the prompt when it did).
+  // view swapped; only tests assert it today. TabManager suppresses the prompt
+  // by checking whether the pane survived, not via this flag.
   applyTmuxAction: (action: TmuxAction) => boolean;
   consumePendingMuxNotice: () => string | null;
 }
@@ -635,8 +636,9 @@ export const useGameStore = create<GameState>()(
   newWindow: () => {
     const state = get();
     if (state.windows.length >= MAX_WINDOWS) return;
-    // Do NOT reset pane-id counters here (only loadChallenge does) — ids must
-    // stay unique across all live windows.
+    // Do NOT reset pane-id counters here (nothing does): ids must stay unique
+    // across live windows and across challenge loads because TabManager tears
+    // panes down by id.
     const win = makeWindow(CRUNCH_MACHINE, HOME_DIR);
     set({ windows: [...state.windows, win], activeWindowId: win.id });
     get().checkCompletion();
@@ -689,7 +691,8 @@ export const useGameStore = create<GameState>()(
     switch (action.type) {
       case "new-session": {
         // Fresh window inheriting the bare shell's cwd. Do NOT reset pane-id
-        // counters (only loadChallenge does).
+        // counters (nothing does): ids must stay unique across live windows and
+        // across challenge loads because TabManager tears panes down by id.
         const win = makeWindow(CRUNCH_MACHINE, activeCwd(state.windows, state.activeWindowId));
         set({
           windows: [win],

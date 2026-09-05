@@ -413,7 +413,7 @@ export class SnowSqlSession implements ISession {
     }
 
     // Discoverability hint: bare SHOW TABLES against an empty schema.
-    // RAW_NEXACORP holds the seeded tables; ANALYTICS is the dbt target and lands empty for new players.
+    // Fires for any schema with no tables (e.g. a dbt target schema before models are built).
     if (
       /^\s*show\s+tables\s*$/i.test(sql) &&
       results.length === 1 &&

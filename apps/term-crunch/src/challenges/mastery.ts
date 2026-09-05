@@ -182,8 +182,8 @@ export function awardCompletion(state: MasteryState, info: CompletionInfo, now: 
 
   if (info.isFirstClear) {
     // Flat and exempt from daily decay: onboarding is deliberately generous
-    // (27 challenges x 50 = 1,350, mid-Learner after one full pass through the
-    // registry).
+    // (28 challenges x 50 = 1,400, mid-Learner (500-2,000) after one full pass
+    // through the registry).
     awards.push({ label: "First clear", mp: FIRST_CLEAR_MP });
     next = { ...next, mp: next.mp + FIRST_CLEAR_MP };
   } else {

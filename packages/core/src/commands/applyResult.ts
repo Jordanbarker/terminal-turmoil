@@ -156,7 +156,7 @@ export function computeEffects(
     effects.transitionTo = result.transitionTo;
     effects.suppressPrompt = true;
     // Only early-return for first-time transitions (skip event processing).
-    // A session exit and subsequent coder visits still need event processing below.
+    // A session exit, or a return to an already-known machine, still needs event processing below.
     if (!result.sessionExit && !applyCtx.targetComputerExists) {
       return effects; // First-time transition — early return
     }

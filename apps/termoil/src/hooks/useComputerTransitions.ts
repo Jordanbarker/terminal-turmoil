@@ -350,8 +350,8 @@ export function useComputerTransitions(deps: TransitionDeps) {
 
   /**
    * Generalized "exit back to the parent" soft disconnect. Repurposes the
-   * active tab to `target`, restores the target's cwd, and writes a disconnect
-   * banner using the source hostname. Other tabs are untouched — each tab is
+   * active pane to `target`, restores the target's cwd, and writes a disconnect
+   * banner using the source hostname. Other panes are untouched — each pane is
    * its own session, and the source's computerState stays alive, so siblings
    * keep working (and the player can reconnect to find things as they were).
    *
@@ -378,8 +378,10 @@ export function useComputerTransitions(deps: TransitionDeps) {
       : "remote";
     term.writeln(colorize(`\r\nDisconnected from ${sourceHostname}.`, ansi.dim));
 
-    // Piper notifications only land on nexacorp — chipinfra/devcontainer/erik-pc
-    // don't surface them. So gate the deferred-notification flush to nexacorp.
+    // The deferred flush exists for machines where `piper` is unavailable
+    // (devcontainer/chipinfra/erik-pc). Home and nexacorp both surface notices
+    // inline; the flush is gated to nexacorp because that is where those
+    // machines exit back to.
     if (target === "nexacorp") {
       const latest = useGameStore.getState();
       if (latest.pendingPiperNotification) {

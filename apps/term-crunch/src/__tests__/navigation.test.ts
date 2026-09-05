@@ -3,7 +3,7 @@ import { execute, getAliasesFor, getCommandList } from "@tt/core/commands/regist
 import { getKnownFlags, shouldValidateFlags } from "@tt/core/commands/flagValidation";
 import type { CommandContext } from "@tt/core/commands/types";
 import "@tt/core/commands/builtins"; // help (for the meta-command listing test)
-import "../engine/commands/navigation"; // register challenges/goto/next/prev/track
+import "../engine/commands/navigation"; // register challenges/goto/next/prev/track/review
 import { consumePendingNavigation } from "../engine/commands/navigation";
 import { getCategory } from "../challenges/categories";
 import { resetStore } from "./helpers";
