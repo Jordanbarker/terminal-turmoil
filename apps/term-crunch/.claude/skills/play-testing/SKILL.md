@@ -24,7 +24,7 @@ This complements `src/__tests__/challenges.test.ts`, which pokes predicates with
 
 ## Browser play-testing (Playwright)
 
-The headless runner has no chord layer, no copy mode, no editor sessions and no React, so keybindings, the `ChallengePanel` readouts, cheat sheets and the Settings modal are browser-only. Playwright is a **root devDependency (1.61.0)** — use it from the repo root.
+The headless runner has no chord layer, no copy mode, no editor sessions and no React, so keybindings, the `ChallengePanel` readouts, cheat sheets and the Settings modal are browser-only. Playwright is a **root devDependency** (version pinned in the root `package.json`), so drive it from the repo root.
 
 **Two committed harnesses already drive the browser** — extend them instead of writing a throwaway: `npm run screenshot:panes` (`scripts/visual/pane-dividers.mjs`) and `npm run screenshot:mp-reward` (`scripts/visual/mp-reward.mjs`). The latter is the pattern to copy for anything *time-dependent*: it seeds a save via `addInitScript` + localStorage (`term-crunch-progress`; the store deep-merges `mastery`) to reach deep states, runs an in-page rAF recorder so single-frame glitches can't hide between screenshots, and re-runs under `reducedMotion: "reduce"`.
 
@@ -40,7 +40,7 @@ The headless runner has no chord layer, no copy mode, no editor sessions and no 
 ### Game-side facts the driver must know
 
 - **The grade gate freezes terminal input.** On completion the pane stops accepting typed input until a grade key (`1`-`4`, Enter = Good) is pressed — a driver that keeps typing will hang. Watch for the gate, press a grade, then continue (detection strings below).
-- Every challenge starts attached to tmux session `"0"`; while detached the status bar, dividers and chords are gone and `checkCompletion` is skipped except for `checkWhileDetached` challenges.
+- Every challenge starts attached to tmux session `"0"`; while detached, chords and the status bar are gone and `checkCompletion` is skipped for most challenges (rules in the `challenges` skill's win-detection section).
 - The per-challenge command allowlist is real: an out-of-allowlist command reports as unavailable, and `help` lists only the permitted set.
 
 ### Driving xterm.js
