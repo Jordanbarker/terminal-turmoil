@@ -2,25 +2,28 @@ import type { VirtualFS } from "@tt/core/filesystem/VirtualFS";
 import { writeOrThrow } from "../lib/seedFs";
 import type { Challenge } from "./types";
 
-const VAULT_DIR = "/home/player/vault";
-const SECRETS_PATH = `${VAULT_DIR}/secrets.env`;
+const SITE_DIR = "/home/player/site";
+const PAGE_PATH = `${SITE_DIR}/index.html`;
 
-const SECRETS_BODY = `# Production credentials — handle with care.
-API_TOKEN=sk-live-7f3c91a0
-DB_PASSWORD=hunter2
+const PAGE_BODY = `<!doctype html>
+<h1>Welcome</h1>
 `;
 
 /**
- * Seed ~/vault/secrets.env and lock it to rw------- (600) so it can't be read.
- * The engine enforces read through the "other" bit (permissions[6]); at 600
- * that bit is off, so `cat secrets.env` returns "Permission denied". The single
- * step is to grant read (chmod +r / 644 / o+r) so the file becomes readable.
+ * Seed ~/site/index.html at rw------- (600): only the owner can read it, so the
+ * web server (which runs as a different user) gets 403. The single step is to
+ * grant read to other users (chmod o+r / +r / 644).
+ *
+ * Why this framing: VirtualFS has no owner concept and gates reads on the
+ * "other" bit (permissions[6]), so the honest lesson that matches the engine is
+ * "let another user read this", not "you can't read your own 600 file" (an
+ * owner can, and 600 is the right mode for secrets). The brief therefore never
+ * claims `cat` fails for the player, and `cat` isn't in the allowlist.
  */
 function setup(base: VirtualFS): VirtualFS {
-  const fs = writeOrThrow(base, SECRETS_PATH, SECRETS_BODY);
-  const lock = fs.setPermissions(SECRETS_PATH, "rw-------");
-  if (!lock.fs) throw new Error(lock.error ?? `chmod-perms: lock ${SECRETS_PATH} failed`);
-
+  const fs = writeOrThrow(base, PAGE_PATH, PAGE_BODY);
+  const lock = fs.setPermissions(PAGE_PATH, "rw-------");
+  if (!lock.fs) throw new Error(lock.error ?? `chmod-perms: lock ${PAGE_PATH} failed`);
   return lock.fs;
 }
 
@@ -28,28 +31,28 @@ export const chmodPerms: Challenge = {
   id: "chmod-perms",
   title: "Permissions",
   type: "fs",
-  fsWatchPath: VAULT_DIR,
-  // Brief names secrets.env bare, so start the player in the vault.
-  startCwd: VAULT_DIR,
-  commands: ["chmod", "cat", "ls", "cd", "pwd"],
+  fsWatchPath: SITE_DIR,
+  // Brief names index.html bare, so start the player in the site dir.
+  startCwd: SITE_DIR,
+  commands: ["chmod", "ls", "cd", "pwd"],
   brief:
-    'secrets.env is locked: `cat secrets.env` fails with "Permission denied". ' +
-    "Grant read access so it can be opened.",
+    "nginx runs as another user and gets 403 on index.html, which is rw------- (600). " +
+    "Grant read access to other users; check with ls -l.",
   setup,
   steps: [
     {
-      instruction: "Turn on the read bit for secrets.env.",
+      instruction: "Turn on the read bit for other users on index.html.",
       hint:
         "chmod sets who can read (r), write (w), execute (x) a file.\n" +
-        "• Symbolic: a target (u/g/o/a), then +/- a bit.\n" +
+        "• Symbolic: a target (u owner / g group / o others / a all), then +/- a bit.\n" +
         "• Octal: three digits = owner/group/other, each summing r=4 w=2 x=1 " +
-        "(rw-r--r-- is 644; the locked rw------- is 600).\n" +
-        "Owner-only read isn't enough: grant read broadly.",
-      command: "chmod +r secrets.env",
-      // Readable exactly when the "other" read bit is set — the same bit the engine's
-      // readFile() checks, so the step passes precisely when `cat` starts working.
-      // Lenient: accepts +r, o+r, 644, 444, 604, ... (but not u+r alone).
-      isComplete: (s) => s.fs.getNode(SECRETS_PATH)?.permissions[6] === "r",
+        "(rw-r--r-- is 644; the current rw------- is 600).\n" +
+        "The owner can already read it: the missing bit is on the others digit.",
+      command: "chmod o+r index.html",
+      // Readable by others exactly when permissions[6] is "r" — the same bit the
+      // engine's readFile() checks. Lenient: accepts o+r, +r, a+r, 644, 604, 444
+      // (but not u+r, which changes nothing).
+      isComplete: (s) => s.fs.getNode(PAGE_PATH)?.permissions[6] === "r",
     },
   ],
 };

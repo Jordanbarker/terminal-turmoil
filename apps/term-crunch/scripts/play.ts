@@ -38,7 +38,7 @@ import {
   type WindowState,
 } from "@tt/core/terminal/paneTypes";
 import { windowLabel } from "../src/lib/windowLabel";
-import { formatElapsed } from "@tt/core/lib/format";
+import { formatElapsedPrecise } from "../src/lib/format";
 import { runLine } from "../src/hooks/useTerminal";
 import { useGameStore, isGradeGateUp, type GameState } from "../src/state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES, registryIndex } from "../src/challenges/categories";
@@ -268,6 +268,7 @@ export class CrunchRunner {
         ch?.steps[s.stepIndex]?.instruction ? ` — ${ch.steps[s.stepIndex].instruction}` : ""
       }`,
       `gate:       ${isGradeGateUp(s) ? "UP (grade 1-4 to continue)" : "down"}${s.completed ? " [track complete]" : ""}`,
+      ...(s.failure ? [`FAILED:     ${s.failure}`] : []),
       `tmux:       ${s.tmuxAttachedSession ? `attached to ${s.tmuxAttachedSession.name}` : "DETACHED (bare shell)"}` +
         (s.tmuxDetachedSessions.length
           ? ` | detached: ${s.tmuxDetachedSessions.map((d) => d.name).join(", ")}`
@@ -281,7 +282,7 @@ export class CrunchRunner {
       `aliases:    ${JSON.stringify(s.aliases)}`,
     ];
     if (s.lastElapsedMs !== null) {
-      lines.push(`last run:   ${formatElapsed(s.lastElapsedMs)}${s.lastWasBest ? " (best)" : ""}`);
+      lines.push(`last run:   ${formatElapsedPrecise(s.lastElapsedMs)}${s.lastWasBest ? " (best)" : ""}`);
     }
     if (s.reviewReturn) lines.push(`review:     ${s.reviewQueue.length} left of ${s.reviewTotal}`);
     return lines.join("\n");
@@ -324,8 +325,11 @@ async function main() {
   };
 
   /** Report the step/gate movement a command caused (the panel's job in the browser). */
-  const reportProgress = (before: { step: number; index: number; gate: boolean }) => {
+  const reportProgress = (before: { step: number; index: number; gate: boolean; failure: string | null }) => {
     const s = runner.store;
+    if (s.failure && s.failure !== before.failure) {
+      console.log(`\x1b[31m✗ ${s.failure}\x1b[0m`);
+    }
     if (s.flash) {
       console.log(`\x1b[32m${s.flash}\x1b[0m`);
       s.clearFlash();
@@ -341,6 +345,7 @@ async function main() {
     step: runner.store.stepIndex,
     index: runner.store.challengeIndex,
     gate: isGradeGateUp(runner.store),
+    failure: runner.store.failure,
   });
 
   // An async line loop (not rl.question callbacks): each line is fully handled

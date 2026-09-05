@@ -11,6 +11,7 @@ Term Crunch (`@tt/term-crunch`) is a sequence of self-contained challenges, each
 
 Read `types.ts` for `Challenge` / `Step` / `ChallengeSnapshot`. Conventions and traps:
 
+- **`Challenge.failed?(snapshot)`** (optional) returns a message when the sandbox is unrecoverable (protected file deleted, secrets lost) or null. `checkCompletion` evaluates it before the cascade, stores it as `failure`, and blocks all steps while set; the panel shows it in red with Restart. It must be null on the freshly seeded board (test-enforced) and must not fire on the intended solution (playtest-enforced). Use it wherever a wrong move leaves a board that can never pass — the tree readout otherwise looks like a win.
 - **`Step.isComplete(snapshot)` must be pure** over the snapshot `{ activeWindow, windows, fs, tmux, envVars, aliases }`, built fresh by `checkCompletion`. `printenv`/`env` are read-only and unobservable — gate on `envVars`/`aliases` instead.
 - **Objective-first + progressive hints:** `instruction` states the sub-goal, never the command; `hint` (conceptual nudge) and `command` (literal answer) are the two reveal-on-request levels. The requirement is test-enforced over the whole registry; opting out means a `HINT_EXEMPT` entry in `challenges.test.ts` with a reason. `instruction` may be omitted only on a single-step challenge whose `brief` states the whole objective.
 - **No filler:** briefs are one clause of scenario plus the objective; instructions single imperatives; hints teach syntax/gotchas. Don't restate what the CURRENT/TARGET readout shows — pane challenges typically need no brief.
@@ -22,7 +23,7 @@ Read `types.ts` for `Challenge` / `Step` / `ChallengeSnapshot`. Conventions and 
 
 ## Categories (`src/challenges/categories.ts`)
 
-Categories are pure filters over the linear `CHALLENGES` registry, derived from each challenge's `type`: `all`, `tmux`, `git`, `fs`, `vim`. `SELECTABLE_CATEGORIES` drops empty groups; `getCategory(id)` falls back to `all`. **Trap: the store's `challengeIndex` is relative to the active category's list, not the global registry.** Resolve the current challenge via `getCategory(activeCategory).challenges[challengeIndex]` — never `CHALLENGES[challengeIndex]`.
+Categories are pure filters over the linear `CHALLENGES` registry, derived from each challenge's `type`: `all`, `tmux`, `git`, `fs`, `shell` (env/alias, anything about the shell itself rather than files), `vim`. **Registry order is test-enforced:** each type is one contiguous run (the "all" track never doubles back) and the three `panes-resize*` challenges are not consecutive. `SELECTABLE_CATEGORIES` drops empty groups; `getCategory(id)` falls back to `all`. **Trap: the store's `challengeIndex` is relative to the active category's list, not the global registry.** Resolve the current challenge via `getCategory(activeCategory).challenges[challengeIndex]` — never `CHALLENGES[challengeIndex]`.
 
 ## Win-detection (`src/state/gameStore.ts`)
 
@@ -48,5 +49,5 @@ State: `activeCategory` + `challengeIndex` (category-relative) + `stepIndex` + `
 4. Put challenge-specific mechanics in **comments in the challenge file**, not this skill — docs point, code explains.
 5. **Sweep every step's predicate against the freshly-loaded snapshot** — not just step 0 (which the playtest asserts). Any later step that comes back true is safe only via the cascade, so comment why the ordering protects it (`alias-shortcut.ts` is the model). No test enforces later steps, so the sweep is manual: a throwaway script mapping `steps.map(s => s.isComplete(snap))` finds them all.
 6. Set `commands` to the allowlist (`[]` for keyboard-only; omit only for genuine allow-all).
-7. Append to `CHALLENGES` in `registry.ts` (order = play order); its `type` decides its category.
+7. Insert into `CHALLENGES` in `registry.ts` inside its type's run (order = play order); its `type` decides its category. Add `failed` if a plausible wrong move leaves the board unwinnable.
 8. Cover it in `src/__tests__/challenges.test.ts` (predicate-level) **and** add a `SOLUTIONS` entry in `scripts/playtest_tracks.ts` (a challenge with neither a solution nor a `SKIPPED` reason fails the playtest — see the `apps/term-crunch:play-testing` skill). Then `npm run typecheck`, `npx vitest run`, `npm -w @tt/term-crunch run playtest`.

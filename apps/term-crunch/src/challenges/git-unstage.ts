@@ -51,6 +51,10 @@ export const gitUnstage: Challenge = {
     "A careless `git add .` staged .env, a secrets file, along with your app.js edit. " +
     "Unstage .env without losing it, then commit the app change.",
   setup,
+  // `rm .env` / `git reset --hard` empty the index too, but the whole point was
+  // keeping the file. Nothing brings it back, so tell the player rather than
+  // leaving them on a board that can never pass.
+  failed: (s) => (envIntact(s.fs) ? null : ".env was deleted or changed. Unstaging touches only the index; the file stays put. Restart to retry."),
   steps: [
     {
       instruction: "Unstage .env without deleting it or changing its contents.",

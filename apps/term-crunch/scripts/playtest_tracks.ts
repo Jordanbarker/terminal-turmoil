@@ -103,7 +103,7 @@ export const SOLUTIONS: Record<string, Move[]> = {
 
   "rm-bomb": ["find ~/work -name BOMB.md", "rm ~/work/reports/2024/BOMB.md"],
   // Both set startCwd to their working dir, so no cd needed.
-  "chmod-perms": ["chmod +r secrets.env"],
+  "chmod-perms": ["chmod o+r index.html"],
   "mv-organize": ["mkdir logs", "mv build.log logs/"],
   "env-export": ["export ENV=prod", "unset SAFEGUARDS"],
   "alias-shortcut": ["alias ship='mkdir -p ~/releases/v2'", "ship", "unalias ship"],
@@ -161,6 +161,10 @@ async function playChallenge(index: number): Promise<void> {
     fail(label, `starts on step ${runner.store.stepIndex + 1} — a predicate is satisfied at load`);
     return;
   }
+  if (runner.store.failure !== null) {
+    fail(label, `reports failure at load: ${runner.store.failure}`);
+    return;
+  }
 
   const log: string[] = [];
   for (const move of moves) {
@@ -184,6 +188,10 @@ async function playChallenge(index: number): Promise<void> {
   }
 
   const s = runner.store;
+  if (s.failure !== null) {
+    fail(label, `the intended solution tripped the failure detector: ${s.failure}\n${log.join("\n")}`);
+    return;
+  }
   if (!isGradeGateUp(s)) {
     fail(
       label,

@@ -338,8 +338,12 @@ describe("windows-create challenge", () => {
     expect(open3rd.isComplete(winSnap(three))).toBe(true);
     expect(rename.isComplete(winSnap(three))).toBe(false);
 
-    // name one of the three: rename step passes
-    const named = three.map((w, i) => (i === 1 ? { ...w, name: "logs" } : w));
+    // the TARGET strip says `logs`: any other name is not the target
+    const misnamed = three.map((w, i) => (i === 2 ? { ...w, name: "x" } : w));
+    expect(rename.isComplete(winSnap(misnamed))).toBe(false);
+
+    // name one of the three logs (any position): rename step passes
+    const named = three.map((w, i) => (i === 2 ? { ...w, name: "logs" } : w));
     expect(rename.isComplete(winSnap(named))).toBe(true);
   });
 
@@ -865,36 +869,36 @@ describe("rm-bomb challenge", () => {
 });
 
 describe("chmod-perms challenge", () => {
-  const SECRETS = "/home/player/vault/secrets.env";
-  const [unlock] = chmodPerms.steps;
+  const PAGE = "/home/player/site/index.html";
+  const [grant] = chmodPerms.steps;
 
   function fsSnap(fs: ReturnType<typeof buildBaseFs>): ChallengeSnapshot {
     return snap(makeWindow(CRUNCH_MACHINE, HOME_DIR), fs);
   }
 
-  it("seeds secrets.env locked to 600 (unreadable) with the step unsatisfied", () => {
+  it("seeds index.html at 600 (others can't read) with the step unsatisfied", () => {
     const fs = chmodPerms.setup(buildBaseFs());
-    const perms = fs.getNode(SECRETS)?.permissions;
+    const perms = fs.getNode(PAGE)?.permissions;
     expect(perms).toBe("rw-------");
-    // The "other" read bit the engine's readFile() checks is off, so `cat` would fail.
+    // The "other" read bit the engine's readFile() checks is off.
     expect(perms?.[6]).not.toBe("r");
-    expect(unlock.isComplete(fsSnap(fs))).toBe(false);
+    expect(grant.isComplete(fsSnap(fs))).toBe(false);
   });
 
-  it("completes once read is granted (chmod +r / 644 → rw-r--r--)", () => {
-    const fs = chmodPerms.setup(buildBaseFs()).setPermissions(SECRETS, "rw-r--r--").fs!;
-    expect(unlock.isComplete(fsSnap(fs))).toBe(true);
-  });
-
-  it("stays incomplete while still locked at 600", () => {
-    const fs = chmodPerms.setup(buildBaseFs()).setPermissions(SECRETS, "rw-------").fs!;
-    expect(unlock.isComplete(fsSnap(fs))).toBe(false);
+  it("completes once others can read (chmod o+r / 644 → rw-r--r--)", () => {
+    const fs = chmodPerms.setup(buildBaseFs()).setPermissions(PAGE, "rw-r--r--").fs!;
+    expect(grant.isComplete(fsSnap(fs))).toBe(true);
   });
 
   it("does NOT complete on owner-only read (u+r) — the other bit is still off", () => {
-    const fs = chmodPerms.setup(buildBaseFs()).setPermissions(SECRETS, "rw-------").fs!;
-    // chmod u+r leaves index 6 unchanged, so the file still can't be cat'd.
-    expect(unlock.isComplete(fsSnap(fs))).toBe(false);
+    const fs = chmodPerms.setup(buildBaseFs()).setPermissions(PAGE, "rw-------").fs!;
+    expect(grant.isComplete(fsSnap(fs))).toBe(false);
+  });
+
+  it("never claims the owner can't read: the brief is about other users, and cat isn't offered", () => {
+    expect(chmodPerms.brief).toMatch(/other users/);
+    expect(chmodPerms.brief).not.toMatch(/Permission denied/);
+    expect(chmodPerms.commands).not.toContain("cat");
   });
 });
 
@@ -1291,10 +1295,11 @@ describe("categories", () => {
   });
 
   it("type-derived groups contain only their type and are non-empty", () => {
-    const cases: Array<[string, "git" | "tmux" | "fs" | "vim"]> = [
+    const cases: Array<[string, "git" | "tmux" | "fs" | "shell" | "vim"]> = [
       ["git", "git"],
       ["tmux", "tmux"],
       ["fs", "fs"],
+      ["shell", "shell"],
       ["vim", "vim"],
     ];
     for (const [id, type] of cases) {
@@ -1306,6 +1311,48 @@ describe("categories", () => {
 
   it("falls back to the 'all' group for an unknown id", () => {
     expect(getCategory("bogus")).toBe(getCategory("all"));
+  });
+
+  it("the 'all' track plays each type as one contiguous run (never doubles back)", () => {
+    const types = CHALLENGES.map((c) => c.type);
+    const runs = types.filter((t, i) => i === 0 || t !== types[i - 1]);
+    expect(new Set(runs).size).toBe(runs.length);
+  });
+
+  it("the three resize challenges are not consecutive", () => {
+    const idx = CHALLENGES.map((c, i) => (c.id.startsWith("panes-resize") ? i : -1)).filter((i) => i >= 0);
+    expect(idx).toHaveLength(3);
+    expect(idx[1] === idx[0] + 1 && idx[2] === idx[1] + 1).toBe(false);
+  });
+});
+
+describe("failed (unrecoverable sandbox) predicates", () => {
+  const fsSnap = (fs: ReturnType<typeof buildBaseFs>) => snap(makeWindow(CRUNCH_MACHINE, HOME_DIR), fs);
+
+  it("rm-bomb: null while survivors stand, names the lost file after rm -rf on a parent", () => {
+    const fs = rmBomb.setup(buildBaseFs());
+    expect(rmBomb.failed!(fsSnap(fs))).toBeNull();
+    // Removing BOMB.md alone is the win, not a failure.
+    expect(rmBomb.failed!(fsSnap(fs.removeNode("/home/player/work/reports/2024/BOMB.md").fs!))).toBeNull();
+    const nuked = fs.removeNode("/home/player/work/reports/2024").fs!;
+    expect(rmBomb.failed!(fsSnap(nuked))).toContain("q1.md");
+    expect(rmBomb.failed!(fsSnap(nuked))).toContain("Restart");
+  });
+
+  it("git-unstage: null at load, a message once .env is deleted or altered", () => {
+    const fs = gitUnstage.setup(buildBaseFs());
+    const ENV = "/home/player/project/.env";
+    expect(gitUnstage.failed!(fsSnap(fs))).toBeNull();
+    expect(gitUnstage.failed!(fsSnap(fs.removeNode(ENV).fs!))).toContain(".env");
+    expect(gitUnstage.failed!(fsSnap(fs.writeFile(ENV, "changed\n").fs!))).toContain(".env");
+  });
+
+  it("no challenge reports failure on its freshly seeded board", () => {
+    for (const c of CHALLENGES) {
+      if (!c.failed) continue;
+      const win = c.initialWindow?.() ?? makeWindow(CRUNCH_MACHINE, c.startCwd ?? c.gitRepoPath ?? HOME_DIR);
+      expect(c.failed(snap(win, c.setup(buildBaseFs()))), c.id).toBeNull();
+    }
   });
 });
 
@@ -1466,15 +1513,16 @@ describe("per-challenge command allowlist", () => {
   });
 
   it("allows exactly the listed commands (plus help/clear) and hides the rest", () => {
-    select("chmod-perms"); // commands: ["chmod", "cat", "ls", "cd", "pwd"]
-    for (const cmd of ["chmod", "cat", "ls", "cd", "pwd"]) {
+    select("chmod-perms"); // commands: ["chmod", "ls", "cd", "pwd"]
+    for (const cmd of ["chmod", "ls", "cd", "pwd"]) {
       expect(isCommandAvailable(cmd, CRUNCH_MACHINE)).toBe(true);
     }
     expect(isCommandAvailable("git", CRUNCH_MACHINE)).toBe(false);
     expect(isCommandAvailable("rm", CRUNCH_MACHINE)).toBe(false);
+    expect(isCommandAvailable("cat", CRUNCH_MACHINE)).toBe(false);
 
     const listed = getAvailableCommands(CRUNCH_MACHINE).map((c) => c.name).sort();
-    expect(listed).toEqual(["cat", "cd", "chmod", "clear", "help", "ls", "man", "pwd", "shortcuts", "tmux"]);
+    expect(listed).toEqual(["cd", "chmod", "clear", "help", "ls", "man", "pwd", "shortcuts", "tmux"]);
   });
 
   it("blocks off-list commands with a friendly hint message", () => {

@@ -28,5 +28,22 @@ import { vimSearchFix } from "./vim-search-fix";
 import { vimReorder } from "./vim-reorder";
 import type { Challenge } from "./types";
 
-/** Ordered, linear progression. The player advances one challenge at a time. */
-export const CHALLENGES: Challenge[] = [panesSplit, panesGrid, panesCleanup, panesResize, panesResizeRows, panesResizeCorner, windowsCreate, gitFirstCommit, gitUnstage, gitStashChallenge, gitPullFf, gitBranchDelete, gitRebaseChallenge, rmBomb, chmodPerms, mvOrganize, envExport, aliasShortcut, copyModeYank, sessionsDetachAttach, sessionsJuggle, sessionsRename, vimFirstEdit, vimDeleteLines, vimFixWord, vimYankPaste, vimSearchFix, vimReorder];
+/**
+ * Ordered, linear progression. The player advances one challenge at a time.
+ * Tracks are contiguous (tmux, git, fs, shell, vim) so the "all" track never
+ * doubles back, and the three resize challenges are spaced out with other
+ * skills between them rather than played back to back.
+ */
+export const CHALLENGES: Challenge[] = [
+  // tmux
+  panesSplit, panesGrid, panesResize, panesCleanup, windowsCreate, panesResizeRows, panesResizeCorner,
+  copyModeYank, sessionsDetachAttach, sessionsJuggle, sessionsRename,
+  // git
+  gitFirstCommit, gitUnstage, gitStashChallenge, gitPullFf, gitBranchDelete, gitRebaseChallenge,
+  // fs
+  rmBomb, chmodPerms, mvOrganize,
+  // shell
+  envExport, aliasShortcut,
+  // vim
+  vimFirstEdit, vimDeleteLines, vimFixWord, vimYankPaste, vimSearchFix, vimReorder,
+];

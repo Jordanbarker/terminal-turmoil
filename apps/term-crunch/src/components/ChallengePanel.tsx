@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { formatElapsed } from "@tt/core/lib/format";
+import { formatElapsedPrecise } from "../lib/format";
 import { isGradeGateUp, useGameStore } from "../state/gameStore";
 import { getCategory, SELECTABLE_CATEGORIES } from "../challenges/categories";
 import { CHALLENGES } from "../challenges/registry";
@@ -28,6 +29,7 @@ export default function ChallengePanel() {
   const completed = useGameStore((s) => s.completed);
   const awaitingContinue = useGameStore((s) => s.awaitingContinue);
   const flash = useGameStore((s) => s.flash);
+  const failure = useGameStore((s) => s.failure);
   const windows = useGameStore((s) => s.windows);
   const activeWindowId = useGameStore((s) => s.activeWindowId);
   const fs = useGameStore((s) => s.fs);
@@ -143,8 +145,8 @@ export default function ChallengePanel() {
           )}
           {lastElapsedMs != null && (
             <div className="mt-2 text-sm text-[#b3b1ad]">
-              Time: <span className="font-semibold text-[#e6b450]">{formatElapsed(lastElapsedMs)}</span>
-              {best != null && <> · best {formatElapsed(best)}</>}
+              Time: <span className="font-semibold text-[#e6b450]">{formatElapsedPrecise(lastElapsedMs)}</span>
+              {best != null && <> · best {formatElapsedPrecise(best)}</>}
               {lastWasBest && <div className="text-[#7ee787]">🏆 New best!</div>}
             </div>
           )}
@@ -162,7 +164,17 @@ export default function ChallengePanel() {
               {lastAwards.map((a) => `+${a.mp} MP · ${a.label}`).join("  ")}
             </div>
           )}
-          {completed && pendingGradeId !== null && <GradeBar stat={reviewStats[pendingGradeId]} />}
+          {completed && pendingGradeId !== null ? (
+            <GradeBar stat={reviewStats[pendingGradeId]} />
+          ) : (
+            // Once the last grade is in there is nothing left to press: point at
+            // the two ways forward instead of leaving a dead end.
+            <div className="mt-2 text-xs text-[#b3b1ad]">
+              {"Pick another track above, or type "}
+              <code className="text-[#e6b450]">review</code>
+              {" to replay what's due."}
+            </div>
+          )}
         </div>
       ) : challengeStartTime === 0 ? (
         // Pre-mount / pre-seed: challengeStartTime is 0 at SSR and on the first
@@ -177,7 +189,7 @@ export default function ChallengePanel() {
             <div className="text-base font-semibold">{challenge.title}</div>
             <div className="mt-0.5 text-xs text-[#6b7680]">
               Step {stepIndex + 1}/{challenge.steps.length} · ⏱ <LiveTimer challengeStartTime={challengeStartTime} />
-              {best != null && <> · best {formatElapsed(best)}</>}
+              {best != null && <> · best {formatElapsedPrecise(best)}</>}
             </div>
             {reviewReturn !== null && (
               // A mid-review player needs to know why the category flipped to All.
@@ -189,6 +201,22 @@ export default function ChallengePanel() {
             <p className="whitespace-pre-line rounded bg-[#11161d] p-3 text-sm leading-relaxed text-[#b3b1ad]">
               {challenge.brief}
             </p>
+          )}
+
+          {failure && (
+            // A lost sandbox: the step can't advance until Restart, so say why
+            // here, where the player is reading, rather than leaving the board
+            // silently dead.
+            <div className="flex flex-col gap-2 rounded border border-[#8b3a3a] bg-[#2a1416] p-3 text-sm text-[#f28b82]">
+              <div>{`✗ ${failure}`}</div>
+              <button
+                type="button"
+                onClick={restartChallenge}
+                className="self-start rounded border border-[#8b3a3a] px-2 py-1 text-xs text-[#f28b82] hover:border-[#f28b82]"
+              >
+                ↺ Restart challenge
+              </button>
+            </div>
           )}
 
           {challenge.steps[stepIndex] && (

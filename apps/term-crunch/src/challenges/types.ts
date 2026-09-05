@@ -45,7 +45,7 @@ export interface Step {
 export interface Challenge {
   id: string;
   title: string;
-  type: "tmux" | "git" | "fs" | "vim";
+  type: "tmux" | "git" | "fs" | "shell" | "vim";
   /**
    * The persistent scenario + overall objective, shown above the current step so
    * the player always sees the whole task. Command-free. Omitted = the panel just
@@ -53,6 +53,13 @@ export interface Challenge {
    */
   brief?: string;
   steps: Step[];
+  /**
+   * Optional unrecoverable-state detector, evaluated with the same snapshot as
+   * `isComplete` before the step cascade. Return the message to show (why the
+   * sandbox is lost and that Restart recovers it), or null while play is still
+   * viable. While it returns a message no step can advance. Pure, cheap.
+   */
+  failed?: (s: ChallengeSnapshot) => string | null;
   /** Seed FS for this challenge, applied on top of buildBaseFs(). */
   setup: (base: VirtualFS) => VirtualFS;
   /** Pane challenges: the layout the player must reproduce (RIGHT schematic). */

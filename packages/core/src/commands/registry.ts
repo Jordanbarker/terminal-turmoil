@@ -82,6 +82,25 @@ function commandNotFound(commandName: string): string {
   );
 }
 
+/**
+ * `NAME=value` typed as a command. Real zsh would set a shell-local variable
+ * (invisible to printenv, gone with the shell); this engine keeps only exported
+ * vars, so say what the line does and how to reach the environment instead of
+ * a misleading "command not found" / availability message. Checked before the
+ * availability gate so an app's allowlist wording can't hijack it.
+ */
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+function assignmentRejection(commandName: string): CommandResult | null {
+  if (!ASSIGNMENT.test(commandName)) return null;
+  const name = commandName.slice(0, commandName.indexOf("="));
+  return errorResult(
+    colorize(`zsh: ${commandName} sets a shell-local variable, which this shell doesn't keep.`, ansi.red) +
+      "\n" +
+      colorize(`To put ${name} in the environment (visible to printenv): export ${commandName}`, ansi.dim),
+    1,
+  );
+}
+
 /** Availability gate shared by `execute` and `executeAsync`. Null when allowed. */
 function availabilityRejection(commandName: string, ctx: CommandContext): CommandResult | null {
   if (isCommandAvailable(commandName, ctx.activeComputer, ctx.storyFlags)) return null;
@@ -95,7 +114,7 @@ export function execute(
   flags: Record<string, boolean>,
   ctx: CommandContext
 ): CommandResult {
-  const rejected = availabilityRejection(commandName, ctx);
+  const rejected = assignmentRejection(commandName) ?? availabilityRejection(commandName, ctx);
   if (rejected) return rejected;
   const entry = commands.get(commandName);
   if (!entry) {
@@ -126,7 +145,7 @@ export async function executeAsync(
     if (rejectedPath) return rejectedPath;
     return executePathCommand(commandName, ctx);
   }
-  const rejected = availabilityRejection(commandName, ctx);
+  const rejected = assignmentRejection(commandName) ?? availabilityRejection(commandName, ctx);
   if (rejected) return rejected;
   const asyncEntry = asyncCommands.get(commandName);
   if (asyncEntry) {

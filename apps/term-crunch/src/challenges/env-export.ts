@@ -13,7 +13,7 @@ function setup(base: VirtualFS): VirtualFS {
 export const envExport: Challenge = {
   id: "env-export",
   title: "Configure the environment",
-  type: "fs",
+  type: "shell",
   startCwd: PROJECT_DIR,
   // Step 2 is "remove this" — the var must exist first, so it's seeded at load
   // (and re-merged on Settings saves so it can't vanish without an unset).

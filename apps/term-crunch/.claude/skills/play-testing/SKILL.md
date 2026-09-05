@@ -18,7 +18,7 @@ description: "Headless runner for programmatically play-testing term-crunch chal
 
 ## Track playtest
 
-`scripts/playtest_tracks.ts` (`npm -w @tt/term-crunch run playtest`, part of the root `npm run playtest` / `npm run check` gate) plays **every** registry challenge end to end with a fresh runner each: asserts step 1 isn't satisfied at load, plays the declared solution, then asserts the gate rose, a best time was recorded, grading fed `reviewStats`, and the grade handed over to the next challenge. Solutions live in `SOLUTIONS` keyed by challenge id — a command string or a function driving the runner. **Every new challenge needs an entry**, or a `SKIPPED` entry with a reason — a challenge with neither fails the playtest, so coverage can't silently lapse.
+`scripts/playtest_tracks.ts` (`npm -w @tt/term-crunch run playtest`, part of the root `npm run playtest` / `npm run check` gate) plays **every** registry challenge end to end with a fresh runner each: asserts step 1 isn't satisfied at load and `failure` is null, plays the declared solution, then asserts no `failed` predicate tripped, the gate rose, a best time was recorded, grading fed `reviewStats`, and the grade handed over to the next challenge. Solutions live in `SOLUTIONS` keyed by challenge id — a command string or a function driving the runner. **Every new challenge needs an entry**, or a `SKIPPED` entry with a reason — a challenge with neither fails the playtest, so coverage can't silently lapse.
 
 This complements `src/__tests__/challenges.test.ts`, which pokes predicates with hand-built snapshots; the playtest drives the real pipeline + store + gate.
 

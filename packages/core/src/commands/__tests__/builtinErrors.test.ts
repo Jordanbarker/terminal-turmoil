@@ -89,6 +89,20 @@ describe("find expression value handling", () => {
     const result = run("find", [".", "-name", "*.txt"]);
     expect(result.output).toContain("notes.txt");
   });
+
+  it("unknown predicates error instead of being silently ignored", () => {
+    const result = run("find", [".", "-name", "*.txt", "-bogus"]);
+    expect(result.stderr).toBe("find: unknown predicate `-bogus'");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("-delete removes every match and prints nothing", () => {
+    const result = run("find", [".", "-name", "notes.txt", "-delete"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toBe("");
+    expect(result.newFs).toBeDefined();
+    expect(result.newFs!.getNode(`${result.newFs!.cwd}/notes.txt`)).toBeNull();
+  });
 });
 
 describe("missing-operand exit codes", () => {

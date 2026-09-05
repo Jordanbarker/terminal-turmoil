@@ -40,12 +40,13 @@ export const windowsCreate: Challenge = {
       isComplete: (s) => s.windows.length >= 3,
     },
     {
-      instruction: "Give one of the windows a name.",
+      instruction: "Name one of the windows logs.",
       hint:
         "A prefix chord opens a rename prompt for the current window: type a name, press Enter. " +
         "Switch windows with prefix n / p or a number key.",
-      command: "prefix r",
-      isComplete: (s) => s.windows.some((w) => !!w.name),
+      command: "prefix r, type logs, Enter",
+      // The TARGET strip shows `logs`, so require that name (on any window).
+      isComplete: (s) => s.windows.some((w) => w.name === "logs"),
     },
   ],
 };

@@ -51,8 +51,17 @@ const shortcuts: CommandHandler = (_args, _flags, ctx) => {
       `    ${colorize(`${prefixLabel}, N/P`.padEnd(PAD), ansi.green)}Next/prev tab`,
       `    ${colorize(`${prefixLabel}, 1-5`.padEnd(PAD), ansi.green)}Jump to tab`,
       `    ${colorize(`${prefixLabel}, D`.padEnd(PAD), ansi.green)}Detach session`,
-      `    ${colorize("Change the prefix in ~/.tmux.conf on your home PC.", ansi.dim)}`,
+      `    ${colorize("Change the prefix in ~/.tmux.conf.", ansi.dim)}`,
       `    ${colorize("Manage sessions with tmux ls / attach / kill-session.", ansi.dim)}`,
+      "",
+      colorize("  Panes (tmux):", ansi.dim),
+      `    ${colorize(`${prefixLabel}, |`.padEnd(PAD), ansi.green)}Split side-by-side`,
+      `    ${colorize(`${prefixLabel}, -`.padEnd(PAD), ansi.green)}Split stacked`,
+      `    ${colorize(`${prefixLabel}, Arrows`.padEnd(PAD), ansi.green)}Focus pane in direction`,
+      `    ${colorize(`${prefixLabel}, O`.padEnd(PAD), ansi.green)}Cycle to next pane`,
+      `    ${colorize(`${prefixLabel}, X`.padEnd(PAD), ansi.green)}Kill pane`,
+      `    ${colorize(`${prefixLabel}, R`.padEnd(PAD), ansi.green)}Rename window`,
+      `    ${colorize("Focus (h/j/k/l) and resize (H/J/K/L) binds come from ~/.tmux.conf.", ansi.dim)}`,
     );
   } else if (ctx.tmux && !attached) {
     lines.push(

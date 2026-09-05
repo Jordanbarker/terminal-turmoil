@@ -33,7 +33,7 @@ function walkAll(
 
 const find: CommandHandler = (args, _flags, ctx) => {
   // Parse find-style arguments: find [PATH] [EXPRESSIONS]
-  // Expressions: -name PATTERN, -type f|d
+  // Expressions: -name PATTERN, -type f|d, -delete
   // Use rawArgs to preserve -name/-type tokens that the parser strips
   const effectiveArgs = ctx.rawArgs ?? args;
   if (effectiveArgs.length === 0) {
@@ -42,6 +42,7 @@ const find: CommandHandler = (args, _flags, ctx) => {
   let searchPath = ctx.cwd;
   let namePattern: RegExp | null = null;
   let typeFilter: "f" | "d" | null = null;
+  let doDelete = false;
 
   let i = 0;
   // First non-expression arg is the path
@@ -68,6 +69,13 @@ const find: CommandHandler = (args, _flags, ctx) => {
       }
       typeFilter = t;
       i += 2;
+    } else if (effectiveArgs[i] === "-delete") {
+      doDelete = true;
+      i++;
+    } else if (effectiveArgs[i].startsWith("-")) {
+      // Silently ignoring an expression would make `find -delete` (or a typo)
+      // print matches and do nothing, which reads as success.
+      return errorResult(`find: unknown predicate \`${effectiveArgs[i]}'`, 1);
     } else {
       i++;
     }
@@ -107,6 +115,21 @@ const find: CommandHandler = (args, _flags, ctx) => {
     if (typeFilter === "d" && !isDirectory(entry)) continue;
 
     matches.push(path);
+  }
+
+  if (doDelete) {
+    // Deepest paths first so a matched directory is emptied before it goes;
+    // real find -delete prints nothing on success.
+    let fs = ctx.fs;
+    const errors: string[] = [];
+    for (const p of [...matches].sort((a, b) => b.split("/").length - a.split("/").length)) {
+      const r = fs.removeNode(p);
+      if (r.fs) fs = r.fs;
+      else errors.push(`find: cannot delete '${p}': ${r.error ?? "unknown error"}`);
+    }
+    return errors.length
+      ? { output: "", stderr: errors.join("\n"), exitCode: 1, newFs: fs, triggerEvents: [searchedEvent] }
+      : { output: "", exitCode: 0, newFs: fs, triggerEvents: [searchedEvent] };
   }
 
   return {

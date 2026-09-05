@@ -44,6 +44,13 @@ export const rmBomb: Challenge = {
     "BOMB.md is hidden somewhere under ~/work. Delete just that file; " +
     "every other file must survive.",
   setup,
+  // rm -rf on a parent takes the survivors with it: the tree readout then LOOKS
+  // like a win (BOMB.md is gone), so say plainly that the run is lost.
+  failed: (s) => {
+    const lost = SURVIVORS.filter((p) => s.fs.getNode(p) === null).map((p) => p.slice(p.lastIndexOf("/") + 1));
+    if (lost.length === 0) return null;
+    return `${lost.join(", ")} went with it. Only BOMB.md may go; the others had to survive. Restart to retry.`;
+  },
   steps: [
     {
       // The brief states the whole objective — no per-step instruction.

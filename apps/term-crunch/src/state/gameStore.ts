@@ -111,6 +111,10 @@ export interface GameState {
   completed: boolean;
   awaitingContinue: boolean;
   flash: string | null;
+  // Set while the current challenge's `failed` predicate says the sandbox is
+  // unrecoverable (e.g. a protected file was deleted). Transient; cleared by
+  // loadChallenge (so Restart recovers). Never persisted.
+  failure: string | null;
   // Transient corner notifications (clipboard yank feedback). Never persisted.
   toasts: { id: string; message: string }[];
 
@@ -207,6 +211,7 @@ export const useGameStore = create<GameState>()(
   completed: false,
   awaitingContinue: false,
   flash: null,
+  failure: null,
   toasts: [],
   challengeStartTime: 0,
   bestTimes: {},
@@ -256,6 +261,7 @@ export const useGameStore = create<GameState>()(
       stepIndex: 0,
       completed: false,
       awaitingContinue: false,
+      failure: null,
       // An ungraded completion abandoned via goto/dropdowns must not linger.
       pendingGradeId: null,
       challengeStartTime: Date.now(),
@@ -296,6 +302,13 @@ export const useGameStore = create<GameState>()(
       envVars: state.envVars,
       aliases: state.aliases,
     };
+
+    // A lost sandbox (protected file deleted, etc.) blocks progress and tells
+    // the player why, instead of leaving them on a dead board guessing at
+    // Restart. Re-evaluated every check so a recoverable slip can clear.
+    const failure = challenge.failed?.(snap) ?? null;
+    if (failure !== state.failure) set({ failure });
+    if (failure) return;
 
     // Cascade through every consecutive satisfied step: predicates are pure
     // state checks, so out-of-order play (e.g. renaming a window before

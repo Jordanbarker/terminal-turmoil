@@ -102,3 +102,22 @@ describe("executeAsync enforces the availability policy", () => {
     expect(result.output).toBe("hi");
   });
 });
+
+describe("bare NAME=value assignments", () => {
+  it("explains the shell-local semantics and points at export, ahead of any availability policy", async () => {
+    setAvailabilityPolicy({
+      isAvailable: () => false,
+      unavailableMessage: (name) => `${name} isn't needed for this challenge.`,
+    });
+    for (const result of [execute("ENV=prod", [], {}, ctx()), await executeAsync("ENV=prod", [], {}, ctx())]) {
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("ENV=prod sets a shell-local variable");
+      expect(result.stderr).toContain("export ENV=prod");
+      expect(result.stderr).not.toContain("isn't needed");
+    }
+  });
+
+  it("leaves ordinary command names alone", () => {
+    expect(execute("pwd", [], {}, ctx()).output).toContain(HOME);
+  });
+});

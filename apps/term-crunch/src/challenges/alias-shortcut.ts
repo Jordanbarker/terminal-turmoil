@@ -13,7 +13,7 @@ function setup(base: VirtualFS): VirtualFS {
 export const aliasShortcut: Challenge = {
   id: "alias-shortcut",
   title: "One-word release",
-  type: "fs",
+  type: "shell",
   fsWatchPath: RELEASES_DIR,
   commands: ["alias", "unalias", "mkdir", "ls", "cd"],
   brief:

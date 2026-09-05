@@ -52,7 +52,8 @@ describe("git commit message errors", () => {
 
   it("errors about the missing editor when -m is absent", () => {
     const result = git(setupRepoWithStagedFile(), ["commit"]);
-    expect(result.stderr).toContain("Terminal is dumb, but EDITOR unset");
+    expect(result.stderr).toContain("Aborting commit due to empty commit message");
+    expect(result.stderr).not.toContain("EDITOR unset"); // apps seed EDITOR=nano
     expect(result.stderr).toContain("-m or -F");
     expect(result.output).toBe("");
     expect(result.exitCode).toBe(1);
@@ -462,6 +463,13 @@ describe("git push --delete", () => {
     expect(result.stderr).toBeUndefined();
     expect(result.output).toContain(" - [deleted]         feature");
     expect(result.newFs!.getNode(`${HOME}/.git/refs/remotes/origin/feature`)).toBeNull();
+  });
+
+  it("deletes the remote branch via the empty-source refspec `origin :branch`", () => {
+    const result = git(withPushedFeature(), ["push", "origin", ":feature"]);
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(result.output).toContain("[deleted]");
+    expect(result.output).toContain("feature");
   });
 
   it("deletes the remote branch via the --delete long form", () => {

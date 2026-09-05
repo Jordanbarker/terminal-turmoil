@@ -2,7 +2,7 @@ import type { CommandHandler } from "@tt/core/commands/types";
 import { register } from "@tt/core/commands/registry";
 import { setKnownFlags } from "@tt/core/commands/flagValidation";
 import { registerMetaCommands } from "@tt/core/commands/builtins/help";
-import { formatElapsed } from "@tt/core/lib/format";
+import { formatElapsedPrecise } from "../../lib/format";
 import { getCategory, SELECTABLE_CATEGORIES } from "../../challenges/categories";
 import { CHALLENGES } from "../../challenges/registry";
 import { buildReviewQueue, countDue, formatInterval, isDue, nextDueAt } from "../../challenges/scheduler";
@@ -54,7 +54,7 @@ const challenges: CommandHandler = () => {
   category.challenges.forEach((c, i) => {
     const marker = i === challengeIndex ? "\x1b[33m→\x1b[0m" : " ";
     const best = bestTimes[c.id];
-    const done = best != null ? ` \x1b[32m✓ ${formatElapsed(best)}\x1b[0m` : "";
+    const done = best != null ? ` \x1b[32m✓ ${formatElapsedPrecise(best)}\x1b[0m` : "";
     const due = isDue(reviewStats[c.id], now) ? " \x1b[33m● due\x1b[0m" : "";
     lines.push(` ${marker} ${String(i + 1).padStart(2)}. ${c.title}${done}${due}`);
   });

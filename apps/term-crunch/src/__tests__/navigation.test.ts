@@ -49,7 +49,7 @@ describe("challenge navigation commands", () => {
     const first = getCategory("all").challenges[0];
     useGameStore.setState({ bestTimes: { [first.id]: 61000 } });
     const out = strip(run("challenges").output);
-    expect(out).toContain(`1. ${first.title} ✓ 1:01`);
+    expect(out).toContain(`1. ${first.title} ✓ 1:01.0`);
   });
 
   it("goto queues a load for valid 1-based indexes and rejects out-of-range", () => {

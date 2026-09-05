@@ -177,8 +177,11 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
           // -m given with no value
           return errorResult("error: switch `m' requires a value", 129);
         }
-        // No -m at all: real git would open an editor; we have none.
-        return errorResult("error: Terminal is dumb, but EDITOR unset\nPlease supply the message using either -m or -F option.", 1);
+        // No -m at all: real git would open $EDITOR for the message; this shell
+        // has no editor hook for git, so abort the way git does on an empty
+        // message and point at the inline flag (without claiming EDITOR is
+        // unset — apps seed EDITOR=nano).
+        return errorResult("hint: no editor is available for the commit message here.\nPlease supply the message using either -m or -F option.\nAborting commit due to empty commit message.", 1);
       }
       if (message === "" && !amend) {
         return errorResult("Aborting commit due to empty commit message.", 1);
@@ -405,8 +408,11 @@ const git: CommandHandler = (_args, _parserFlags, ctx) => {
     case "push": {
       const remote = subArgs[0];
       const branch = subArgs[1];
-      if (flags["d"] || flags["delete"]) {
-        const result = gitPushDelete(ctx.fs, root, remote, branch);
+      // `git push origin :branch` — the classic empty-source refspec — deletes
+      // the remote branch exactly like --delete.
+      const colonDelete = branch?.startsWith(":") ? branch.slice(1) : null;
+      if (flags["d"] || flags["delete"] || colonDelete !== null) {
+        const result = gitPushDelete(ctx.fs, root, remote, colonDelete ?? branch);
         if (result.error) return errorResult(result.error, 1);
         return { output: result.output, newFs: result.fs };
       }

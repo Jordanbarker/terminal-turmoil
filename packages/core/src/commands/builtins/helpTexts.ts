@@ -128,6 +128,7 @@ export const HELP_TEXTS: Record<string, string> = {
     "",
     "  -name PATTERN   match filename (supports * and ? globs)",
     "  -type f|d       match file type (f=file, d=directory)",
+    "  -delete         remove every match (prints nothing on success)",
   ].join("\n"),
 
   head: [
